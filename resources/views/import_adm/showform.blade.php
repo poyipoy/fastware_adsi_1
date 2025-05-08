@@ -140,9 +140,7 @@
             font-weight: 600;
         }
 
-        .custom-table td {
-            background-color: #fff;
-        }
+        
 
         /* Border bawah tabel terakhir */
         .custom-table tr:last-child td {
@@ -218,6 +216,74 @@
             background-color: #f9f9f9;
         }
 
+        .download-links {
+            margin-top: 10px;
+        }
+
+        .btn-upload, .btn-approve, .btn-reject {
+            margin-top: 5px;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-upload {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-approve {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-reject {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .download-links ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .download-links li {
+            margin-bottom: 5px;
+        }
+
+        /* Styling container to use flexbox for alignment */
+        .btn-container {
+            display: flex;
+            justify-content: space-between; /* Distribute space evenly between the left and right side */
+            align-items: center; /* Align items vertically in the center */
+            width: 100%; /* Make sure the container takes full width */
+        }
+
+        /* Styling for the left button (Kembali) */
+        .btn-warning {
+            margin-right: auto; /* Push the 'Kembali' button to the far left */
+        }
+
+        /* Styling for the right-side navigation buttons */
+        .btn-navigation-right {
+            display: flex; /* Use flexbox to align the next/previous buttons in a row */
+            gap: 10px; /* Add some space between the buttons */
+        }
+
+        /* Styling for the navigation buttons */
+        .btn-navigation {
+            padding: 10px 20px; /* Add some padding for better clickability */
+            font-size: 16px; /* Set font size */
+            display: flex;
+            align-items: center;
+        }
+
+        /* Optional: Add some margin to the left and right buttons for better spacing */
+        .btn-navigation i {
+            margin-right: 5px; /* Space between icon and text */
+        }
+
+
     </style>
         
         
@@ -234,6 +300,10 @@
         <section class="section">
             <div class="card p-4"> <!-- Tambahkan padding di sini -->
                 <div class="card-body">
+                    <button class="btn btn-warning float-end" data-bs-toggle="modal" data-bs-target="#editModal">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    
                     <div class="form-section mt-3">
                         <div class="form-group mb-4">
                             <label class="form-label">No Document :</label>
@@ -253,6 +323,33 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="btn-container">
+                    <button class="btn btn-warning float-start" onclick="window.location.href='{{ route('createadministration') }}'">
+                        <i class="fas fa-arrow-left"></i>  <!-- Icon panah kiri -->
+                        Kembali
+                    </button>
+                
+                    <div class="btn-navigation-right">
+                        <button
+                            type="button"
+                            aria-label="Previous Page"
+                            class="btn-navigation"
+                            onclick="navigateInquiry('previous')"
+                        >
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <button
+                            type="button"
+                            aria-label="Next Page"
+                            class="btn-navigation"
+                            onclick="navigateInquiry('next')"
+                        >
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                
             
                 <div class="table-responsive mt-4">
                     <table class="custom-table">
@@ -261,6 +358,7 @@
                                 <th>No</th>
                                 <th>Status</th>
                                 <th>File</th>
+                                <th>Partner</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
@@ -274,46 +372,95 @@
                                 6 => 'E-Billing',
                                 7 => 'Finish'
                             ] as $statusCode => $status)
-                                <tr>
+                                <tr style="background-color: {{ $admin->status == $statusCode ? '#ffffff' : '#d3d3d3' }};">
                                     <td>{{ $loop->iteration }}</td>
                                     <td><span>{{ $status }}</span></td>
                                     <td>
-                                        @if ($admin->status == $statusCode && $statusCode != 7)
+                                        <!-- Button Upload Files -->
+                                        @if ($statusCode != 7)
                                             <button class="btn-upload" data-bs-toggle="modal" data-bs-target="#uploadModal{{ $statusCode }}">
                                                 <i class="fas fa-upload"></i> Upload Files
                                             </button>
                                         @endif
-                                        <a href="#" class="btn-download" data-url="{{ route('downloadFiles', ['status' => $statusCode, 'adminId' => $admin->id]) }}">
-                                            <i class="fas fa-download"></i> Download Files
-                                        </a>
-                                        
-                                                                               
+
+                                        @if ($statusCode == 2)
+                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 2 -->
+                                            <span>No. VO : {{ $admin->no_vo }}</span>
+                                        @endif
+
+                                        @if ($statusCode != 7)
+
+                                        <!-- Download Links for Available Files -->
+                                        <div id="download-links-{{ $statusCode }}" class="download-links" style="display:block;">
+                                            <h5>File tersedia:</h5>
+                                            <ul id="download-file-list-{{ $statusCode }}"></ul>
+                                        </div>
+                                        @endif
                                     </td>
                                     <td>
+                                        <!-- Check if file is available for the given status -->
+                                        @if ($statusCode == 1 && (!empty($admin->pl) || !empty($admin->inv)))
+                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 1 -->
+                                            @if ($admin->purchase)
+                                                {{ $admin->purchase->name }} <!-- Menampilkan nama pengguna terkait dengan purchase_id -->
+                                            @endif
+                                        @elseif ($statusCode == 2 && (!empty($admin->novo_file) || !empty($admin->ls)))
+                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 2 -->
+                                            @if ($admin->admin)
+                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan admin_id -->
+                                            @endif
+                                        @elseif ($statusCode == 3 && (!empty($admin->bl) || !empty($admin->inv_final) || !empty($admin->pl_final) || !empty($admin->form_e)))
+                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 3 -->
+                                            @if ($admin->purchase)
+                                                {{ $admin->purchase->name }} <!-- Menampilkan nama pengguna terkait dengan purchase_id -->
+                                            @endif
+                                        @elseif ($statusCode == 4 && !empty($admin->asuransi))
+                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 4 -->
+                                            @if ($admin->admin)
+                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan admin_id -->
+                                            @endif
+                                        @elseif ($statusCode == 5 && !empty($admin->pib_final))
+                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 5 -->
+                                            @if ($admin->admin)
+                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan purchase_id -->
+                                            @endif
+                                        @elseif ($statusCode == 6 && !empty($admin->e_bill))
+                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 6 -->
+                                            @if ($admin->admin)
+                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan admin_id -->
+                                            @endif
+                                        @endif
+
+                                        </td>
+                                    
+                                                                        
+                                    <td>
                                         @if ($admin->status == $statusCode)
+                                            <!-- Submit Button for approval if status is less than 7 -->
                                             @if ($statusCode < 7)
                                                 <form method="POST" action="{{ route('approve', $admin->id) }}">
                                                     @csrf
-                                                    <button type="submit" class="btn-approve">Approve</button>
+                                                    <button type="submit" class="btn-approve">Submit</button>
                                                 </form>
                                             @endif
+                    
+                                            <!-- Reject Button -->
+                                            @if ($statusCode == 1)
+                                            
+                                            @else
                                             <form method="POST" action="{{ route('reject', $admin->id) }}">
                                                 @csrf
                                                 <button type="submit" class="btn-reject">
-                                                    @if ($statusCode == 1)
-                                                        Reject (Delete)
-                                                    @else
                                                         Reject (Decrement)
-                                                    @endif
                                                 </button>
                                             </form>
+                                            @endif
                                         @endif
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
-                    </table>
-                    
+                    </table>                    
                 </div>
             </div>
             
@@ -349,9 +496,14 @@
                                         </div>
                                     @elseif ($statusCode == 2) <!-- Proses Surveyor -->
                                         <div class="mb-3">
+                                            <label for="no_vo_text" class="form-label">No VO Text</label>
+                                            <input type="text" name="no_vo_text" id="no_vo_text" class="form-control" placeholder="Enter No VO Text">
+                                        </div>    
+                                        <div class="mb-3">
                                             <label for="no_vo_file" class="form-label">No VO</label>
                                             <input type="file" name="no_vo_file[]" id="no_vo_file" class="form-control" accept=".pdf,.xlsx,.xls" multiple>
                                         </div>
+                                        
                                         <div class="mb-3">
                                             <label for="ls_file" class="form-label">LS</label>
                                             <input type="file" name="ls_file[]" id="ls_file" class="form-control" accept=".pdf,.xlsx,.xls" multiple>
@@ -378,15 +530,15 @@
                                             <label for="asuransi_file" class="form-label">Asuransi</label>
                                             <input type="file" name="asuransi_file[]" id="asuransi_file" class="form-control" accept=".pdf,.xlsx,.xls" multiple>
                                         </div>
-                                    @elseif ($statusCode == 5) <!-- Proses PPJK -->
+                                        @elseif ($statusCode == 5) <!-- Proses PPJK -->
                                         <div class="mb-3">
-                                            <label for="no_aju_file" class="form-label">No Aju</label>
-                                            <input type="file" name="no_aju_file[]" id="no_aju_file" class="form-control" accept=".pdf,.xlsx,.xls" multiple>
+                                            <label for="no_aju_text" class="form-label">No Aju</label>
+                                            <input type="text" name="no_aju_text" id="no_aju_text" class="form-control" placeholder="Enter No Aju">
                                         </div>
                                         <div class="mb-3">
                                             <label for="pib_final_file" class="form-label">PIB Final</label>
                                             <input type="file" name="pib_final_file[]" id="pib_final_file" class="form-control" accept=".pdf,.xlsx,.xls" multiple>
-                                        </div>
+                                        </div>                                    
                                     @elseif ($statusCode == 6) <!-- E-Billing -->
                                         <div class="mb-3">
                                             <label for="e_bill_file" class="form-label">E-Bill</label>
@@ -402,7 +554,39 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Modal Edit -->
+                <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="{{ route('updateAdmin', $admin->id) }}">
+                                @csrf
+                                @method('PUT')
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editModalLabel">Edit Supplier and Invoice</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="supplier" class="form-label">Nama Supplier</label>
+                                        <input type="text" class="form-control" id="supplier" name="supplier" value="{{ $admin->supplier }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="no_inv" class="form-label">No Invoice</label>
+                                        <input type="text" class="form-control" id="no_inv" name="no_inv" value="{{ $admin->no_inv }}" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
             @endforeach
+
             
             <div id="alertContainer"></div>
             
@@ -429,6 +613,98 @@
         </script>
 
     <script>
+
+function navigateInquiry(direction) {
+    let currentAdminId = {{ $admin->id }};
+    const maxId = {{ $maxAdminId }};
+
+    let targetAdminId;
+    if (direction === 'next') {
+        targetAdminId = currentAdminId === maxId ? 1 : currentAdminId + 1;
+    } else if (direction === 'previous') {
+        targetAdminId = currentAdminId === 1 ? maxId : currentAdminId - 1;
+    }
+
+    // Mengarahkan ke URL baru dan me-reload halaman
+    let newUrl = '{{ route("dokumenadministration", "") }}' + '/' + targetAdminId;
+    window.location.href = newUrl; // Ini akan memuat ulang halaman dengan URL baru
+}
+
+
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const adminId = '{{ $admin->id }}'; // Ambil adminId dari variabel yang ada di halaman atau dari sesi
+
+    // Ambil data file berdasarkan adminId
+    const files = await fetchFiles(adminId);
+
+    // Render data file ke dalam UI
+    renderFiles(files);
+});
+
+async function fetchFiles(adminId) {
+    try {
+        // Menggunakan route Blade untuk menghasilkan URL
+        const url = `{{ route('downloadFiles', ['adminId' => '__ADMIN_ID__']) }}`.replace('__ADMIN_ID__', adminId);
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success && data.filesByStatus) {
+            return data.filesByStatus; // Mengembalikan file berdasarkan status
+        } else {
+            return {};
+        }
+    } catch (error) {
+        console.error('Error fetching files:', error);
+        return {};
+    }
+}
+
+function renderFiles(filesByStatus) {
+    // Iterasi untuk setiap status dan tampilkan file sesuai status
+    for (const statusCode in filesByStatus) {
+        const files = filesByStatus[statusCode]; // Ambil file berdasarkan status
+
+        // Cari elemen dengan ID yang sesuai untuk status
+        const list = document.getElementById(`download-file-list-${statusCode}`);
+
+        if (list) {
+            list.innerHTML = ''; // Bersihkan daftar sebelumnya
+
+            if (files.length === 0) {
+                list.innerHTML = '<li>Tidak ada file tersedia</li>';
+            } else {
+                // Menampilkan setiap file yang diterima
+                files.forEach(file => {
+                    const listItem = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.textContent = file.name;
+                    link.href = file.url;
+                    link.classList.add('file-link');
+
+                    // Menangani klik untuk download
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const tempLink = document.createElement('a');
+                        tempLink.href = file.url;
+                        tempLink.download = file.name;
+                        document.body.appendChild(tempLink);
+                        tempLink.click();
+                        document.body.removeChild(tempLink);
+                    });
+
+                    listItem.appendChild(link);
+                    list.appendChild(listItem);
+                });
+            }
+        }
+    }
+}
+
+
+
         function uploadfile() {
             let formData = new FormData(document.getElementById('uploadForm'));
 
@@ -468,45 +744,6 @@
                 }
             });
         }
-
-        $(document).on('click', '.btn-download', function (e) {
-            e.preventDefault(); // Mencegah perilaku default (misalnya, mereload halaman)
-            var downloadUrl = $(this).data('url'); // Mengambil URL route dari atribut data-url
-
-            // Kirim permintaan AJAX untuk memeriksa apakah file ada
-            $.ajax({
-                url: downloadUrl, // Gunakan URL dari data-url
-                type: 'GET',
-                success: function (response) {
-                    // Jika berhasil, tampilkan pesan keberhasilan
-                    displayMessage(response.message, 'success');
-                    
-                    // Menyediakan URL untuk pengunduhan file satu per satu
-                    if (response.download_urls && response.download_urls.length > 0) {
-                        response.download_urls.forEach(function(url) {
-                            window.location.href = url;  // Men-download file satu per satu
-                        });
-                    } else {
-                        displayMessage('File tidak ditemukan.', 'error');
-                    }
-                },
-                error: function (xhr) {
-                    // Jika ada error, tampilkan pesan kesalahan
-                    var response = xhr.responseJSON;
-                    if (response && response.message) {
-                        displayMessage(response.message, 'error');
-                    } else {
-                        displayMessage('Terjadi kesalahan saat mengunduh file.', 'error');
-                    }
-                    
-                    // Jika ada file yang hilang
-                    if (response && response.missing_files) {
-                        displayMessage('File yang hilang: ' + response.missing_files.join(', '), 'error');
-                    }
-                }
-            });
-        });
-
         function displayMessage(message, type) {
             // Menampilkan pesan menggunakan alert() sebagai pengganti div notifikasi
             if (type === 'error') {

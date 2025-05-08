@@ -560,8 +560,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     route::post('/import-administration/store', [ImportAdministrationController::class, 'store'])->name('storeadministration');
     route::get('/import-administration/Showformadm/{id}', [ImportAdministrationController::class, 'showformadm'])->name('dokumenadministration');
     Route::post('/admin/{adminId}/upload', [ImportAdministrationController::class, 'uploadFiles'])->name('uploadFiles');
-    Route::get('/admin/{status}/{adminId}/download', [ImportAdministrationController::class, 'downloadFiles'])->name('downloadFiles');
+    Route::get('/admin/{adminId}/download', [ImportAdministrationController::class, 'downloadFiles'])->name('downloadFiles');
     Route::post('/admin/{adminId}/approve', [ImportAdministrationController::class, 'approve'])->name('approve');
     Route::post('/admin/{adminId}/reject', [ImportAdministrationController::class, 'reject'])->name('reject');
+    Route::put('/admin/{adminId}/update', [ImportAdministrationController::class, 'updateAdmin'])->name('updateAdmin');
+
 });
 
