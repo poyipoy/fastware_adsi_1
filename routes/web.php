@@ -564,6 +564,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/admin/{adminId}/approve', [ImportAdministrationController::class, 'approve'])->name('approve');
     Route::post('/admin/{adminId}/reject', [ImportAdministrationController::class, 'reject'])->name('reject');
     Route::put('/admin/{adminId}/update', [ImportAdministrationController::class, 'updateAdmin'])->name('updateAdmin');
+    Route::post('/admin/delete-file', [ImportAdministrationController::class, 'deleteFile'])->name('deleteFile');
+
 
 });
 

@@ -285,6 +285,10 @@
 
 
     </style>
+    <head>
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+    </head>
+    
         
         
             <div class="pagetitle">
@@ -352,116 +356,170 @@
                 
             
                 <div class="table-responsive mt-4">
-                    <table class="custom-table">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Status</th>
-                                <th>File</th>
-                                <th>Partner</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ([
-                                1 => 'Ready To Ship',
-                                2 => 'Proses Surveyor',
-                                3 => 'Dokumen Final',
-                                4 => 'Daftar Asuransi',
-                                5 => 'Proses PPJK',
-                                6 => 'E-Billing',
-                                7 => 'Finish'
-                            ] as $statusCode => $status)
-                                <tr style="background-color: {{ $admin->status == $statusCode ? '#ffffff' : '#d3d3d3' }};">
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td><span>{{ $status }}</span></td>
-                                    <td>
-                                        <!-- Button Upload Files -->
-                                        @if ($statusCode != 7)
-                                            <button class="btn-upload" data-bs-toggle="modal" data-bs-target="#uploadModal{{ $statusCode }}">
-                                                <i class="fas fa-upload"></i> Upload Files
-                                            </button>
-                                        @endif
-
-                                        @if ($statusCode == 2)
-                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 2 -->
-                                            <span>No. VO : {{ $admin->no_vo }}</span>
-                                        @endif
-
-                                        @if ($statusCode != 7)
-
-                                        <!-- Download Links for Available Files -->
-                                        <div id="download-links-{{ $statusCode }}" class="download-links" style="display:block;">
-                                            <h5>File tersedia:</h5>
-                                            <ul id="download-file-list-{{ $statusCode }}"></ul>
-                                        </div>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <!-- Check if file is available for the given status -->
-                                        @if ($statusCode == 1 && (!empty($admin->pl) || !empty($admin->inv)))
-                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 1 -->
-                                            @if ($admin->purchase)
-                                                {{ $admin->purchase->name }} <!-- Menampilkan nama pengguna terkait dengan purchase_id -->
-                                            @endif
-                                        @elseif ($statusCode == 2 && (!empty($admin->novo_file) || !empty($admin->ls)))
-                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 2 -->
-                                            @if ($admin->admin)
-                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan admin_id -->
-                                            @endif
-                                        @elseif ($statusCode == 3 && (!empty($admin->bl) || !empty($admin->inv_final) || !empty($admin->pl_final) || !empty($admin->form_e)))
-                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 3 -->
-                                            @if ($admin->purchase)
-                                                {{ $admin->purchase->name }} <!-- Menampilkan nama pengguna terkait dengan purchase_id -->
-                                            @endif
-                                        @elseif ($statusCode == 4 && !empty($admin->asuransi))
-                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 4 -->
-                                            @if ($admin->admin)
-                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan admin_id -->
-                                            @endif
-                                        @elseif ($statusCode == 5 && !empty($admin->pib_final))
-                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 5 -->
-                                            @if ($admin->admin)
-                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan purchase_id -->
-                                            @endif
-                                        @elseif ($statusCode == 6 && !empty($admin->e_bill))
-                                            <!-- Menampilkan nama pengguna hanya jika ada file terkait dengan status 6 -->
-                                            @if ($admin->admin)
-                                                {{ $admin->admin->name }} <!-- Menampilkan nama pengguna terkait dengan admin_id -->
-                                            @endif
-                                        @endif
-
-                                        </td>
-                                    
-                                                                        
-                                    <td>
-                                        @if ($admin->status == $statusCode)
-                                            <!-- Submit Button for approval if status is less than 7 -->
-                                            @if ($statusCode < 7)
-                                                <form method="POST" action="{{ route('approve', $admin->id) }}">
-                                                    @csrf
-                                                    <button type="submit" class="btn-approve">Submit</button>
-                                                </form>
-                                            @endif
-                    
-                                            <!-- Reject Button -->
-                                            @if ($statusCode == 1)
-                                            
-                                            @else
-                                            <form method="POST" action="{{ route('reject', $admin->id) }}">
-                                                @csrf
-                                                <button type="submit" class="btn-reject">
-                                                        Reject (Decrement)
-                                                </button>
-                                            </form>
-                                            @endif
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>                    
+                    <div class="row">
+                        <!-- Kolom Kiri: Status 1, 2, dan 3 -->
+                        <div class="col-md-6">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Status</th>
+                                        <th>File</th>
+                                        <th>Partner</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ([1 => 'Ready To Ship', 2 => 'Proses Surveyor', 3 => 'Dokumen Final'] as $statusCode => $status)
+                                        <tr style="background-color: {{ $admin->status == $statusCode ? '#ffffff' : '#d3d3d3' }};">
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td><span>{{ $status }}</span></td>
+                                            <td>
+                                                @if ($statusCode != 7)
+                                                    <button class="btn-upload" data-bs-toggle="modal" data-bs-target="#uploadModal{{ $statusCode }}">
+                                                        <i class="fas fa-upload"></i> Upload Files
+                                                    </button>
+                                                @endif
+                                                @if ($statusCode == 2)
+                                                    <span>No. VO : {{ $admin->no_vo }}</span>
+                                                @endif
+                
+                                                @if ($statusCode != 7)
+                                                    <div id="download-links-{{ $statusCode }}" class="download-links" style="display:block;">
+                                                        <h5>File tersedia:</h5>
+                                                        <ul id="download-file-list-{{ $statusCode }}"></ul>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($statusCode == 1 && (!empty($admin->pl) || !empty($admin->inv)))
+                                                    @if ($admin->purchase)
+                                                        <div>{{ $admin->purchase->name }}</div>
+                                                    @endif
+                                                @elseif ($statusCode == 2 && (!empty($admin->novo_file) || !empty($admin->ls)))
+                                                    @if ($admin->admin)
+                                                        <div>{{ $admin->purchase->name }}</div>
+                                                    @endif
+                                                @elseif ($statusCode == 3 && (!empty($admin->bl) || !empty($admin->inv_final) || !empty($admin->pl_final) || !empty($admin->form_e)))
+                                                    @if ($admin->purchase)
+                                                        <span>{{ $admin->purchase->name }}</span>
+                                                    @endif
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($admin->status == $statusCode)
+                                                    @if ($statusCode < 7)
+                                                        <form method="POST" action="{{ route('approve', $admin->id) }}">
+                                                            @csrf
+                                                            <button type="submit" class="btn-approve">Submit</button>
+                                                        </form>
+                                                    @endif
+                                                    @if ($statusCode == 1)
+                                                    @else
+                                                        <form method="POST" action="{{ route('reject', $admin->id) }}">
+                                                            @csrf
+                                                            <button type="submit" class="btn-reject">
+                                                                Reject (Decrement)
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <!-- Baris untuk Last Update -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div><strong>Last Update (Purchase):</strong> {{ $admin->purchase_updated_at }}</div>
+                                </div>
+                            </div>
+                        </div>
+                
+                        <!-- Kolom Kanan: Status 4, 5, 6, 7 -->
+                        <div class="col-md-6">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Status</th>
+                                        <th>File</th>
+                                        <th>Partner</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ([4 => 'Daftar Asuransi', 5 => 'Proses PPJK', 6 => 'E-Billing', 7 => 'Finish'] as $statusCode => $status)
+                                        <tr style="background-color: {{ $admin->status == $statusCode ? '#ffffff' : '#d3d3d3' }};">
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td><span>{{ $status }}</span></td>
+                                            <td>
+                                                @if ($statusCode != 7)
+                                                    <button class="btn-upload" data-bs-toggle="modal" data-bs-target="#uploadModal{{ $statusCode }}">
+                                                        <i class="fas fa-upload"></i> Upload Files
+                                                    </button>
+                                                @endif
+                                                @if ($statusCode == 2)
+                                                    <span>No. VO : {{ $admin->no_vo }}</span>
+                                                @endif
+                
+                                                @if ($statusCode != 7)
+                                                    <div id="download-links-{{ $statusCode }}" class="download-links" style="display:block;">
+                                                        <h5>File tersedia:</h5>
+                                                        <ul id="download-file-list-{{ $statusCode }}"></ul>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($statusCode == 4 && !empty($admin->asuransi))
+                                                    @if ($admin->admin)
+                                                        <div>{{ $admin->admin->name }}</div>
+                                                    @endif
+                                                @elseif ($statusCode == 5 && !empty($admin->pib_final))
+                                                    @if ($admin->admin)
+                                                        <div>{{ $admin->admin->name }}</div>
+                                                    @endif
+                                                @elseif ($statusCode == 6 && !empty($admin->e_bill))
+                                                    @if ($admin->admin)
+                                                        <div>{{ $admin->admin->name }}</div>
+                                                    @endif
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($admin->status == $statusCode)
+                                                    @if ($statusCode < 7)
+                                                        <form method="POST" action="{{ route('approve', $admin->id) }}">
+                                                            @csrf
+                                                            <button type="submit" class="btn-approve">Submit</button>
+                                                        </form>
+                                                    @endif
+                                                    @if ($statusCode == 1)
+                                                    @else
+                                                        <form method="POST" action="{{ route('reject', $admin->id) }}">
+                                                            @csrf
+                                                            <button type="submit" class="btn-reject">
+                                                                Reject (Decrement)
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <!-- Baris untuk Last Update -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div><strong>Last Update (Admin):</strong> {{ $admin->admin_updated_at }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
+                
             </div>
             
 
@@ -496,14 +554,17 @@
                                         </div>
                                     @elseif ($statusCode == 2) <!-- Proses Surveyor -->
                                         <div class="mb-3">
-                                            <label for="no_vo_text" class="form-label">No VO Text</label>
+                                            <label for="no_vo_text" class="form-label">No VO</label>
                                             <input type="text" name="no_vo_text" id="no_vo_text" class="form-control" placeholder="Enter No VO Text">
                                         </div>    
                                         <div class="mb-3">
-                                            <label for="no_vo_file" class="form-label">No VO</label>
+                                            <label for="no_vo_file" class="form-label">File VO</label>
                                             <input type="file" name="no_vo_file[]" id="no_vo_file" class="form-control" accept=".pdf,.xlsx,.xls" multiple>
                                         </div>
-                                        
+                                        <div class="mb-3">
+                                            <label for="no_vr_text" class="form-label">No VR</label>
+                                            <input type="text" name="no_vr_text" id="no_vr_text" class="form-control" placeholder="Enter No VR Text">
+                                        </div>
                                         <div class="mb-3">
                                             <label for="ls_file" class="form-label">LS</label>
                                             <input type="file" name="ls_file[]" id="ls_file" class="form-control" accept=".pdf,.xlsx,.xls" multiple>
@@ -633,35 +694,36 @@ function navigateInquiry(direction) {
 
 
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const adminId = '{{ $admin->id }}'; // Ambil adminId dari variabel yang ada di halaman atau dari sesi
+        document.addEventListener('DOMContentLoaded', async () => {
+            const adminId = '{{ $admin->id }}'; // Ambil adminId dari variabel yang ada di halaman atau dari sesi
 
-    // Ambil data file berdasarkan adminId
-    const files = await fetchFiles(adminId);
+            // Ambil data file berdasarkan adminId
+            const files = await fetchFiles(adminId);
 
-    // Render data file ke dalam UI
-    renderFiles(files);
-});
+            // Render data file ke dalam UI
+            renderFiles(files);
+        });
 
-async function fetchFiles(adminId) {
-    try {
-        // Menggunakan route Blade untuk menghasilkan URL
-        const url = `{{ route('downloadFiles', ['adminId' => '__ADMIN_ID__']) }}`.replace('__ADMIN_ID__', adminId);
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.success && data.filesByStatus) {
-            return data.filesByStatus; // Mengembalikan file berdasarkan status
-        } else {
-            return {};
+        async function fetchFiles(adminId) {
+            try {
+                // Menggunakan route Blade untuk menghasilkan URL
+                const url = `{{ route('downloadFiles', ['adminId' => '__ADMIN_ID__']) }}`.replace('__ADMIN_ID__', adminId);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success && data.filesByStatus) {
+                    return data.filesByStatus; // Mengembalikan file berdasarkan status
+                } else {
+                    return {};
+                }
+            } catch (error) {
+                console.error('Error fetching files:', error);
+                return {};
+            }
         }
-    } catch (error) {
-        console.error('Error fetching files:', error);
-        return {};
-    }
-}
 
+        // Fungsi untuk merender file berdasarkan status
 function renderFiles(filesByStatus) {
     // Iterasi untuk setiap status dan tampilkan file sesuai status
     for (const statusCode in filesByStatus) {
@@ -683,6 +745,14 @@ function renderFiles(filesByStatus) {
                     link.textContent = file.name;
                     link.href = file.url;
                     link.classList.add('file-link');
+                    listItem.id = `file-${file.name}`; // Menambahkan ID pada setiap file
+
+                    // Menambahkan tombol hapus
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'X';
+                    deleteButton.classList.add('delete-file-button');
+                    deleteButton.setAttribute('data-file-name', file.name);
+                    deleteButton.setAttribute('data-status-code', statusCode);
 
                     // Menangani klik untuk download
                     link.addEventListener('click', (e) => {
@@ -695,11 +765,63 @@ function renderFiles(filesByStatus) {
                         document.body.removeChild(tempLink);
                     });
 
+                    // Menangani klik untuk hapus
+                    deleteButton.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const fileName = e.target.getAttribute('data-file-name');
+                        const statusCode = e.target.getAttribute('data-status-code');
+                        const isConfirmed = confirm(`Apakah Anda yakin ingin menghapus file ${fileName}?`);
+
+                        if (isConfirmed) {
+                            // Menghapus file dari server dan halaman
+                            await deleteFile(fileName, statusCode);
+                            listItem.remove();  // Menghapus elemen file dari halaman setelah respons sukses
+                        }
+                    });
+
+                    // Menambahkan link dan tombol hapus ke dalam list item
                     listItem.appendChild(link);
+                    listItem.appendChild(deleteButton);
                     list.appendChild(listItem);
                 });
             }
         }
+    }
+}
+
+// Fungsi untuk menghapus file
+async function deleteFile(fileName, statusCode) {
+    try {
+        // Mengambil CSRF token dari meta tag
+        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Menggunakan route Blade untuk menghasilkan URL
+        const url = "{{ route('deleteFile') }}";
+
+        // Mengirimkan request ke server untuk menghapus file
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token // Menambahkan CSRF token ke header
+            },
+            body: JSON.stringify({
+                fileName: fileName,
+                statusCode: statusCode
+            })
+        });
+
+        const data = await response.json();
+
+        // Menangani respons dari server
+        if (data.success) {
+            alert('File berhasil dihapus!');
+        } else {
+            alert('Gagal menghapus file!');
+        }
+    } catch (error) {
+        console.error('Error deleting file:', error);
+        alert('Terjadi kesalahan saat menghapus file!');
     }
 }
 
