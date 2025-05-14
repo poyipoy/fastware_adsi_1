@@ -448,16 +448,16 @@
                     var soElement = row.querySelector('input[name="so"]');
                     var noteElement = row.querySelector('input[name="note"]');
 
-                    // Ambil input SO (hanya 4 digit angka)
+                    // Ambil input SO (tidak ada pembatasan digit)
                     var soNumber = soElement ? soElement.value.trim() : '';
 
-                    // Pastikan input SO hanya berupa 4 digit angka
-                    if (!/^\d{4}$/.test(soNumber)) {
-                        alert('SO harus berisi 4 digit angka saja!');
+                    // Pastikan SO diinput dengan angka
+                    if (!/^\d+$/.test(soNumber)) {
+                        alert('SO harus berisi angka saja!');
                         return;
                     }
 
-                    // Format SO otomatis: "SO/Tahun/4DigitAngka"
+                    // Format SO otomatis: "SO/Tahun/[Angka yang diinput]"
                     var formattedSO = `SO/${currentYear}/${soNumber}`;
 
                     if (idTypeElement && jenisElement.value !== "" && idTypeElement.value !== "") {

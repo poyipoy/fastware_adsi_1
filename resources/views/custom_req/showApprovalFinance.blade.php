@@ -434,107 +434,107 @@
                             <strong>---Data Not Found---</strong>
                         </div>
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-1" id="customTable">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">No</th>
-                                        <th scope="col">Sales</th>
-                                        <th scope="col">Customer</th>
-                                        <th scope="col">Tanggal permintaan penawaran</th>
-                                        <th scope="col">Ket. Drawing</th>
-                                        <th scope="col">Nama project</th>
-                                        <th scope="col">Update Progress</th>
-                                        <th scope="col">Tanggal update</th>
-                                        <th scope="col">SO</th>
-                                        <th scope="col">Remark</th>
-                                        <th scope="col">Marketing</th>
-                                        <th scope="col">Finance</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($materials as $material)
-                                    <tr>
-                                        <th scope="row">{{ $loop->iteration }}</th>
-                                        <td style="text-align: center;">{{ $material->sales }}</td>
-                                        <td style="text-align: center;">{{ $material->customers->name_customer }}</td>
-                                        <td style="text-align: center;">{{ $material->tgl_permintaan }}</td>
-                                        <td style="text-align: center;">{{ $material->ket_drawing }}</td>
-                                        <td style="text-align: center;">{{ $material->nama_project }}</td>
-                                        <td style="text-align: center;">{{ $material->progress }}</td>
-                                        <td style="text-align: center;">{{ $material->tgl_update }}</td>
-                                        <td style="text-align: center;">{{ $material->ref_so }}</td>
-                                        <td style="text-align: center;">{{ $material->remark }}</td>
-                                        <td style="text-align: center;">{{ $material->marketing }}</td>
-                                        <td style="text-align: center;">{{ $material->finance }}</td>
-                                        @php
-                                            $statusDescriptions = [
-                                                1 => 'Draft',
-                                                2 => 'Open',
-                                                3 => 'Open',
-                                                4 => 'Open',
-                                                5 => 'Open',
-                                                6 => 'Approve Marketing',
-                                                7 => 'Approve Finance',
-                                                8 => 'Rejected',
-                                                9 => 'finished',
-                                            ];
+                    <div class="table-responsive">
+                        <table class="table table-1" id="customTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">No</th>
+                                    <th scope="col">Sales</th>
+                                    <th scope="col">Customer</th>
+                                    <th scope="col">Confirm Drawing</th>
+                                    <th scope="col">Remark</th>
+                                    <th scope="col">Tanggal Dibuat</th>
+                                    <th scope="col">Nama project</th>
+                                    <th scope="col">Update Progress</th>
+                                    <th scope="col">Upload Attachment</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Harga Awal</th>
+                                    <th scope="col">Harga Akhir</th>
+                                    <th scope="col">Progress</th>
+                                    <th scope="col">Marketing</th>
+                                    <th scope="col">Finance</th>
+                                    <th scope="col">SO</th>
+                                    <th scope="col">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($materials as $material)
+                                <tr>
+                                    <th scope="row">{{ $loop->iteration }}</th>
+                                    <td style="text-align: center;">{{ $material->sales }}</td>
+                                    <td style="text-align: center;">{{ $material->customers->name_customer }}</td>
+                                    <td style="text-align: center;">{{ $material->ket_drawing }}</td>
+                                    <td style="text-align: center;">{{ $material->remark }}</td>
+                                    <td style="text-align: center;">{{ $material->created_at }}</td>
+                                    <td style="text-align: center;">{{ $material->nama_project }}</td>
+                                    <td style="text-align: center;">{{ $material->tgl_update }}</td>
+                                    <td style="text-align: center;">{{ $material->Attachment }}</td>
+                                    @php
+                                        $statusDescriptions = [
+                                            1 => 'Draft',
+                                            2 => 'Open',
+                                            3 => 'Open',
+                                            4 => 'Approve Marketing',
+                                            5 => 'Approve Finance',
+                                            6 => 'Open',
+                                            7 => 'Open',
+                                            8 => 'Rejected',
+                                            9 => 'finished',
+                                        ];
 
-                                            // Mendefinisikan kelas tombol berdasarkan status
-                                            $buttonClasses = [
-                                                1 => 'btn-secondary', // Draft
-                                                2 => 'btn-warning', // Open
-                                                3 => 'btn-warning', // Approve Ka.Dept
-                                                4 => 'btn-info', // Approve Ka.Sie
-                                                5 => 'btn-warning', // On Progress
-                                                6 => 'btn-warning', // Finished
-                                                7 => 'btn-danger', // Rejected
-                                                8 => 'btn-success', // Approve Inventory
-                                                9 => 'btn-primary', // Confirm Purchasing
-                                            ];
-                                        @endphp
-                                        <td class="btn-stts" >
-                                            <button class="btn btn-sm
-                                                {{ $buttonClasses[$material->status] ?? 'btn-light' }}
-                                                {{ $material->status == 1 ? 'btn-custom-draft' : '' }}
-                                                {{ $material->status == 2 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 3 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 4 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 5 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 6 ? 'btn-custom-marketing' : '' }}
-                                                {{ $material->status == 7 ? 'btn-custom-finance' : '' }}
-                                                {{ $material->status == 8 ? 'btn-custom-rejected' : '' }}
-                                                {{ $material->status == 9 ? 'btn-custom-finished' : '' }}">
-                                                {{ $statusDescriptions[$material->status] ?? 'Unknown' }}
-                                            </button>
-                                        </td>
-                                        <td style="text-align: center;">
-                                            {{-- <button class="btn btn-sm btn-warning" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#editMaterialModal{{ $material->id }}">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </button>
-                                        
-                                            <form action="{{ route('CustomRequest.delete', $material->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus data ini?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="btn btn-sm btn-danger">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form> --}}
-
-                                            <a href="#" class="btn btn-primary btn-sm m-1"
-                                                onclick="approveFinance({{ $material->id }}); return false;">
-                                                <i class="bi bi-check-square-fill"></i>
-                                            </a>
-                                        </td>                                        
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                        // Mendefinisikan kelas tombol berdasarkan status
+                                        $buttonClasses = [
+                                            1 => 'btn-secondary', // Draft
+                                            2 => 'btn-warning', // Open
+                                            3 => 'btn-warning', // Approve Ka.Dept
+                                            4 => 'btn-info', // Approve Ka.Sie
+                                            5 => 'btn-warning', // On Progress
+                                            6 => 'btn-warning', // Finished
+                                            7 => 'btn-danger', // Rejected
+                                            8 => 'btn-success', // Approve Inventory
+                                            9 => 'btn-primary', // Confirm Purchasing
+                                        ];
+                                    @endphp
+                                    <td class="btn-stts" >
+                                        <button class="btn btn-sm
+                                            {{ $buttonClasses[$material->status] ?? 'btn-light' }}
+                                            {{ $material->status == 1 ? 'btn-custom-draft' : '' }}
+                                            {{ $material->status == 2 ? 'btn-custom-open' : '' }}
+                                            {{ $material->status == 3 ? 'btn-custom-open' : '' }}
+                                            {{ $material->status == 4 ? 'btn-custom-open' : '' }}
+                                            {{ $material->status == 5 ? 'btn-custom-open' : '' }}
+                                            {{ $material->status == 6 ? 'btn-custom-marketing' : '' }}
+                                            {{ $material->status == 7 ? 'btn-custom-finance' : '' }}
+                                            {{ $material->status == 8 ? 'btn-custom-rejected' : '' }}
+                                            {{ $material->status == 9 ? 'btn-custom-finished' : '' }}">
+                                            {{ $statusDescriptions[$material->status] ?? 'Unknown' }}
+                                        </button>
+                                    </td>
+                                    <td style="text-align: center;">{{ $material->harga_awal }}</td>
+                                    <td style="text-align: center;">{{ $material->harga_akhir }}</td>
+                                    <td style="text-align: center;">{{ $material->progress }}</td>
+                                    <td style="text-align: center;">{{ $material->marketing ? $material->marketing->name : '' }}
+                                    </td>
+                                    <td style="text-align: center;">{{ $material->finance ? $material->finance->name : '' }}
+                                    </td>
+                                    <td style="text-align: center;">{{ $material->ref_so }}</td>
+                                    <td style="text-align: center;">
+                                        {{-- <button class="btn btn-sm btn-warning" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editMaterialModal{{ $material->id }}">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button> --}}
+                                    
+                                        <a href="#" class="btn btn-primary btn-sm m-1"
+                                            onclick="approveFinance({{ $material->id }}); return false;">
+                                            <i class="bi bi-check-square-fill"></i>
+                                        </a>
+                                    </td>                                        
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                     @endif
                 </div>
             </div>

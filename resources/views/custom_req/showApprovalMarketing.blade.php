@@ -419,6 +419,15 @@
                 font-size: 8pt;
                 color: red;
             }
+            /* Mengatur modal agar berada di tengah vertikal dan horizontal */
+            .modal.fade .modal-dialog {
+                position: fixed;  /* Menggunakan posisi tetap */
+                top: 50%;         /* Menempatkan modal di tengah vertikal */
+                left: 50%;        /* Menempatkan modal di tengah horizontal */
+                transform: translate(-50%, -50%); /* Menyesuaikan posisi dengan menggeser modal 50% ke kiri dan atas */
+                max-width: 80%;   /* Menyesuaikan ukuran modal */
+            }
+
         </style>
 
         <section class="">
@@ -441,16 +450,19 @@
                                         <th scope="col">No</th>
                                         <th scope="col">Sales</th>
                                         <th scope="col">Customer</th>
-                                        <th scope="col">Tanggal permintaan penawaran</th>
-                                        <th scope="col">Ket. Drawing</th>
+                                        <th scope="col">Confirm Drawing</th>
+                                        <th scope="col">Remark</th>
+                                        <th scope="col">Tanggal Dibuat</th>
                                         <th scope="col">Nama project</th>
                                         <th scope="col">Update Progress</th>
-                                        <th scope="col">Tanggal update</th>
-                                        <th scope="col">SO</th>
-                                        <th scope="col">Remark</th>
+                                        <th scope="col">Upload Attachment</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Harga Awal</th>
+                                        <th scope="col">Harga Akhir</th>
+                                        <th scope="col">Progress</th>
                                         <th scope="col">Marketing</th>
                                         <th scope="col">Finance</th>
-                                        <th scope="col">Status</th>
+                                        <th scope="col">SO</th>
                                         <th scope="col">Aksi</th>
                                     </tr>
                                 </thead>
@@ -460,24 +472,21 @@
                                         <th scope="row">{{ $loop->iteration }}</th>
                                         <td style="text-align: center;">{{ $material->sales }}</td>
                                         <td style="text-align: center;">{{ $material->customers->name_customer }}</td>
-                                        <td style="text-align: center;">{{ $material->tgl_permintaan }}</td>
                                         <td style="text-align: center;">{{ $material->ket_drawing }}</td>
-                                        <td style="text-align: center;">{{ $material->nama_project }}</td>
-                                        <td style="text-align: center;">{{ $material->progress }}</td>
-                                        <td style="text-align: center;">{{ $material->tgl_update }}</td>
-                                        <td style="text-align: center;">{{ $material->ref_so }}</td>
                                         <td style="text-align: center;">{{ $material->remark }}</td>
-                                        <td style="text-align: center;">{{ $material->marketing }}</td>
-                                        <td style="text-align: center;">{{ $material->finance }}</td>
+                                        <td style="text-align: center;">{{ $material->created_at }}</td>
+                                        <td style="text-align: center;">{{ $material->nama_project }}</td>
+                                        <td style="text-align: center;">{{ $material->tgl_update }}</td>
+                                        <td style="text-align: center;">{{ $material->Attachment }}</td>
                                         @php
                                             $statusDescriptions = [
                                                 1 => 'Draft',
                                                 2 => 'Open',
                                                 3 => 'Open',
-                                                4 => 'Open',
-                                                5 => 'Open',
-                                                6 => 'Approve Marketing',
-                                                7 => 'Approve Finance',
+                                                4 => 'Approve Marketing',
+                                                5 => 'Approve Finance',
+                                                6 => 'Open',
+                                                7 => 'Open',
                                                 8 => 'Rejected',
                                                 9 => 'finished',
                                             ];
@@ -510,21 +519,21 @@
                                                 {{ $statusDescriptions[$material->status] ?? 'Unknown' }}
                                             </button>
                                         </td>
+                                        <td style="text-align: center;">{{ $material->harga_awal }}</td>
+                                        <td style="text-align: center;">{{ $material->harga_akhir }}</td>
+                                        <td style="text-align: center;">{{ $material->progress }}</td>
+                                        <td style="text-align: center;">{{ $material->marketing ? $material->marketing->name : '' }}
+                                        </td>
+                                        <td style="text-align: center;">{{ $material->finance ? $material->finance->name : '' }}
+                                        </td>
+                                        <td style="text-align: center;">{{ $material->ref_so }}</td>
                                         <td style="text-align: center;">
-                                            {{-- <button class="btn btn-sm btn-warning" 
+                                            <button class="btn btn-sm btn-warning" 
                                                     data-bs-toggle="modal" 
                                                     data-bs-target="#editMaterialModal{{ $material->id }}">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
                                         
-                                            <form action="{{ route('CustomRequest.delete', $material->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus data ini?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="btn btn-sm btn-danger">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form> --}}
-
                                             <a href="#" class="btn btn-primary btn-sm m-1"
                                                 onclick="approveMarketing({{ $material->id }}); return false;">
                                                 <i class="bi bi-check-square-fill"></i>
@@ -655,6 +664,40 @@
             </div>
             </div>
         @endforeach --}}
+
+        @foreach($materials as $material)
+            <div class="modal fade" id="editMaterialModal{{ $material->id }}" tabindex="-1" aria-labelledby="editMaterialModalLabel{{ $material->id }}" aria-hidden="true">
+                <div class="modal-dialog modal-lg" style="max-width: 80%; margin: auto;">
+                    <form action="{{ route('updateMarketing', $material->id) }}" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Material</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                
+                                <!-- SO -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">SO</label>
+                                    <input type="text" name="ref_so" id="so_{{ $material->id }}" class="form-control" value="{{ $material->ref_so }}" required maxlength="4" pattern="\d{4}" title="Field SO harus terdiri dari tepat 4 angka.">
+                                    <div class="text-danger mt-1" style="display:none;" id="so-error-{{ $material->id }}">Field SO harus terdiri dari tepat 4 angka.</div>
+                                </div>                                
+            
+                                <!-- Tambah field lainnya sesuai struktur -->
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            @endforeach
+
+
 
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>

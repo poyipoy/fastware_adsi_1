@@ -131,19 +131,22 @@
                                         ->filter(function ($item) {
                                             return empty($item->tahun_usulan);
                                         })
-                                        ->sum('biaya');
+                                        ->sum(function ($item) {
+                                            return floatval($item->biaya); // Mengkonversi ke float
+                                        });
 
                                     $totalBudget2 = $data
                                         ->filter(function ($item) {
                                             return empty($item->tahun_usulan);
                                         })
-                                        ->sum('biaya_plan');
+                                        ->sum(function ($item) {
+                                            return floatval($item->biaya_plan); // Mengkonversi ke float
+                                        });
                                 @endphp
                                 <tr>
                                     <th></th>
                                     <th colspan="8" style="text-align:right;">Sub Total 1: Rp
                                         {{ number_format($totalBudget, 0, ',', '.') }}</th>
-
                                     <th colspan="5" style="text-align:right;">Sub Total Actual 1: Rp
                                         {{ number_format($totalBudget2, 0, ',', '.') }}</th>
                                 </tr>
@@ -179,28 +182,34 @@
                             <tfoot>
                                 @php
                                     // Hitung total budget dari tabel pertama
-                                    $totalBudgetTabelPertama = $data->sum('biaya');
+                                    $totalBudgetTabelPertama = $data->sum(function ($item) {
+                                        return floatval($item->biaya); // Pastikan nilai sebagai float
+                                    });
 
-                                    // Hitung total budget, total biaya actual, dan selisih biaya untuk tabel kedua
+                                    // Filter data untuk tabel kedua
                                     $filteredData = $data->filter(function ($item) {
                                         return !is_null($item->tahun_usulan);
                                     });
 
                                     // Hitung total budget dari tabel pertama
-                                    $totalBudgetTabelPertama2 = $data->sum('biaya_plan');
-
-                                    // Hitung total budget, total biaya actual, dan selisih biaya untuk tabel kedua
-                                    $filteredData2 = $data->filter(function ($item) {
-                                        return !is_null($item->tahun_usulan);
+                                    $totalBudgetTabelPertama2 = $data->sum(function ($item) {
+                                        return floatval($item->biaya_plan); // Pastikan nilai sebagai float
                                     });
 
-                                    $totalBudgetTabelKedua = $filteredData->sum('biaya');
+                                    // Hitung total budget untuk tabel kedua
+                                    $totalBudgetTabelKedua = $filteredData->sum(function ($item) {
+                                        return floatval($item->biaya); // Pastikan nilai sebagai float
+                                    });
 
-                                    $totalBudgetTabelKeduasub2 = $filteredData->sum('biaya_plan');
+                                    $totalBudgetTabelKeduasub2 = $filteredData->sum(function ($item) {
+                                        return floatval($item->biaya_plan); // Pastikan nilai sebagai float
+                                    });
 
-                                    $totalBiayaPlan = $filteredData->sum('biaya') + $totalBudgetTabelPertama;
-                                    $totalBiayaPlan2 = $filteredData2->sum('biaya_plan') + $totalBudgetTabelPertama2;
+                                    // Hitung total biaya plan
+                                    $totalBiayaPlan = $totalBudgetTabelKedua + $totalBudgetTabelPertama;
+                                    $totalBiayaPlan2 = $totalBudgetTabelKeduasub2 + $totalBudgetTabelPertama2;
 
+                                    // Hitung selisih biaya
                                     $selisihBiaya = $totalBudgetTabelKedua - $totalBiayaPlan;
 
                                     // Total biaya keseluruhan dari tabel pertama dan kedua
@@ -213,7 +222,6 @@
                                         <th></th>
                                         <th colspan="8" style="text-align:right;">Sub Total 2: Rp
                                             {{ number_format($totalBudgetTabelKedua, 0, ',', '.') }}</th>
-
                                         <th colspan="5" style="text-align:right;">Sub Total 2: Rp
                                             {{ number_format($totalBudgetTabelKeduasub2, 0, ',', '.') }}</th>
                                     </tr>
@@ -308,19 +316,19 @@
                 </div>
             </div>
         </section>
-                        <!-- jQuery -->
-                        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-                        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-                        <script>
-                            $(document).ready(function() {
-                                // Hover function for dropdowns
-                                $('.nav-item.dropdown').hover(function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
-                                }, function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
-                                });
-                            });
-                            </script>
+        <!-- jQuery -->
+        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
+        <script>
+            $(document).ready(function() {
+                // Hover function for dropdowns
+                $('.nav-item.dropdown').hover(function() {
+                    $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
+                }, function() {
+                    $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
+                });
+            });
+        </script>
 
         <!-- jQuery -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -428,11 +436,11 @@
                                      ${
                                         item.status_2 === 'Done'
                                             ? `<a href="${updateEvaluasiRoute.replace(':id', item.id)}" class="btn ${
-                                                item.diketahui ? 'btn-success' : 'btn-danger'
-                                            } btn-sm">
-                                                <i class="fas fa-eye"></i> 
-                                                Evaluasi
-                                            </a>`
+                                                                item.diketahui ? 'btn-success' : 'btn-danger'
+                                                            } btn-sm">
+                                                                <i class="fas fa-eye"></i> 
+                                                                Evaluasi
+                                                            </a>`
                                             : ''
                                     }
                                 </td>
@@ -582,11 +590,11 @@
                                 ${
                                     item.status_2 === 'Done'
                                         ? `<a href="${updateEvaluasiRoute.replace(':id', item.id)}" class="btn ${
-                                            item.diketahui ? 'btn-success' : 'btn-danger'
-                                        } btn-sm">
-                                            <i class="fas fa-eye"></i> 
-                                            Evaluasi
-                                        </a>`
+                                                            item.diketahui ? 'btn-success' : 'btn-danger'
+                                                        } btn-sm">
+                                                            <i class="fas fa-eye"></i> 
+                                                            Evaluasi
+                                                        </a>`
                                         : ''
                                 }
                             </td>

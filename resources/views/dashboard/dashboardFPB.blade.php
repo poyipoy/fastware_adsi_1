@@ -9,193 +9,191 @@
       </nav>
   </div><!-- End Page Title -->
 
-  <section class="section dashboard">
-
-    <div class="row">
-      <!-- Viewcard Kiri: Pengajuan Barang -->
-      <div class="col-sm-8">
-          <div class="card" style="height: 100%;">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                  <h4>FORM PENGAJUAN BARANG</h4>
-  
-                  <!-- Form Filter Pengajuan Barang (Chart FPB) -->
-                  <form method="GET" action="{{ route('dashboardFPB') }}" class="form-inline">
-                      <input type="hidden" name="filter_type" value="fpb">
-                      
-                      <!-- Field Filter FPB -->
-                      <div class="form-group mr-2">
-                          <label for="start_date_fpb" class="mr-2">Dari:</label>
-                          <input type="date" name="start_date_fpb" id="start_date_fpb" class="form-control" value="{{ request('start_date_fpb', '2025-01-01') }}">
-                      </div>
-                      <div class="form-group mr-2">
-                          <label for="end_date_fpb" class="mr-2">Sampai:</label>
-                          <input type="date" name="end_date_fpb" id="end_date_fpb" class="form-control" value="{{ request('end_date_fpb', '2025-12-31') }}">
-                      </div>
-                      <div class="form-group mr-2">
-                          <label for="kategori_po" class="mr-2">Kategori:</label>
-                          <select name="kategori_po" id="kategori_po" class="form-control">
-                              <option value="">Semua Kategori</option>
-                              @foreach($kategoriList as $kategoriItem)
-                                  <option value="{{ $kategoriItem }}" {{ request('kategori_po') == $kategoriItem ? 'selected' : '' }}>
-                                      {{ $kategoriItem }}
-                                  </option>
-                              @endforeach
-                          </select>
-                      </div>
-                      
-                      <!-- Hidden Input untuk Filter Lead Time agar tetap dipertahankan -->
-                      <input type="hidden" name="start_date_leadtime" value="{{ request('start_date_leadtime') }}">
-                      <input type="hidden" name="end_date_leadtime" value="{{ request('end_date_leadtime') }}">
-                      
-                      <button type="submit" class="btn btn-primary">Filter</button>
-                  </form>
-  
-                  <!-- Card Total FPB -->
-                  <div class="card p-2 bg-light text-dark">
-                      <strong>Total: {{ $totalFPB }}</strong>
-                  </div>
-              </div>
-  
-              <!-- Informasi Filter Aktif -->
-              <div class="card-body">
-                  <div class="alert alert-info">
-                      <p><strong>Periode:</strong> 
-                          @if(request('start_date_fpb') && request('end_date_fpb'))
-                              {{ \Carbon\Carbon::parse(request('start_date_fpb'))->format('d M Y') }} 
-                              s/d 
-                              {{ \Carbon\Carbon::parse(request('end_date_fpb'))->format('d M Y') }}
-                          @else
-                              Semua Tanggal
-                          @endif
-                      </p>
-                      <p><strong>Kategori:</strong> 
-                           {{ request('kategori_po') ? request('kategori_po') : 'Semua Kategori' }}
-                      </p>
-                  </div>
-  
-                  <figure class="highcharts-figure">
-                      <div id="chart-status-fpb" style="min-width: 310px; height: 100%; margin: 0 auto;"></div>
-                  </figure> 
-              </div>
-          </div>
-      </div>    
-  
-      <!-- ViewCard Pie Chart 1 -->
-      <div class="col-sm-4">
-          <div class="row">
-              <div class="col-sm-12">
-                  <div class="card">
-                      <div class="card-body">
-                          <div id="pieChart" style="height: 400px;"></div>
-                      </div>
-                  </div>
-              </div>
-  
-              <!-- ViewCard Pie Chart 2 -->
-              <div class="col-sm-12">
-                  <div class="card">
-                      <div class="card-body">
-                          <div id="pieChart1" style="height: 400px;"></div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
-  
+  <section class="section dashboard min-vh-100">
+    <div id="dashboardCarousel" class="carousel slide h-100" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="0" class="active"></button>
+            <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="1"></button>
+        </div>
         
-    <p></p>
-
-    <div class="row">
-
-      <!-- Viewcard Kanan: Lead Time Order Fulfillment -->
-      <div class="col-sm-6">
-        <div class="card" style="height: 100%;">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h4>LEADTIME ORDER FULFILLMENT</h4>
-
-                <!-- Form Filter Lead Time (Chart Lead Time) -->
-                <form method="GET" action="{{ route('dashboardFPB') }}" class="form-inline">
-                  <input type="hidden" name="filter_type" value="leadtime">
-                  
-                  <!-- Field Filter Lead Time -->
-                  <div class="form-group mr-2">
-                      <label for="start_date_leadtime" class="mr-2">Dari:</label>
-                      <input type="date" name="start_date_leadtime" id="start_date_leadtime" class="form-control" value="{{ request('start_date_leadtime') }}">
-                  </div>
-                  <div class="form-group mr-2">
-                      <label for="end_date_leadtime" class="mr-2">Sampai:</label>
-                      <input type="date" name="end_date_leadtime" id="end_date_leadtime" class="form-control" value="{{ request('end_date_leadtime') }}">
-                  </div>
-                  
-                  <!-- Hidden Input untuk Filter FPB agar tetap dipertahankan -->
-                  <input type="hidden" name="start_date_fpb" value="{{ request('start_date_fpb') }}">
-                  <input type="hidden" name="end_date_fpb" value="{{ request('end_date_fpb') }}">
-                  <input type="hidden" name="kategori_po" value="{{ request('kategori_po') }}">
-                  
-                  <button type="submit" class="btn btn-primary">Filter</button>
-                </form>
-
+        <div class="carousel-inner h-100">
+            <!-- Slide 1: Form Pengajuan + 2 Pie Chart -->
+            <div class="carousel-item active h-100">
+                <div class="row h-100">
+                    <!-- Viewcard Kiri: Pengajuan Barang -->
+                    <div class="col-sm-8 h-100">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h4>FORM PENGAJUAN BARANG</h4>
+                                <!-- Form Filter Pengajuan Barang (Chart FPB) -->
+                                <form method="GET" action="{{ route('dashboardFPB') }}" class="form-inline">
+                                    <input type="hidden" name="filter_type" value="fpb">
+                                    <!-- Field Filter FPB -->
+                                    <div class="form-group mr-2">
+                                        <label for="start_date_fpb" class="mr-2">Dari:</label>
+                                        <input type="date" name="start_date_fpb" id="start_date_fpb" class="form-control" value="{{ request('start_date_fpb', '2025-01-01') }}">
+                                    </div>
+                                    <div class="form-group mr-2">
+                                        <label for="end_date_fpb" class="mr-2">Sampai:</label>
+                                        <input type="date" name="end_date_fpb" id="end_date_fpb" class="form-control" value="{{ request('end_date_fpb', '2025-12-31') }}">
+                                    </div>
+                                    <div class="form-group mr-2">
+                                        <label for="kategori_po" class="mr-2">Kategori:</label>
+                                        <select name="kategori_po" id="kategori_po" class="form-control">
+                                            <option value="">Semua Kategori</option>
+                                            @foreach($kategoriList as $kategoriItem)
+                                                <option value="{{ $kategoriItem }}" {{ request('kategori_po') == $kategoriItem ? 'selected' : '' }}>
+                                                    {{ $kategoriItem }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <!-- Hidden Input untuk Filter Lead Time -->
+                                    <input type="hidden" name="start_date_leadtime" value="{{ request('start_date_leadtime') }}">
+                                    <input type="hidden" name="end_date_leadtime" value="{{ request('end_date_leadtime') }}">
+                                    <button type="submit" class="btn btn-primary">Filter</button>
+                                </form>
+                                <!-- Card Total FPB -->
+                                <div class="card p-2 bg-light text-dark">
+                                    <strong>Total: {{ $totalFPB }}</strong>
+                                </div>
+                            </div>
+                            <!-- Informasi Filter Aktif -->
+                            <div class="card-body h-100">
+                                <div class="alert alert-info">
+                                    <p><strong>Periode:</strong> 
+                                        @if(request('start_date_fpb') && request('end_date_fpb'))
+                                            {{ \Carbon\Carbon::parse(request('start_date_fpb'))->format('d M Y') }} 
+                                            s/d 
+                                            {{ \Carbon\Carbon::parse(request('end_date_fpb'))->format('d M Y') }}
+                                        @else
+                                            Semua Tanggal
+                                        @endif
+                                    </p>
+                                    <p><strong>Kategori:</strong> 
+                                        {{ request('kategori_po') ? request('kategori_po') : 'Semua Kategori' }}
+                                    </p>
+                                </div>
+                                <figure class="highcharts-figure h-100">
+                                    <div id="chart-status-fpb" style="min-width: 310px; height: 100%; margin: 0 auto;"></div>
+                                </figure> 
+                            </div>
+                        </div>
+                    </div>
+                    <!-- ViewCard Pie Chart 1 & 2 -->
+                    <div class="col-sm-4 h-100">
+                        <div class="row h-100">
+                            <div class="col-sm-12 h-50">
+                                <div class="card h-100">
+                                    <div class="card-body h-100">
+                                        <div id="pieChart" style="height: 100%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-12 h-50">
+                                <div class="card h-100">
+                                    <div class="card-body h-100">
+                                        <div id="pieChart1" style="height: 100%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Informasi Filter Aktif untuk Lead Time -->
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <p><strong>Periode Lead Time:</strong> 
-                        @if(request('start_date_leadtime') && request('end_date_leadtime'))
-                            {{ \Carbon\Carbon::parse(request('start_date_leadtime'))->format('d M Y') }} 
-                            s/d 
-                            {{ \Carbon\Carbon::parse(request('end_date_leadtime'))->format('d M Y') }}
-                        @else
-                            Semua Tanggal
-                        @endif
-                    </p>
+            <!-- Slide 2: Leadtime + Form Inquiry -->
+            <div class="carousel-item h-100">
+                <div class="row h-100">
+                    <!-- Lead Time Order Fulfillment -->
+                    <div class="col-sm-6 h-100">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h4>LEADTIME ORDER FULFILLMENT</h4>
+                                <!-- Form Filter Lead Time -->
+                                <form method="GET" action="{{ route('dashboardFPB') }}" class="form-inline">
+                                    <input type="hidden" name="filter_type" value="leadtime">
+                                    <div class="form-group mr-2">
+                                        <label for="start_date_leadtime" class="mr-2">Dari:</label>
+                                        <input type="date" name="start_date_leadtime" id="start_date_leadtime" class="form-control" value="{{ request('start_date_leadtime') }}">
+                                    </div>
+                                    <div class="form-group mr-2">
+                                        <label for="end_date_leadtime" class="mr-2">Sampai:</label>
+                                        <input type="date" name="end_date_leadtime" id="end_date_leadtime" class="form-control" value="{{ request('end_date_leadtime') }}">
+                                    </div>
+                                    <!-- Hidden Input untuk Filter FPB -->
+                                    <input type="hidden" name="start_date_fpb" value="{{ request('start_date_fpb') }}">
+                                    <input type="hidden" name="end_date_fpb" value="{{ request('end_date_fpb') }}">
+                                    <input type="hidden" name="kategori_po" value="{{ request('kategori_po') }}">
+                                    <button type="submit" class="btn btn-primary">Filter</button>
+                                </form>
+                            </div>
+                            <!-- Informasi Filter Aktif untuk Lead Time -->
+                            <div class="card-body h-100">
+                                <div class="alert alert-info">
+                                    <p><strong>Periode Lead Time:</strong> 
+                                        @if(request('start_date_leadtime') && request('end_date_leadtime'))
+                                            {{ \Carbon\Carbon::parse(request('start_date_leadtime'))->format('d M Y') }} 
+                                            s/d 
+                                            {{ \Carbon\Carbon::parse(request('end_date_leadtime'))->format('d M Y') }}
+                                        @else
+                                            Semua Tanggal
+                                        @endif
+                                    </p>
+                                </div>
+                                <figure class="highcharts-figure h-100">
+                                    <div id="chart-lead-time" style="min-width: 310px; height: 100%; margin: 0 auto;"></div>
+                                </figure>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Form Inquiry Local -->
+                    <div class="col-sm-6 h-100">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h4>FORM INQUIRY LOCAL</h4>
+                                <div class="card p-2 bg-light text-dark">
+                                    <strong>Total: {{ $totalinquiry }}</strong>
+                                </div>
+                                <form method="GET" action="{{ route('dashboardFPB') }}" class="form-inline">
+                                    <input type="hidden" name="filter_type" value="inquiry">
+                                    <div class="form-group mr-2">
+                                        <label for="start_date_inquiry" class="mr-2">Dari:</label>
+                                        <input type="date" name="start_date_inquiry" id="start_date_inquiry" class="form-control" value="{{ request('start_date_inquiry') }}">
+                                    </div>
+                                    <div class="form-group mr-2">
+                                        <label for="end_date_inquiry" class="mr-2">Sampai:</label>
+                                        <input type="date" name="end_date_inquiry" id="end_date_inquiry" class="form-control" value="{{ request('end_date_inquiry') }}">
+                                    </div>                                
+                                    <button type="submit" class="btn btn-primary">Filter</button>
+                                </form>
+                            </div>
+                            <div class="card-body h-100">
+                                <div class="row h-100">
+                                    <!-- Chart Bar -->
+                                    <div class="col-sm-9 h-100">
+                                        <figure class="highcharts-figure h-100">
+                                            <div id="chart-status-inquiry" style="min-width: 310px; height: 100%; margin: 0 auto;"></div>
+                                        </figure>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <figure class="highcharts-figure">
-                    <div id="chart-lead-time" style="min-width: 310px; height: 100%; margin: 0 auto;"></div>
-                </figure>
             </div>
         </div>
+
+        <!-- Tombol Navigasi Carousel -->
+        <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
     </div>
-
-      <!-- ViewCard Utama -->
-      <div class="col-sm-6">
-          <div class="card" style="height: 100%;">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                  <h4>FORM INQUIRY LOCAL</h4>
-                  <div class="card p-2 bg-light text-dark">
-                      <strong>Total: {{ $totalinquiry }}</strong>
-                  </div>
-                  <form method="GET" action="{{ route('dashboardFPB') }}" class="form-inline">
-                      <input type="hidden" name="filter_type" value="inquiry">
-                      <div class="form-group mr-2">
-                          <label for="start_date_inquiry" class="mr-2">Dari:</label>
-                          <input type="date" name="start_date_inquiry" id="start_date_inquiry" class="form-control" value="{{ request('start_date_inquiry') }}">
-                      </div>
-                      <div class="form-group mr-2">
-                          <label for="end_date_inquiry" class="mr-2">Sampai:</label>
-                          <input type="date" name="end_date_inquiry" id="end_date_inquiry" class="form-control" value="{{ request('end_date_inquiry') }}">
-                      </div>                                
-                      <button type="submit" class="btn btn-primary">Filter</button>
-                  </form>
-
-                  
-              </div>
-              
-              <div class="card-body">
-                  <div class="row">
-                      <!-- Chart Bar -->
-                      <div class="col-sm-9">
-                          <figure class="highcharts-figure">
-                              <div id="chart-status-inquiry" style="min-width: 310px; height: 100%; margin: 0 auto;"></div>
-                          </figure>
-                      </div>
-                  
-                  </div>
-              </div>
-          </div>
-      </div>
 </section>
 
 

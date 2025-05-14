@@ -89,10 +89,41 @@
         .swal2-title {
             font-family: 'Cambria', serif;
         }
+        .btn-navigation {
+            background-color: #2563eb;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-navigation:hover {
+            background-color: #1e40af;
+        }
+
+        .btn-navigation i {
+            margin-right: 0.5rem;
+        }
+
+        .btn-navigation-right {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
     </style>
 
-
+<head>
+    <base href="http://localhost/local_fastware/public/">
+</head>
     <main id="main" class="main">
+        <div id="main-content">
         <div class="pagetitle">
             <h1>Preview</h1>
             <nav>
@@ -102,6 +133,28 @@
                 </ol>
             </nav>
         </div>
+        
+            <!-- Isi halaman inquiry sales Anda di sini -->
+        
+            <div class="btn-navigation-right">
+                <button
+                    type="button"
+                    aria-label="Previous Page"
+                    class="btn-navigation"
+                    onclick="navigateInquiry('previous')"
+                >
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <button
+                    type="button"
+                    aria-label="Next Page"
+                    class="btn-navigation"
+                    onclick="navigateInquiry('next')"
+                >
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            
         <section class="section">
             <div class="card">
                 <div class="card-body">
@@ -134,7 +187,7 @@
                         </div>
                     </div>
 
-                    <div class="table-responsive">
+                    <div class="table-responsive" >
                         <table>
                             <thead>
                                 <tr>
@@ -270,7 +323,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="15" style="text-align: center;">Data tidak ditemukan</td>
+                                            <td colspan="16" style="text-align: center;">Data tidak ditemukan</td>
                                         </tr>
                                     @endforelse
                                 @endif
@@ -452,6 +505,7 @@
                 </div>
             </section>
         </section>
+    </div>
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
         <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
@@ -673,7 +727,38 @@
                     }
                 });
             }
+
+
+            function navigateInquiry(direction) {
+                let currentInquiryId = {{ $inquiry->id }};
+                const maxId = {{ $maxInquiryId }}; // ID terbesar untuk loc_imp = 'local'
+
+                let targetInquiryId;
+                if (direction === 'next') {
+                    // Jika inquiry saat ini bukan 'local', lompat ke inquiry berikutnya yang 'local'
+                    targetInquiryId = currentInquiryId === maxId ? 1 : currentInquiryId + 1;
+                } else if (direction === 'previous') {
+                    // Jika inquiry saat ini bukan 'local', lompat ke inquiry sebelumnya yang 'local'
+                    targetInquiryId = currentInquiryId === 1 ? maxId : currentInquiryId - 1;
+                }
+
+                // Lanjutkan dengan AJAX
+                $.ajax({
+                    url: '{{ route("showFormSS", "") }}/' + targetInquiryId, // URL inquiry berdasarkan ID
+                    type: 'GET',
+                    data: { source: 'ajax' },
+                    success: function (response) {
+                        $('#main-content').html(response); // Update konten
+                        let newUrl = window.location.origin + '/local_fastware/public/showFormSS/' + targetInquiryId;
+                        history.pushState(null, '', newUrl); // Update URL
+                    },
+                    error: function () {
+                        alert('Failed to load the next inquiry');
+                    }
+                });
+            }
         </script>
+
 
         <script>
             function approveInquiry(id) {

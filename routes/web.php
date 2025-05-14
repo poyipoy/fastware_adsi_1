@@ -25,7 +25,6 @@ use App\Http\Controllers\JsonToCsvController;
 use App\Http\Controllers\CrpController;
 use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\ImportAdministrationController;
-use App\Models\ImportAdministration;
 use App\Models\InquirySales;
 use Illuminate\Support\Facades\Route;
 
@@ -150,6 +149,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/crp/delete', [CrpController::class, 'delete'])->name('crp.deletePermanen');
     Route::post('/crp/delete-detail', [CrpController::class, 'deleteDetail'])->name('crp.deletePermanenDetail');
     Route::post('/crp/save-detail', [CrpController::class, 'savedetail'])->name('crp.savedetail');
+    Route::get('/export-mst-actual', [CrpController::class, 'exportMstActual'])->name('export.mst.actual');
+    Route::get('/crp/showDetailModal/{crpId}', [CrpController::class, 'showDetailModal'])->name('crp.showDetailModal');
+    Route::post('/crp/saveDetails', [CrpController::class, 'saveCrpDetails'])->name('crp.saveDetails');
 
     // Download File
     Route::get('download-excel/{tindaklanjut}', [FormFPPController::class, 'downloadAttachment'])->name('download.attachment');
@@ -165,6 +167,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/api/filterPieChartNG', [HandlingController::class, 'filterPieChartNG'])->name('filterPieChartNG');
     Route::get('/api/getChartStatusHandling', 'App\Http\Controllers\HandlingController@getChartStatusHandling')->name('getChartStatusHandling');
     Route::get('/export-handlings', 'App\Http\Controllers\HandlingController@export')->name('export.handlings');
+    Route::get('/export-detail-crp', [CrpController::class, 'exportdetailcrp'])->name('export.detailcrp');
+    Route::post('/import-detail-crp', [CrpController::class, 'importCrpDetail'])->name('import.detailcrp');
 
     // Grafik Repair Maintenance
     // Route::get('/getRepairMaintenance', 'App\Http\Controllers\MaintenanceController@getRepairMaintenance')->name('getRepairMaintenance');
@@ -294,7 +298,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/inquiry/reject-inventory/{id}', [InquirySalesController::class, 'rejectInventory'])->name('rejectInventory');
     Route::get('/showFormSS/pdf/{id}', [InquirySalesController::class, 'generatePDF'])->name('showFormSS.pdf');
     // Route::get('historyFormSS/{id}', [InquirySalesController::class, 'historyFormSS'])->name('historyFormSS');
-
+    Route::post('/inquiry/updateOverviewPurchase', [InquirySalesController::class, 'updateOverviewPurchase'])->name('updateOverviewPurchase');
 
     // Inquiry Order Import
     Route::get('createinquiryImport', [InquirySalesController::class, 'createInquirySalesImport'])->name('createinquiryImport');
@@ -350,6 +354,18 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::delete('/deleteinquiry/{id}', [InquirySalesController::class, 'delete'])->name('deleteinquiry');
 
     Route::get('/export-inquiry', [InquirySalesController::class, 'exportInquiry'])->name('export.inquiry');
+
+
+    //import administration
+    route::get('/import-administration', [ImportAdministrationController::class, 'showcreate'])->name('createadministration');
+    route::post('/import-administration/store', [ImportAdministrationController::class, 'store'])->name('storeadministration');
+    route::get('/import-administration/Showformadm/{id}', [ImportAdministrationController::class, 'showformadm'])->name('dokumenadministration');
+    Route::post('/admin/{adminId}/upload', [ImportAdministrationController::class, 'uploadFiles'])->name('uploadFiles');
+    Route::get('/admin/{adminId}/download', [ImportAdministrationController::class, 'downloadFiles'])->name('downloadFiles');
+    Route::post('/admin/{adminId}/approve', [ImportAdministrationController::class, 'approve'])->name('approve');
+    Route::post('/admin/{adminId}/reject', [ImportAdministrationController::class, 'reject'])->name('reject');
+    Route::put('/admin/{adminId}/update', [ImportAdministrationController::class, 'updateAdmin'])->name('updateAdmin');
+    Route::post('/admin/delete-file', [ImportAdministrationController::class, 'deleteFile'])->name('deleteFile');
 
 
     // km
@@ -555,17 +571,4 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/custom-request/approve-finance-cstmreq', [CustomRequestController::class, 'showApprovalFinance'])->name('showApproveFinance');
     Route::post('/custom-request/finance-approved/{id}', [CustomRequestController::class, 'approveFinance'])->name('approveFinance');
 
-    //import administration
-    route::get('/import-administration', [ImportAdministrationController::class, 'showcreate'])->name('createadministration');
-    route::post('/import-administration/store', [ImportAdministrationController::class, 'store'])->name('storeadministration');
-    route::get('/import-administration/Showformadm/{id}', [ImportAdministrationController::class, 'showformadm'])->name('dokumenadministration');
-    Route::post('/admin/{adminId}/upload', [ImportAdministrationController::class, 'uploadFiles'])->name('uploadFiles');
-    Route::get('/admin/{adminId}/download', [ImportAdministrationController::class, 'downloadFiles'])->name('downloadFiles');
-    Route::post('/admin/{adminId}/approve', [ImportAdministrationController::class, 'approve'])->name('approve');
-    Route::post('/admin/{adminId}/reject', [ImportAdministrationController::class, 'reject'])->name('reject');
-    Route::put('/admin/{adminId}/update', [ImportAdministrationController::class, 'updateAdmin'])->name('updateAdmin');
-    Route::post('/admin/delete-file', [ImportAdministrationController::class, 'deleteFile'])->name('deleteFile');
-
-
 });
-

@@ -806,14 +806,14 @@
                 soInput.name = "so";
                 soInput.size = 10;
                 soInput.required = true;
-                soInput.maxLength = 4;
-                soInput.pattern = "\\d{4}"; // Hanya menerima 4 digit angka
+                soInput.maxLength = 5;
+                soInput.pattern = "\\d{5}"; // Hanya menerima 4 digit angka
 
                 // Mencegah input kurang atau lebih dari 4 angka
                 soInput.addEventListener("input", function() {
                     this.value = this.value.replace(/\D/g, ""); // Hanya angka
-                    if (this.value.length > 4) {
-                        this.value = this.value.slice(0, 4); // Potong jika lebih dari 4
+                    if (this.value.length > 5) {
+                        this.value = this.value.slice(0, 5); // Potong jika lebih dari 4
                     }
                 });
 
@@ -1035,7 +1035,7 @@
                     if (idTypeElement && jenisElement && idTypeElement.value !== "" && jenisElement.value !== "") {
                         var soValue = soElement ? soElement.value.trim() : "";
 
-                        var isValidSO = /^\d{4}$/.test(soValue);
+                        var isValidSO = /^\d{5}$/.test(soValue);
 
                         if (!isValidSO) {
                             hasInvalidSO = true; // Set flag jika ada SO tidak valid
@@ -1043,7 +1043,7 @@
                         } else {
                             soElement.classList.remove("is-invalid"); // Hapus class jika valid
                         }
-                        var formattedSO = `SO/${new Date().getFullYear()}/${String(soValue).padStart(4, '0')}`;
+                        var formattedSO = `SO/${new Date().getFullYear()}/${String(soValue).padStart(5, '0')}`;
 
                         var rowData = {
                             id_type: idTypeElement.value,
@@ -1090,7 +1090,7 @@
                 if (hasInvalidSO) {
                     Swal.fire({
                         title: "Error!",
-                        text: "Kolom SO harus diisi dengan 4 digit angka!",
+                        text: "Kolom SO harus diisi dengan 5 digit angka!",
                         icon: "error",
                         timer: 3000,
                         timerProgressBar: true

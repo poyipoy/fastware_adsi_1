@@ -441,16 +441,19 @@
                                         <th scope="col">No</th>
                                         <th scope="col">Sales</th>
                                         <th scope="col">Customer</th>
-                                        <th scope="col">Tanggal permintaan penawaran</th>
-                                        <th scope="col">Ket. Drawing</th>
+                                        <th scope="col">Confirm Drawing</th>
+                                        <th scope="col">Remark</th>
+                                        <th scope="col">Tanggal Dibuat</th>
                                         <th scope="col">Nama project</th>
                                         <th scope="col">Update Progress</th>
-                                        <th scope="col">Tanggal update</th>
-                                        <th scope="col">SO</th>
-                                        <th scope="col">Remark</th>
+                                        <th scope="col">Upload Attachment</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Harga Awal</th>
+                                        <th scope="col">Harga Akhir</th>
+                                        <th scope="col">Progress</th>
                                         <th scope="col">Marketing</th>
                                         <th scope="col">Finance</th>
-                                        <th scope="col">Status</th>
+                                        <th scope="col">SO</th>
                                         <th scope="col">Aksi</th>
                                     </tr>
                                 </thead>
@@ -460,15 +463,12 @@
                                         <th scope="row">{{ $loop->iteration }}</th>
                                         <td style="text-align: center;">{{ $material->sales }}</td>
                                         <td style="text-align: center;">{{ $material->customers->name_customer }}</td>
-                                        <td style="text-align: center;">{{ $material->tgl_permintaan }}</td>
                                         <td style="text-align: center;">{{ $material->ket_drawing }}</td>
-                                        <td style="text-align: center;">{{ $material->nama_project }}</td>
-                                        <td style="text-align: center;">{{ $material->progress }}</td>
-                                        <td style="text-align: center;">{{ $material->tgl_update }}</td>
-                                        <td style="text-align: center;">{{ $material->ref_so }}</td>
                                         <td style="text-align: center;">{{ $material->remark }}</td>
-                                        <td style="text-align: center;">{{ $material->marketing }}</td>
-                                        <td style="text-align: center;">{{ $material->finance }}</td>
+                                        <td style="text-align: center;">{{ $material->created_at }}</td>
+                                        <td style="text-align: center;">{{ $material->nama_project }}</td>
+                                        <td style="text-align: center;">{{ $material->tgl_update }}</td>
+                                        <td style="text-align: center;">{{ $material->Attachment }}</td>
                                         @php
                                             $statusDescriptions = [
                                                 1 => 'Draft',
@@ -510,6 +510,14 @@
                                                 {{ $statusDescriptions[$material->status] ?? 'Unknown' }}
                                             </button>
                                         </td>
+                                        <td style="text-align: center;">{{ $material->harga_awal }}</td>
+                                        <td style="text-align: center;">{{ $material->harga_akhir }}</td>
+                                        <td style="text-align: center;">{{ $material->progress }}</td>
+                                        <td style="text-align: center;">{{ $material->marketing ? $material->marketing->name : '' }}
+                                        </td>
+                                        <td style="text-align: center;">{{ $material->finance ? $material->finance->name : '' }}
+                                        </td>
+                                        <td style="text-align: center;">{{ $material->ref_so }}</td>
                                         <td style="text-align: center;">
                                             <button class="btn btn-sm btn-warning" 
                                                     data-bs-toggle="modal" 
@@ -543,16 +551,10 @@
                 @csrf
                 <div class="modal-content">
                   <div class="modal-header">
-                    <h5 class="modal-title">Tambah Material</h5>
+                    <h5 class="modal-title">Form Request Quotation</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                   </div>
                   <div class="modal-body">
-                    <!-- Sales -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Sales</label>
-                      <input type="text" name="sales" class="form-control" required>
-                    </div>
-          
                     <!-- Customer Dropdown Search -->
                     {{-- Pada modal tambah --}}
                     <div class="searchable-dropdown" data-modal-type="create">
@@ -571,35 +573,10 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Keterangan Drawing</label>
                         <select name="ket_drawing" class="form-control" required>
-                        <option value="" disabled selected>Pilih metode pengiriman</option>
+                        <option value="" disabled selected>Pilihlah salah satu</option>
                         <option value="via email">Via Email</option>
                         <option value="via whatsapp">Via Whatsapp</option>
                         </select>
-                    </div>
-  
-                    <!-- Nama Project -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Nama Project</label>
-                      <input type="text" name="nama_project" class="form-control" required>
-                    </div>
-          
-                    <!-- Update Progress -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Update Progress</label>
-                      <input type="text" name="progress" class="form-control" required>
-                    </div>
-          
-                    <!-- Tanggal Update -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Tanggal Update</label>
-                      <input type="text" name="tgl_update" class="form-control" required>
-                    </div>
-          
-                    <!-- SO -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">SO</label>
-                      <input type="text" name="so" id="so" class="form-control" required>
-                      <div id="so-error" class="text-danger mt-1" style="display:none;">Field SO harus terdiri dari tepat 4 angka.</div>
                     </div>
           
                     <!-- Remark -->
@@ -621,112 +598,129 @@
           
 
         <!-- End Modal Edit Material -->
-        @foreach($materials as $material)
-            <div class="modal fade" id="editMaterialModal{{ $material->id }}" tabindex="-1" aria-labelledby="editMaterialModalLabel{{ $material->id }}" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <form action="{{ route('CustomRequest.update', $material->id) }}" method="POST">
-                @csrf
-                @method('PUT')
-                <div class="modal-content">
-                    <div class="modal-header">
-                    <h5 class="modal-title">Edit Material</h5>
+        @php
+    $userId = auth()->user()->id;
+@endphp
+
+@foreach($materials as $material)
+<div class="modal fade" id="editMaterialModal{{ $material->id }}" tabindex="-1" aria-labelledby="editMaterialModalLabel{{ $material->id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form action="{{ route('CustomRequest.update', $material->id) }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            @method('PUT')
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Form Request Quotation</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                    <!-- Tambahkan input field sesuai data -->
-                    <div class="mb-3">
-                        <label class="form-label">Sales</label>
-                        <input type="text" name="sales" class="form-control" value="{{ $material->sales }}" required>
-                    </div>
-                    <div class="searchable-dropdown" data-modal-type="edit-{{ $material->id }}">
-                        <label class="form-label">Customer</label>
-                    
-                        @php
-                            $selectedCustomer = $customers->firstWhere('id', $material->customer);
-                        @endphp
-                    
-                        <input
-                            type="text"
-                            id="search_customer_edit_{{ $material->id }}"
-                            class="form-control"
-                            placeholder="Cari customer..."
-                            value="{{ $selectedCustomer ? $selectedCustomer->name_customer : '' }}">
-                    
-                        <div class="dropdown-items border rounded p-2"
-                             id="customer_list_edit_{{ $material->id }}"
-                             style="display: none; max-height: 200px; overflow-y: auto;">
-                            @foreach ($customers as $customer)
-                                <div data-value="{{ $customer->id }}">{{ $customer->name_customer }}</div>
-                            @endforeach
+                </div>
+                <div class="modal-body">
+
+                    @if(in_array($userId, [1, 2, 5]))
+                        <div class="searchable-dropdown" data-modal-type="edit-{{ $material->id }}">
+                            <label class="form-label">Customer</label>
+                        
+                            @php
+                                $selectedCustomer = $customers->firstWhere('id', $material->customer);
+                            @endphp
+                        
+                            <input
+                                type="text"
+                                id="search_customer_edit_{{ $material->id }}"
+                                class="form-control"
+                                placeholder="Cari customer..."
+                                value="{{ $selectedCustomer ? $selectedCustomer->name_customer : '' }}">
+                        
+                            <div class="dropdown-items border rounded p-2"
+                                 id="customer_list_edit_{{ $material->id }}"
+                                 style="display: none; max-height: 200px; overflow-y: auto;">
+                                @foreach ($customers as $customer)
+                                    <div data-value="{{ $customer->id }}">{{ $customer->name_customer }}</div>
+                                @endforeach
+                            </div>
+                        
+                            <input type="hidden"
+                                   id="customer_edit_{{ $material->id }}"
+                                   name="customer"
+                                   value="{{ $selectedCustomer ? $selectedCustomer->id : '' }}"
+                                   required>
+                        
+                            <div id="selected_customers_list_edit_{{ $material->id }}" class="mt-2">
+                                @if ($selectedCustomer)
+                                    <div class="selected-customer badge bg-primary p-2">
+                                        {{ $selectedCustomer->name_customer }}
+                                    </div>
+                                @endif
+                            </div>
                         </div>
-                    
-                        <input type="hidden"
-                               id="customer_edit_{{ $material->id }}"
-                               name="customer"
-                               value="{{ $selectedCustomer ? $selectedCustomer->id : '' }}"
-                               required>
-                    
-                        <div id="selected_customers_list_edit_{{ $material->id }}" class="mt-2">
-                            @if ($selectedCustomer)
-                                <div class="selected-customer badge bg-primary p-2">
-                                    {{ $selectedCustomer->name_customer }}
-                                </div>
+
+                        {{-- Ket Drawing --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Keterangan Drawing</label>
+                            <select name="ket_drawing" class="form-control" required>
+                                <option value="via email" {{ $material->ket_drawing == 'via email' ? 'selected' : '' }}>Via Email</option>
+                                <option value="via whatsapp" {{ $material->ket_drawing == 'via whatsapp' ? 'selected' : '' }}>Via Whatsapp</option>
+                            </select>
+                        </div>
+
+                        {{-- Remark --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Remark</label>
+                            <textarea name="remark" class="form-control" rows="3">{{ $material->remark }}</textarea>
+                        </div>
+                    @endif
+
+                    @if(in_array($userId, [1, 4, 5]))
+                        {{-- Nama Project --}}
+                        <div class="mb-3">
+                            <label class="form-label">Nama Project</label>
+                            <input type="text" name="nama_project" class="form-control" value="{{ $material->nama_project }}">
+                        </div>
+
+                        {{-- Tanggal Update --}}
+                        <div class="mb-3">
+                            <label class="form-label">Tanggal Update</label>
+                            <input type="date" name="tgl_update" class="form-control" value="{{ $material->tgl_update }}">
+                        </div>
+
+                        {{-- Attachment --}}
+                        <div class="mb-3">
+                            <label class="form-label">Attachment (Opsional)</label>
+                            <input type="file" name="attachment" class="form-control">
+                            @if ($material->attachment)
+                                <small class="text-muted">File saat ini: {{ $material->attachment }}</small>
                             @endif
                         </div>
-                    </div>
-                    
 
-                    <!-- Keterangan Drawing -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Keterangan Drawing</label>
-                        <select name="ket_drawing" class="form-control" required>
-                        <option value="via email" {{ $material->ket_drawing == 'via email' ? 'selected' : '' }}>Via Email</option>
-                        <option value="via whatsapp" {{ $material->ket_drawing == 'via whatsapp' ? 'selected' : '' }}>Via Whatsapp</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Nama Project -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Nama Project</label>
-                        <input type="text" name="nama_project" class="form-control" value="{{ $material->nama_project }}" required>
-                    </div>
-                    
-                    <!-- Progress -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Update Progress</label>
-                        <input type="text" name="progress" class="form-control" value="{{ $material->progress }}" required>
-                    </div>
-                    
-                    <!-- Tanggal Update -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Tanggal Update</label>
-                        <input type="text" name="tgl_update" class="form-control" value="{{ $material->tgl_update }}" required>
-                    </div>
-                    
-                    <!-- SO -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">SO</label>
-                        <input type="text" name="so" id="so_{{ $material->id }}" class="form-control" value="{{ $material->so }}" required>
-                        <div class="text-danger mt-1" style="display:none;" id="so-error-{{ $material->id }}">Field SO harus terdiri dari tepat 4 angka.</div>
-                    </div>
-                    
-                    <!-- Remark -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Remark</label>
-                        <textarea name="remark" class="form-control" rows="3">{{ $material->remark }}</textarea>
-                    </div>
-  
-                    <!-- Tambah field lainnya sesuai struktur -->
-                    </div>
-                    <div class="modal-footer">
+                        {{-- Harga Awal --}}
+                        <div class="mb-3">
+                            <label class="form-label">Harga Awal</label>
+                            <input type="number" name="harga_awal" class="form-control" value="{{ $material->harga_awal }}">
+                        </div>
+
+                        {{-- Harga Akhir --}}
+                        <div class="mb-3">
+                            <label class="form-label">Harga Akhir</label>
+                            <input type="number" name="harga_akhir" class="form-control" value="{{ $material->harga_akhir }}">
+                        </div>
+
+                        {{-- Progress --}}
+                        <div class="mb-3">
+                            <label class="form-label">Progress</label>
+                            <input type="text" name="progress" class="form-control" value="{{ $material->progress }}">
+                        </div>
+                    @endif
+
+                </div>
+                <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    </div>
                 </div>
-                </form>
             </div>
-            </div>
-        @endforeach
+        </form>
+    </div>
+</div>
+@endforeach
+
 
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>

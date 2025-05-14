@@ -445,7 +445,7 @@
 
                                     @endphp
 
-                                    @if ($user && in_array($user->id, [1, 99]))
+                                    @if ($user && in_array($user->id, [1, 99, 72]))
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
@@ -613,7 +613,7 @@
                                         $filteredInquiries = $inquiries->where('region', 2)->sortByDesc('created_at');
                                     @endphp
 
-                                    @if ($user && in_array($user->id, [1, 45]))
+                                    @if ($user && in_array($user->id, [1, 99, 65]))
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
@@ -781,7 +781,7 @@
                                         $filteredInquiries = $inquiries->where('region', 3)->sortByDesc('created_at');
                                     @endphp
 
-                                    @if ($user && in_array($user->id, [1, 72]))
+                                    @if ($user && in_array($user->id, [1, 51, 45]))
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
@@ -949,7 +949,7 @@
                                         $filteredInquiries = $inquiries->where('region', 4)->sortByDesc('created_at');
                                     @endphp
 
-                                    @if ($user && in_array($user->id, [1, 65]))
+                                    @if ($user && in_array($user->id, [1, 45]))
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
