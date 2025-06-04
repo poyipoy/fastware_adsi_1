@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Testing\Fluent\Concerns\Has;
+use App\Models\User;
 
 class TrsDboCrp extends Model
 {
@@ -26,5 +28,11 @@ class TrsDboCrp extends Model
         'total_cost_before',
         'total_cost_after',
         'total_cost_crp',
+        'partner',
     ];
+
+    public function partners(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'partner');
+    }
 }

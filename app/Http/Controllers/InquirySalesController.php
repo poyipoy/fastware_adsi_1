@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Response;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\DB;
 
+
 class InquirySalesController extends Controller
 {
     public function createInquirySales()
@@ -439,58 +440,58 @@ class InquirySalesController extends Controller
 
 
     public function showFormSS(Request $request, $id)
-{
-    // Ambil inquiry berdasarkan ID dan pastikan loc_imp = 'local'
-    $inquiry = InquirySales::with('details.type_materials')
-        ->where('loc_imp', 'local') // Hanya inquiry dengan loc_imp = 'local'
-        ->find($id);
-
-    if (!$inquiry) {
-        // Jika inquiry dengan loc_imp = 'local' tidak ditemukan, cari inquiry berikutnya atau sebelumnya yang 'local'
+    {
+        // Ambil inquiry berdasarkan ID dan pastikan loc_imp = 'local'
         $inquiry = InquirySales::with('details.type_materials')
-            ->where('loc_imp', 'local')
-            ->where('id', '>', $id) // Cari inquiry setelah ID ini
-            ->first();
+            ->where('loc_imp', 'local') // Hanya inquiry dengan loc_imp = 'local'
+            ->find($id);
 
         if (!$inquiry) {
-            // Jika tidak ada inquiry setelahnya, cari inquiry sebelumnya
+            // Jika inquiry dengan loc_imp = 'local' tidak ditemukan, cari inquiry berikutnya atau sebelumnya yang 'local'
             $inquiry = InquirySales::with('details.type_materials')
                 ->where('loc_imp', 'local')
-                ->where('id', '<', $id) // Cari inquiry sebelum ID ini
-                ->latest() // Ambil yang terbaru
+                ->where('id', '>', $id) // Cari inquiry setelah ID ini
                 ->first();
+
+            if (!$inquiry) {
+                // Jika tidak ada inquiry setelahnya, cari inquiry sebelumnya
+                $inquiry = InquirySales::with('details.type_materials')
+                    ->where('loc_imp', 'local')
+                    ->where('id', '<', $id) // Cari inquiry sebelum ID ini
+                    ->latest() // Ambil yang terbaru
+                    ->first();
+            }
         }
+
+        // Fetch all detail inquiries based on id_inquiry from the main inquiry
+        $materials = DetailInquiry::where('id_inquiry', $inquiry->id)->with('type_materials')->get();
+        $typeMaterials = TypeMaterial::all(); // Ambil semua data TypeMaterial
+
+        // Ambil semua nama file yang ter-upload
+        $uploadedFiles = DetailInquiry::where('id_inquiry', $inquiry->id)
+            ->pluck('file')
+            ->flatMap(function ($file) {
+                return json_decode($file) ?? []; // Kembalikan array kosong jika null
+            })
+            ->toArray();
+
+        $progressUpdates = TrxDboProgPurchase::where('inquiry_id', $id)
+            ->with('user')
+            ->orderBy('created_at', 'desc') // Urutkan berdasarkan created_at menurun
+            ->get();
+
+        // Cek apakah berasal dari halaman approval
+        $isFromApproval = request()->query('source') === 'approval';
+
+        // Ambil ID maksimal untuk validasi navigasi
+        $maxInquiryId = InquirySales::where('loc_imp', 'local')->max('id'); // Max ID untuk loc_imp = 'local'
+
+        if ($request->ajax()) {
+            return view('inquiry.showFormSS', compact('inquiry', 'materials', 'typeMaterials', 'progressUpdates', 'uploadedFiles', 'isFromApproval', 'maxInquiryId'))->render();
+        }
+
+        return view('inquiry.showFormSS', compact('inquiry', 'materials', 'typeMaterials', 'progressUpdates', 'uploadedFiles', 'isFromApproval', 'maxInquiryId'));
     }
-
-    // Fetch all detail inquiries based on id_inquiry from the main inquiry
-    $materials = DetailInquiry::where('id_inquiry', $inquiry->id)->with('type_materials')->get();
-    $typeMaterials = TypeMaterial::all(); // Ambil semua data TypeMaterial
-
-    // Ambil semua nama file yang ter-upload
-    $uploadedFiles = DetailInquiry::where('id_inquiry', $inquiry->id)
-        ->pluck('file')
-        ->flatMap(function ($file) {
-            return json_decode($file) ?? []; // Kembalikan array kosong jika null
-        })
-        ->toArray();
-
-    $progressUpdates = TrxDboProgPurchase::where('inquiry_id', $id)
-        ->with('user')
-        ->orderBy('created_at', 'desc') // Urutkan berdasarkan created_at menurun
-        ->get();
-
-    // Cek apakah berasal dari halaman approval
-    $isFromApproval = request()->query('source') === 'approval';
-
-    // Ambil ID maksimal untuk validasi navigasi
-    $maxInquiryId = InquirySales::where('loc_imp', 'local')->max('id'); // Max ID untuk loc_imp = 'local'
-
-    if ($request->ajax()) {
-        return view('inquiry.showFormSS', compact('inquiry', 'materials', 'typeMaterials', 'progressUpdates', 'uploadedFiles', 'isFromApproval', 'maxInquiryId'))->render();
-    }
-
-    return view('inquiry.showFormSS', compact('inquiry', 'materials', 'typeMaterials', 'progressUpdates', 'uploadedFiles', 'isFromApproval', 'maxInquiryId'));
-}
 
 
     public function showFormSSimport(Request $request, $id)
@@ -885,53 +886,53 @@ class InquirySalesController extends Controller
     }
 
     public function confirmPurchaseimport(Request $request)
-{
-    $ids = $request->input('ids');
-    $klasifikasi = $request->input('klasifikasi');
+    {
+        $ids = $request->input('ids');
+        $klasifikasi = $request->input('klasifikasi');
 
-    if (!is_array($ids) || empty($ids)) {
-        return response()->json(['error' => 'No inquiry IDs provided.'], 400);
-    }
-
-    $user = Auth::user();
-
-    foreach ($ids as $id) {
-        // Cek apakah ada detail inquiry dengan klasifikasi yang dimaksud
-        $hasValidDetail = DetailInquiryImport::where('id_inquiry', $id)
-            ->where('klasifikasi', $klasifikasi)
-            ->exists();
-
-        if (!$hasValidDetail) {
-            continue; // Skip jika tidak ada klasifikasi yang sesuai
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['error' => 'No inquiry IDs provided.'], 400);
         }
 
-        // Ambil inquiry-nya
-        $inquiry = InquirySales::find($id);
+        $user = Auth::user();
 
-        if (!$inquiry || $inquiry->status != 8) {
-            continue; // Skip jika tidak ditemukan atau status bukan 8
+        foreach ($ids as $id) {
+            // Cek apakah ada detail inquiry dengan klasifikasi yang dimaksud
+            $hasValidDetail = DetailInquiryImport::where('id_inquiry', $id)
+                ->where('klasifikasi', $klasifikasi)
+                ->exists();
+
+            if (!$hasValidDetail) {
+                continue; // Skip jika tidak ada klasifikasi yang sesuai
+            }
+
+            // Ambil inquiry-nya
+            $inquiry = InquirySales::find($id);
+
+            if (!$inquiry || $inquiry->status != 8) {
+                continue; // Skip jika tidak ditemukan atau status bukan 8
+            }
+
+            // Update inquiry
+            $inquiry->status = 9;
+            $inquiry->purchasing_id = $user->id;
+            $inquiry->confirmed_purchasing_at = now();
+            $inquiry->save();
+
+            // Format tanggal
+            $createdMonth = Carbon::parse($inquiry->created_at)->format('F');
+            $createdYear = Carbon::parse($inquiry->created_at)->format('Y');
+
+            // Simpan progress ke tracking
+            TrxDboProgPurchase::create([
+                'inquiry_id' => $inquiry->id,
+                'user_id' => $user->id,
+                'description' => 'Inquiry Region [ ' . $inquiry->region . ' ] Bulan ' . $createdMonth . ' ' . $createdYear . ' dikonfirmasi purchase oleh ' . $user->name
+            ]);
         }
 
-        // Update inquiry
-        $inquiry->status = 9;
-        $inquiry->purchasing_id = $user->id;
-        $inquiry->confirmed_purchasing_at = now();
-        $inquiry->save();
-
-        // Format tanggal
-        $createdMonth = Carbon::parse($inquiry->created_at)->format('F');
-        $createdYear = Carbon::parse($inquiry->created_at)->format('Y');
-
-        // Simpan progress ke tracking
-        TrxDboProgPurchase::create([
-            'inquiry_id' => $inquiry->id,
-            'user_id' => $user->id,
-            'description' => 'Inquiry Region [ ' . $inquiry->region . ' ] Bulan ' . $createdMonth . ' ' . $createdYear . ' dikonfirmasi purchase oleh ' . $user->name
-        ]);
+        return response()->json(['success' => 'Selected inquiries have been successfully confirmed for purchasing.']);
     }
-
-    return response()->json(['success' => 'Selected inquiries have been successfully confirmed for purchasing.']);
-}
 
 
     public function exportexceloverviewimportpurchase()
@@ -1036,40 +1037,40 @@ class InquirySalesController extends Controller
     }
 
     public function updateInquiryImport(Request $request)
-{
-    $request->validate([
-        'ids' => 'required|array',
-        'ids.*' => 'integer|exists:inquiry_sales,id',
-        'description' => 'required|string',
-        'klasifikasi' => 'required|string'
-    ]);
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:inquiry_sales,id',
+            'description' => 'required|string',
+            'klasifikasi' => 'required|string'
+        ]);
 
-    $userId = auth()->id();
-    $description = $request->description;
-    $klasifikasi = $request->klasifikasi;
+        $userId = auth()->id();
+        $description = $request->description;
+        $klasifikasi = $request->klasifikasi;
 
-    $updatedCount = 0;
+        $updatedCount = 0;
 
-    foreach ($request->ids as $id) {
-        // Validasi klasifikasi melalui tabel detail
-        $hasValidDetail = DetailInquiryImport::where('id_inquiry', $id)
-            ->where('klasifikasi', $klasifikasi)
-            ->exists();
+        foreach ($request->ids as $id) {
+            // Validasi klasifikasi melalui tabel detail
+            $hasValidDetail = DetailInquiryImport::where('id_inquiry', $id)
+                ->where('klasifikasi', $klasifikasi)
+                ->exists();
 
-        if ($hasValidDetail) {
-            TrxDboProgPurchase::create([
-                'inquiry_id' => $id,
-                'user_id' => $userId,
-                'description' => $description,
-            ]);
-            $updatedCount++;
+            if ($hasValidDetail) {
+                TrxDboProgPurchase::create([
+                    'inquiry_id' => $id,
+                    'user_id' => $userId,
+                    'description' => $description,
+                ]);
+                $updatedCount++;
+            }
         }
-    }
 
-    return response()->json([
-        'message' => "Description updated for $updatedCount inquiries with klasifikasi '$klasifikasi'."
-    ]);
-}
+        return response()->json([
+            'message' => "Description updated for $updatedCount inquiries with klasifikasi '$klasifikasi'."
+        ]);
+    }
 
     public function updateOverviewPurchase(Request $request)
     {
@@ -1129,29 +1130,29 @@ class InquirySalesController extends Controller
 
 
 
-public function updateProgressImport(Request $request, $id)
-{
-    try {
-        $request->validate([
-            'progress' => 'required|in:ok,pending,cancelled',
-        ]);
+    public function updateProgressImport(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'progress' => 'required|in:ok,pending,cancelled',
+            ]);
 
-        $inquiry = DetailInquiryImport::findOrFail($id);
-        $inquiry->progress = $request->progress;
-        $inquiry->save();
+            $inquiry = DetailInquiryImport::findOrFail($id);
+            $inquiry->progress = $request->progress;
+            $inquiry->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Progress updated successfully',
-        ], 200);
-    } catch (\Exception $e) {
-        \Log::error('Error updating progress: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to update progress',
-        ], 500);
+            return response()->json([
+                'success' => true,
+                'message' => 'Progress updated successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error updating progress: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update progress',
+            ], 500);
+        }
     }
-}
 
 
     public function updateInquiryDetails(Request $request, $id)
@@ -1182,11 +1183,11 @@ public function updateProgressImport(Request $request, $id)
         // Update data materials
         foreach ($request->materials as $materialData) {
             $material = DetailInquiry::find($materialData['id']); // Gunakan ID langsung
-        
+
             if ($material) {
                 $material->id_type = $materialData['id_type']; // Bisa berubah sekarang
                 $jenis = $materialData['jenis'];
-        
+
                 // Update sesuai jenis
                 $material->jenis = $jenis;
                 $material->thickness = ($jenis === 'Flat') ? $materialData['thickness'] : null;
@@ -1202,11 +1203,11 @@ public function updateProgressImport(Request $request, $id)
                 $material->so = $materialData['so'];
                 $material->note = $materialData['note'];
                 $material->save();
-        
+
                 $updatedMaterials[] = $material;
             }
         }
-        
+
 
         return response()->json([
             'success' => true,
@@ -1649,7 +1650,6 @@ public function updateProgressImport(Request $request, $id)
                     'type_order' => $row[6] ?? null,
                     'jenis_inquiry' => $row[7] ?? null,
                     'loc_imp' => $row[8] ?? null,
-                    'est_date' => !empty($row[9]) ? Carbon::parse($row[9])->format('Y-m-d') : null,
                     'create_by' => $row[10] ?? null,
                     'updated_at' => $now,
                 ];
@@ -1677,6 +1677,7 @@ public function updateProgressImport(Request $request, $id)
                     'nopo' => $row[29] ?? null,
                     'supplier' => $row[30] ?? null,
                     'progress' => $row[28] ?? null,
+                    'est_date' => !empty($row[9]) ? Carbon::parse($row[9])->format('Y-m-d') : null,
                 ];
 
                 $logs[] = [
@@ -1910,25 +1911,24 @@ public function updateProgressImport(Request $request, $id)
 
             $inquiry = InquirySales::find($id);
 
-            if(!$inquiry || $inquiry->status != 9) {
+            if (!$inquiry || $inquiry->status != 9) {
                 continue; // Skip if inquiry not found
             }
 
-            
+
             $inquiry->status = 6; // Finished
             $inquiry->save();
 
-                // Format bulan dan tahun dibuat
+            // Format bulan dan tahun dibuat
             $createdMonth = Carbon::parse($inquiry->created_at)->format('F');
             $createdYear = Carbon::parse($inquiry->created_at)->format('Y');
 
-                // Insert progress ke trx
+            // Insert progress ke trx
             TrxDboProgPurchase::create([
-            'inquiry_id' => $inquiry->id,
-            'user_id' => $userId,
-            'description' => 'Inquiry Region [ ' . $inquiry->region . ' ] bulan ' . $createdMonth . ' ' . $createdYear . ' diselesaikan oleh ' . $userName
+                'inquiry_id' => $inquiry->id,
+                'user_id' => $userId,
+                'description' => 'Inquiry Region [ ' . $inquiry->region . ' ] bulan ' . $createdMonth . ' ' . $createdYear . ' diselesaikan oleh ' . $userName
             ]);
-            
         }
 
         return response()->json(['success' => 'Inquiries marked as finished.']);
@@ -2153,6 +2153,7 @@ public function updateProgressImport(Request $request, $id)
         $draftInquiries = InquirySales::with('customer')
             ->whereIn('status', [1, 2, 3, 4, 5, 6, 8, 9]) // Draft for Finish Process
             ->where('is_active', 1)
+            ->where('loc_imp', 'Local')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -2262,23 +2263,152 @@ public function updateProgressImport(Request $request, $id)
 
         $isFromApproval = request()->query('source') === 'approval';
 
-        return view('inquiry.showformSSimportpurchase', compact('inquiries', 'isFromApproval', 'uploadedFiles', 'progressUpdates', 'customers', 'users', 'inquiry', 'materials', 'month', 'klasifikasi'));
+        return view('inquiry.showFormSSimportpurchase', compact('inquiries', 'isFromApproval', 'uploadedFiles', 'progressUpdates', 'customers', 'users', 'inquiry', 'materials', 'month', 'klasifikasi'));
     }
 
 
-    public function createInquirySalesImport()
-    {
-        $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        $inquiries = InquirySales::with('customer')
-            ->whereIn('status', $statuses)
-            ->where('is_active', 1)
-            ->orderByRaw('FIELD(status, 0, 1, 2, 3, 4, 5, 6, 7,8,9)')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->unique('kode_inquiry');
+    // public function createInquirySalesImport()
+    // {
+    //     $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    //     $inquiries = InquirySales::with('customer')
+    //         ->whereIn('status', $statuses)
+    //         ->where('is_active', 1)
+    //         ->orderByRaw('FIELD(status, 0, 1, 2, 3, 4, 5, 6, 7,8,9)')
+    //         ->orderBy('created_at', 'desc')
+    //         ->get()
+    //         ->unique('kode_inquiry');
 
-        $customers = Customer::all();
+    //     $customers = Customer::all();
 
-        return view('inquiry.createImport', compact('inquiries', 'customers'));
+    //     return view('inquiry.createImport', compact('inquiries', 'customers'));
+    // }
+
+   public function createInquirySalesImport()
+{
+    $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    $authName = auth()->user()->name;
+
+    $userHierarchy = [
+        'YULMAI RIDO WINANDA' => [
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID',
+            'SONY STIAWAN',
+            'SARAH EGA BUDI ASTUTI',
+            'HERY HERMAWAN',
+            'HEXAPA DARMADI',
+            'DIMAS ADITYA PRIANDANA',
+            'JUN JOHAMIN PD',
+            'WULYO EKO PRASETYO',
+            'YAN WELEM MANGINSELA',
+            'SENDY PRABOWO'
+        ],
+        'ILHAM CHOLID' => [
+            'ILHAM CHOLID',
+            'SONY STIAWAN',
+            'SARAH EGA BUDI ASTUTI',
+            'HERY HERMAWAN',
+            'HEXAPA DARMADI',
+            'DIMAS ADITYA PRIANDANA'
+        ],
+        'HERY HERMAWAN' => [
+            'HERY HERMAWAN',
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID'
+        ],
+        'SONY STIAWAN' => [
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID'
+        ],
+        'HEXAPA DARMADI' => [
+            'HEXAPA DARMADI',
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID'
+        ],
+        'DIMAS ADITYA PRIANDANA' => [
+            'DIMAS ADITYA PRIANDANA',
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID'
+        ],
+        'ADMINSTRATOR' => [
+            'ADMINSTRATOR',
+            'JESSICA PAUNE',
+            'ANDIK TOTOK SISWOYO',
+            'RISFAN FAISAL',
+            'DWI KUNTORO',
+            'YUNASIS PALGUNADI',
+            'DANIA ISNAWATI',
+            'FISKA CHRISMAS YUDHA',
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID',
+            'SONY STIAWAN',
+            'SARAH EGA BUDI ASTUTI',
+            'HERY HERMAWAN',
+            'HEXAPA DARMADI',
+            'DIMAS ADITYA PRIANDANA',
+            'JUN JOHAMIN PD',
+            'WULYO EKO PRASETYO',
+            'YAN WELEM MANGINSELA',
+            'SENDY PRABOWO'
+        ],
+        'JESSICA PAUNE' => [
+            'ADMINSTRATOR',
+            'JESSICA PAUNE',
+            'ANDIK TOTOK SISWOYO',
+            'RISFAN FAISAL',
+            'DWI KUNTORO',
+            'YUNASIS PALGUNADI',
+            'DANIA ISNAWATI',
+            'FISKA CHRISMAS YUDHA',
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID',
+            'SONY STIAWAN',
+            'SARAH EGA BUDI ASTUTI',
+            'HERY HERMAWAN',
+            'HEXAPA DARMADI',
+            'DIMAS ADITYA PRIANDANA',
+            'JUN JOHAMIN PD',
+            'WULYO EKO PRASETYO',
+            'YAN WELEM MANGINSELA',
+            'SENDY PRABOWO'
+        ]
+    ];
+
+    $visibleUsers = collect([$authName]);
+
+    // Tambahkan bawahan
+    if (isset($userHierarchy[$authName])) {
+        $visibleUsers = $visibleUsers->merge($userHierarchy[$authName]);
     }
+
+    // Tambahkan atasan
+    foreach ($userHierarchy as $superior => $subordinates) {
+        if (in_array($authName, $subordinates)) {
+            $visibleUsers->push($superior);
+        }
+    }
+
+    $visibleUsers = $visibleUsers->unique();
+
+    // Jika user BUKAN admin atau jessica, maka hapus data dari mereka
+    if (!in_array($authName, ['ADMINSTRATOR', 'JESSICA PAUNE'])) {
+        $visibleUsers = $visibleUsers->reject(function ($user) {
+            return in_array($user, ['ADMINSTRATOR', 'JESSICA PAUNE']);
+        });
+    }
+
+    $query = InquirySales::with('customer')
+        ->whereIn('status', $statuses)
+        ->whereIn('create_by', $visibleUsers->toArray());
+
+    $inquiries = $query->orderByRaw('FIELD(status, 0,1,2,3,4,5,6,7,8,9)')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->unique('kode_inquiry');
+
+    $customers = Customer::all();
+
+    return view('inquiry.createImport', compact('inquiries', 'customers'));
+}
+
+
 }

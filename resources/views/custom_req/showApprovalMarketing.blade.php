@@ -1,10 +1,10 @@
 @extends('layout')
 
 @section('content')
-
     <main id="main" class="main">
 
         <style>
+            
             .card-title1 {
                 text-align: center;
                 width: 100%;
@@ -419,286 +419,154 @@
                 font-size: 8pt;
                 color: red;
             }
-            /* Mengatur modal agar berada di tengah vertikal dan horizontal */
-            .modal.fade .modal-dialog {
-                position: fixed;  /* Menggunakan posisi tetap */
-                top: 50%;         /* Menempatkan modal di tengah vertikal */
-                left: 50%;        /* Menempatkan modal di tengah horizontal */
-                transform: translate(-50%, -50%); /* Menyesuaikan posisi dengan menggeser modal 50% ke kiri dan atas */
-                max-width: 80%;   /* Menyesuaikan ukuran modal */
-            }
-
+            .btn-hover:hover {
+                    opacity: 0.9; /* Mengurangi opasitas saat hover */
+                    transition: opacity 0.3s ease-in-out; /* Transisi halus */
+                }
         </style>
 
-        <section class="">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-item-center justify-content-start mt-4 mb-3">
-                        <button class="btn btn-add btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
-                            <i class="bi bi-plus-circle"> Add Request Custom</i>
-                        </button>
-                    </div>
-                    @if($materials->isEmpty())
-                        <div class="alert alert-danger text-center" role="alert">
-                            <strong>---Data Not Found---</strong>
-                        </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-1" id="customTable">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">No</th>
-                                        <th scope="col">Sales</th>
-                                        <th scope="col">Customer</th>
-                                        <th scope="col">Confirm Drawing</th>
-                                        <th scope="col">Remark</th>
-                                        <th scope="col">Tanggal Dibuat</th>
-                                        <th scope="col">Nama project</th>
-                                        <th scope="col">Update Progress</th>
-                                        <th scope="col">Upload Attachment</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Harga Awal</th>
-                                        <th scope="col">Harga Akhir</th>
-                                        <th scope="col">Progress</th>
-                                        <th scope="col">Marketing</th>
-                                        <th scope="col">Finance</th>
-                                        <th scope="col">SO</th>
-                                        <th scope="col">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($materials as $material)
-                                    <tr>
-                                        <th scope="row">{{ $loop->iteration }}</th>
-                                        <td style="text-align: center;">{{ $material->sales }}</td>
-                                        <td style="text-align: center;">{{ $material->customers->name_customer }}</td>
-                                        <td style="text-align: center;">{{ $material->ket_drawing }}</td>
-                                        <td style="text-align: center;">{{ $material->remark }}</td>
-                                        <td style="text-align: center;">{{ $material->created_at }}</td>
-                                        <td style="text-align: center;">{{ $material->nama_project }}</td>
-                                        <td style="text-align: center;">{{ $material->tgl_update }}</td>
-                                        <td style="text-align: center;">{{ $material->Attachment }}</td>
-                                        @php
-                                            $statusDescriptions = [
-                                                1 => 'Draft',
-                                                2 => 'Open',
-                                                3 => 'Open',
-                                                4 => 'Approve Marketing',
-                                                5 => 'Approve Finance',
-                                                6 => 'Open',
-                                                7 => 'Open',
-                                                8 => 'Rejected',
-                                                9 => 'finished',
-                                            ];
+        <div class="pagetitle">
+            <h1>Menu Pengajuan</h1>
+            <nav>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('dashboardHandling') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item">Menu Pengajuan Custom</li>
 
-                                            // Mendefinisikan kelas tombol berdasarkan status
-                                            $buttonClasses = [
-                                                1 => 'btn-secondary', // Draft
-                                                2 => 'btn-warning', // Open
-                                                3 => 'btn-warning', // Approve Ka.Dept
-                                                4 => 'btn-info', // Approve Ka.Sie
-                                                5 => 'btn-warning', // On Progress
-                                                6 => 'btn-warning', // Finished
-                                                7 => 'btn-danger', // Rejected
-                                                8 => 'btn-success', // Approve Inventory
-                                                9 => 'btn-primary', // Confirm Purchasing
-                                            ];
-                                        @endphp
-                                        <td class="btn-stts" >
-                                            <button class="btn btn-sm
-                                                {{ $buttonClasses[$material->status] ?? 'btn-light' }}
-                                                {{ $material->status == 1 ? 'btn-custom-draft' : '' }}
-                                                {{ $material->status == 2 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 3 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 4 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 5 ? 'btn-custom-open' : '' }}
-                                                {{ $material->status == 6 ? 'btn-custom-marketing' : '' }}
-                                                {{ $material->status == 7 ? 'btn-custom-finance' : '' }}
-                                                {{ $material->status == 8 ? 'btn-custom-rejected' : '' }}
-                                                {{ $material->status == 9 ? 'btn-custom-finished' : '' }}">
-                                                {{ $statusDescriptions[$material->status] ?? 'Unknown' }}
-                                            </button>
-                                        </td>
-                                        <td style="text-align: center;">{{ $material->harga_awal }}</td>
-                                        <td style="text-align: center;">{{ $material->harga_akhir }}</td>
-                                        <td style="text-align: center;">{{ $material->progress }}</td>
-                                        <td style="text-align: center;">{{ $material->marketing ? $material->marketing->name : '' }}
-                                        </td>
-                                        <td style="text-align: center;">{{ $material->finance ? $material->finance->name : '' }}
-                                        </td>
-                                        <td style="text-align: center;">{{ $material->ref_so }}</td>
-                                        <td style="text-align: center;">
-                                            <button class="btn btn-sm btn-warning" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#editMaterialModal{{ $material->id }}">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </button>
-                                        
-                                            <a href="#" class="btn btn-primary btn-sm m-1"
-                                                onclick="approveMarketing({{ $material->id }}); return false;">
-                                                <i class="bi bi-check-square-fill"></i>
-                                            </a>
-                                        </td>                                        
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                </ol>
+            </nav>
+        </div><!-- End Page Title -->
+
+        <section class="section">
+            <div class="row">
+                <div class="col-lg-12">
+
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Tampilan Data Pengajuan Custom</h5>
+                            
+                            <!-- Table with stripped rows -->
+                            <div class="table-responsive" style="height: 100%; overflow-y: auto;">
+                                <table class="datatable table">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" width="50px">NO</th>
+                                            <th class="text-center" width="100px">PIC</th>
+                                            <th class="text-center" width="100px">Nama Customer</th>
+                                            <th class="text-center" width="100px">Nama Project</th>
+                                            <th class="text-center" width="100px">Keterangan</th>
+                                            <th class="text-center" width="100px">Jenis Proses</th>
+                                            <th class="text-center" width="100px">Tgl Pengajuan</th>
+                                            <th class="text-center" width="100px">Status</th>
+                                            <th class="text-center" width="100px">Cost Process</th>
+                                            <th class="text-center" width="100px">Selling Price</th>
+                                            <th class="text-center" width="100px">Profit</th>
+                                            <th class="text-center" width="100px">Custom</th>
+                                            <th class="text-center" width="100px">Marketing Dept Head</th>
+                                            <th class="text-center" width="100px">Marketing Approval</th>
+                                            <th class="text-center" width="100px">Finance Dept Head</th>
+                                            <th class="text-center" width="100px">Finance Approval</th>
+                                            <th class="text-center" width="100px">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($materials as $key => $pengajuan)
+                                            <tr>
+                                                <td class="text-center">{{ $key + 1 }}</td>
+                                                <td class="text-center">{{ $pengajuan->modified_at ? $pengajuan->modified_at : '' }}</td>
+                                                <td class="text-center">{{ $pengajuan->nama_customer }}</td>
+                                                <td class="text-center">{{ $pengajuan->nama_project }}</td>
+                                                <td class="text-center">{{ $pengajuan->keterangan }}</td>
+                                               <td class="text-center">
+                                                    {{ $pengajuan->jenis_proses_subcont !== 'Null' ? $pengajuan->jenis_proses_subcont : '' }}
+                                                </td>
+                                                <td class="text-center">{{ $pengajuan->created_at->format('d-m-Y') }}</td>
+                                                <td class="text-center">
+                                                    @php
+                                                        $statusClasses = [
+                                                            1 => ['bg' => 'bg-secondary', 'label' => 'Draf'], // Abu-abu
+                                                            2 => ['bg' => 'bg-primary', 'label' => 'Open'], // Hijau
+                                                            3 => ['bg' => 'bg-warning', 'label' => 'On Progress'], // Kuning
+                                                            4 => ['bg' => 'bg-warning', 'label' => 'On Progress 2'], // Oren
+                                                            5 => ['bg' => 'bg-info', 'label' => 'Finish'], // Biru Muda
+                                                        ];
+
+                                                        // Menentukan status saat ini
+                                                        if ($pengajuan->sec_line == 2) {
+                                                            switch ($pengajuan->status_1) {
+                                                                case 1:
+                                                                    $currentStatus = $statusClasses[1]; // Draf
+                                                                    break;
+                                                                case 2:
+                                                                    // Status Open tidak ada, atur menjadi Status Tidak Tersedia
+                                                                    $currentStatus = ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
+                                                                    break;
+                                                                case 3:
+                                                                    $currentStatus = $statusClasses[3]; // On Progress
+                                                                    break;
+                                                                case 4:
+                                                                    $currentStatus = $statusClasses[4]; // On Progress 2
+                                                                    break;
+                                                                case 5:
+                                                                    $currentStatus = $statusClasses[5]; // Finish
+                                                                    break;
+                                                                default:
+                                                                    $currentStatus = ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
+                                                            }
+                                                        } else {
+                                                            // Menentukan status untuk kondisi lainnya
+                                                            $currentStatus = $statusClasses[$pengajuan->status_1] ?? ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
+                                                        }
+                                                    @endphp
+                                                    <span class="badge {{ $currentStatus['bg'] }}" style="font-size: 14px;">
+                                                        {{ $currentStatus['label'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">{{ $pengajuan->harga_awal }}</td>
+                                                <td class="text-center">{{ $pengajuan->harga_akhir }}</td>
+                                                <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>                                               
+                                                <td class="text-center">{{ $pengajuan->confirm_prod ? $pengajuan->production->name : '' }}</td>
+                                                <td class="text-center">{{ $pengajuan->marketing ? $pengajuan->marketing->name : '' }}</td>
+                                                <td class="text-center">{{ $pengajuan->date_app_1 ? $pengajuan->date_app_1 : '' }}</td>
+                                                <td class="text-center">{{ $pengajuan->finance ? $pengajuan->finance->name : '' }}</td>
+                                                <td class="text-center">{{ $pengajuan->date_app_2 ? $pengajuan->date_app_2 : '' }}</td>
+                                                <td class="text-center d-flex gap-3 justify-content-center flex-wrap">
+                                                    {{-- Tombol Lihat --}}
+                                                    @if (auth()->user()->name == $pengajuan->modified_at)
+                                                            {{-- Jika user adalah sales dan statusnya draft --}}
+                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
+                                                                <i class="fas fa-eye"></i> Lihat
+                                                            </a>
+                                                        @else
+                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
+                                                                <i class="fas fa-eye"></i> Lihat
+                                                            </a>
+                                                        @endif
+                                                    
+                                                    @if (!is_null($pengajuan->harga_akhir) && $pengajuan->harga_akhir !== '')
+                                                        <button type="button" class="btn btn-sm btn-success btn-hover marketingButton" data-id="{{ $pengajuan->id }}" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}">
+                                                            <i class="fas fa-paper-plane"></i> Submit
+                                                        </button>
+                                                    @endif
+                                                    
+                                                    {{-- Tombol Reject --}}
+
+                                                    {{-- <button type="button" class="btn btn-sm btn-danger btn-hover rejectButton" data-id="{{ $pengajuan->id }}">
+                                                        <i class="fas fa-times-circle"></i> Reject
+                                                    </button> --}}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    @endif
+                    </div>
                 </div>
             </div>
+            <form id="formKirim" method="POST" style="display:none;">
+                @csrf
+            </form>
         </section>
-
-
-        {{-- <!-- Modal Tambah Material -->
-        <div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-              <form action="{{ route('CustomRequest.store') }}" method="POST">
-                @csrf
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title">Tambah Material</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                  </div>
-                  <div class="modal-body">
-                    <!-- Sales -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Sales</label>
-                      <input type="text" name="sales" class="form-control" required>
-                    </div>
-          
-                    <!-- Customer Dropdown Search -->
-                    <div class="mb-3">
-                      <label for="customer" class="form-label fw-bold">Order From</label>
-                      <div class="searchable-dropdown">
-                        <input type="text" id="search_customer" class="form-control" placeholder="Cari customer...">
-                        <div class="dropdown-items border rounded p-2" id="customer_list" style="display: none; max-height: 200px; overflow-y: auto;">
-                          @foreach ($customers as $customer)
-                            <div data-value="{{ $customer->id }}">{{ $customer->name_customer }}</div>
-                          @endforeach
-                        </div>
-                      </div>
-                      <input type="hidden" id="customer" name="customer" required>
-                      <div id="selected_customers_list" class="mt-2"></div>
-                    </div>
-          
-                    <!-- Keterangan Drawing -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Keterangan Drawing</label>
-                        <select name="ket_drawing" class="form-control" required>
-                        <option value="" disabled selected>Pilih metode pengiriman</option>
-                        <option value="via email">Via Email</option>
-                        <option value="via whatsapp">Via Whatsapp</option>
-                        </select>
-                    </div>
-  
-                    <!-- Nama Project -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Nama Project</label>
-                      <input type="text" name="nama_project" class="form-control" required>
-                    </div>
-          
-                    <!-- Update Progress -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Update Progress</label>
-                      <input type="text" name="progress" class="form-control" required>
-                    </div>
-          
-                    <!-- Tanggal Update -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Tanggal Update</label>
-                      <input type="text" name="tgl_update" class="form-control" required>
-                    </div>
-          
-                    <!-- SO -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">SO</label>
-                      <input type="text" name="so" id="so" class="form-control" required>
-                      <div id="so-error" class="text-danger mt-1" style="display:none;">Field SO harus terdiri dari tepat 4 angka.</div>
-                    </div>
-          
-                    <!-- Remark -->
-                    <div class="mb-3">
-                      <label class="form-label fw-bold">Remark</label>
-                      <textarea name="remark" class="form-control" rows="3"></textarea>
-                    </div>
-          
-                  </div>
-                  <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Simpan</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-        </div>
-        
-          
-
-        <!-- End Modal Edit Material -->
-        @foreach($materials as $material)
-            <div class="modal fade" id="editMaterialModal{{ $material->id }}" tabindex="-1" aria-labelledby="editMaterialModalLabel{{ $material->id }}" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <form action="{{ route('CustomRequest.update', $material->id) }}" method="POST">
-                @csrf
-                @method('PUT')
-                <div class="modal-content">
-                    <div class="modal-header">
-                    <h5 class="modal-title">Edit Material</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                    <!-- Tambahkan input field sesuai data -->
-                    <div class="mb-3">
-                        <label class="form-label">Sales</label>
-                        <input type="text" name="sales" class="form-control" value="{{ $material->sales }}" required>
-                    </div>
-                    <!-- Tambah field lainnya sesuai struktur -->
-                    </div>
-                    <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    </div>
-                </div>
-                </form>
-            </div>
-            </div>
-        @endforeach --}}
-
-        @foreach($materials as $material)
-            <div class="modal fade" id="editMaterialModal{{ $material->id }}" tabindex="-1" aria-labelledby="editMaterialModalLabel{{ $material->id }}" aria-hidden="true">
-                <div class="modal-dialog modal-lg" style="max-width: 80%; margin: auto;">
-                    <form action="{{ route('updateMarketing', $material->id) }}" method="POST">
-                        @csrf
-                        @method('PUT')
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Edit Material</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                
-                                <!-- SO -->
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">SO</label>
-                                    <input type="text" name="ref_so" id="so_{{ $material->id }}" class="form-control" value="{{ $material->ref_so }}" required maxlength="4" pattern="\d{4}" title="Field SO harus terdiri dari tepat 4 angka.">
-                                    <div class="text-danger mt-1" style="display:none;" id="so-error-{{ $material->id }}">Field SO harus terdiri dari tepat 4 angka.</div>
-                                </div>                                
-            
-                                <!-- Tambah field lainnya sesuai struktur -->
-                            </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            @endforeach
-
-
-
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
         <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
@@ -711,90 +579,119 @@
                     $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
                 });
             });
-        </script>
+            </script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script>
+            function konfirmasiKirim(url, tujuan) {
+                if (confirm(`Anda yakin ingin mengirim data ke bagian ${tujuan}?`)) {
+                    const form = document.getElementById('formKirim');
+                    form.action = url;
+                    form.submit();
+                }
+            }
+
+            // Fungsi untuk menghitung profit persentase
+            function calcProfit(hargaAwal, hargaAkhir) {
+                if (hargaAkhir > 0) {
+                    let profit = ((hargaAkhir - hargaAwal) / hargaAkhir) * 100;
+                    return profit.toFixed(2); // Mengembalikan hasil dengan 2 decimal
+                } else {
+                    return 0; // Tidak bisa dihitung jika harga akhir 0
+                }
+            }
+
             document.addEventListener('DOMContentLoaded', function() {
-                const searchInput = document.getElementById('search_customer');
-                const customerList = document.getElementById('customer_list');
-                const hiddenInput = document.getElementById('customer');
-                const selectedCustomersList = document.getElementById('selected_customers_list');
-            
-                customerList.style.display = 'block'; // default tampilkan
-                customerList.style.display = 'none';  // kecuali saat input aktif
-            
-                searchInput.addEventListener('input', function() {
-                    const filter = searchInput.value.toLowerCase();
-                    const items = customerList.getElementsByTagName('div');
-            
-                    for (let i = 0; i < items.length; i++) {
-                        const txtValue = items[i].textContent || items[i].innerText;
-                        items[i].style.display = txtValue.toLowerCase().includes(filter) ? '' : 'none';
+                const rows = document.querySelectorAll('tbody tr');
+
+                rows.forEach(row => {
+                    const hargaAwal = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Awal
+                    const hargaAkhir = parseFloat(row.cells[9].innerText) || 0; // Kolom Harga Akhir
+                    const profitCell = row.cells[10]; // Kolom Profit
+                    
+                    // Menghitung profit dan menampilkan hasil
+                    const profitPercentage = calcProfit(hargaAwal, hargaAkhir);
+                    
+                    // Menampilkan profit dalam persen
+                    if (profitPercentage <= 25) {
+                        profitCell.innerHTML = `<span style="color: red;">${profitPercentage}%</span>`; // Tampilkan dalam warna merah jika kurang dari atau sama dengan 25%
+                    } else {
+                        profitCell.innerText = `${profitPercentage}%`; // Tampilkan hasil biasa jika profit lebih dari 25%
                     }
-                });
-            
-                customerList.addEventListener('click', function(e) {
-                    if (e.target && e.target.matches('div[data-value]')) {
-                        const selectedValue = e.target.getAttribute('data-value');
-                        const selectedText = e.target.textContent;
-            
-                        searchInput.value = selectedText;
-                        hiddenInput.value = selectedValue;
-                        customerList.style.display = 'none';
-                        selectedCustomersList.innerHTML = '<span class="selected-customer badge bg-success p-2">' + selectedText + '</span>';
+                    // Menambahkan event listener untuk tombol marketing
+                    const marketingButton = row.querySelector('.marketingButton');
+                    if (marketingButton) {
+                        marketingButton.addEventListener('click', function() {
+                            if (confirm("Apakah Anda yakin ingin mengirim?")) {
+                                if (profitPercentage > 25) {
+                                    if (confirm("Profit lebih dari 25%. Apakah Anda yakin ingin menyelesaikan pengajuan ini?")) {
+                                        $.ajax({
+                                            url: '{{ route('approveMarketing2', '') }}/' + this.dataset.id,
+                                            method: 'POST',
+                                            data: {
+                                                _token: '{{ csrf_token() }}'
+                                            },
+                                            success: function(response) {
+                                                alert(response.message);
+                                                location.reload();
+                                            },
+                                            error: function(xhr) {
+                                                alert('An error occurred: ' + xhr.responseText);
+                                            }
+                                        });
+                                    }
+                                } else {
+                                    if (confirm("Profit kurang dari atau sama dengan 25%. Apakah Anda yakin ingin mengirim ke Finance?")) {
+                                        $.ajax({
+                                            url: '{{ route('approveMarketing', '') }}/' + this.dataset.id,
+                                            method: 'POST',
+                                            data: {
+                                                _token: '{{ csrf_token() }}'
+                                            },
+                                            success: function(response) {
+                                                alert(response.message);
+                                                location.reload();
+                                            },
+                                            error: function(xhr) {
+                                                alert('An error occurred: ' + xhr.responseText);
+                                            }
+                                        });
+                                    }
+                                }
+                            } else {
+                                alert("Pengiriman dibatalkan.");
+                            }
+                        });
                     }
-                });
-            
-                searchInput.addEventListener('focus', function() {
-                    customerList.style.display = 'block';
-                });
-            
-                document.addEventListener('click', function(e) {
-                    if (!e.target.closest('.searchable-dropdown')) {
-                        customerList.style.display = 'none';
+
+                    // Menambahkan event listener untuk tombol reject
+                    const rejectButton = row.querySelector('.rejectButton');
+                    if (rejectButton) {
+                        rejectButton.addEventListener('click', function() {
+                            // Menampilkan jendela konfirmasi untuk penolakan
+                            if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
+                                $.ajax({
+                                    url: '{{ route('rejectMarketing', '') }}/' + this.dataset.id,
+                                    method: 'POST',
+                                    data: {
+                                        _token: '{{ csrf_token() }}'
+                                    },
+                                    success: function(response) {
+                                        alert(response.message);
+                                        location.reload(); // Reload halaman setelah berhasil
+                                    },
+                                    error: function(xhr) {
+                                        alert('An error occurred: ' + xhr.responseText);
+                                    }
+                                });
+                            } else {
+                                alert("Penolakan pengajuan dibatalkan.");
+                            }
+                        });
                     }
                 });
             });
-            </script>
+        </script>
 
-            <script>
-                const soInput = document.getElementById('so');
-                const submitBtn = document.getElementById('submitBtn');
-                const soError = document.getElementById('so-error');
-            
-                soInput.addEventListener('input', function () {
-                const soVal = soInput.value.trim();
-                const isValidSO = /^\d{4}$/.test(soVal);
-            
-                if (isValidSO) {
-                    submitBtn.disabled = false;
-                    soError.style.display = 'none';
-                } else {
-                    submitBtn.disabled = true;
-                    soError.style.display = 'block';
-                }
-                });
-
-                function approveMarketing(id) {
-                    $.ajax({
-                        url: '{{ route('approveMarketing', '') }}/' + id,
-                        method: 'POST',
-                        data: {
-                            '_token': '{{ csrf_token() }}' // Sertakan token CSRF
-                        },
-                        success: function(response) {
-                            Swal.fire('Success!', 'Marketing approved successfully.', 'success');
-                            location.reload(); // Reload halaman untuk melihat update
-                        },
-                        error: function(xhr) {
-                            console.error(xhr.responseText);
-                            Swal.fire('Error!', 'An error occurred while approving the Custom Request.', 'error');
-                        }
-                    });
-                }
-            </script>
-  
-  
-            
-          
-    </main>
+    </main><!-- End #main -->
 @endsection

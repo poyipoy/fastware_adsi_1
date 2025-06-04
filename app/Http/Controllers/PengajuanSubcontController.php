@@ -44,6 +44,10 @@ class PengajuanSubcontController extends Controller
     {
         // Ambil hanya pengajuan yang status_1 adalah 2, 3, 4, atau 5 dan urutkan secara descending berdasarkan created_at
         $pengajuanSubconts = MstPengajuanSubcont::whereIn('status_1', [2, 3, 4, 5])
+            ->where(function($query) {
+                $query->where('sec_line', 2)
+                      ->orWhere('sec_line', '');
+            })
             ->orderByDesc('created_at')
             ->get();
         return view('pengajuan_subcont.index_pengajuan_proc', compact('pengajuanSubconts'));
@@ -297,12 +301,21 @@ class PengajuanSubcontController extends Controller
     {
         // Mengambil data pengajuan dari model MstPengajuanSubcont
         $pengajuan = MstPengajuanSubcont::findOrFail($id);
-
-        // Update status_1 dan status_2 menjadi 2
-        $pengajuan->update([
-            'status_1' => 5,
-            'status_2' => 5
-        ]);
+        
+        // Mengecek kondisi sec_line
+        if ($pengajuan->sec_line == 2) {
+            // Update status_1 dan status_2 menjadi 2
+            $pengajuan->update([
+                'status_1' => 2,
+                'status_2' => 2
+            ]);
+        } else {
+            // Jika tidak, tetap update status_1 dan status_2 menjadi 5
+            $pengajuan->update([
+                'status_1' => 5,
+                'status_2' => 5
+            ]);
+        }
 
         // Simpan data ke model TrsPengajuanSubcont
         TrsPengajuanSubcont::create([
@@ -310,7 +323,7 @@ class PengajuanSubcontController extends Controller
             'status' => 5, // Status baru
             'modified_at' => Auth::user()->name // Mengambil nama user yang sedang login
         ]);
-
+        
         // Return response untuk AJAX
         return response()->json(['message' => 'Status berhasil diubah'], 200);
     }

@@ -115,4 +115,31 @@ class User extends Authenticatable
     {
         return $this->hasMany(DetailTcPenilaian::class, 'id_user', 'id');
     }
+
+    public function trsdbocrp()
+    {
+        return $this->hasMany(TrsDboCrp::class, 'partner', 'id');
+    }
+
+    //relasi ke model MstPengajuanSubcont
+    public function mstPengajuanSubcont()
+    {
+        return $this->hasMany(MstPengajuanSubcont::class, 'modified_at', 'id');
+    }
+    public function mstPengajuanSubconts()
+    {
+        return $this->hasMany(MstPengajuanSubcont::class, 'confirm_prod', 'id');
+    }
+    public function mstPengajuanSubconts1()
+    {
+        return $this->hasMany(MstPengajuanSubcont::class, 'approval_1', 'id');
+    }
+    public function mstPengajuanSubconts2()
+    {
+        return $this->hasMany(MstPengajuanSubcont::class, 'approval_2', 'id');
+    }
+    public function mstPengajuanSubconts3()
+    {
+        return $this->hasMany(MstPengajuanSubcont::class, 'modifiet_at', 'id');
+    }
 }

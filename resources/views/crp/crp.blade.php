@@ -235,9 +235,20 @@
                                         <td></td>
                                         <td class="font-weight-bold text-success">Actual</td>
                                         @for ($i = 1; $i <= 12; $i++)
+                                            @php
+                                                $actualValue = $actual ? $actual->{'month_' . $i} : 0;
+                                                $planValue = $plan ? $plan->{'month_' . $i} : 0;
+                                                $bgColorActual = '';
+
+                                                if ($actualValue < $planValue) {
+                                                    $bgColorActual = '#dc3545'; // Warna merah
+                                                } elseif ($actualValue > $planValue) {
+                                                    $bgColorActual = '#28a745'; // Warna hijau
+                                                }
+                                            @endphp
                                             <td>
                                                 <input type="text" class="form-control text-center" name="actual_values[{{ $category }}][{{ $i }}]"
-                                                    value="{{ $actual ? $actual->{'month_' . $i} : '' }}" disabled />
+                                                    value="{{ $actualValue }}" disabled style="background-color: {{ $bgColorActual }};">
                                             </td>
                                         @endfor
                                         <td>
@@ -253,6 +264,47 @@
                                     </tr>
                                 @endforeach
                             </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td></td>
+                                    <td class="font-weight-bold text-dark">Total Plan</td>
+                                    <td></td>
+                                    @for ($i = 1; $i <= 12; $i++)
+                                        <td>
+                                            <input type="text" class="form-control text-center font-weight-bold" 
+                                                value="{{ $mstDboCrps->where('plan_actual', 'Plan')->sum('month_' . $i) }}" readonly />
+                                        </td>
+                                    @endfor
+                                    <td>
+                                        <input type="text" class="form-control text-center font-weight-bold" 
+                                            value="{{ $mstDboCrps->where('plan_actual', 'Plan')->sum('grand_tot') }}" readonly />
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control text-center font-weight-bold" 
+                                            value="{{ $mstDboCrps->where('plan_actual', 'Plan')->sum('grand_tot') }}" readonly />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td class="font-weight-bold text-dark">Total Actual</td>
+                                    <td></td>
+                                    @for ($i = 1; $i <= 12; $i++)
+                                        <td>
+                                            <input type="text" class="form-control text-center font-weight-bold" 
+                                                value="{{ $mstDboCrps->where('plan_actual', 'Actual')->sum('month_' . $i) }}" readonly />
+                                        </td>
+                                    @endfor
+                                    <td>
+                                        <input type="text" class="form-control text-center font-weight-bold" 
+                                            value="{{ $mstDboCrps->where('plan_actual', 'Actual')->sum('grand_tot') }}" readonly />
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control text-center font-weight-bold" 
+                                            value="{{ $mstDboCrps->where('plan_actual', 'Actual')->sum('grand_tot') }}" readonly />
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
                         </table>
 
                     </div>
@@ -395,6 +447,7 @@
                                     <th>Total Cost Before</th>
                                     <th>Total Cost After</th>
                                     <th>Total Cost CRP</th>
+                                    <th>partner</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -430,6 +483,8 @@
                                                 value="{{ $row->total_cost_after }}" readonly></td>
                                         <td><input type="number" class="form-control crp" name="total_cost_crp[]"
                                                 value="{{ $row->total_cost_crp }}" readonly></td>
+                                        <!-- Atau jika Anda sudah menyiapkan relasi -->
+                                        <td>{{ $row->partners->name ?? 'Tidak Ada' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

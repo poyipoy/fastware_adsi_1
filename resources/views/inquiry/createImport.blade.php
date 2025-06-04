@@ -425,27 +425,37 @@
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-start mt-4 mb-3">
+                        @php
+                            $user = Auth::user();
+                        @endphp
+
+                        @if ($user && in_array($user->name, ['YULMAI RIDO WINANDA', 'ILHAM CHOLID','ADMINSTRATOR','JESSICA PAUNE','JUN JOHAMIN PD','ANDIK TOTOK SISWOYO']))
                         <button class="btn btn-add btn-sm me-2" data-bs-toggle="modal" data-bs-target="#inquiryImportModal">
                             <i class="bx bx-plus-medical fw-bold"> Add Import</i>
                         </button>
+                        @endif
                         {{-- <h5 class="card-title1 font-sii text-center">Data Inquiry Sales View</h5> --}}
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title fo fw-bold">Inquiry Region 1</h5>
+                            @php $user = Auth::user(); @endphp
 
-                                    @php
-                                        // Ambil pengguna yang sedang login
-                                        $user = Auth::user();
-
-                                        // Filter inquiry berdasarkan region 1 dan urutkan dari yang terbaru
-                                        $filteredInquiries = $inquiries->where('region', 1)->sortByDesc('created_at');
-
-                                    @endphp
-
-                                    @if ($user && in_array($user->id, [1, 99, 72]))
+                            {{-- Region 1 --}}
+                            @if ($user && in_array($user->name, [
+                                'YULMAI RIDO WINANDA', 
+                                'JUN JOHAMIN PD',
+                                'ADMINSTRATOR',
+                                'JESSICA PAUNE',
+                                'WULYO EKO PRASETYO',
+                                'YAN WELEM MANGINSELA',
+                                'SENDY PRABOWO'
+                                ]))
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title fo fw-bold">Inquiry Region 1</h5>
+                                        @php
+                                            $filteredInquiries = $inquiries->where('region', 1)->sortByDesc('created_at');
+                                        @endphp
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
@@ -464,7 +474,6 @@
                                                             <th scope="col">Status</th>
                                                             <th scope="col">Last Update</th>
                                                             <th scope="col">Update Time</th>
-                                                           {{-- <th scope="col">Est. Date</th> --}}
                                                             <th scope="col">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -474,11 +483,7 @@
                                                                 <th scope="row">{{ $loop->iteration }}</th>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->oldest() // Mengambil data pertama berdasarkan created_at paling lama
-                                                                            ->first();
-                                                                
-                                                                        // Format bulan dan tahun jika data ada, jika tidak tampilkan pesan default
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->oldest()->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at->format('F Y') : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
@@ -489,9 +494,8 @@
                                                                     @php
                                                                         $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
                                                                             ->where('description', 'Inquiry Approved')
-                                                                            ->orderBy('created_at', 'asc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
+                                                                            ->orderBy('created_at', 'asc')
+                                                                            ->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
@@ -509,80 +513,39 @@
                                                                         8 => 'Approve Inventory',
                                                                         9 => 'Confirm Purchasing',
                                                                     ];
-
-                                                                    // Mendefinisikan kelas tombol berdasarkan status
                                                                     $buttonClasses = [
-                                                                        1 => 'btn-secondary', // Draft
-                                                                        2 => 'btn-success', // Open
-                                                                        3 => 'btn-danger', // Approve Ka.Dept
-                                                                        4 => 'btn-info', // Approve Ka.Sie
-                                                                        5 => 'btn-warning', // On Progress
-                                                                        6 => 'btn-primary', // Finished
-                                                                        7 => 'btn-danger', // Rejected
-                                                                        8 => 'btn-danger', // Approve Inventory
-                                                                        9 => 'btn-warning', // Confirm Purchasing
+                                                                        1 => 'btn-secondary',
+                                                                        2 => 'btn-success',
+                                                                        3 => 'btn-danger',
+                                                                        4 => 'btn-info',
+                                                                        5 => 'btn-warning',
+                                                                        6 => 'btn-primary',
+                                                                        7 => 'btn-danger',
+                                                                        8 => 'btn-danger',
+                                                                        9 => 'btn-warning',
                                                                     ];
                                                                 @endphp
-
                                                                 <td class="btn-stts">
-                                                                    <button
-                                                                        class="btn btn-sm 
-                                                                            {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }} 
-                                                                            {{ $inquiry->status == 1 ? 'btn-custom-draft' : '' }}
-                                                                            {{ $inquiry->status == 2 ? 'btn-custom-open' : '' }}
-                                                                            {{ $inquiry->status == 3 ? 'btn-custom-approve-dept' : '' }}
-                                                                            {{ $inquiry->status == 4 ? 'btn-custom-approve-sie' : '' }}
-                                                                            {{ $inquiry->status == 5 ? 'btn-custom-in-progress' : '' }}
-                                                                            {{ $inquiry->status == 6 ? 'btn-custom-finished' : '' }}
-                                                                            {{ $inquiry->status == 7 ? 'btn-custom-rejected' : '' }}
-                                                                            {{ $inquiry->status == 8 ? 'btn-custom-inventory' : '' }}
-                                                                            {{ $inquiry->status == 9 ? 'btn-custom-confirm-purchasing' : '' }}">
+                                                                    <button class="btn btn-sm {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }}">
                                                                         {{ $statusDescriptions[$inquiry->status] ?? 'Unknown' }}
                                                                     </button>
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        // Ambil update progress jika ada
-                                                                        $progress = App\Models\TrxDboProgPurchase::where(
-                                                                            'inquiry_id',
-                                                                            $inquiry->id,
-                                                                        )
-                                                                            ->latest()
-                                                                            ->first();
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->latest()->first();
                                                                     @endphp
                                                                     {{ $progress ? $progress->description : 'No updates yet' }}
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->orderBy('created_at', 'desc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
                                                                 </td>
-                                                                {{-- <td>{{ $inquiry->est_date }}</td> --}}
                                                                 <td>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-edit m-1 btn-sm"
-                                                                            title="Edit">
-                                                                            <i class="bi bi-pencil-fill"
-                                                                                onclick="openEditInquiryModal({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
-                                                                    <a class="btn btn-custom-view m-1 btn-sm"
-                                                                        title="View Form"
-                                                                        href="{{ route('showFormSSimport', $inquiry->id) }}">
+                                                                    <a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="{{ route('showFormSSimport', $inquiry->id) }}">
                                                                         <i class="bi bi-eye-fill"></i>
                                                                     </a>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-delete m-1 btn-sm"
-                                                                            title="Delete">
-                                                                            <i class="bi bi-trash-fill"
-                                                                                onclick="deleteInquiry({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
                                                                 </td>
                                                             </tr>
                                                         @endforeach
@@ -590,37 +553,35 @@
                                                 </table>
                                             </div>
                                         @endif
-                                    @else
-                                        <div class="eempty">
-                                            <p class="ps-3 mt-3 text-danger">You do not have permission to view this data.
-                                            </p>
-                                        </div>
-                                    @endif
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            @endif
 
-                        <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title fo fw-bold">Inquiry Region 2</h5>
-
-                                    @php
-                                        // Ambil pengguna yang sedang login
-                                        $user = Auth::user();
-
-                                        // Filter inquiry berdasarkan region 1
-                                        $filteredInquiries = $inquiries->where('region', 2)->sortByDesc('created_at');
-                                    @endphp
-
-                                    @if ($user && in_array($user->id, [1, 99, 65]))
+                            {{-- Region 2 --}}
+                            @if ($user && in_array($user->name, [
+                                'ADMINSTRATOR',
+                                'JESSICA PAUNE',
+                                'YULMAI RIDO WINANDA', 
+                                'ILHAM CHOLID',
+                                'SONY STIAWAN',
+                                'SARAH EGA BUDI ASTUTI',
+                                'HERY HERMAWAN',
+                                'HEXAPA DARMADI',
+                                'DIMAS ADITYA PRIANDANA'
+                                ]))
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title fo fw-bold">Inquiry Region 2</h5>
+                                        @php
+                                            $filteredInquiries = $inquiries->where('region', 2)->sortByDesc('created_at');
+                                        @endphp
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
                                             </div>
                                         @else
                                             <div class="table-responsive">
-                                                <table class="table table-1" id="inquiryTable2">
+                                                <table class="table table-hover" id="inquiryTable2">
                                                     <thead>
                                                         <tr>
                                                             <th scope="col">No</th>
@@ -632,7 +593,6 @@
                                                             <th scope="col">Status</th>
                                                             <th scope="col">Last Update</th>
                                                             <th scope="col">Update Time</th>
-                                                           {{-- <th scope="col">Est. Date</th> --}}
                                                             <th scope="col">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -642,11 +602,7 @@
                                                                 <th scope="row">{{ $loop->iteration }}</th>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->oldest() // Mengambil data pertama berdasarkan created_at paling lama
-                                                                            ->first();
-                                                                
-                                                                        // Format bulan dan tahun jika data ada, jika tidak tampilkan pesan default
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->oldest()->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at->format('F Y') : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
@@ -657,9 +613,8 @@
                                                                     @php
                                                                         $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
                                                                             ->where('description', 'Inquiry Approved')
-                                                                            ->orderBy('created_at', 'asc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
+                                                                            ->orderBy('created_at', 'asc')
+                                                                            ->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
@@ -677,80 +632,39 @@
                                                                         8 => 'Approve Inventory',
                                                                         9 => 'Confirm Purchasing',
                                                                     ];
-
-                                                                    // Mendefinisikan kelas tombol berdasarkan status
                                                                     $buttonClasses = [
-                                                                        1 => 'btn-secondary', // Draft
-                                                                        2 => 'btn-success', // Open
-                                                                        3 => 'btn-danger', // Approve Ka.Dept
-                                                                        4 => 'btn-info', // Approve Ka.Sie
-                                                                        5 => 'btn-warning', // On Progress
-                                                                        6 => 'btn-primary', // Finished
-                                                                        7 => 'btn-danger', // Rejected
-                                                                        8 => 'btn-danger', // Approve Inventory
-                                                                        9 => 'btn-warning', // Confirm Purchasing
+                                                                        1 => 'btn-secondary',
+                                                                        2 => 'btn-success',
+                                                                        3 => 'btn-danger',
+                                                                        4 => 'btn-info',
+                                                                        5 => 'btn-warning',
+                                                                        6 => 'btn-primary',
+                                                                        7 => 'btn-danger',
+                                                                        8 => 'btn-danger',
+                                                                        9 => 'btn-warning',
                                                                     ];
                                                                 @endphp
-
                                                                 <td class="btn-stts">
-                                                                    <button
-                                                                        class="btn btn-sm 
-                                                                            {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }} 
-                                                                            {{ $inquiry->status == 1 ? 'btn-custom-draft' : '' }}
-                                                                            {{ $inquiry->status == 2 ? 'btn-custom-open' : '' }}
-                                                                            {{ $inquiry->status == 3 ? 'btn-custom-approve-dept' : '' }}
-                                                                            {{ $inquiry->status == 4 ? 'btn-custom-approve-sie' : '' }}
-                                                                            {{ $inquiry->status == 5 ? 'btn-custom-in-progress' : '' }}
-                                                                            {{ $inquiry->status == 6 ? 'btn-custom-finished' : '' }}
-                                                                            {{ $inquiry->status == 7 ? 'btn-custom-rejected' : '' }}
-                                                                            {{ $inquiry->status == 8 ? 'btn-custom-inventory' : '' }}
-                                                                            {{ $inquiry->status == 9 ? 'btn-custom-confirm-purchasing' : '' }}">
+                                                                    <button class="btn btn-sm {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }}">
                                                                         {{ $statusDescriptions[$inquiry->status] ?? 'Unknown' }}
                                                                     </button>
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        // Ambil update progress jika ada
-                                                                        $progress = App\Models\TrxDboProgPurchase::where(
-                                                                            'inquiry_id',
-                                                                            $inquiry->id,
-                                                                        )
-                                                                            ->latest()
-                                                                            ->first();
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->latest()->first();
                                                                     @endphp
                                                                     {{ $progress ? $progress->description : 'No updates yet' }}
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->orderBy('created_at', 'desc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
                                                                 </td>
-                                                                {{-- <td>{{ $inquiry->est_date }}</td> --}}
                                                                 <td>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-edit m-1 btn-sm"
-                                                                            title="Edit">
-                                                                            <i class="bi bi-pencil-fill"
-                                                                                onclick="openEditInquiryModal({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
-                                                                    <a class="btn btn-custom-view m-1 btn-sm"
-                                                                        title="View Form"   
-                                                                        href="{{ route('showFormSSimport', $inquiry->id) }}">
+                                                                    <a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="{{ route('showFormSSimport', $inquiry->id) }}">
                                                                         <i class="bi bi-eye-fill"></i>
                                                                     </a>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-delete m-1 btn-sm"
-                                                                            title="Delete">
-                                                                            <i class="bi bi-trash-fill"
-                                                                                onclick="deleteInquiry({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
                                                                 </td>
                                                             </tr>
                                                         @endforeach
@@ -758,37 +672,32 @@
                                                 </table>
                                             </div>
                                         @endif
-                                    @else
-                                        <div class="eempty">
-                                            <p class="ps-3 mt-3 text-danger">You do not have permission to view this data.
-                                            </p>
-                                        </div>
-                                    @endif
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            @endif
 
-                        <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title fo fw-bold">Inquiry Region 3</h5>
-
-                                    @php
-                                        // Ambil pengguna yang sedang login
-                                        $user = Auth::user();
-
-                                        // Filter inquiry berdasarkan region 1
-                                        $filteredInquiries = $inquiries->where('region', 3)->sortByDesc('created_at');
-                                    @endphp
-
-                                    @if ($user && in_array($user->id, [1, 51, 45]))
+                            {{-- Region 3 --}}
+                            @if ($user && in_array($user->name, [
+                                'ANDIK TOTOK SISWOYO',
+                                'ADMINSTRATOR',
+                                'JESSICA PAUNE',
+                                'RISFAN FAISAL',
+                                'DWI KUNTORO',
+                                'YUNASIS PALGUNADI'
+                                ]))  {{-- Pengguna yang diizinkan untuk region 3 --}}
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title fo fw-bold">Inquiry Region 3</h5>
+                                        @php
+                                            $filteredInquiries = $inquiries->where('region', 3)->sortByDesc('created_at');
+                                        @endphp
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
                                             </div>
                                         @else
                                             <div class="table-responsive">
-                                                <table class="table table-1" id="inquiryTable3">
+                                                <table class="table table-hover" id="inquiryTable3">
                                                     <thead>
                                                         <tr>
                                                             <th scope="col">No</th>
@@ -800,7 +709,6 @@
                                                             <th scope="col">Status</th>
                                                             <th scope="col">Last Update</th>
                                                             <th scope="col">Update Time</th>
-                                                           {{-- <th scope="col">Est. Date</th> --}}
                                                             <th scope="col">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -810,11 +718,7 @@
                                                                 <th scope="row">{{ $loop->iteration }}</th>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->oldest() // Mengambil data pertama berdasarkan created_at paling lama
-                                                                            ->first();
-                                                                
-                                                                        // Format bulan dan tahun jika data ada, jika tidak tampilkan pesan default
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->oldest()->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at->format('F Y') : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
@@ -825,9 +729,8 @@
                                                                     @php
                                                                         $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
                                                                             ->where('description', 'Inquiry Approved')
-                                                                            ->orderBy('created_at', 'asc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
+                                                                            ->orderBy('created_at', 'asc')
+                                                                            ->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
@@ -845,80 +748,39 @@
                                                                         8 => 'Approve Inventory',
                                                                         9 => 'Confirm Purchasing',
                                                                     ];
-
-                                                                    // Mendefinisikan kelas tombol berdasarkan status
                                                                     $buttonClasses = [
-                                                                        1 => 'btn-secondary', // Draft
-                                                                        2 => 'btn-success', // Open
-                                                                        3 => 'btn-danger', // Approve Ka.Dept
-                                                                        4 => 'btn-info', // Approve Ka.Sie
-                                                                        5 => 'btn-warning', // On Progress
-                                                                        6 => 'btn-primary', // Finished
-                                                                        7 => 'btn-danger', // Rejected
-                                                                        8 => 'btn-danger', // Approve Inventory
-                                                                        9 => 'btn-warning', // Confirm Purchasing
+                                                                        1 => 'btn-secondary',
+                                                                        2 => 'btn-success',
+                                                                        3 => 'btn-danger',
+                                                                        4 => 'btn-info',
+                                                                        5 => 'btn-warning',
+                                                                        6 => 'btn-primary',
+                                                                        7 => 'btn-danger',
+                                                                        8 => 'btn-danger',
+                                                                        9 => 'btn-warning',
                                                                     ];
                                                                 @endphp
-
                                                                 <td class="btn-stts">
-                                                                    <button
-                                                                        class="btn btn-sm 
-                                                                            {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }} 
-                                                                            {{ $inquiry->status == 1 ? 'btn-custom-draft' : '' }}
-                                                                            {{ $inquiry->status == 2 ? 'btn-custom-open' : '' }}
-                                                                            {{ $inquiry->status == 3 ? 'btn-custom-approve-dept' : '' }}
-                                                                            {{ $inquiry->status == 4 ? 'btn-custom-approve-sie' : '' }}
-                                                                            {{ $inquiry->status == 5 ? 'btn-custom-in-progress' : '' }}
-                                                                            {{ $inquiry->status == 6 ? 'btn-custom-finished' : '' }}
-                                                                            {{ $inquiry->status == 7 ? 'btn-custom-rejected' : '' }}
-                                                                            {{ $inquiry->status == 8 ? 'btn-custom-inventory' : '' }}
-                                                                            {{ $inquiry->status == 9 ? 'btn-custom-confirm-purchasing' : '' }}">
+                                                                    <button class="btn btn-sm {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }}">
                                                                         {{ $statusDescriptions[$inquiry->status] ?? 'Unknown' }}
                                                                     </button>
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        // Ambil update progress jika ada
-                                                                        $progress = App\Models\TrxDboProgPurchase::where(
-                                                                            'inquiry_id',
-                                                                            $inquiry->id,
-                                                                        )
-                                                                            ->latest()
-                                                                            ->first();
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->latest()->first();
                                                                     @endphp
                                                                     {{ $progress ? $progress->description : 'No updates yet' }}
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->orderBy('created_at', 'desc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
                                                                 </td>
-                                                                {{-- <td>{{ $inquiry->est_date }}</td> --}}
                                                                 <td>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-edit m-1 btn-sm"
-                                                                            title="Edit">
-                                                                            <i class="bi bi-pencil-fill"
-                                                                                onclick="openEditInquiryModal({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
-                                                                    <a class="btn btn-custom-view m-1 btn-sm"
-                                                                        title="View Form"
-                                                                        href="{{ route('showFormSSimport', $inquiry->id) }}">
+                                                                    <a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="{{ route('showFormSSimport', $inquiry->id) }}">
                                                                         <i class="bi bi-eye-fill"></i>
                                                                     </a>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-delete m-1 btn-sm"
-                                                                            title="Delete">
-                                                                            <i class="bi bi-trash-fill"
-                                                                                onclick="deleteInquiry({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
                                                                 </td>
                                                             </tr>
                                                         @endforeach
@@ -926,30 +788,18 @@
                                                 </table>
                                             </div>
                                         @endif
-                                    @else
-                                        <div class="eempty">
-                                            <p class="ps-3 mt-3 text-danger">You do not have permission to view this data.
-                                            </p>
-                                        </div>
-                                    @endif
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            @endif
 
-                        <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title fo fw-bold">Inquiry Region 4</h5>
-
-                                    @php
-                                        // Ambil pengguna yang sedang login
-                                        $user = Auth::user();
-
-                                        // Filter inquiry berdasarkan region 1
-                                        $filteredInquiries = $inquiries->where('region', 4)->sortByDesc('created_at');
-                                    @endphp
-
-                                    @if ($user && in_array($user->id, [1, 45]))
+                            {{-- Region 4 --}}
+                            @if ($user && in_array($user->name, ['ANDIK TOTOK SISWOYO', 'DANIA ISNAWATI','ADMINSTRATOR','JESSICA PAUNE']))  {{-- Pengguna yang diizinkan untuk region 4 --}}
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title fo fw-bold">Inquiry Region 4</h5>
+                                        @php
+                                            $filteredInquiries = $inquiries->where('region', 4)->sortByDesc('created_at');
+                                        @endphp
                                         @if ($filteredInquiries->isEmpty())
                                             <div class="eempty">
                                                 <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
@@ -968,7 +818,6 @@
                                                             <th scope="col">Status</th>
                                                             <th scope="col">Last Update</th>
                                                             <th scope="col">Update Time</th>
-                                                            {{-- <th scope="col">Est. Date</th> --}}
                                                             <th scope="col">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -978,11 +827,7 @@
                                                                 <th scope="row">{{ $loop->iteration }}</th>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->oldest() // Mengambil data pertama berdasarkan created_at paling lama
-                                                                            ->first();
-                                                                
-                                                                        // Format bulan dan tahun jika data ada, jika tidak tampilkan pesan default
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->oldest()->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at->format('F Y') : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
@@ -993,15 +838,14 @@
                                                                     @php
                                                                         $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
                                                                             ->where('description', 'Inquiry Approved')
-                                                                            ->orderBy('created_at', 'asc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
+                                                                            ->orderBy('created_at', 'asc')
+                                                                            ->first();
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
                                                                 </td>
                                                                 <td>{{ $inquiry->loc_imp }}</td>
-                                                                    @php
+                                                                @php
                                                                     $statusDescriptions = [
                                                                         1 => 'Draft',
                                                                         2 => 'Open',
@@ -1013,80 +857,39 @@
                                                                         8 => 'Approve Inventory',
                                                                         9 => 'Confirm Purchasing',
                                                                     ];
-
-                                                                    // Mendefinisikan kelas tombol berdasarkan status
                                                                     $buttonClasses = [
-                                                                        1 => 'btn-secondary', // Draft
-                                                                        2 => 'btn-success', // Open
-                                                                        3 => 'btn-danger', // Approve Ka.Dept
-                                                                        4 => 'btn-info', // Approve Ka.Sie
-                                                                        5 => 'btn-warning', // On Progress
-                                                                        6 => 'btn-primary', // Finished
-                                                                        7 => 'btn-danger', // Rejected
-                                                                        8 => 'btn-danger', // Approve Inventory
-                                                                        9 => 'btn-warning', // Confirm Purchasing
+                                                                        1 => 'btn-secondary',
+                                                                        2 => 'btn-success',
+                                                                        3 => 'btn-danger',
+                                                                        4 => 'btn-info',
+                                                                        5 => 'btn-warning',
+                                                                        6 => 'btn-primary',
+                                                                        7 => 'btn-danger',
+                                                                        8 => 'btn-danger',
+                                                                        9 => 'btn-warning',
                                                                     ];
                                                                 @endphp
-
                                                                 <td class="btn-stts">
-                                                                    <button
-                                                                        class="btn btn-sm 
-                                                                            {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }} 
-                                                                            {{ $inquiry->status == 1 ? 'btn-custom-draft' : '' }}
-                                                                            {{ $inquiry->status == 2 ? 'btn-custom-open' : '' }}
-                                                                            {{ $inquiry->status == 3 ? 'btn-custom-approve-dept' : '' }}
-                                                                            {{ $inquiry->status == 4 ? 'btn-custom-approve-sie' : '' }}
-                                                                            {{ $inquiry->status == 5 ? 'btn-custom-in-progress' : '' }}
-                                                                            {{ $inquiry->status == 6 ? 'btn-custom-finished' : '' }}
-                                                                            {{ $inquiry->status == 7 ? 'btn-custom-rejected' : '' }}
-                                                                            {{ $inquiry->status == 8 ? 'btn-custom-inventory' : '' }}
-                                                                            {{ $inquiry->status == 9 ? 'btn-custom-confirm-purchasing' : '' }}">
+                                                                    <button class="btn btn-sm {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }}">
                                                                         {{ $statusDescriptions[$inquiry->status] ?? 'Unknown' }}
                                                                     </button>
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        // Ambil update progress jika ada
-                                                                        $progress = App\Models\TrxDboProgPurchase::where(
-                                                                            'inquiry_id',
-                                                                            $inquiry->id,
-                                                                        )
-                                                                            ->latest()
-                                                                            ->first();
+                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)->latest()->first();
                                                                     @endphp
                                                                     {{ $progress ? $progress->description : 'No updates yet' }}
                                                                 </td>
                                                                 <td>
                                                                     @php
-                                                                        $progress = App\Models\TrxDboProgPurchase::where('inquiry_id', $inquiry->id)
-                                                                            ->orderBy('created_at', 'desc') // Mengurutkan dari yang paling lama
-                                                                            ->first(); // Ambil data pertama (paling lama)
-                                                                
                                                                         $lastUpdateMessage = $progress ? $progress->created_at : 'No updates yet';
                                                                     @endphp
                                                                     {{ $lastUpdateMessage }}
                                                                 </td>
-                                                                {{-- <td>{{ $inquiry->est_date }}</td> --}}
                                                                 <td>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-edit m-1 btn-sm"
-                                                                            title="Edit">
-                                                                            <i class="bi bi-pencil-fill"
-                                                                                onclick="openEditInquiryModal({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
-                                                                    <a class="btn btn-custom-view m-1 btn-sm"
-                                                                        title="View Form"
-                                                                        href="{{ route('showFormSSimport', $inquiry->id) }}">
+                                                                    <a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="{{ route('showFormSSimport', $inquiry->id) }}">
                                                                         <i class="bi bi-eye-fill"></i>
                                                                     </a>
-                                                                    {{-- @if ($inquiry->status == 1)
-                                                                        <a class="btn btn-custom-delete m-1 btn-sm"
-                                                                            title="Delete">
-                                                                            <i class="bi bi-trash-fill"
-                                                                                onclick="deleteInquiry({{ $inquiry->id }})"></i>
-                                                                        </a>
-                                                                    @endif --}}
                                                                 </td>
                                                             </tr>
                                                         @endforeach
@@ -1094,16 +897,10 @@
                                                 </table>
                                             </div>
                                         @endif
-                                    @else
-                                        <div class="eempty">
-                                            <p class="ps-3 mt-3 text-danger">You do not have permission to view this data.
-                                            </p>
-                                        </div>
-                                    @endif
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
-                    </div>
 
                     <!-- Modal Add-->
                     <div class="modal fade" id="inquiryImportModal" tabindex="-1" aria-labelledby="inquiryModalLabel"
@@ -1156,7 +953,25 @@
                                             <div class="position-relative">
                                                 <select class="form-select" id="id_region" name="region" required>
                                                     <option value="" disabled selected>Pilih Region</option>
-                                                    @foreach ([1, 2, 3, 4] as $region)
+                                                    @php
+                                                        $user = Auth::user();
+                                                        $allowedRegions = [];
+
+                                                        // Menentukan region yang bisa diakses berdasarkan nama pengguna
+                                                        if (in_array($user->name, ['JUN JOHAMIN PD' ,'ADMINSTRATOR','JESSICA PAUNE'])) {
+                                                            $allowedRegions[] = 1; // Region 1
+                                                        }
+                                                        if (in_array($user->name, ['YULMAI RIDO WINANDA', 'ILHAM CHOLID','ADMINSTRATOR','JESSICA PAUNE'])) {
+                                                            $allowedRegions[] = 2; // Region 2
+                                                        }
+                                                        if (in_array($user->name, ['ANDIK TOTOK SISWOYO','ADMINSTRATOR ','JESSICA PAUNE'])) {
+                                                            $allowedRegions[] = 3; // Region 3
+                                                        }
+                                                        if (in_array($user->name, ['ANDIK TOTOK SISWOYO', 'DANIA ISNAWATI','ADMINSTRATOR','JESSICA PAUNE'])) {
+                                                            $allowedRegions[] = 4; // Region 4
+                                                        }
+                                                    @endphp
+                                                    @foreach ($allowedRegions as $region)
                                                         <option value="{{ $region }}"
                                                             {{ old('region', $inquiry->region ?? '') == $region ? 'selected' : '' }}>
                                                             Region {{ $region }}

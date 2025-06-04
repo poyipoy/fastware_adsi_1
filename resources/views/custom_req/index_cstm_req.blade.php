@@ -59,11 +59,47 @@
                 /* Ukuran font seragam */
             }
 
+            .btn-blue {
+            background-color: #0ea5e9;
+            color: white;
+            }
+            .btn-blue:hover,
+            .btn-blue:focus {
+            background-color: #0284c7;
+            color: white;
+            }
+            .btn-green {
+            background-color: #15803d;
+            color: white;
+            }
+            .btn-green:hover,
+            .btn-green:focus {
+            background-color: #166534;
+            color: white;
+            }
+            .btn-yellow {
+            background-color: #d97706;
+            color: white;
+            }
+            .btn-yellow:hover,
+            .btn-yellow:focus {
+            background-color: #b45309;
+            color: white;
+            }
+            .btn .icon {
+            margin-right: 6px;
+            }
+            @media (max-width: 576px) {
+            h2 {
+                font-size: 1rem;
+            }
+            table {
+                font-size: 0.85rem;
+            }
             .btn {
-                padding: 8px;
-                /* Sesuaikan ukuran tombol */
-                margin-left: 5px;
-                /* Jarak antara input dan tombol */
+                font-size: 0.75rem;
+                padding: 0.25rem 0.5rem;
+            }
             }
 
             /* Dropdown Input Styling */
@@ -443,7 +479,11 @@
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">Tampilan Data Pengajuan Custom</h5>
-                            
+                            <div class="d-flex align-item-center justify-content-start mt-4 mb-3">
+                                <button class="btn btn-add btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+                                    <i class="bi bi-plus-circle"> Add Request Custom</i>
+                                </button>
+                            </div>
                             <!-- Table with stripped rows -->
                             <div class="table-responsive" style="height: 100%; overflow-y: auto;">
                                 <table class="datatable table">
@@ -457,7 +497,7 @@
                                             <th class="text-center" width="100px">Jenis Proses</th>
                                             <th class="text-center" width="100px">Tgl Pengajuan</th>
                                             <th class="text-center" width="100px">Status</th>
-                                            <th class="text-center" width="100px">Cost Process</th>
+                                            <th class="text-center" width="100px">Cost Production</th>
                                             <th class="text-center" width="100px">Selling Price</th>
                                             <th class="text-center" width="100px">Profit (%)</th>
                                             <th class="text-center" width="100px">Custom</th>
@@ -466,6 +506,9 @@
                                             <th class="text-center" width="100px">Finance Dept Head</th>
                                             <th class="text-center" width="100px">Finance Approval</th>
                                             <th class="text-center" width="100px">Aksi</th>
+                                            @if (auth()->user()->name == 'RAGIL ISHA RAHMANTO')
+                                            <th class="text-center" width="100px">Quotation Subcont</th>
+                                            @endif
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -486,25 +529,25 @@
                                                             1 => ['bg' => 'bg-secondary', 'label' => 'Draft'], // Abu-abu
                                                             2 => ['bg' => 'bg-primary', 'label' => 'Open'], // Hijau
                                                             3 => ['bg' => 'bg-warning', 'label' => 'On Progress'], // Kuning
-                                                            4 => ['bg' => 'bg-warning', 'label' => 'On Progress 2'], // Oren
+                                                            4 => ['bg' => 'bg-warning', 'label' => 'On Progress'], // Kuning (sama dengan status 3)
                                                             5 => ['bg' => 'bg-info', 'label' => 'Finish'], // Biru Muda
                                                         ];
 
-                                                        // Menentukan status saat ini
-                                                        if ($pengajuan->sec_line == 2) {
+                                                        // Menentukan status saat ini berdasarkan sec_line
+                                                        if ($pengajuan->sec_line == 1) {
+                                                            // Jika sec_line == 1
                                                             switch ($pengajuan->status_1) {
                                                                 case 1:
                                                                     $currentStatus = $statusClasses[1]; // Draf
                                                                     break;
                                                                 case 2:
-                                                                    // Status Open tidak ada, atur menjadi Status Tidak Tersedia
-                                                                    $currentStatus = ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
+                                                                    $currentStatus = $statusClasses[2]; // Open
                                                                     break;
                                                                 case 3:
                                                                     $currentStatus = $statusClasses[3]; // On Progress
                                                                     break;
                                                                 case 4:
-                                                                    $currentStatus = $statusClasses[4]; // On Progress 2
+                                                                    $currentStatus = $statusClasses[4]; // On Progress
                                                                     break;
                                                                 case 5:
                                                                     $currentStatus = $statusClasses[5]; // Finish
@@ -513,8 +556,24 @@
                                                                     $currentStatus = ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
                                                             }
                                                         } else {
-                                                            // Menentukan status untuk kondisi lainnya
-                                                            $currentStatus = $statusClasses[$pengajuan->status_1] ?? ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
+                                                            // Jika sec_line == 2
+                                                            switch ($pengajuan->status_1) {
+                                                                case 1:
+                                                                case 2:
+                                                                    $currentStatus = $statusClasses[2]; // Open
+                                                                    break;
+                                                                case 3:
+                                                                    $currentStatus = $statusClasses[3]; // On Progress
+                                                                    break;
+                                                                case 4:
+                                                                    $currentStatus = $statusClasses[4]; // On Progress
+                                                                    break;
+                                                                case 5:
+                                                                    $currentStatus = $statusClasses[5]; // Finish
+                                                                    break;
+                                                                default:
+                                                                    $currentStatus = ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
+                                                            }
                                                         }
                                                     @endphp
                                                     <span class="badge {{ $currentStatus['bg'] }}" style="font-size: 14px;">
@@ -522,16 +581,29 @@
                                                     </span>
                                                 </td>
                                                 <td class="text-center">{{ $pengajuan->harga_awal }}</td>
-                                                <td class="text-center">{{ $pengajuan->harga_akhir }}</td>  
-                                                <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>                                            
+                                                <td class="text-center">{{ $pengajuan->harga_akhir }}</td>         
+                                                <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>                                       
                                                 <td class="text-center">{{ $pengajuan->confirm_prod ? $pengajuan->production->name : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->marketing ? $pengajuan->marketing->name : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->date_app_1 ? $pengajuan->date_app_1 : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->finance ? $pengajuan->finance->name : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->date_app_2 ? $pengajuan->date_app_2 : '' }}</td>
-                                                <td class="text-center d-flex gap-3 justify-content-center flex-wrap">
-                                                    {{-- Tombol Lihat --}}
-                                                        @if (auth()->user()->name == $pengajuan->modified_at)
+                                                <td class="text-center">
+                                                    <div class="d-flex justify-content-center align-items-center">
+                                                        {{-- Tombol Lihat --}}
+
+                                                        @if (auth()->id() == 1)
+                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
+                                                                <i class="fas fa-eye"></i> Lihat
+                                                            </a>
+                                                            {{-- @if ($pengajuan->status_1 == 2 && $pengajuan->sec_line == 1)
+                                                            <button type="button" class="btn btn-yellow btn-sm d-inline-flex align-items-center" 
+                                                                onclick="konfirmasiKirim('{{ route('kirimsubcont', $pengajuan->id) }}', 'Subcont')">
+                                                                <i class="fas fa-paper-plane"></i> Subcont
+                                                            </button>
+                                                            @endif --}}
+                                                            
+                                                        @elseif (auth()->user()->name == $pengajuan->modified_at)
                                                             {{-- Jika user adalah sales dan statusnya draft --}}
                                                             <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
                                                                 <i class="fas fa-eye"></i> Lihat
@@ -541,19 +613,39 @@
                                                                 <i class="fas fa-eye"></i> Lihat
                                                             </a>
                                                         @endif
-                                                    
-                                                    {{-- Tombol Kirim ke Production --}}
-                                                    <button type="button" class="btn btn-sm btn-success btn-hover" id="productionButton" data-id="{{ $pengajuan->id }}">
-                                                        <i class="fas fa-paper-plane"></i> Finish
-                                                    </button>
-
-                                                    {{-- Tombol Reject --}}
-                                                    <button type="button" class="btn btn-sm btn-danger btn-hover" id="rejectButton" data-id="{{ $pengajuan->id }}">
-                                                        <i class="fas fa-times-circle"></i> Reject
-                                                    </button>
+                                                        {{-- @if ($pengajuan->status_1 == 1)
+                                                            <button type="button" class="btn btn-green btn-sm d-inline-flex align-items-center me-2" 
+                                                                onclick="konfirmasiKirim('{{ route('kirimproduction', $pengajuan->id) }}', 'Production')">
+                                                                <i class="fas fa-paper-plane"></i> Submit
+                                                            </button>
+                                                        @endif --}}
+                                                        @if ($pengajuan->status_1 == 2 && auth()->user()->name == 'RAGIL ISHA RAHMANTO' && $pengajuan->sec_line == 1)
+                                                            <button type="button" class="btn btn-yellow btn-sm d-inline-flex align-items-center" 
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#modalKeterangan" 
+                                                                    data-id="{{ $pengajuan->id }}"> <!-- Tambahkan data-id -->
+                                                                <i class="fas fa-paper-plane"></i> Subcont
+                                                            </button>
+                                                        @endif
+                                                    </div>
                                                 </td>
-
-                                                
+                                                @if (auth()->user()->name == 'RAGIL ISHA RAHMANTO')
+                                                <td class="text-center align-middle">
+                                                    @if ($pengajuan->quotation_file)
+                                                        <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank" 
+                                                           class="d-inline-block p-3 bg-white rounded border shadow-sm text-decoration-none" 
+                                                           style="color: inherit; transition: transform 0.2s ease;" 
+                                                           onmouseover="this.style.transform='scale(1.05)'" 
+                                                           onmouseout="this.style.transform='scale(1)'"
+                                                           data-bs-toggle="tooltip" title="Click to view or download the quotation file">
+                                                            <i class="fas fa-file-pdf fa-2x text-danger mb-1"></i>
+                                                            <p class="mb-0 fw-bold">View Quotation</p>
+                                                        </a>
+                                                    @else
+                                                        <span class="text-muted fst-italic">Quotation belum tersedia</span>
+                                                    @endif
+                                                </td>
+                                                @endif
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -563,6 +655,61 @@
                     </div>
                 </div>
             </div>
+
+            <div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form action="{{ route('CustomRequest.store') }}" method="POST">
+                        @csrf
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Form Request Quotation</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Customer</label>
+                                    <input type="text" name="customer" class="form-control" placeholder="Masukkan Nama Customer..." required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Nama Project</label>
+                                    <input type="text" name="nama_project" class="form-control" placeholder="Masukkan Nama Project..." required>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">Simpan</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="modal fade" id="modalKeterangan" tabindex="-1" role="dialog" aria-labelledby="modalKeteranganLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalKeteranganLabel">Input Keterangan dan Jenis Proses</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="keteranganInput">Keterangan</label>
+                                <input type="text" class="form-control" id="keteranganInput" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="jenisProcessInput">Jenis Proses Subcont</label>
+                                <input type="text" class="form-control" id="jenisProcessInput" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                            <button type="button" class="btn btn-primary" id="submitKirim">Kirim</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <form id="formKirim" method="POST" style="display:none;">
                 @csrf
             </form>
@@ -583,6 +730,7 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script>
+
             function konfirmasiKirim(url, tujuan) {
                 if (confirm(`Anda yakin ingin mengirim data ke bagian ${tujuan}?`)) {
                     const form = document.getElementById('formKirim');
@@ -590,68 +738,11 @@
                     form.submit();
                 }
             }
-
-            // Inisialisasi DataTable
+            //datatabelSales
             $(document).ready(function() {
                 new DataTable('#viewPoSecHead');
-
-                // Event listener untuk tombol "Finish"
-                $('#productionButton').on('click', function() {
-                    var pengajuanId = $(this).data('id');
-                    // Menampilkan jendela konfirmasi
-                    if (confirm("Apakah Anda yakin ingin mengirim ke Finance?")) {
-                        // Kirim permintaan AJAX
-                        $.ajax({
-                            url: '{{ route('approveFinance', '') }}/' + pengajuanId, // Rute dengan ID yang dinamis
-                            method: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
-                            },
-                            success: function(response) {
-                                // Menampilkan pesan sukses
-                                alert(response.message);
-                                location.reload(); // Reload halaman setelah berhasil
-                            },
-                            error: function(xhr) {
-                                // Menangani error
-                                alert('An error occurred: ' + xhr.responseText);
-                            }
-                        });
-                    } else {
-                        // Jika pengguna mengklik "Cancel"
-                        alert("Pengiriman dibatalkan.");
-                    }
-                });
-                
-                // Event listener untuk tombol "Reject" (tambahkan jika ada)
-                $('#rejectButton').on('click', function() {
-                    var pengajuanId = $(this).data('id');
-                    // Menampilkan jendela konfirmasi untuk penolakan
-                    if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
-                        $.ajax({
-                            url: '{{ route('rejectFinance', '') }}/' + pengajuanId, // Rute untuk menolak pengajuan
-                            method: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
-                            },
-                            success: function(response) {
-                                // Menampilkan pesan sukses
-                                alert(response.message);
-                                location.reload(); // Reload halaman setelah berhasil
-                            },
-                            error: function(xhr) {
-                                // Menangani error
-                                alert('An error occurred: ' + xhr.responseText);
-                            }
-                        });
-                    } else {
-                        // Jika pengguna membatalkan
-                        alert("Penolakan pengajuan dibatalkan.");
-                    }
-                });
             });
-            
-            // Fungsi untuk menghitung profit persentase
+
             function calcProfit(hargaAwal, hargaAkhir) {
                 if (hargaAkhir > 0) {
                     let profit = ((hargaAkhir - hargaAwal) / hargaAkhir) * 100;
@@ -666,6 +757,51 @@
                     };
                 }
             }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                // Ambil ID dari tombol saat modal dibuka
+                $('#modalKeterangan').on('show.bs.modal', function(event) {
+                    const button = $(event.relatedTarget); // Tombol yang memicu modal
+                    const idPengajuan = button.data('id'); // Ambil ID dari data-id
+                    // Simpan ID ini untuk digunakan dalam pengiriman data
+                    $(this).data('pengajuanId', idPengajuan);
+                });
+
+                document.getElementById('submitKirim').addEventListener('click', function() {
+                    const keterangan = document.getElementById('keteranganInput').value.trim();
+                    const jenisProcess = document.getElementById('jenisProcessInput').value.trim();
+                    const idPengajuan = $('#modalKeterangan').data('pengajuanId'); // Ambil ID dari modal
+                    const route = '{{ route('kirimsubcont', '') }}' + '/' + idPengajuan; // Gabungkan dengan ID untuk route
+
+                    // Validasi input
+                    if (!keterangan || !jenisProcess) {
+                        alert('Silakan lengkapi keterangan dan jenis proses.');
+                        return; // Hentikan eksekusi jika input tidak lengkap
+                    }
+
+                    // Lakukan pengiriman data menggunakan fetch
+                    fetch(route, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}' // Token CSRF
+                        },
+                        body: JSON.stringify({
+                            keterangan: keterangan,
+                            jenis_process_subcont: jenisProcess
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        $('#modalKeterangan').modal('hide'); // Menutup modal
+                        alert(data.message); // Menampilkan pesan sukses
+                        location.reload(); // Reload halaman setelah pengiriman sukses
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                    });
+                });
+            });
 
             // Menjalankan perhitungan profit saat halaman dimuat
             document.addEventListener('DOMContentLoaded', function() {

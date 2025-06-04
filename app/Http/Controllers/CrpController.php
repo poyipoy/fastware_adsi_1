@@ -20,23 +20,27 @@ use Illuminate\Support\Facades\Log;
 
 class CrpController extends Controller
 {
+
     public function index()
     {
         $userName = Auth::user()->name;
 
-        // Mengambil data dari model MstDboCrp
         $mstDboCrps = MstDboCrp::where('partner_user', Auth::user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Mengambil data dari model TrsDboCrp berdasarkan mst_id
         $mstIds = $mstDboCrps->pluck('id')->toArray();
-        $trsDboCrps = TrsDboCrp::whereIn('mst_id', $mstIds)
+
+        $trsDboCrps = TrsDboCrp::with('partners')
+            ->whereIn('mst_id', $mstIds)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('crp.crp', compact('mstDboCrps', 'trsDboCrps', 'userName'));
+        $users = User::all(); // Tambahkan baris ini
+
+        return view('crp.crp', compact('mstDboCrps', 'trsDboCrps', 'userName', 'users'));
     }
+
 
     public function create()
     {
@@ -99,78 +103,84 @@ class CrpController extends Controller
 
 
     public function store(Request $request)
-    {
-        // Validasi input
-        $validated = $request->validate([
-            'summaryData' => 'required|array',
-        ]);
+{
+    // Validasi input
+    $validated = $request->validate([
+        'summaryData' => 'required|array',
+    ]);
+    
+    // Mengambil summaryData dari request
+    $summaryData = $request->input('summaryData');
 
-        $summaryData = $request->input('summaryData');
-
-        foreach ($summaryData as $nm_category => $entry) {
-            if (!isset($entry['plan_values']) || !is_array($entry['plan_values'])) {
-                continue;
-            }
-
-            // Data umum
-            $commonData = [
-                'month_1'     => $entry['plan_values'][0] ?? 0,
-                'month_2'     => $entry['plan_values'][1] ?? 0,
-                'month_3'     => $entry['plan_values'][2] ?? 0,
-                'month_4'     => $entry['plan_values'][3] ?? 0,
-                'month_5'     => $entry['plan_values'][4] ?? 0,
-                'month_6'     => $entry['plan_values'][5] ?? 0,
-                'month_7'     => $entry['plan_values'][6] ?? 0,
-                'month_8'     => $entry['plan_values'][7] ?? 0,
-                'month_9'     => $entry['plan_values'][8] ?? 0,
-                'month_10'    => $entry['plan_values'][9] ?? 0,
-                'month_11'    => $entry['plan_values'][10] ?? 0,
-                'month_12'    => $entry['plan_values'][11] ?? 0,
-                'grand_tot'   => $entry['plan_ytd'] ?? 0,
-                'partner_user'=> Auth::id(),
-            ];
-
-            // Update or Create untuk Plan
-            MstDboCrp::updateOrCreate(
-                [
-                    'nm_category'  => $nm_category,
-                    'plan_actual'  => 'Plan',
-                    'partner_user' => Auth::id(),
-                ],
-                $commonData
-            );
-
-            // Create sekali untuk Actual jika belum ada
-            MstDboCrp::firstOrCreate(
-                [
-                    'nm_category'  => $nm_category,
-                    'plan_actual'  => 'Actual',
-                    'partner_user' => Auth::id(),
-                ],
-                // Default value saat dibuat (kosong semua)
-                [
-                    'month_1'     => 0,
-                    'month_2'     => 0,
-                    'month_3'     => 0,
-                    'month_4'     => 0,
-                    'month_5'     => 0,
-                    'month_6'     => 0,
-                    'month_7'     => 0,
-                    'month_8'     => 0,
-                    'month_9'     => 0,
-                    'month_10'    => 0,
-                    'month_11'    => 0,
-                    'month_12'    => 0,
-                    'grand_tot'   => 0,
-                ]
-            );
+    // Loop untuk setiap kategori dalam summaryData
+    foreach ($summaryData as $nm_category => $entry) {
+        // Pastikan bahwa data plan_values dan actual_values ada
+        if (!isset($entry['plan_values']) || !isset($entry['actual_values']) || !is_array($entry['plan_values']) || !is_array($entry['actual_values'])) {
+            continue; // Lewati jika tidak valid
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Data berhasil disimpan.'
-        ]);
+        // Data yang akan disimpan untuk plan
+        $commonPlanData = [
+            'month_1'     => $entry['plan_values'][0] ?? 0,
+            'month_2'     => $entry['plan_values'][1] ?? 0,
+            'month_3'     => $entry['plan_values'][2] ?? 0,
+            'month_4'     => $entry['plan_values'][3] ?? 0,
+            'month_5'     => $entry['plan_values'][4] ?? 0,
+            'month_6'     => $entry['plan_values'][5] ?? 0,
+            'month_7'     => $entry['plan_values'][6] ?? 0,
+            'month_8'     => $entry['plan_values'][7] ?? 0,
+            'month_9'     => $entry['plan_values'][8] ?? 0,
+            'month_10'    => $entry['plan_values'][9] ?? 0,
+            'month_11'    => $entry['plan_values'][10] ?? 0,
+            'month_12'    => $entry['plan_values'][11] ?? 0,
+            'grand_tot'   => $entry['plan_ytd'] ?? 0,
+            'partner_user'=> Auth::id(),
+        ];
+
+        // Update or Create untuk Plan
+        MstDboCrp::updateOrCreate(
+            [
+                'nm_category'  => $nm_category,
+                'plan_actual'  => 'Plan',
+                'partner_user' => Auth::id(),
+            ],
+            $commonPlanData
+        );
+
+        // Data yang akan disimpan untuk Actual
+        $commonActualData = [
+            'month_1'     => $entry['actual_values'][0] ?? 0,
+            'month_2'     => $entry['actual_values'][1] ?? 0,
+            'month_3'     => $entry['actual_values'][2] ?? 0,
+            'month_4'     => $entry['actual_values'][3] ?? 0,
+            'month_5'     => $entry['actual_values'][4] ?? 0,
+            'month_6'     => $entry['actual_values'][5] ?? 0,
+            'month_7'     => $entry['actual_values'][6] ?? 0,
+            'month_8'     => $entry['actual_values'][7] ?? 0,
+            'month_9'     => $entry['actual_values'][8] ?? 0,
+            'month_10'    => $entry['actual_values'][9] ?? 0,
+            'month_11'    => $entry['actual_values'][10] ?? 0,
+            'month_12'    => $entry['actual_values'][11] ?? 0,
+            'grand_tot'   => $entry['actual_ytd'] ?? 0,
+            'partner_user'=> Auth::id(),
+        ];
+
+        // Update or Create untuk Actual
+        MstDboCrp::updateOrCreate(
+            [
+                'nm_category'  => $nm_category,
+                'plan_actual'  => 'Actual',
+                'partner_user' => Auth::id(),
+            ],
+            $commonActualData
+        );
     }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Data berhasil disimpan.'
+    ]);
+}
 
     public function exportMstActual()
     {
@@ -309,6 +319,7 @@ class CrpController extends Controller
                     'total_cost_before' => $row['total_cost_before'] ?? 0,
                     'total_cost_after' => $row['total_cost_after'] ?? 0,
                     'total_cost_crp' => $newTotalCostCrp,
+                    'partner' => $userId,
                 ];
 
                 if (!empty($row['id'])) {

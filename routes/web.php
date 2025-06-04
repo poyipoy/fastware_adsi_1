@@ -533,7 +533,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/download-file/{id}', [PoPengajuanController::class, 'downloadFile'])->name('download.file');
     Route::get('/get-data', [PoPengajuanController::class, 'getData'])->name('getData');
 
-    Route::get('/dashboardFPB', [PoPengajuanController::class, 'dashboardFPB'])->name('dashboardFPB');
+    Route::get('/dashboardFPB', [PoPengajuanController::class, 'dashboardCombined'])->name('dashboardFPB');
 
 
     //E-Mading Adasi
@@ -566,9 +566,26 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/materials/store', [CustomRequestController::class, 'createCstmReq'])->name('CustomRequest.store');
     Route::post('/materials/delete', [CustomRequestController::class, 'deleteCstmReq'])->name('CustomRequest.delete');
     Route::put('/materials/update/{id}', [CustomRequestController::class, 'updateCstmReq'])->name('CustomRequest.update');
+    Route::get('/custom-request/form/{id}', [CustomRequestController::class, 'formCstmReq'])->name('CustomRequest.form');
+    Route::get('/custom-request/form-Sales/{id}', [CustomRequestController::class, 'formCstmReqSales'])->name('CustomRequest.formSales');
+    Route::post('/custom-request/update/{id}', [CustomRequestController::class, 'inputCstmReq'])->name('CustomRequest.updateCstmReq');
+    Route::post('/custom-request/update/harga-akhir/{id}', [CustomRequestController::class, 'inputhrgakhr'])->name('CustomRequest.hargaakhir');
     Route::get('/custom-request/approve-marketing-cstmreq', [CustomRequestController::class, 'showApprovalMarketing'])->name('showApproveMarketing');
     Route::post('/custom-request/marketing-approved/{id}', [CustomRequestController::class, 'approveMarketing'])->name('approveMarketing');
+    Route::post('/custom-request/marketing-approved-2/{id}', [CustomRequestController::class, 'approveMarketing2'])->name('approveMarketing2');
+    Route::post('/custom-request/marketing-rejected/{id}', [CustomRequestController::class, 'rejectMarketing'])->name('rejectMarketing');
     Route::get('/custom-request/approve-finance-cstmreq', [CustomRequestController::class, 'showApprovalFinance'])->name('showApproveFinance');
     Route::post('/custom-request/finance-approved/{id}', [CustomRequestController::class, 'approveFinance'])->name('approveFinance');
-
+    Route::post('/custom-request/finance-rejected/{id}', [CustomRequestController::class, 'rejectFinance'])->name('rejectFinance');
+    Route::post('/custom-request/approved-production/{id}', [CustomRequestController::class, 'approveProduction'])->name('approvedProduction');
+    Route::post('/custom-request/file/upload/{id}', [CustomRequestController::class, 'upload'])->name('cstm.fileupload');
+    Route::get('/custom-request/file/download/{id}', [CustomRequestController::class, 'download'])->name('file.download');
+    Route::post('/custom-request/file/approve/{id}', [CustomRequestController::class, 'fileapprove'])->name('cstm.fileapprove');
+    Route::post('/custom-request/file/rejected/{id}', [CustomRequestController::class, 'filerejected'])->name('cstm.filerejected');
+    Route::post('/custom-request/file/rejected-sales/{id}', [CustomRequestController::class, 'filerejectedsales'])->name('cstm.filerejectedsales');
+    Route::post('/custom-request/subcont-send/{id}', [CustomRequestController::class, 'kirimsubcont'])->name('kirimsubcont');
+    Route::post('/custom-request/production-send/{id}', [CustomRequestController::class, 'kirimproduction'])->name('kirimproduction');
+    Route::post('/custom-request/submit-send/{id}', [CustomRequestController::class, 'submitproduction'])->name('SubmitProduction');
+    Route::post('/custom-request/rejected-production/{id}', [CustomRequestController::class, 'rejectproduction'])->name('RejectProduction');
+    Route::post('/custom-request/submit-quotation/{id}', [CustomRequestController::class, 'submitData'])->name('submit.quotation');
 });

@@ -30,6 +30,6 @@ class Customer extends Model
     }
     public function customreq(): HasMany
     {
-        return $this->hasMany(CustomDboReq::class);
+        return $this->hasMany(MstPengajuanSubcont::class);
     }
 }

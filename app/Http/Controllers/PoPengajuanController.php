@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -13,6 +13,8 @@ use App\Models\InquirySales;
 use Illuminate\Support\Carbon;
 use ZipArchive;
 use Illuminate\Support\Facades\Auth;
+use App\Models\MstDboCrp;
+use App\Models\TrsDboCrp;
 
 class PoPengajuanController extends Controller
 {
@@ -426,6 +428,522 @@ class PoPengajuanController extends Controller
             'monthlyData1' => $monthlyData1,
             'totalinquiry' => $totalinquiry,
         ]);
+    }
+
+
+
+
+    public function dashboardcrp()
+    {
+        $user = Auth::user();
+        $userName = $user->name;
+
+        // Daftar kategori
+        $allCategories = [
+            'IT', 'Subcont', 'Consumable', 'Repair Maintenance', 'Utility',
+            'General Affair', 'Material Cost', 'Indirect Material', 'Others',
+        ];
+        $categories = array_merge(['Total'], $allCategories);
+
+        // Ambil data berdasarkan user
+        $mstDboCrps = MstDboCrp::where('partner_user', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $actuals = MstDboCrp::where('partner_user', $user->id)
+            ->where('plan_actual', 'Actual')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $plans = MstDboCrp::where('partner_user', $user->id)
+            ->where('plan_actual', 'Plan')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $mstIds = $mstDboCrps->pluck('id')->toArray();
+        $trsDboCrps = TrsDboCrp::whereIn('mst_id', $mstIds)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Inisialisasi array
+        $monthlyActuals = [];
+        $monthlyPlans = [];
+        $monthlyPlanCumulative = [];
+        $monthlyActualCumulative = [];
+        $grandTotalComparison = [];
+
+        foreach ($categories as $cat) {
+            $monthlyActuals[$cat] = array_fill(0, 12, 0);
+            $monthlyPlans[$cat] = array_fill(0, 12, 0);
+            $monthlyPlanCumulative[$cat] = array_fill(0, 12, 0);
+            $monthlyActualCumulative[$cat] = array_fill(0, 12, 0);
+            $grandTotalComparison[$cat] = ['Plan' => 0, 'Actual' => 0];
+        }
+
+        // Proses data actual
+        foreach ($actuals as $item) {
+            $cat = $item->nm_category;
+            for ($i = 1; $i <= 12; $i++) {
+                $val = $item->{"month_$i"} ?? 0;
+                $monthlyActuals[$cat][$i - 1] += $val;
+                $monthlyActuals['Total'][$i - 1] += $val;
+            }
+            $grandTotalComparison[$cat]['Actual'] += $item->grand_tot ?? 0;
+            $grandTotalComparison['Total']['Actual'] += $item->grand_tot ?? 0;
+        }
+
+        // Proses data plan (tanpa rata-rata)
+        foreach ($plans as $item) {
+            $cat = $item->nm_category;
+            for ($i = 1; $i <= 12; $i++) {
+                $val = $item->{"month_$i"} ?? 0;
+                $monthlyPlans[$cat][$i - 1] += $val;
+                $monthlyPlans['Total'][$i - 1] += $val;
+            }
+            $grandTotalComparison[$cat]['Plan'] += $item->grand_tot ?? 0;
+            $grandTotalComparison['Total']['Plan'] += $item->grand_tot ?? 0;
+        }
+
+        // Hitung data kumulatif
+        foreach ($categories as $cat) {
+            $cumulativePlan = 0;
+            $cumulativeActual = 0;
+            for ($month = 0; $month < 12; $month++) {
+                $cumulativePlan += $monthlyPlans[$cat][$month];
+                $cumulativeActual += $monthlyActuals[$cat][$month];
+                $monthlyPlanCumulative[$cat][$month] = $cumulativePlan;
+                $monthlyActualCumulative[$cat][$month] = $cumulativeActual;
+            }
+        }
+
+        // Siapkan data untuk semua kategori (untuk chart dinamis)
+        $allMonthlyData = [];
+        foreach ($categories as $cat) {
+            $allMonthlyData[$cat] = [
+                'plan' => $monthlyPlanCumulative[$cat],
+                'actual' => $monthlyActualCumulative[$cat],
+            ];
+        }
+
+        // Ambil kategori yang dipilih
+        $selectedCategory = request('category', 'Total');
+
+        // Data untuk chart kumulatif kategori yang dipilih
+        $monthlyPlanData = $monthlyPlanCumulative[$selectedCategory];
+        $monthlyActualData = $monthlyActualCumulative[$selectedCategory];
+
+        // Daftar bulan
+        $bulanList = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+
+        
+        return view('dashboard.dashboardCRP', compact(
+            'mstDboCrps',
+            'trsDboCrps',
+            'userName',
+            'actuals',
+            'plans',
+            'monthlyActuals',
+            'monthlyPlans',
+            'allCategories',
+            'grandTotalComparison',
+            'monthlyPlanData',
+            'monthlyActualData',
+            'selectedCategory',
+            'bulanList',
+            'allMonthlyData'
+        ));
+    }
+
+    public function dashboardCombined(Request $request)
+    {
+        // --- Bagian dashboardFPB ---
+        // Filter Lead Time
+        $startDate2 = $request->input('start_date_leadtime');
+        $endDate2 = $request->input('end_date_leadtime');
+        // Filter FPB
+        $startDate1 = $request->input('start_date_fpb') ?: '2025-01-01';
+        $endDate1 = $request->input('end_date_fpb') ?: '2025-12-31';
+        $kategori = $request->input('kategori_po', '');
+        // Filter Inquiry
+        $startDateInquiry = $request->input('start_date_inquiry') ?: '2025-01-01';
+        $endDateInquiry = $request->input('end_date_inquiry') ?: '2025-12-31';
+
+        // Query untuk kategori list (FPB)
+        $kategoriList = MstPoPengajuan::distinct()->pluck('kategori_po');
+
+        // Query untuk chart FPB (Open/Finish)
+        $queryMst = MstPoPengajuan::query();
+        if ($kategori) {
+            $queryMst->where('kategori_po', $kategori);
+        }
+
+        $noFpbList = $queryMst->pluck('no_fpb');
+        $queryTrs = TrsPoPengajuan::whereIn('id_fpb', function ($query) use ($noFpbList) {
+            $query->select('id')->from('mst_po_pengajuans')->whereIn('no_fpb', $noFpbList);
+        });
+        if ($startDate1 && $endDate1) {
+            $queryTrs->whereBetween('created_at', [$startDate1, $endDate1]);
+        }
+
+        $trsPoPengajuan = $queryTrs->get()->groupBy('id_fpb');
+
+        // Query untuk chart Lead Time
+        $query2 = MstPoPengajuan::query();
+        if ($startDate2 && $endDate2) {
+            $query2->whereBetween('created_at', [$startDate2, $endDate2]);
+        }
+        $mstPoPengajuans2 = $query2->get();
+        $uniqueFPB2 = $mstPoPengajuans2->unique('no_fpb');
+        $filteredMst2 = $uniqueFPB2;
+        $categoryTotal2 = $filteredMst2->count();
+
+        // Menghitung data unik untuk FPB
+        $fpbOpenUnique = 0;
+        $fpbFinishUnique = 0;
+        $processedFPB = [];
+        $monthlyData = [
+            'open' => array_fill(0, 12, 0),
+            'finish' => array_fill(0, 12, 0)
+        ];
+        $currentYear = Carbon::now()->year;
+        $currentMonth = Carbon::now()->month - 1;
+
+        foreach ($trsPoPengajuan as $id_fpb => $trsEntries) {
+            $fpbEntry = $trsEntries->first();
+            $no_fpb = MstPoPengajuan::where('id', $id_fpb)->value('no_fpb');
+
+            if (!isset($processedFPB[$no_fpb])) {
+                $processedFPB[$no_fpb] = true;
+                $lastRecord = $trsEntries->sortByDesc('updated_at')->first();
+                $createdDate = Carbon::parse($fpbEntry->created_at);
+                $createdYear = $createdDate->year;
+                $createdMonth = $createdDate->month - 1;
+
+                if ($lastRecord && $lastRecord->status == 9) {
+                    $finishDate = Carbon::parse($lastRecord->updated_at);
+                    $finishYear = $finishDate->year;
+                    $finishMonth = $finishDate->month - 1;
+
+                    if ($finishYear > $createdYear) {
+                        for ($year = $createdYear; $year <= $finishYear; $year++) {
+                            $startMonth = ($year == $createdYear) ? $createdMonth : 0;
+                            $endMonth = ($year == $finishYear) ? $finishMonth : 11;
+                            for ($m = $startMonth; $m <= $endMonth; $m++) {
+                                $monthlyData['open'][$m]++;
+                            }
+                        }
+                    } else {
+                        for ($m = $createdMonth; $m <= $finishMonth; $m++) {
+                            $monthlyData['open'][$m]++;
+                        }
+                    }
+                    $monthlyData['finish'][$finishMonth]++;
+                    $fpbFinishUnique++;
+                } else {
+                    for ($year = $createdYear; $year <= $currentYear; $year++) {
+                        $startMonth = ($year == $createdYear) ? $createdMonth : 0;
+                        $endMonth = ($year == $currentYear) ? $currentMonth : 11;
+                        for ($m = $startMonth; $m <= $endMonth; $m++) {
+                            $monthlyData['open'][$m]++;
+                        }
+                    }
+                    $fpbOpenUnique++;
+                }
+            }
+        }
+
+        $totalFPB = $fpbOpenUnique + $fpbFinishUnique;
+        $fpbOpenPercentage = $totalFPB > 0 ? round(($fpbOpenUnique / $totalFPB) * 100) : 0;
+        $fpbFinishPercentage = $totalFPB > 0 ? round(($fpbFinishUnique / $totalFPB) * 100) : 0;
+
+        // Lead Time Calculation
+        $categories = ['IT', 'Spareparts', 'Consumable', 'GA', 'Subcont'];
+        $leadTimeData = [];
+        $totalPercentage = 0;
+        $totalSubmitConfirm = 0;
+        $totalConfirmFinish = 0;
+
+        foreach ($categories as $category) {
+            $filteredMst = $uniqueFPB2->where('kategori_po', $category);
+            $categoryTotal = $filteredMst->count();
+
+            $categoryLeadDaysFirstJob = [];
+            $categoryLeadDaysSecondJob = [];
+            $categorySubmitConfirm = 0;
+            $categoryConfirmFinish = 0;
+
+            foreach ($filteredMst as $fpb) {
+                $fpbStartDate = $fpb->created_at;
+                $trsPoFirstJob = TrsPoPengajuan::where('id_fpb', $fpb->id)
+                    ->whereBetween('status', [2, 6])
+                    ->orderBy('updated_at', 'desc')
+                    ->first();
+                $trsPoSecondJob = TrsPoPengajuan::where('id_fpb', $fpb->id)
+                    ->whereBetween('status', [7, 9])
+                    ->orderBy('updated_at', 'desc')
+                    ->first();
+
+                if ($trsPoFirstJob && $trsPoFirstJob->status >= 6) {
+                    $leadDaysFirstJob = $trsPoFirstJob->updated_at->diffInDays($fpbStartDate);
+                    $categoryLeadDaysFirstJob[] = $leadDaysFirstJob;
+                }
+                if ($trsPoSecondJob && $trsPoSecondJob->status >= 6) {
+                    $leadDaysSecondJob = $trsPoSecondJob->updated_at->diffInDays($trsPoFirstJob ? $trsPoFirstJob->updated_at : $fpbStartDate);
+                    $categoryLeadDaysSecondJob[] = $leadDaysSecondJob;
+                }
+                if ($trsPoSecondJob && in_array($trsPoSecondJob->status, [10, 9])) {
+                    $categoryConfirmFinish++;
+                } elseif ($trsPoFirstJob && in_array($trsPoFirstJob->status, [6, 7, 8])) {
+                    $categorySubmitConfirm++;
+                }
+            }
+
+            $averageLeadDaysFirstJob = count($categoryLeadDaysFirstJob) > 0 ? round(array_sum($categoryLeadDaysFirstJob) / count($categoryLeadDaysFirstJob)) : 0;
+            $averageLeadDaysSecondJob = count($categoryLeadDaysSecondJob) > 0 ? round(array_sum($categoryLeadDaysSecondJob) / count($categoryLeadDaysSecondJob)) : 0;
+            $categoryPercentage = $totalFPB > 0 ? round(($categoryTotal / $totalFPB) * 100) : 0;
+            $totalPercentage += $categoryPercentage;
+            $totalSubmitConfirm += $categorySubmitConfirm;
+            $totalConfirmFinish += $categoryConfirmFinish;
+
+            $leadTimeData[$category] = [
+                'average_lead_days_first' => $averageLeadDaysFirstJob,
+                'average_lead_days_second' => $averageLeadDaysSecondJob,
+                'total' => $categoryTotal,
+                'percentage' => $categoryPercentage,
+                'submit_confirm' => $categorySubmitConfirm,
+                'confirm_finish' => $categoryConfirmFinish
+            ];
+        }
+
+        $leadTimeData['Total'] = [
+            'average_lead_days_first' => count($categories) > 0 ? round(array_sum(array_column($leadTimeData, 'average_lead_days_first')) / count($categories)) : 0,
+            'average_lead_days_second' => count($categories) > 0 ? round(array_sum(array_column($leadTimeData, 'average_lead_days_second')) / count($categories)) : 0,
+            'total' => $totalFPB,
+            'percentage' => 100,
+            'submit_confirm' => $totalSubmitConfirm,
+            'confirm_finish' => $totalConfirmFinish
+        ];
+
+        // Inquiry Calculation
+        $queryInquiry = InquirySales::query();
+        if ($startDateInquiry && $endDateInquiry) {
+            $queryInquiry->whereBetween('created_at', [$startDateInquiry, $endDateInquiry]);
+        }
+        $inquirysales = $queryInquiry->get();
+        $uniqueinquiry = $inquirysales->unique('id');
+
+        $monthlyData1 = [
+            'open' => array_fill(0, 12, 0),
+            'onprogress' => array_fill(0, 12, 0),
+            'finish' => array_fill(0, 12, 0)
+        ];
+        $currentMonth1 = Carbon::now()->month - 1;
+        $processedinquiry = [];
+
+        foreach ($uniqueinquiry as $inquiry) {
+            $createdMonth1 = Carbon::parse($inquiry->created_at)->month - 1;
+            $lastRecord1 = InquirySales::where('id', $inquiry->id)
+                ->orderBy('updated_at', 'desc')
+                ->first();
+
+            if (!isset($processedinquiry[$inquiry->id])) {
+                $processedinquiry[$inquiry->id] = true;
+                if ($lastRecord1) {
+                    if ($lastRecord1->status == 6) {
+                        $finishMonth1 = Carbon::parse($lastRecord1->updated_at)->month - 1;
+                        for ($m = $createdMonth1; $m <= $finishMonth1; $m++) {
+                            $monthlyData1['open'][$m]++;
+                        }
+                        $monthlyData1['finish'][$finishMonth1]++;
+                    } elseif (in_array($lastRecord1->status, [5, 8, 9, 7])) {
+                        for ($m = $createdMonth1; $m <= $currentMonth1; $m++) {
+                            $monthlyData1['open'][$m]++;
+                        }
+                        $monthlyData1['onprogress'][$currentMonth1]++;
+                    } elseif (in_array($lastRecord1->status, [1, 2, 3, 4])) {
+                        for ($m = $createdMonth1; $m <= $currentMonth1; $m++) {
+                            $monthlyData1['open'][$m]++;
+                        }
+                    }
+                }
+            }
+        }
+
+        $inquiryOpenUnique = 0;
+        $inquiryOnprogressUnique = 0;
+        $inquiryFinishUnique = 0;
+        $processedinquiry = [];
+        $inquiryOpenCount = 0;
+        $inquiryOnprogressCount = 0;
+        $inquiryFinishCount = 0;
+
+        foreach ($uniqueinquiry as $inquiry) {
+            $lastRecord1 = InquirySales::where('id', $inquiry->id)
+                ->orderBy('updated_at', 'desc')
+                ->first();
+            if (!isset($processedinquiry[$inquiry->id])) {
+                if ($lastRecord1) {
+                    if ($lastRecord1->status == 6) {
+                        $inquiryFinishUnique++;
+                        $inquiryFinishCount++;
+                        $processedinquiry[$inquiry->id] = 'finish';
+                    } elseif (in_array($lastRecord1->status, [5, 8, 9, 7])) {
+                        $inquiryOnprogressUnique++;
+                        $inquiryOnprogressCount++;
+                        $processedinquiry[$inquiry->id] = 'onprogress';
+                    } elseif (in_array($lastRecord1->status, [1, 2, 3, 4])) {
+                        $inquiryOpenUnique++;
+                        $inquiryOpenCount++;
+                        $processedinquiry[$inquiry->id] = 'open';
+                    }
+                }
+            }
+        }
+
+        $totalinquiry = $inquiryOpenUnique + $inquiryOnprogressUnique + $inquiryFinishUnique;
+        $inquiryOpenPercentage = $totalinquiry > 0 ? round(($inquiryOpenUnique / $totalinquiry) * 100) : 0;
+        $inquiryOnprogressPercentage = $totalinquiry > 0 ? round(($inquiryOnprogressUnique / $totalinquiry) * 100) : 0;
+        $inquiryFinishPercentage = $totalinquiry > 0 ? round(($inquiryFinishUnique / $totalinquiry) * 100) : 0;
+
+        // --- Bagian dashboardcrp ---
+        $user = Auth::user();
+        $userName = $user->name;
+        $allCategories = [
+            'IT', 'Subcont', 'Consumable', 'Repair Maintenance', 'Utility',
+            'General Affair', 'Material Cost', 'Indirect Material', 'Others',
+        ];
+        $categoriesCRP = array_merge(['Total'], $allCategories);
+
+        $mstDboCrps = MstDboCrp::where('partner_user', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $actuals = MstDboCrp::where('partner_user', $user->id)
+            ->where('plan_actual', 'Actual')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $plans = MstDboCrp::where('partner_user', $user->id)
+            ->where('plan_actual', 'Plan')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $mstIds = $mstDboCrps->pluck('id')->toArray();
+        $trsDboCrps = TrsDboCrp::whereIn('mst_id', $mstIds)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $monthlyActuals = [];
+        $monthlyPlans = [];
+        $monthlyPlanCumulative = [];
+        $monthlyActualCumulative = [];
+        $grandTotalComparison = [];
+
+        foreach ($categoriesCRP as $cat) {
+            $monthlyActuals[$cat] = array_fill(0, 12, 0);
+            $monthlyPlans[$cat] = array_fill(0, 12, 0);
+            $monthlyPlanCumulative[$cat] = array_fill(0, 12, 0);
+            $monthlyActualCumulative[$cat] = array_fill(0, 12, 0);
+            $grandTotalComparison[$cat] = ['Plan' => 0, 'Actual' => 0];
+        }
+
+        foreach ($actuals as $item) {
+            $cat = $item->nm_category;
+            for ($i = 1; $i <= 12; $i++) {
+                $val = $item->{"month_$i"} ?? 0;
+                $monthlyActuals[$cat][$i - 1] += $val;
+                $monthlyActuals['Total'][$i - 1] += $val;
+            }
+            $grandTotalComparison[$cat]['Actual'] += $item->grand_tot ?? 0;
+            $grandTotalComparison['Total']['Actual'] += $item->grand_tot ?? 0;
+        }
+
+        foreach ($plans as $item) {
+            $cat = $item->nm_category;
+            for ($i = 1; $i <= 12; $i++) {
+                $val = $item->{"month_$i"} ?? 0;
+                $monthlyPlans[$cat][$i - 1] += $val;
+                $monthlyPlans['Total'][$i - 1] += $val;
+            }
+            $grandTotalComparison[$cat]['Plan'] += $item->grand_tot ?? 0;
+            $grandTotalComparison['Total']['Plan'] += $item->grand_tot ?? 0;
+        }
+
+        foreach ($categoriesCRP as $cat) {
+            $cumulativePlan = 0;
+            $cumulativeActual = 0;
+            for ($month = 0; $month < 12; $month++) {
+                $cumulativePlan += $monthlyPlans[$cat][$month];
+                $cumulativeActual += $monthlyActuals[$cat][$month];
+                $monthlyPlanCumulative[$cat][$month] = $cumulativePlan;
+                $monthlyActualCumulative[$cat][$month] = $cumulativeActual;
+            }
+        }
+
+        $allMonthlyData = [];
+        foreach ($categoriesCRP as $cat) {
+            $allMonthlyData[$cat] = [
+                'plan' => $monthlyPlanCumulative[$cat],
+                'actual' => $monthlyActualCumulative[$cat],
+            ];
+        }
+
+        $selectedCategory = $request->input('category', 'Total');
+        $monthlyPlanData = $monthlyPlanCumulative[$selectedCategory];
+        $monthlyActualData = $monthlyActualCumulative[$selectedCategory];
+
+        $bulanList = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+
+        // Debugging data Total untuk CRP
+        Log::info('monthlyActuals[Total]:', $monthlyActuals['Total']);
+        Log::info('monthlyPlans[Total]:', $monthlyPlans['Total']);
+
+        return view('dashboard.dashboardFPB', compact(
+            // FPB
+            'fpbOpenUnique',
+            'fpbFinishUnique',
+            'fpbOpenPercentage',
+            'fpbFinishPercentage',
+            'leadTimeData',
+            'monthlyData',
+            'totalFPB',
+            'kategoriList',
+            'startDate1',
+            'endDate1',
+            'startDate2',
+            'endDate2',
+            'startDateInquiry',
+            'endDateInquiry',
+            'inquiryOpenCount',
+            'inquiryOnprogressCount',
+            'inquiryFinishCount',
+            'inquiryOpenUnique',
+            'inquiryOnprogressUnique',
+            'inquiryFinishUnique',
+            'inquiryOpenPercentage',
+            'inquiryOnprogressPercentage',
+            'inquiryFinishPercentage',
+            'monthlyData1',
+            'totalinquiry',
+            // CRP
+            'mstDboCrps',
+            'trsDboCrps',
+            'userName',
+            'actuals',
+            'plans',
+            'monthlyActuals',
+            'monthlyPlans',
+            'allCategories',
+            'grandTotalComparison',
+            'monthlyPlanData',
+            'monthlyActualData',
+            'selectedCategory',
+            'bulanList',
+            'allMonthlyData'
+        ));
     }
 
     public function overviewfpb()
@@ -2027,17 +2545,17 @@ class PoPengajuanController extends Controller
     public function updateStatusByDeptHead($no_fpb)
     {
         // Log no_fpb yang diterima
-        \Log::info('Received no_fpb: ' . $no_fpb);
+        log::info('Received no_fpb: ' . $no_fpb);
 
         // Ubah kembali tanda minus (-) menjadi garis miring (/)
         $no_fpb = str_replace('-', '/', $no_fpb);
-        \Log::info('Transformed no_fpb: ' . $no_fpb);
+        log::info('Transformed no_fpb: ' . $no_fpb);
 
         // Cari data berdasarkan no_fpb yang telah diubah
         $pengajuanList = MstPoPengajuan::where('no_fpb', $no_fpb)->get();
 
         if ($pengajuanList->isEmpty()) {
-            \Log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
+            log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
             return redirect()->back()->with('error', 'Data not found');
         }
 
@@ -2047,7 +2565,7 @@ class PoPengajuanController extends Controller
             if ($pengajuan->kategori_po == 'Subcont') {
                 // Update status_1 menjadi 4 jika kategori_po adalah Subcont
                 $pengajuan->update(['status_1' => 4]);
-                \Log::info('Updated status_1 to 4 for no_fpb: ' . $no_fpb . ' because kategori_po is Subcont');
+                log::info('Updated status_1 to 4 for no_fpb: ' . $no_fpb . ' because kategori_po is Subcont');
 
                 // Tambah data ke dalam model TrsPoPengajuan
                 TrsPoPengajuan::create([
@@ -2061,11 +2579,11 @@ class PoPengajuanController extends Controller
                     // Jika status_2 adalah 8, update hanya status_1
                     $pengajuan->update(['status_1' => 3]);
 
-                    \Log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
+                    log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
                 } else {
                     // Jika status_2 bukan 8, update status_1
                     $pengajuan->update(['status_1' => 3]);
-                    \Log::info('Updated status_1 for no_fpb: ' . $no_fpb);
+                    log::info('Updated status_1 for no_fpb: ' . $no_fpb);
 
                     // Tambah data ke dalam model TrsPoPengajuan
                     TrsPoPengajuan::create([
@@ -2083,17 +2601,17 @@ class PoPengajuanController extends Controller
     public function updateStatusByUser($no_fpb)
     {
         // Log no_fpb yang diterima
-        \Log::info('Received no_fpb: ' . $no_fpb);
+        log::info('Received no_fpb: ' . $no_fpb);
 
         // Ubah kembali tanda minus (-) menjadi garis miring (/)
         $no_fpb = str_replace('-', '/', $no_fpb);
-        \Log::info('Transformed no_fpb: ' . $no_fpb);
+        log::info('Transformed no_fpb: ' . $no_fpb);
 
         // Cari data berdasarkan no_fpb yang telah diubah
         $pengajuanList = MstPoPengajuan::where('no_fpb', $no_fpb)->get();
 
         if ($pengajuanList->isEmpty()) {
-            \Log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
+            log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
             return redirect()->back()->with('error', 'Data not found');
         }
 
@@ -2103,11 +2621,11 @@ class PoPengajuanController extends Controller
                 // Jika status_2 adalah 8, update hanya status_1
                 $pengajuan->update(['status_1' => 4]);
 
-                \Log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
+                log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
             } else {
                 // Jika status_2 bukan 8, update status_1
                 $pengajuan->update(['status_1' => 4]);
-                \Log::info('Updated status_1 for no_fpb: ' . $no_fpb);
+                log::info('Updated status_1 for no_fpb: ' . $no_fpb);
 
                 // Tambah data ke dalam model TrsPoPengajuan
                 TrsPoPengajuan::create([
@@ -2126,17 +2644,17 @@ class PoPengajuanController extends Controller
     public function updateStatusByFinance($no_fpb)
     {
         // Log no_fpb yang diterima
-        \Log::info('Received no_fpb: ' . $no_fpb);
+        log::info('Received no_fpb: ' . $no_fpb);
 
         // Ubah kembali tanda minus (-) menjadi garis miring (/)
         $no_fpb = str_replace('-', '/', $no_fpb);
-        \Log::info('Transformed no_fpb: ' . $no_fpb);
+        log::info('Transformed no_fpb: ' . $no_fpb);
 
         // Cari data berdasarkan no_fpb yang telah diubah
         $pengajuanList = MstPoPengajuan::where('no_fpb', $no_fpb)->get();
 
         if ($pengajuanList->isEmpty()) {
-            \Log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
+            log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
             return redirect()->back()->with('error', 'Data not found');
         }
 
@@ -2146,11 +2664,11 @@ class PoPengajuanController extends Controller
                 // Jika status_2 adalah 8, update hanya status_1
                 $pengajuan->update(['status_1' => 5]);
 
-                \Log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
+                log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
             } else {
                 // Jika status_2 bukan 8, update status_1
                 $pengajuan->update(['status_1' => 5]);
-                \Log::info('Updated status_1 for no_fpb: ' . $no_fpb);
+                log::info('Updated status_1 for no_fpb: ' . $no_fpb);
 
                 // Tambah data ke dalam model TrsPoPengajuan
                 TrsPoPengajuan::create([
@@ -2169,17 +2687,17 @@ class PoPengajuanController extends Controller
     public function updateStatusByProcurement($no_fpb)
     {
         // Log no_fpb yang diterima
-        \Log::info('Received no_fpb: ' . $no_fpb);
+        log::info('Received no_fpb: ' . $no_fpb);
 
         // Ubah kembali tanda minus (-) menjadi garis miring (/)
         $no_fpb = str_replace('-', '/', $no_fpb);
-        \Log::info('Transformed no_fpb: ' . $no_fpb);
+        log::info('Transformed no_fpb: ' . $no_fpb);
 
         // Cari data berdasarkan no_fpb yang telah diubah
         $pengajuanList = MstPoPengajuan::where('no_fpb', $no_fpb)->get();
 
         if ($pengajuanList->isEmpty()) {
-            \Log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
+            log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
             return redirect()->back()->with('error', 'Data not found');
         }
 
@@ -2189,11 +2707,11 @@ class PoPengajuanController extends Controller
                 // Jika status_2 adalah 8, update hanya status_1
                 $pengajuan->update(['status_1' => 6]);
 
-                \Log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
+                log::info('Only updated status_1 for no_fpb: ' . $no_fpb . ' because status_2 is 8');
             } else {
                 // Jika status_2 bukan 8, update status_1
                 $pengajuan->update(['status_1' => 6]);
-                \Log::info('Updated status_1 for no_fpb: ' . $no_fpb);
+                log::info('Updated status_1 for no_fpb: ' . $no_fpb);
 
                 // Tambah data ke dalam model TrsPoPengajuan
                 TrsPoPengajuan::create([
@@ -2212,13 +2730,13 @@ class PoPengajuanController extends Controller
     public function updateConfirmByProcurment($id)
     {
         // Log id yang diterima
-        \Log::info('Received id: ' . $id);
+        log::info('Received id: ' . $id);
 
         // Cari data berdasarkan id
         $pengajuan = MstPoPengajuan::find($id);
 
         if (!$pengajuan) {
-            \Log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
+            log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
             return response()->json(['message' => 'Data not found'], 404);
         }
 
@@ -2245,11 +2763,11 @@ class PoPengajuanController extends Controller
                 'konfirmasi_quotation' => 'Dikonfirmasi', // Ubah nilai konfirmasi_quotation menjadi "Dikonfirmasi"
             ]);
 
-            \Log::info('File updated and konfirmasi_quotation set to Dikonfirmasi for id: ' . $id);
+            log::info('File updated and konfirmasi_quotation set to Dikonfirmasi for id: ' . $id);
         } else {
             // Jika no_po diisi, ubah status menjadi 7
             if (request()->filled('no_po')) {
-                \Log::info('No PO filled for id: ' . $id);
+                log::info('No PO filled for id: ' . $id);
                 $pengajuan->update([
                     'no_po' => request('no_po'),
                     'status_1' => 7, // Ubah status menjadi 7
@@ -2287,19 +2805,19 @@ class PoPengajuanController extends Controller
         ]);
 
         // Log id yang diterima
-        \Log::info('Received id: ' . $id);
+        log::info('Received id: ' . $id);
 
         // Cari data berdasarkan id
         $pengajuan = MstPoPengajuan::find($id);
 
         if (!$pengajuan) {
-            \Log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
+            log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
             return response()->json(['message' => 'Data not found'], 404);
         }
 
         // Jika no_po diisi, ubah status menjadi 7
         if (request()->filled('no_po')) {
-            \Log::info('No PO filled for id: ' . $id);
+            log::info('No PO filled for id: ' . $id);
             $pengajuan->update([
                 'no_po' => request('no_po'),
                 'status_2' => 8,
@@ -2333,19 +2851,19 @@ class PoPengajuanController extends Controller
         ]);
 
         // Log id yang diterima
-        \Log::info('Received id: ' . $id);
+        log::info('Received id: ' . $id);
 
         // Cari data berdasarkan id
         $pengajuan = MstPoPengajuan::find($id);
 
         if (!$pengajuan) {
-            \Log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
+            log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
             return response()->json(['message' => 'Data not found'], 404);
         }
 
         // Jika no_po diisi, ubah status menjadi 7
         if (request()->filled('no_po')) {
-            \Log::info('No PO filled for id: ' . $id);
+            log::info('No PO filled for id: ' . $id);
             $pengajuan->update([
                 'no_po' => request('no_po'),
                 'status_2' => 8,
@@ -2378,19 +2896,19 @@ class PoPengajuanController extends Controller
         ]);
 
         // Log id yang diterima
-        \Log::info('Received id: ' . $id);
+        log::info('Received id: ' . $id);
 
         // Cari data berdasarkan id
         $pengajuan = MstPoPengajuan::find($id);
 
         if (!$pengajuan) {
-            \Log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
+            log::error('No data found for id: ' . $id); // Log jika data tidak ditemukan
             return response()->json(['message' => 'Data not found'], 404);
         }
 
         // Update status hanya untuk data dengan ID tertentu
         if (request()->filled('no_po')) {
-            \Log::info('No PO filled for id: ' . $id);
+            log::info('No PO filled for id: ' . $id);
             $pengajuan->update([
                 'status_1' => 10, // Ubah status menjadi 11 (spesifik untuk ID ini saja)
                 'status_2' => 10,
@@ -2421,17 +2939,17 @@ class PoPengajuanController extends Controller
     public function updateFinishByProcurment($no_fpb)
     {
         // Log no_fpb yang diterima
-        \Log::info('Received no_fpb: ' . $no_fpb);
+        log::info('Received no_fpb: ' . $no_fpb);
 
         // Ubah kembali tanda minus (-) menjadi garis miring (/)
         $no_fpb = str_replace('-', '/', $no_fpb);
-        \Log::info('Transformed no_fpb: ' . $no_fpb);
+        log::info('Transformed no_fpb: ' . $no_fpb);
 
         // Cari data berdasarkan no_fpb yang telah diubah
         $pengajuanList = MstPoPengajuan::where('no_fpb', $no_fpb)->get();
 
         if ($pengajuanList->isEmpty()) {
-            \Log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
+            log::error('No data found for no_fpb: ' . $no_fpb); // Log jika data tidak ditemukan
             return redirect()->back()->with('error', 'Data not found');
         }
 
