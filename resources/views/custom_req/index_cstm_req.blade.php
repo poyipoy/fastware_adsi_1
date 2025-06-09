@@ -580,8 +580,8 @@
                                                         {{ $currentStatus['label'] }}
                                                     </span>
                                                 </td>
-                                                <td class="text-center">{{ $pengajuan->harga_awal }}</td>
-                                                <td class="text-center">{{ $pengajuan->harga_akhir }}</td>         
+                                                <td class="text-center">Rp{{ number_format($pengajuan->harga_awal, 0, ',', '.') }}</td>
+                                                <td class="text-center">Rp{{ number_format($pengajuan->harga_akhir, 0, ',', '.') }}</td>         
                                                 <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>                                       
                                                 <td class="text-center">{{ $pengajuan->confirm_prod ? $pengajuan->production->name : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->marketing ? $pengajuan->marketing->name : '' }}</td>
@@ -694,12 +694,12 @@
                         </div>
                         <div class="modal-body">
                             <div class="form-group">
-                                <label for="keteranganInput">Keterangan</label>
-                                <input type="text" class="form-control" id="keteranganInput" required>
-                            </div>
-                            <div class="form-group">
                                 <label for="jenisProcessInput">Jenis Proses Subcont</label>
                                 <input type="text" class="form-control" id="jenisProcessInput" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="keteranganInput">Keterangan</label>
+                                <input type="text" class="form-control" id="keteranganInput" required>
                             </div>
                         </div>
                         <div class="modal-footer">

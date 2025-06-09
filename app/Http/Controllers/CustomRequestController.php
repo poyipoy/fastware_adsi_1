@@ -89,27 +89,18 @@ class CustomRequestController extends Controller
     {
         $materials = MstPengajuanSubcont::findOrFail($id);
 
-        $materials->status_1 = 2;
-        $materials->status_2 = 2;
+        $materials->status_1 = 3;
+        $materials->status_2 = 3;
         $materials->approval_1 = '';
         $materials->date_app_1 = Null;
-        $materials->confirm_prod = '';
         $materials->save();
-
-        $file = TrsAttcCstm::where('mst_id', $id)
-        ->where('status', 3)
-        ->first();
-        if ($file) {
-            $file->status = 1;
-            $file->save();
-        }
 
         $userName = auth()->user()->name;
 
         TrsPengajuanSubcont::create([
             'id_subcont' => $materials->id,
             'keterangan' => 'Rejected by Marketing', 
-            'status' => '2', 
+            'status' => '3', 
             'modified_at' => $userName 
         ]);
 
@@ -190,8 +181,9 @@ class CustomRequestController extends Controller
         return response()->json(['message' => 'Berhasil di selesaikan'], 200);
     }
 
-    public function rejectFinance($id)
+    public function rejectFinance(Request $request,$id)
     {
+
         $materials = MstPengajuanSubcont::findOrFail($id);
 
         $materials->status_1 = 3;
@@ -204,12 +196,12 @@ class CustomRequestController extends Controller
 
         TrsPengajuanSubcont::create([
             'id_subcont' => $materials->id,
-            'keterangan' => 'Rejected by finance', 
+            'keterangan' => 'Rejected by finance karena : '. $request->keterangan, 
             'status' => '3', 
             'modified_at' => $userName 
         ]);
 
-       return response()->json(['message' => 'rejected Marketing Berhasil'], 200);
+       return response()->json(['message' => 'rejected Finance Berhasil'], 200);
         
     }
 
@@ -327,7 +319,7 @@ class CustomRequestController extends Controller
         // Menyusun keterangan aktivitas mencakup semua perubahan
         $changes = [];
         if ($originalhargaakhir !== $material->harga_akhir) {
-            $changes[] = "Keterangan diubah dari '$originalhargaakhir' menjadi '{$material->harga_akhir}'";
+            $changes[] = "Selling price diubah dari '$originalhargaakhir' menjadi '{$material->harga_akhir}'";
         }
 
         // Menggabungkan semua perubahan menjadi satu string
@@ -370,6 +362,10 @@ class CustomRequestController extends Controller
         ->orderBy('created_at', 'desc')
         ->get();
 
+    $filesquotation = TrsAttcCstm::where('mst_id', $id)
+        ->where('status', 4)
+        ->get();
+
     // Mengambil log aktivitas yang terkait
     $activity_logs = TrsPengajuanSubcont::where('id_subcont', $id)
         ->with('mstPengajuanSubcont')
@@ -381,7 +377,7 @@ class CustomRequestController extends Controller
         return $file->status == 3; // Memeriksa apakah status file 3
     });
 
-    return view('custom_req.viewCstmReq', compact('materials', 'files', 'activity_logs', 'hasStatusThree'));
+    return view('custom_req.viewCstmReq', compact('materials', 'files', 'activity_logs', 'hasStatusThree', 'filesquotation'));
     }
 
     public function submitData(Request $request, $id)
@@ -429,6 +425,8 @@ class CustomRequestController extends Controller
         $files = TrsAttcCstm::where('mst_id', $id)
         ->orderBy('created_at', 'desc')
         ->get();
+
+        
 
         // Mengambil log aktivitas yang terkait
         $activity_logs = TrsPengajuanSubcont::where('id_subcont', $id)
@@ -492,6 +490,13 @@ class CustomRequestController extends Controller
                     $material = MstPengajuanSubcont::findOrFail($id);
                     $material->harga_awal = $request->harga_awal; // Simpan nilai harga_awal dari input
                     $material->save(); // Simpan perubahan
+
+                    TrsPengajuanSubcont::create([
+                    'id_subcont' => $id,
+                    'keterangan' => 'Cost Process : ' . $request->harga_awal,
+                    'status' => '1', // Status atau keterangan tambahan
+                    'modified_at' => $userName
+                ]);
                 }
             } else {
                 return response()->json(['message' => 'File upload failed'], 500);
@@ -702,7 +707,28 @@ class CustomRequestController extends Controller
             'modified_at' => $userName 
         ]);
 
-        return response()->json(['message' => 'Berhasil dikirim ke Subcont.'], 200);
+        return response()->json(['message' => 'Berhasil dikirim ke Subcont'], 200);
+    }
+
+    public function kirimsales(Request $request, $id)
+    {
+        $pengajuan = MstPengajuanSubcont::findOrFail($id);
+
+        // Simpan jenis proses subcont
+        $pengajuan->approval_1 = 'Waiting'; // Simpan keterangan
+        $pengajuan->save();
+
+
+        // Simpan informasi ke TrsPengajuanSubcont
+        $userName = auth()->user()->name;
+        TrsPengajuanSubcont::create([
+            'id_subcont' => $id,
+            'keterangan' => 'mengirim ke Dept Head Marketing',
+            'status' => '3',
+            'modified_at' => $userName 
+        ]);
+
+        return response()->json(['message' => 'Berhasil dikirim ke dept head marketing'], 200);
     }
 
     public function approveProduction($id)

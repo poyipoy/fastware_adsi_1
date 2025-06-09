@@ -324,8 +324,8 @@
                                                         {{ $currentStatus['label'] }}
                                                     </span>
                                                 </td>
-                                    <td>{{ $materials->harga_awal }}</td>
-                                    <td>{{ $materials->harga_akhir }}</td>
+                                    <td>Rp{{ number_format($materials->harga_awal, 0, ',', '.') }}</td>
+                                    <td>Rp{{ number_format($materials->harga_akhir, 0, ',', '.') }}</td>
                                     <td class="text-center profit-cell" data-harga-awal="{{ $materials->harga_awal }}" data-harga-akhir="{{ $materials->harga_akhir }}"></td>
                                     <td>{{ $materials->production ? $materials->production->name : '' }}</td>
                                     <td>{{ $materials->marketing ? $materials->marketing->name : '' }}</td>
@@ -367,16 +367,16 @@
                             Input Data
                         </button>
                       @endif --}}
-                    @if($materials->status_1 == 2)
+                    @if($materials->status_1 == 2 && $filesquotation->isnotEmpty())
                         <button type="button" class="btn btn-success" id="productionButton" data-id="{{ $materials->id }}">
                             <i class="fas fa-paper-plane"></i> Submit
                         </button>
                     @endif
-                    @if (!is_null($pengajuan->harga_akhir) && $pengajuan->harga_akhir !== '')
-                        <button type="button" class="btn btn-success marketingButton" data-id="{{ $pengajuan->id }}" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}">
+                    {{-- @if (!is_null($materials->harga_akhir) && $materials->harga_akhir !== '')
+                        <button type="button" class="btn btn-success marketingButton" data-id="{{ $materials->id }}" data-harga-awal="{{ $materials->harga_awal }}" data-harga-akhir="{{ $materials->harga_akhir }}">
                             <i class="fas fa-paper-plane"></i> Submit
                         </button>
-                    @endif
+                    @endif --}}
 
                       {{-- @if ($materials->status_1 == 1)
                         <button type="button" class="btn btn-success" id="productionButton" data-id="{{ $materials->id }}">
@@ -475,34 +475,31 @@
                 </section>
             </div>
 
-            <div class="modal fade" id="inputDataModal" tabindex="-1" aria-labelledby="inputDataModalLabel" aria-hidden="true">
-              <div class="modal-dialog modal-lg">
-                  <form action="{{ route('CustomRequest.updateCstmReq', $materials->id) }}" method="POST">
-                      @csrf
-                      <div class="modal-content">
-                          <div class="modal-header">
-                              <h5 class="modal-title">Input</h5>
-                              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                          </div>
-                          <div class="modal-body">
-                              {{-- <div class="mb-3">
-                                  <label class="form-label fw-bold">Jenis Proses</label>
-                                  <input type="text" name="jenis_proses_subcont" class="form-control" placeholder="Masukkan Jenis Proses..." required>
-                              </div> --}}
+            {{-- <div class="modal fade" id="inputDataModal" tabindex="-1" aria-labelledby="inputDataModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <form action="{{ route('CustomRequest.updateCstmReq', $materials->id) }}" method="POST" id="costProcessForm">
+                        @csrf
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Input</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Cost Process</label>
+                                    <input type="text" name="harga_awal" class="form-control" placeholder="Masukkan Cost Process..." required id="costProcessInput" oninput="formatRupiah(this)">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">Simpan</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div> --}}
 
-                              <div class="mb-3">
-                                  <label class="form-label fw-bold">Cost Process</label>
-                                  <input type="number" name="harga_awal" class="form-control" placeholder="Masukkan Harga Awal..." required>
-                              </div>
-                          </div>
-                          <div class="modal-footer">
-                              <button type="submit" class="btn btn-primary" id="submitBtn">Simpan</button>
-                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                          </div>
-                      </div>
-                  </form>
-              </div>
-          </div>
+            <!-- Modal for Upload Quotation -->
 
           <div class="modal fade" id="uploadQuotationModal" tabindex="-1" aria-labelledby="uploadQuotationModalLabel" aria-hidden="true">
             <div class="modal-dialog">
@@ -532,7 +529,7 @@
         </div>
     </div>
 
-          <div class="modal fade" id="inputDataModal1" tabindex="-1" aria-labelledby="inputDataModalLabel1" aria-hidden="true">
+          {{-- <div class="modal fade" id="inputDataModal1" tabindex="-1" aria-labelledby="inputDataModalLabel1" aria-hidden="true">
               <div class="modal-dialog modal-lg">
                   <form action="{{ route('CustomRequest.hargaakhir', $materials->id) }}" method="POST">
                       @csrf
@@ -554,7 +551,7 @@
                       </div>
                   </form>
               </div>
-          </div>
+          </div> --}}
 
             <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-lg">
@@ -576,7 +573,6 @@
                                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                                     </div>
                                 @endif
-
                                 @if(session('import_error'))
                                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                         {{ session('import_error') }}
@@ -593,11 +589,10 @@
                                     @enderror
                                     <div class="form-text">Upload the file that was previously exported from the system.</div>
                                 </div>
-
                                 @if($hasStatusThree)
                                     <div class="mb-3">
                                         <label class="form-label fw-bold">Cost Process</label>
-                                        <input type="number" name="harga_awal" class="form-control" placeholder="Masukkan Harga Awal..." required>
+                                        <input type="text" name="harga_awal" class="form-control" placeholder="Masukkan Cost Process..." required id="costProcessInput" oninput="formatRupiah(this)">
                                     </div>
                                 @endif
                             </div>
@@ -630,6 +625,27 @@
           function uploadexcel() {
               document.getElementById('uploadForm').submit();
           }
+
+          document.addEventListener('DOMContentLoaded', function () {
+                // Menangani submit form untuk menghapus format sebelum pengiriman
+                document.getElementById('uploadForm').addEventListener('submit', function () {
+                    const costProcessInput = document.getElementById('costProcessInput');
+                    if (costProcessInput) {
+                        const rawValue = costProcessInput.value.replace(/[^0-9]/g, ''); // Menghilangkan format
+                        costProcessInput.value = rawValue; // Set nilai yang akan dikirim ke server sebagai angka
+                    }
+                });
+            });
+
+            function formatRupiah(input) {
+                // Menghilangkan semua karakter yang bukan angka
+                let value = input.value.replace(/\D/g, '');
+                // Memformat angka menjadi format rupiah
+                let formattedValue = 'Rp' + value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+                // Tampilkan format rupiah di input field
+                input.value = formattedValue;
+            }
 
             $(document).ready(function() {
                 $('#productionButton').on('click', function() {
@@ -665,9 +681,9 @@
                 const rows = document.querySelectorAll('tbody tr');
 
                 rows.forEach(row => {
-                    const hargaAwal = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Awal
-                    const hargaAkhir = parseFloat(row.cells[9].innerText) || 0; // Kolom Harga Akhir
-                    const profitCell = row.cells[10]; // Kolom Profit
+                    const hargaAwal = parseFloat(row.cells[7].innerText) || 0; // Kolom Harga Awal
+                    const hargaAkhir = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Akhir
+                    const profitCell = row.cells[9]; // Kolom Profit
                     
                     // Menghitung profit dan menampilkan hasil
                     const profitPercentage = calcProfit(hargaAwal, hargaAkhir);

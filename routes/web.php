@@ -584,6 +584,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/custom-request/file/rejected/{id}', [CustomRequestController::class, 'filerejected'])->name('cstm.filerejected');
     Route::post('/custom-request/file/rejected-sales/{id}', [CustomRequestController::class, 'filerejectedsales'])->name('cstm.filerejectedsales');
     Route::post('/custom-request/subcont-send/{id}', [CustomRequestController::class, 'kirimsubcont'])->name('kirimsubcont');
+    Route::post('/custom-request/sales-send/{id}', [CustomRequestController::class, 'kirimsales'])->name('kirimsales');
     Route::post('/custom-request/production-send/{id}', [CustomRequestController::class, 'kirimproduction'])->name('kirimproduction');
     Route::post('/custom-request/submit-send/{id}', [CustomRequestController::class, 'submitproduction'])->name('SubmitProduction');
     Route::post('/custom-request/rejected-production/{id}', [CustomRequestController::class, 'rejectproduction'])->name('RejectProduction');

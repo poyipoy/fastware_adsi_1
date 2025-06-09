@@ -323,8 +323,8 @@
                                                         {{ $currentStatus['label'] }}
                                                     </span>
                                                 </td>
-                                    <td>{{ $materials->harga_awal }}</td>
-                                    <td>{{ $materials->harga_akhir }}</td>
+                                    <td>Rp{{ number_format($materials->harga_awal, 0, ',', '.') }}</td>
+                                    <td>Rp{{ number_format($materials->harga_akhir, 0, ',', '.') }}</td>
                                     <td class="text-center profit-cell" data-harga-awal="{{ $materials->harga_awal }}" data-harga-akhir="{{ $materials->harga_akhir }}"></td>
                                     <td>{{ $materials->production ? $materials->production->name : '' }}</td>
                                     <td>{{ $materials->marketing ? $materials->marketing->name : '' }}</td>
@@ -340,14 +340,31 @@
                             Kembali
                         </button>
 
-                        @if ($materials->status_1 == 3 && !is_null($pengajuan->harga_akhir) && $pengajuan->harga_akhir !== '')
-                        <button type="button" class="btn btn-success marketingButton" data-id="{{ $pengajuan->id }}" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}">
-                            <i class="fas fa-paper-plane"></i> Submit
-                        </button>
+                        @if ($materials->status_1 == 3 && !is_null($materials->harga_akhir) && $materials->harga_akhir !== '' && $materials->approval_1 == 'Waiting')
+                            <button class="btn btn-success marketingButton" data-id="{{ $materials->id }}" data-harga-awal="{{ $materials->harga_awal }}" data-harga-akhir="{{ $materials->harga_akhir }}">
+                                Submit
+                            </button>
+
+                            <button class="btn btn-danger rejectButton" data-id="{{ $materials->id }}">
+                                Reject
+                            </button>
+                        @endif
+
+                        @if ($materials->status_1 == 3 && !is_null($materials->harga_akhir) && $materials->harga_akhir !== '' && $materials->approval_1 == '')
+                            <button type="button" class="btn btn-success" id="salesButton" data-id="{{ $materials->id }}">
+                                <i class="fas fa-paper-plane"></i> Submit
+                            </button>
+                        @endif
+
+                        @if ($materials->status_1 == 4)
+                            <button type="button" class="btn btn-success" id="financeButton" data-id="{{ $materials->id }}">
+                                <i class="fas fa-paper-plane"></i> Submit
+                            </button>
+                            <button class="btn btn-danger" id="rejectfinanceButton" data-id="{{ $materials->id }}">Reject</button>
                         @endif
                         
                       
-                      @if ($materials->status_1 == 3 && $materials->sec_line == 1)
+                      @if ($materials->status_1 == 3 && $materials->approval_1 == '' && is_null($materials->approval_1))
                         <button type="button" class="btn btn-modal" data-bs-toggle="modal" data-bs-target="#inputDataModal1">
                             Input
                         </button>
@@ -496,29 +513,34 @@
               </div>
           </div> --}}
 
-          <div class="modal fade" id="inputDataModal1" tabindex="-1" aria-labelledby="inputDataModalLabel1" aria-hidden="true">
-              <div class="modal-dialog modal-lg">
-                  <form action="{{ route('CustomRequest.hargaakhir', $materials->id) }}" method="POST">
-                      @csrf
-                      <div class="modal-content">
-                          <div class="modal-header">
-                              <h5 class="modal-title">Input Selling Price</h5>
-                              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                          </div>
-                          <div class="modal-body">
-                              <div class="mb-3">
-                                  <label class="form-label fw-bold">Selling Price</label>
-                                  <input type="text" name="harga_akhir" class="form-control" placeholder="Masukkan Harga Akhir..." required>
-                              </div>
-                          </div>
-                          <div class="modal-footer">
-                              <button type="submit" class="btn btn-primary" id="submitBtn">Simpan</button>
-                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                          </div>
-                      </div>
-                  </form>
-              </div>
-          </div>
+        <div class="modal fade" id="inputDataModal1" tabindex="-1" aria-labelledby="inputDataModalLabel1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form action="{{ route('CustomRequest.hargaakhir', $materials->id) }}" method="POST" id="hargaForm">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Input Selling Price</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Selling Price</label>
+                                <input type="text" name="harga_akhir" class="form-control" placeholder="Masukkan Selling Price..." required id="hargaAkhirInput" oninput="formatRupiah(this)">
+                            </div>
+                            <div>
+                                <label class="form-label fw-bold">Profit Percentage</label>
+                                <div id="profitPercentage" class="fw-bold">N/A</div>
+                            </div>
+                            <input type="hidden" id="hargaAwal" value="{{ $materials->harga_awal }}">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">Simpan</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
 
             <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
               <div class="modal-dialog">
@@ -563,6 +585,31 @@
                   </div>
               </div>
           </div>
+
+          <div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">Tolak Pengajuan</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="rejectForm">
+                    <div class="form-group">
+                        <label for="keterangan">Keterangan</label>
+                        <textarea class="form-control" id="keterangan" rows="3" required></textarea>
+                    </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" id="submitReject">Kirim</button>
+                </div>
+                </div>
+            </div>
+            </div>
         </section>
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -581,166 +628,418 @@
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
         <script>
-          function uploadexcel() {
-              document.getElementById('uploadForm').submit();
-          }
 
-          $(document).ready(function() {
-        $('#productionButton').on('click', function() {
-            var materialsId = $(this).data('id');
+            // function formatRupiah(input) {
+            //     // Menghilangkan semua karakter yang bukan angka
+            //     let value = input.value.replace(/\D/g, '');
+            //     // Memformat angka menjadi format rupiah
+            //     let formattedValue = 'Rp' + value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-            // Menampilkan jendela konfirmasi
-            if (confirm("Apakah Anda yakin ingin mengirim ke Production?")) {
-                // Mengirim permintaan AJAX ke server
-                $.ajax({
-                    url: '{{ route('kirimproduction', '') }}/' + materialsId, // Menggunakan route yang telah dibuat
-                    method: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
-                    },
-                    success: function(response) {
-                        // Menampilkan pesan sukses
-                        alert(response.message); // Tampilkan pesan sukses
-                        location.reload(); // Reload halaman
-                    },
-                    error: function(xhr) {
-                        console.log(xhr);  // Tampilkan detail kesalahan di konsol
-                        alert('An error occurred: ' + xhr.responseText); // Tampilkan pesan error
-                    }
-                });
-            } else {
-                // Jika pengguna batal konfirmasi
-                alert("Pengiriman dibatalkan.");
-            }
-        });
-    });
+            //     // Tampilkan format rupiah di input field
+            //     input.value = formattedValue;
 
-    // Fungsi untuk menghitung profit persentase
-            function calcProfit(hargaAwal, hargaAkhir) {
-                if (hargaAkhir > 0) {
-                    let profit = ((hargaAkhir - hargaAwal) / hargaAkhir) * 100;
-                    return {
-                        value: profit.toFixed(2) + '%', // Mengembalikan hasil dengan format 2 decimal
-                        isLow: profit < 25 // Menyimpan flag jika profit kurang dari 25%
-                    };
-                } else {
-                    return {
-                        value: 'N/A', // Tidak bisa dihitung jika harga akhir 0
-                        isLow: false
-                    };
-                }
+            //     // Tambahkan event listener pada input untuk menyimpan nilai asli tanpa format rupiah
+            //     input.setAttribute('data-nilai', value); // Menyimpan nilai asli
+            // }
+
+            // document.querySelector('form').addEventListener('submit', function(event) {
+            //     const input = document.getElementById('hargaAkhirInput');
+            //     const nilaiAsli = input.getAttribute('data-nilai');
+                
+            //     // Set nilai asli ke input sebelum dikirim
+            //     input.value = nilaiAsli;
+            // });
+            function uploadexcel() {
+                document.getElementById('uploadForm').submit();
             }
 
-            // Menjalankan perhitungan profit saat halaman dimuat
-            document.addEventListener('DOMContentLoaded', function() {
-                const rows = document.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const hargaAwal = parseFloat(row.cells[7].innerText) || 0; // Kolom Harga Awal
-                    const hargaAkhir = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Akhir
-                    const profitCell = row.cells[9]; // Kolom Profit
-                    
-                    // Menghitung profit dan menampilkannya
-                    const profitResult = calcProfit(hargaAwal, hargaAkhir);
-                    
-                    // Mengatur teks dan warna berdasarkan profit
-                    if (profitResult.isLow) {
-                        profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
-                    } else {
-                        profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
-                    }
+                $(document).ready(function() {
+                    $('#productionButton').on('click', function() {
+                        var materialsId = $(this).data('id');
+
+                        // Menampilkan jendela konfirmasi
+                        if (confirm("Apakah Anda yakin ingin mengirim ke Production?")) {
+                            // Mengirim permintaan AJAX ke server
+                            $.ajax({
+                                url: '{{ route('kirimproduction', '') }}/' + materialsId, // Menggunakan route yang telah dibuat
+                                method: 'POST',
+                                data: {
+                                    _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
+                                },
+                                success: function(response) {
+                                    // Menampilkan pesan sukses
+                                    alert(response.message); // Tampilkan pesan sukses
+                                    location.reload(); // Reload halaman
+                                },
+                                error: function(xhr) {
+                                    console.log(xhr);  // Tampilkan detail kesalahan di konsol
+                                    alert('An error occurred: ' + xhr.responseText); // Tampilkan pesan error
+                                }
+                            });
+                        } else {
+                            // Jika pengguna batal konfirmasi
+                            alert("Pengiriman dibatalkan.");
+                        }
+                    });
                 });
-            });
 
-            document.addEventListener('DOMContentLoaded', function() {
-                const rows = document.querySelectorAll('tbody tr');
+                $(document).ready(function() {
+                    $('#salesButton').on('click', function() {
+                        var materialsId = $(this).data('id');
 
-                rows.forEach(row => {
-                    const hargaAwal = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Awal
-                    const hargaAkhir = parseFloat(row.cells[9].innerText) || 0; // Kolom Harga Akhir
-                    const profitCell = row.cells[10]; // Kolom Profit
-                    
-                    // Menghitung profit dan menampilkan hasil
-                    const profitPercentage = calcProfit(hargaAwal, hargaAkhir);
-                    
-                    // Menampilkan profit dalam persen
-                    if (profitPercentage <= 25) {
-                        profitCell.innerHTML = `<span style="color: red;">${profitPercentage}%</span>`; // Tampilkan dalam warna merah jika kurang dari atau sama dengan 25%
-                    } else {
-                        profitCell.innerText = `${profitPercentage}%`; // Tampilkan hasil biasa jika profit lebih dari 25%
-                    }
-                    // Menambahkan event listener untuk tombol marketing
-                    const marketingButton = row.querySelector('.marketingButton');
-                    if (marketingButton) {
-                        marketingButton.addEventListener('click', function() {
-                            if (confirm("Apakah Anda yakin ingin mengirim?")) {
-                                if (profitPercentage > 25) {
-                                    if (confirm("Profit lebih dari 25%. Apakah Anda yakin ingin menyelesaikan pengajuan ini?")) {
-                                        $.ajax({
-                                            url: '{{ route('approveMarketing2', '') }}/' + this.dataset.id,
-                                            method: 'POST',
-                                            data: {
-                                                _token: '{{ csrf_token() }}'
-                                            },
-                                            success: function(response) {
-                                                alert(response.message);
-                                                location.reload();
-                                            },
-                                            error: function(xhr) {
-                                                alert('An error occurred: ' + xhr.responseText);
-                                            }
-                                        });
-                                    }
-                                } else {
-                                    if (confirm("Profit kurang dari atau sama dengan 25%. Apakah Anda yakin ingin mengirim ke Finance?")) {
-                                        $.ajax({
-                                            url: '{{ route('approveMarketing', '') }}/' + this.dataset.id,
-                                            method: 'POST',
-                                            data: {
-                                                _token: '{{ csrf_token() }}'
-                                            },
-                                            success: function(response) {
-                                                alert(response.message);
-                                                location.reload();
-                                            },
-                                            error: function(xhr) {
-                                                alert('An error occurred: ' + xhr.responseText);
-                                            }
-                                        });
-                                    }
+                        // Menampilkan jendela konfirmasi
+                        if (confirm("Apakah Anda yakin ingin mengirim ke Dept Head Marketing?")) {
+                            // Mengirim permintaan AJAX ke server
+                            $.ajax({
+                                url: '{{ route('kirimsales', '') }}/' + materialsId, // Menggunakan route yang telah dibuat
+                                method: 'POST',
+                                data: {
+                                    _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
+                                },
+                                success: function(response) {
+                                    // Menampilkan pesan sukses
+                                    alert(response.message); // Tampilkan pesan sukses
+                                    location.reload(); // Reload halaman
+                                },
+                                error: function(xhr) {
+                                    console.log(xhr);  // Tampilkan detail kesalahan di konsol
+                                    alert('An error occurred: ' + xhr.responseText); // Tampilkan pesan error
+                                }
+                            });
+                        } else {
+                            // Jika pengguna batal konfirmasi
+                            alert("Pengiriman dibatalkan.");
+                        }
+                    });
+                });
+
+                $(document).ready(function() {
+                    $('#financeButton').on('click', function() {
+                        var materialsId = $(this).data('id');
+
+                        // Menampilkan jendela konfirmasi
+                        if (confirm("Apakah Anda yakin ingin menyelesaikan?")) {
+                            // Mengirim permintaan AJAX ke server
+                            $.ajax({
+                                url: '{{ route('approveFinance', '') }}/' + materialsId, // Menggunakan route yang telah dibuat
+                                method: 'POST',
+                                data: {
+                                    _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
+                                },
+                                success: function(response) {
+                                    // Menampilkan pesan sukses
+                                    alert(response.message); // Tampilkan pesan sukses
+                                    location.reload(); // Reload halaman
+                                },
+                                error: function(xhr) {
+                                    console.log(xhr);  // Tampilkan detail kesalahan di konsol
+                                    alert('An error occurred: ' + xhr.responseText); // Tampilkan pesan error
+                                }
+                            });
+                        } else {
+                            // Jika pengguna batal konfirmasi
+                            alert("Pengiriman dibatalkan.");
+                        }
+                    });
+                });
+
+                $(document).ready(function() {
+                    // Event handler untuk tombol Reject: hanya membuka modal
+                    $('#rejectfinanceButton').on('click', function() {
+                        var materialsId = $(this).data('id');
+                        // Simpan ID material di modal
+                        $('#rejectModal').data('materialsId', materialsId);
+                        // Tampilkan modal
+                        $('#rejectModal').modal('show');
+                    });
+
+                    // Event handler untuk tombol Kirim di modal: mengirim permintaan ke route rejectFinance
+                    $('#submitReject').on('click', function() {
+                        var materialsId = $('#rejectModal').data('materialsId');
+                        var keterangan = $('#keterangan').val();
+
+                        // Validasi keterangan tidak kosong
+                        if (keterangan.trim() === '') {
+                            alert('Keterangan tidak boleh kosong.');
+                            return;
+                        }
+
+                        // Kirim permintaan AJAX ke server
+                        $.ajax({
+                            url: '{{ route('rejectFinance', '') }}/' + materialsId,
+                            method: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                keterangan: keterangan
+                            },
+                            success: function(response) {
+                                alert(response.message);
+                                $('#rejectModal').modal('hide');
+                                location.reload();
+                            },
+                            error: function(xhr) {
+                                console.log(xhr);
+                                alert('Terjadi kesalahan: ' + xhr.responseText);
+                            }
+                        });
+                    });
+                });
+
+                $(document).ready(function() {
+                    $('.marketingButton').on('click', function() {
+                        const materialsId = $(this).data('id');
+                        const hargaAwal = parseFloat($(this).data('harga-awal'));
+                        const hargaAkhir = parseFloat($(this).data('harga-akhir'));
+                        
+                        // Menghitung profit
+                        const profitResult = calcProfit(hargaAwal, hargaAkhir);
+                        const profitPercentage = profitResult.value ? parseFloat(profitResult.value) : 0; 
+
+                        // Menampilkan jendela konfirmasi
+                        if (confirm("Apakah Anda yakin ingin mengirim?")) {
+                            if (profitPercentage > 25) {
+                                if (confirm("Profit lebih dari 25%. Apakah Anda yakin ingin menyelesaikan pengajuan ini?")) {
+                                    $.ajax({
+                                        url: '{{ route('approveMarketing2', '') }}/' + materialsId,
+                                        method: 'POST',
+                                        data: {
+                                            _token: '{{ csrf_token() }}'
+                                        },
+                                        success: function(response) {
+                                            alert(response.message);
+                                            location.reload();
+                                        },
+                                        error: function(xhr) {
+                                            alert('An error occurred: ' + xhr.responseText);
+                                        }
+                                    });
                                 }
                             } else {
-                                alert("Pengiriman dibatalkan.");
+                                if (confirm("Profit kurang dari atau sama dengan 25%. Apakah Anda yakin ingin mengirim ke Finance?")) {
+                                    $.ajax({
+                                        url: '{{ route('approveMarketing', '') }}/' + materialsId,
+                                        method: 'POST',
+                                        data: {
+                                            _token: '{{ csrf_token() }}'
+                                        },
+                                        success: function(response) {
+                                            alert(response.message);
+                                            location.reload();
+                                        },
+                                        error: function(xhr) {
+                                            alert('An error occurred: ' + xhr.responseText);
+                                        }
+                                    });
+                                }
                             }
-                        });
+                        } else {
+                            alert("Pengiriman dibatalkan.");
+                        }
+                    });
+
+                    // Fungsi untuk menangani tombol reject
+                    $('.rejectButton').on('click', function() {
+                        const id = $(this).data('id');
+                        if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
+                            $.ajax({
+                                url: '{{ route('rejectMarketing', '') }}/' + id,
+                                method: 'POST',
+                                data: {
+                                    _token: '{{ csrf_token() }}'
+                                },
+                                success: function(response) {
+                                    alert(response.message);
+                                    location.reload();
+                                },
+                                error: function(xhr) {
+                                    alert('An error occurred: ' + xhr.responseText);
+                                }
+                            });
+                        } else {
+                            alert("Penolakan pengajuan dibatalkan.");
+                        }
+                    });
+                });
+                
+
+
+                // document.addEventListener('DOMContentLoaded', function() {
+                //     const rows = document.querySelectorAll('tbody tr');
+                //         rows.forEach(row => {
+                //             const hargaAwal = parseFloat(row.cells[7].innerText) || 0; // Kolom Harga Awal
+                //             const hargaAkhir = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Akhir
+                //             const profitCell = row.cells[9]; // Kolom Profit
+
+                //             // Menghitung profit
+                //             const profitPercentage = calcProfit(hargaAwal, hargaAkhir);
+
+                //             // Menampilkan profit dalam persen
+                //             profitCell.innerText = profitPercentage.toFixed(2) + '%'; 
+                //             // Menyesuaikan warna berdasarkan profit
+                //             profitCell.style.color = (profitPercentage <= 25) ? 'red' : 'black';
+
+                //             // Menambahkan event listener untuk tombol marketing
+                //             const marketingButton = row.querySelector('.marketingButton');
+                //             if (marketingButton) {
+                //                 marketingButton.addEventListener('click', function() {
+                //                     if (confirm("Apakah Anda yakin ingin mengirim?")) {
+                //                         if (profitPercentage > 25) {
+                //                             if (confirm("Profit lebih dari 25%. Apakah Anda yakin ingin menyelesaikan pengajuan ini?")) {
+                //                                 $.ajax({
+                //                                     url: '{{ route('approveMarketing2', '') }}/' + this.dataset.id,
+                //                                     method: 'POST',
+                //                                     data: {
+                //                                         _token: '{{ csrf_token() }}'
+                //                                     },
+                //                                     success: function(response) {
+                //                                         alert(response.message);
+                //                                         location.reload();
+                //                                     },
+                //                                     error: function(xhr) {
+                //                                         alert('An error occurred: ' + xhr.responseText);
+                //                                     }
+                //                                 });
+                //                             }
+                //                         } else {
+                //                             if (confirm("Profit kurang dari atau sama dengan 25%. Apakah Anda yakin ingin mengirim ke Finance?")) {
+                //                                 $.ajax({
+                //                                     url: '{{ route('approveMarketing', '') }}/' + this.dataset.id,
+                //                                     method: 'POST',
+                //                                     data: {
+                //                                         _token: '{{ csrf_token() }}'
+                //                                     },
+                //                                     success: function(response) {
+                //                                         alert(response.message);
+                //                                         location.reload();
+                //                                     },
+                //                                     error: function(xhr) {
+                //                                         alert('An error occurred: ' + xhr.responseText);
+                //                                     }
+                //                                 });
+                //                             }
+                //                         }
+                //                     } else {
+                //                         alert("Pengiriman dibatalkan.");
+                //                     }
+                //                 });
+                //             }
+                        
+                //         // Menambahkan event listener untuk tombol reject
+                //         const rejectButton = row.querySelector('.rejectButton');
+                //         if (rejectButton) {
+                //             rejectButton.addEventListener('click', function() {
+                //                 if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
+                //                     $.ajax({
+                //                         url: '{{ route('rejectMarketing', '') }}/' + this.dataset.id,
+                //                         method: 'POST',
+                //                         data: {
+                //                             _token: '{{ csrf_token() }}'
+                //                         },
+                //                         success: function(response) {
+                //                             alert(response.message);
+                //                             location.reload();
+                //                         },
+                //                         error: function(xhr) {
+                //                             alert('An error occurred: ' + xhr.responseText);
+                //                         }
+                //                     });
+                //                 } else {
+                //                     alert("Penolakan pengajuan dibatalkan.");
+                //                 }
+                //             });
+                //         }
+                //     });
+                // });
+
+
+                document.addEventListener('DOMContentLoaded', function () {
+                    const hargaAwal = parseFloat(document.getElementById('hargaAwal').value) || 0; // Mengambil harga awal dari hidden input
+                    const hargaAkhirInput = document.getElementById('hargaAkhirInput');
+                    const profitPercentage = document.getElementById('profitPercentage');
+
+                    // Fungsi untuk menghitung profit
+                    function calcProfit(hargaAwal, hargaAkhir) {
+                        if (hargaAkhir > 0) {
+                            let profit = ((hargaAkhir - hargaAwal) / hargaAkhir) * 100; // Memperbaiki rumus menghitung profit
+                            return {
+                                value: profit.toFixed(2) + '%', // Mengembalikan hasil dengan format 2 decimal
+                                isLow: profit < 25 // Menyimpan flag jika profit kurang dari 25%
+                            };
+                        } else {
+                            return {
+                                value: 'N/A', // Tidak bisa dihitung jika harga akhir 0
+                                isLow: false
+                            };
+                        }
                     }
 
-                    // Menambahkan event listener untuk tombol reject
-                    const rejectButton = row.querySelector('.rejectButton');
-                    if (rejectButton) {
-                        rejectButton.addEventListener('click', function() {
-                            // Menampilkan jendela konfirmasi untuk penolakan
-                            if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
-                                $.ajax({
-                                    url: '{{ route('rejectMarketing', '') }}/' + this.dataset.id,
-                                    method: 'POST',
-                                    data: {
-                                        _token: '{{ csrf_token() }}'
-                                    },
-                                    success: function(response) {
-                                        alert(response.message);
-                                        location.reload(); // Reload halaman setelah berhasil
-                                    },
-                                    error: function(xhr) {
-                                        alert('An error occurred: ' + xhr.responseText);
-                                    }
-                                });
-                            } else {
-                                alert("Penolakan pengajuan dibatalkan.");
-                            }
-                        });
-                    }
+                    // Event listener untuk input harga akhir
+                    hargaAkhirInput.addEventListener('input', function () {
+                        const rawValue = hargaAkhirInput.value.replace(/[^0-9]/g, ''); // Menghilangkan format
+                        const hargaAkhir = parseFloat(rawValue) || 0; // Ambil nilai dari input harga akhir
+
+                        const profitResult = calcProfit(hargaAwal, hargaAkhir); // Hitung profit
+
+                        // Mengatur warna teks berdasarkan profit
+                        if (profitResult.isLow) {
+                            profitPercentage.style.color = 'red'; // Jika profit kurang dari 25%, ubah warna ke merah
+                        } else {
+                            profitPercentage.style.color = ''; // Reset warna jika profit normal
+                        }
+
+                        profitPercentage.innerText = profitResult.value; // Tampilkan hasil di modal
+                    });
+
+                    // Menangani submit form
+                    document.getElementById('hargaForm').addEventListener('submit', function () {
+                        // Mengambil nilai dari input harga akhir yang diformat
+                        const rawValue = hargaAkhirInput.value.replace(/[^0-9]/g, ''); // Menghilangkan format
+                        hargaAkhirInput.value = rawValue; // Set nilai yang dikirim ke server sebagai angka
+                    });
                 });
-            });
+                function formatRupiah(input) {
+                    // Menghilangkan semua karakter yang bukan angka
+                    let value = input.value.replace(/\D/g, '');
+                    // Memformat angka menjadi format rupiah
+                    let formattedValue = 'Rp' + value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+                    // Tampilkan format rupiah di input field
+                    input.value = formattedValue;
+                }
+                function calcProfit(hargaAwal, hargaAkhir) {
+                    if (hargaAkhir > 0) {
+                        let profit = ((hargaAkhir - hargaAwal) / hargaAkhir) * 100;
+                        return {
+                            value: profit.toFixed(2) + '%', // Mengembalikan hasil dengan format 2 decimal
+                            isLow: profit < 25 // Menyimpan flag jika profit kurang dari 25%
+                        };
+                    } else {
+                        return {
+                            value: 'N/A', // Tidak bisa dihitung jika harga akhir 0
+                            isLow: false
+                        };
+                    }
+                }
+
+                // Menjalankan perhitungan profit saat halaman dimuat
+                document.addEventListener('DOMContentLoaded', function() {
+                    const rows = document.querySelectorAll('tbody tr');
+                    rows.forEach(row => {
+                        const hargaAwal = parseFloat(row.cells[7].innerText) || 0; // Kolom Harga Awal
+                        const hargaAkhir = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Akhir
+                        const profitCell = row.cells[9]; // Kolom Profit
+                        
+                        // Menghitung profit dan menampilkannya
+                        const profitResult = calcProfit(hargaAwal, hargaAkhir);
+                        
+                        // Mengatur teks dan warna berdasarkan profit
+                        if (profitResult.isLow) {
+                            profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
+                        } else {
+                            profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
+                        }
+                    });
+                });
         </script>
 
     </main><!-- End #main -->
