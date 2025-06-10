@@ -494,7 +494,7 @@ class CustomRequestController extends Controller
                     TrsPengajuanSubcont::create([
                     'id_subcont' => $id,
                     'keterangan' => 'Cost Process : ' . $request->harga_awal,
-                    'status' => '1', // Status atau keterangan tambahan
+                    'status' => '2', // Status atau keterangan tambahan
                     'modified_at' => $userName
                 ]);
                 }
