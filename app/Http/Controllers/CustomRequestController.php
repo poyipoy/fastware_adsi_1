@@ -134,9 +134,10 @@ class CustomRequestController extends Controller
 
     public function showApprovalFinance()
     {
+        
         $materials = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
-            ->where('status_1', 4)
-            ->where('sec_line', [1,2])
+            ->whereIn('status_1', [4,5])
+            ->whereIn('sec_line', [1,2])
             ->where('confirm_prod', '!=', '')
             ->orderBy('created_at', 'desc')
             ->get();

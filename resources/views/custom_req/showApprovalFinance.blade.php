@@ -531,17 +531,17 @@
                                                 <td class="text-center">{{ $pengajuan->date_app_2 ? $pengajuan->date_app_2 : '' }}</td>
                                                 <td class="text-center d-flex gap-3 justify-content-center flex-wrap">
                                                     {{-- Tombol Lihat --}}
-                                                        @if (auth()->user()->name == $pengajuan->modified_at)
+                                                        @if (auth()->user()->name == $pengajuan->production->name)
                                                             {{-- Jika user adalah sales dan statusnya draft --}}
-                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
+                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
                                                                 <i class="fas fa-eye"></i> Lihat
                                                             </a>
                                                         @else
-                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
+                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
                                                                 <i class="fas fa-eye"></i> Lihat
                                                             </a>
                                                         @endif
-                                                    
+                                                    @if($pengajuan->status_1 == 4)
                                                     {{-- Tombol Kirim ke Production --}}
                                                     <button type="button" class="btn btn-sm btn-success btn-hover" id="productionButton" data-id="{{ $pengajuan->id }}">
                                                         <i class="fas fa-paper-plane"></i> Finish
@@ -551,6 +551,7 @@
                                                     <button type="button" class="btn btn-sm btn-danger btn-hover" id="rejectButton" data-id="{{ $pengajuan->id }}">
                                                         <i class="fas fa-times-circle"></i> Reject
                                                     </button>
+                                                    @endif
                                                 </td>
 
                                                 
@@ -651,41 +652,49 @@
                 });
             });
             
-            // Fungsi untuk menghitung profit persentase
-            function calcProfit(hargaAwal, hargaAkhir) {
-                if (hargaAkhir > 0) {
-                    let profit = ((hargaAkhir - hargaAwal) / hargaAkhir) * 100;
-                    return {
-                        value: profit.toFixed(2) + '%', // Mengembalikan hasil dengan format 2 decimal
-                        isLow: profit < 25 // Menyimpan flag jika profit kurang dari 25%
-                    };
-                } else {
-                    return {
-                        value: 'N/A', // Tidak bisa dihitung jika harga akhir 0
-                        isLow: false
-                    };
-                }
-            }
+           // Fungsi untuk menghitung profit persentase
+function calcProfit(hargaAwal, hargaAkhir) {
+    if (hargaAkhir > 0) {
+        let profit = ((hargaAkhir - hargaAwal) / hargaAkhir) * 100;
+        return {
+            value: profit.toFixed(2) + '%', // Mengembalikan hasil dengan format 2 decimal
+            isLow: profit < 25 // Menyimpan flag jika profit kurang dari 25%
+        };
+    } else {
+        return {
+            value: 'N/A', // Tidak bisa dihitung jika harga akhir 0
+            isLow: false
+        };
+    }
+}
 
-            // Menjalankan perhitungan profit saat halaman dimuat
-            document.addEventListener('DOMContentLoaded', function() {
-                const rows = document.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const hargaAwal = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Awal
-                    const hargaAkhir = parseFloat(row.cells[9].innerText) || 0; // Kolom Harga Akhir
-                    const profitCell = row.cells[10]; // Kolom Profit
-                    
-                    // Menghitung profit dan menampilkannya
-                    const profitResult = calcProfit(hargaAwal, hargaAkhir);
-                    
-                    // Mengatur teks dan warna berdasarkan profit
-                    if (profitResult.isLow) {
-                        profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
-                    } else {
-                        profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
-                    }
-                });
-            });
+// Menjalankan perhitungan profit saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const hargaAwalCell = row.cells[8]; // Kolom Harga Awal
+        const hargaAkhirCell = row.cells[9]; // Kolom Harga Akhir
+        const profitCell = row.cells[10]; // Kolom Profit
+
+        // Memastikan kolom ada sebelum digunakan
+        if (hargaAwalCell && hargaAkhirCell && profitCell) {
+            const hargaAwal = parseFloat(hargaAwalCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
+            const hargaAkhir = parseFloat(hargaAkhirCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
+            
+            // Menghitung profit dan menampilkannya
+            const profitResult = calcProfit(hargaAwal, hargaAkhir);
+            
+            // Mengatur teks dan warna berdasarkan profit
+            if (profitResult.isLow) {
+                profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
+            } else {
+                profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
+            }
+        } else {
+            console.warn('Kolom tidak ditemukan pada baris ini:', row);
+        }
+    });
+});
         </script>
 
     </main><!-- End #main -->

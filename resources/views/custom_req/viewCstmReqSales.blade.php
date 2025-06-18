@@ -356,7 +356,7 @@
                             </button>
                         @endif
 
-                        @if ($materials->status_1 == 4)
+                        @if ($materials->status_1 == 4 )
                             <button type="button" class="btn btn-success" id="financeButton" data-id="{{ $materials->id }}">
                                 <i class="fas fa-paper-plane"></i> Submit
                             </button>
@@ -364,11 +364,11 @@
                         @endif
                         
                       
-                      @if ($materials->status_1 == 3 && $materials->approval_1 == '' && is_null($materials->approval_1))
-                        <button type="button" class="btn btn-modal" data-bs-toggle="modal" data-bs-target="#inputDataModal1">
-                            Input
-                        </button>
-                      @endif
+                        @if ($materials->status_1 == 3 && $materials->approval_1 == null && !empty($materials->quotation_file) && !empty($materials->confirm_prod))
+                            <button type="button" class="btn btn-modal" data-bs-toggle="modal" data-bs-target="#inputDataModal1">
+                                Input
+                            </button>
+                        @endif
                       @if ($materials->status_1 == 1 && $materials->sec_line == 1)
                         @php
                             // Cek apakah ada file dengan status 2 atau 3
