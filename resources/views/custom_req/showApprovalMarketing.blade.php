@@ -532,15 +532,15 @@
                                                 <td class="text-center d-flex gap-3 justify-content-center flex-wrap">
                                                     {{-- Tombol Lihat --}}
                                                     @if (auth()->user()->name == $pengajuan->production->name)
-                                                            {{-- Jika user adalah sales dan statusnya draft --}}
-                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
-                                                                <i class="fas fa-eye"></i> Lihat
-                                                            </a>
-                                                        @else
-                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
-                                                                <i class="fas fa-eye"></i> Lihat
-                                                            </a>
-                                                        @endif
+                                                        {{-- Jika user adalah sales dan statusnya draft --}}
+                                                        <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
+                                                            <i class="fas fa-eye"></i> Lihat
+                                                        </a>
+                                                    @else
+                                                        <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
+                                                            <i class="fas fa-eye"></i> Lihat
+                                                        </a>
+                                                    @endif
                                                     @if (!is_null($pengajuan->harga_akhir) && $pengajuan->harga_akhir !== '')
                                                         <button type="button" class="btn btn-sm btn-success btn-hover marketingButton" data-id="{{ $pengajuan->id }}" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}">
                                                             <i class="fas fa-paper-plane"></i> Submit

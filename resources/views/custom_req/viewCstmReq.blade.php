@@ -940,18 +940,26 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const rows = document.querySelectorAll('tbody tr');
                 rows.forEach(row => {
-                    const hargaAwal = parseFloat(row.cells[7].innerText) || 0; // Kolom Harga Awal
-                    const hargaAkhir = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Akhir
+                    const hargaAwalCell = row.cells[7]; // Kolom Harga Awal
+                    const hargaAkhirCell = row.cells[8]; // Kolom Harga Akhir
                     const profitCell = row.cells[9]; // Kolom Profit
-                    
-                    // Menghitung profit dan menampilkannya
-                    const profitResult = calcProfit(hargaAwal, hargaAkhir);
-                    
-                    // Mengatur teks dan warna berdasarkan profit
-                    if (profitResult.isLow) {
-                        profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
+
+                    // Memastikan kolom ada sebelum digunakan
+                    if (hargaAwalCell && hargaAkhirCell && profitCell) {
+                        const hargaAwal = parseFloat(hargaAwalCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
+                        const hargaAkhir = parseFloat(hargaAkhirCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
+                        
+                        // Menghitung profit dan menampilkannya
+                        const profitResult = calcProfit(hargaAwal, hargaAkhir);
+                        
+                        // Mengatur teks dan warna berdasarkan profit
+                        if (profitResult.isLow) {
+                            profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
+                        } else {
+                            profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
+                        }
                     } else {
-                        profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
+                        console.warn('Kolom tidak ditemukan pada baris ini:', row);
                     }
                 });
             });

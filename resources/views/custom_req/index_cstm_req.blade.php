@@ -592,24 +592,13 @@
                                                     <div class="d-flex justify-content-center align-items-center">
                                                         {{-- Tombol Lihat --}}
 
-                                                        @if (auth()->id() == 1)
-                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
-                                                                <i class="fas fa-eye"></i> Lihat
-                                                            </a>
-                                                            {{-- @if ($pengajuan->status_1 == 2 && $pengajuan->sec_line == 1)
-                                                            <button type="button" class="btn btn-yellow btn-sm d-inline-flex align-items-center" 
-                                                                onclick="konfirmasiKirim('{{ route('kirimsubcont', $pengajuan->id) }}', 'Subcont')">
-                                                                <i class="fas fa-paper-plane"></i> Subcont
-                                                            </button>
-                                                            @endif --}}
-                                                            
-                                                        @elseif (auth()->user()->name == $pengajuan->modified_at)
-                                                            {{-- Jika user adalah sales dan statusnya draft --}}
-                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
-                                                                <i class="fas fa-eye"></i> Lihat
-                                                            </a>
+                                                        @if (auth()->user()->name == $pengajuan->production->name)
+                                                        {{-- Jika user adalah sales dan statusnya draft --}}
+                                                        <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
+                                                            <i class="fas fa-eye"></i> Lihat
+                                                        </a>
                                                         @else
-                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-blue btn-sm d-inline-flex align-items-center me-2">
+                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
                                                                 <i class="fas fa-eye"></i> Lihat
                                                             </a>
                                                         @endif
@@ -807,18 +796,26 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const rows = document.querySelectorAll('tbody tr');
                 rows.forEach(row => {
-                    const hargaAwal = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Awal
-                    const hargaAkhir = parseFloat(row.cells[9].innerText) || 0; // Kolom Harga Akhir
+                    const hargaAwalCell = row.cells[8]; // Kolom Harga Awal
+                    const hargaAkhirCell = row.cells[9]; // Kolom Harga Akhir
                     const profitCell = row.cells[10]; // Kolom Profit
-                    
-                    // Menghitung profit dan menampilkannya
-                    const profitResult = calcProfit(hargaAwal, hargaAkhir);
-                    
-                    // Mengatur teks dan warna berdasarkan profit
-                    if (profitResult.isLow) {
-                        profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
+
+                    // Memastikan kolom ada sebelum digunakan
+                    if (hargaAwalCell && hargaAkhirCell && profitCell) {
+                        const hargaAwal = parseFloat(hargaAwalCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
+                        const hargaAkhir = parseFloat(hargaAkhirCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
+                        
+                        // Menghitung profit dan menampilkannya
+                        const profitResult = calcProfit(hargaAwal, hargaAkhir);
+                        
+                        // Mengatur teks dan warna berdasarkan profit
+                        if (profitResult.isLow) {
+                            profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
+                        } else {
+                            profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
+                        }
                     } else {
-                        profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
+                        console.warn('Kolom tidak ditemukan pada baris ini:', row);
                     }
                 });
             });
