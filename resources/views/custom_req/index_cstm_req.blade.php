@@ -592,15 +592,16 @@
                                                     <div class="d-flex justify-content-center align-items-center">
                                                         {{-- Tombol Lihat --}}
 
-                                                        @if (auth()->user()->name == $pengajuan->production->name)
+                                                        @if (auth()->user()->name == $pengajuan->modified_at)
                                                         {{-- Jika user adalah sales dan statusnya draft --}}
-                                                        <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
-                                                            <i class="fas fa-eye"></i> Lihat
-                                                        </a>
-                                                        @else
                                                             <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
                                                                 <i class="fas fa-eye"></i> Lihat
                                                             </a>
+                                                        @else
+                                                            
+                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
+                                                            <i class="fas fa-eye"></i> Lihat
+                                                        </a>
                                                         @endif
                                                         {{-- @if ($pengajuan->status_1 == 1)
                                                             <button type="button" class="btn btn-green btn-sm d-inline-flex align-items-center me-2" 
