@@ -239,10 +239,13 @@
                         <table class="table table-bordered align-middle mb-0 text-nowrap">
                             <thead>
                                 <tr>
+                                    <th>REF</th>
                                     <th>PIC</th>
                                     <th>Nama Customer</th>
                                     <th>Nama Project</th>
+                                    <th>No SO</th>
                                     <th>Keterangan</th>
+                                    <th>Note Sales</th>
                                     <th>Jenis Proses</th>
                                     <th>Tgl Pengajuan</th>
                                     <th>Status</th>
@@ -250,6 +253,7 @@
                                     <th>Selling Price</th>
                                     <th>Profit (%)</th>
                                     <th>Custom</th>
+                                    <th>Custom Approval</th>
                                     <th>Marketing Dept Head</th>
                                     <th>Marketing Approval</th>
                                     <th>Finance Dept Head</th>
@@ -258,10 +262,13 @@
                             </thead>
                             <tbody>
                                 <tr>
+                                    <td>{{ $materials->no_ref }}</td>
                                     <td>{{ $materials->modified_at ? $materials->modified_at : '' }}</td>
                                     <td>{{ $materials->nama_customer }}</td>
                                     <td>{{ $materials->nama_project }}</td>
+                                    <td>{{ $materials->so }}</td>
                                     <td>{{ $materials->keterangan }}</td>
+                                    <td>{{ $materials->note_sales }}</td>
                                     <td>
                                         {{ $materials->jenis_proses_subcont !== 'Null' ? $materials->jenis_proses_subcont : '' }}
                                     </td>
@@ -327,6 +334,7 @@
                                     <td>Rp{{ number_format($materials->harga_akhir, 0, ',', '.') }}</td>
                                     <td class="text-center profit-cell" data-harga-awal="{{ $materials->harga_awal }}" data-harga-akhir="{{ $materials->harga_akhir }}"></td>
                                     <td>{{ $materials->production ? $materials->production->name : '' }}</td>
+                                    <td>{{ $materials->date_confirm_prod ? $materials->date_confirm_prod : '' }}</td>
                                     <td>{{ $materials->marketing ? $materials->marketing->name : '' }}</td>
                                     <td>{{ $materials->date_app_1 ? $materials->date_app_1 : '' }}</td>
                                     <td>{{ $materials->finance ? $materials->finance->name : '' }}</td>
@@ -1025,9 +1033,9 @@
                 document.addEventListener('DOMContentLoaded', function() {
                     const rows = document.querySelectorAll('tbody tr');
                     rows.forEach(row => {
-                        const hargaAwal = parseFloat(row.cells[7].innerText) || 0; // Kolom Harga Awal
-                        const hargaAkhir = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Akhir
-                        const profitCell = row.cells[9]; // Kolom Profit
+                        const hargaAwal = parseFloat(row.cells[10].innerText) || 0; // Kolom Harga Awal
+                        const hargaAkhir = parseFloat(row.cells[11].innerText) || 0; // Kolom Harga Akhir
+                        const profitCell = row.cells[12]; // Kolom Profit
                         
                         // Menghitung profit dan menampilkannya
                         const profitResult = calcProfit(hargaAwal, hargaAkhir);

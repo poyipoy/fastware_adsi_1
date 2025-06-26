@@ -191,9 +191,14 @@
                 font-family: 'Cambria', serif;
             }
 
+            .datatable tbody td  {
+                background-color: transparent; /* Memungkinkan penggunaan latar belakang yang ditetapkan dengan inline style */
+            }
+
             .datatable-table>tbody>tr>td {
                 text-align: center;
             }
+            
 
 
             .dataTable-pagination {
@@ -486,21 +491,33 @@
                             </div>
                             <!-- Table with stripped rows -->
                             <div class="table-responsive" style="height: 100%; overflow-y: auto;">
+                                <div class="mb-3 d-flex gap-2">
+                                    <button class="btn btn-secondary" onclick="filterTable('all')">All Data</button>
+                                    <button class="btn btn-danger" onclick="filterTable('lebih3')">Outstanding</button>
+                                    <button class="btn btn-success" onclick="filterTable('maks3')">On-Track</button>
+                                </div>
+
                                 <table class="datatable table">
                                     <thead>
                                         <tr>
+                                            <th class="text-center" width="50px"></th>
                                             <th class="text-center" width="50px">NO</th>
+                                            <th class="text-center" width="100px">No Ref</th>
                                             <th class="text-center" width="100px">PIC</th>
                                             <th class="text-center" width="100px">Nama Customer</th>
                                             <th class="text-center" width="100px">Nama Project</th>
+                                            <th class="text-center" width="100px">No SO</th>
                                             <th class="text-center" width="100px">Keterangan</th>
+                                            <th class="text-center" width="100px">Note Sales</th>
                                             <th class="text-center" width="100px">Jenis Proses</th>
                                             <th class="text-center" width="100px">Tgl Pengajuan</th>
+                                            <th class="text-center" width="100px">LeadTime</th>
                                             <th class="text-center" width="100px">Status</th>
                                             <th class="text-center" width="100px">Cost Production</th>
                                             <th class="text-center" width="100px">Selling Price</th>
                                             <th class="text-center" width="100px">Profit (%)</th>
                                             <th class="text-center" width="100px">Custom</th>
+                                            <th class="text-center" width="100px">Custom Aprroval</th>
                                             <th class="text-center" width="100px">Marketing Dept Head</th>
                                             <th class="text-center" width="100px">Marketing Approval</th>
                                             <th class="text-center" width="100px">Finance Dept Head</th>
@@ -513,16 +530,45 @@
                                     </thead>
                                     <tbody>
                                         @foreach ($materials as $key => $pengajuan)
-                                            <tr>
+                                            <tr data-id="{{ $pengajuan->id }}">
+                                                
+                                                <td>
+                                                    @php
+                                                        $warna = '';
+                                                        if ($date[$pengajuan->id] > 3) {
+                                                            $warna = 'lebih3';
+                                                        } elseif (!is_null($date[$pengajuan->id]) && $date[$pengajuan->id] >= 0 && $date[$pengajuan->id] <= 3) {
+                                                            $warna = 'maks3';
+                                                        }
+                                                    @endphp
+                                                    <div class="indikator-warna {{ $warna }}" style="width: 20px; height: 20px;
+                                                        @if($date[$pengajuan->id] > 3)
+                                                            background-color: #ed2434;
+                                                        @elseif($date[$pengajuan->id] !== null && $date[$pengajuan->id] >= 0 && $date[$pengajuan->id] <= 3)
+                                                            background-color: #44ff4d;
+                                                        @else
+                                                            background-color: #ffffff;
+                                                        @endif
+                                                    ">
+                                                    </div>
+                                                </td>
+
                                                 <td class="text-center">{{ $key + 1 }}</td>
+                                                <td class="text-center">{{ $pengajuan->no_ref}}</td>
+                                                {{-- Menampilkan nama user yang terakhir mengubah data --}}
                                                 <td class="text-center">{{ $pengajuan->modified_at ? $pengajuan->modified_at : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->nama_customer }}</td>
                                                 <td class="text-center">{{ $pengajuan->nama_project }}</td>
+                                                <td class="text-center">{{ $pengajuan->so }}</td>
                                                 <td class="text-center">{{ $pengajuan->keterangan }}</td>
+                                                <td class="text-center">{{ $pengajuan->note_sales }}</td>
                                                 <td class="text-center">
                                                     {{ $pengajuan->jenis_proses_subcont !== 'Null' ? $pengajuan->jenis_proses_subcont : '' }}
                                                 </td>
                                                 <td class="text-center">{{ $pengajuan->created_at->format('d-m-Y') }}</td>
+                                                <td class="text-center">
+                                                    {{ $sincedays[$pengajuan->id] ?? '-' }} Hari
+                                                </td>
                                                 <td class="text-center">
                                                     @php
                                                         $statusClasses = [
@@ -584,6 +630,7 @@
                                                 <td class="text-center">Rp{{ number_format($pengajuan->harga_akhir, 0, ',', '.') }}</td>         
                                                 <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>                                       
                                                 <td class="text-center">{{ $pengajuan->confirm_prod ? $pengajuan->production->name : '' }}</td>
+                                                <td class="text-center">{{ $pengajuan->date_confirm_prod ? $pengajuan->date_confirm_prod : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->marketing ? $pengajuan->marketing->name : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->date_app_1 ? $pengajuan->date_app_1 : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->finance ? $pengajuan->finance->name : '' }}</td>
@@ -635,6 +682,7 @@
                                                         <span class="text-muted fst-italic">Quotation belum tersedia</span>
                                                     @endif
                                                 </td>
+                                                
                                                 @endif
                                             </tr>
                                         @endforeach
@@ -648,7 +696,7 @@
 
             <div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
                 <div class="modal-dialog">
-                    <form action="{{ route('CustomRequest.store') }}" method="POST">
+                    <form action="{{ route('CustomRequest.store') }}" method="POST" id="requestForm">
                         @csrf
                         <div class="modal-content">
                             <div class="modal-header">
@@ -658,16 +706,27 @@
                             <div class="modal-body">
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Customer</label>
-                                    <input type="text" name="customer" class="form-control" placeholder="Masukkan Nama Customer..." required>
+                                    <input type="text" id="customer" name="customer" class="form-control" placeholder="Masukkan Nama Customer..." required>
                                 </div>
                                 
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Nama Project</label>
-                                    <input type="text" name="nama_project" class="form-control" placeholder="Masukkan Nama Project..." required>
+                                    <input type="text" id="nama_project" name="nama_project" class="form-control" placeholder="Masukkan Nama Project..." required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">No SO</label>
+                                    <input type="text" id="no_so" name="no_so" class="form-control" placeholder="SO/Tahun/....." required 
+                                        pattern="\d{6}" maxlength="6" title="Masukkan 6 digit angka saja">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Note Sales</label>
+                                    <textarea id="note_sales" name="note_sales" class="form-control" rows="3" placeholder="Masukkan Catatan Sales..."></textarea>
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="submit" class="btn btn-primary" id="submitBtn">Simpan</button>
+                                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Simpan</button>
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                             </div>
                         </div>
@@ -720,7 +779,49 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script>
+            function filterTable(type) {
+                const rows = document.querySelectorAll("table tbody tr");
 
+                rows.forEach(row => {
+                    const indicator = row.querySelector(".indikator-warna");
+
+                    if (!indicator) return;
+
+                    const classList = indicator.classList;
+
+                    if (type === "all") {
+                        row.style.display = "";
+                    } else if (type === "lebih3") {
+                        row.style.display = classList.contains("lebih3") ? "" : "none";
+                    } else if (type === "maks3") {
+                        row.style.display = classList.contains("maks3") ? "" : "none";
+                    }
+                });
+            }
+
+            // $(document).ready(function() {
+            //     // Menginisialisasi DataTables
+            //     var table = $('.datatable').DataTable({
+            //         // Opsi lain jika perlu
+            //     });
+
+            //     // Callback untuk mengubah warna latar belakang
+            //     table.on('draw', function() {
+            //         $('.datatable tbody tr').each(function() {
+            //             var id = $(this).data('id'); // Mengambil ID dari atribut data-id
+            //             var currentDateValue = {{ json_encode($date) }}[id]; // Mendapatkan data dari PHP untuk penyertaan JavaScript
+                        
+            //             // Tentukan warna berdasarkan nilai
+            //             if (currentDateValue > 3) {
+            //                 $(this).css('background-color', '#ed2434'); // Merah jika lebih dari 3
+            //             } else if (currentDateValue < 3) {
+            //                 $(this).css('background-color', '#44ff4d'); // Hijau jika kurang dari 3
+            //             } else {
+            //                 $(this).css('background-color', '#ffffff'); // Putih jika sama dengan 3
+            //             }
+            //         });
+            //     });
+            // });
             function konfirmasiKirim(url, tujuan) {
                 if (confirm(`Anda yakin ingin mengirim data ke bagian ${tujuan}?`)) {
                     const form = document.getElementById('formKirim');
@@ -732,6 +833,31 @@
             $(document).ready(function() {
                 new DataTable('#viewPoSecHead');
             });
+
+            document.addEventListener('DOMContentLoaded', (event) => {
+            const customerInput = document.getElementById('customer');
+            const namaProjectInput = document.getElementById('nama_project');
+            const noSoInput = document.getElementById('no_so');
+            const noteSalesInput = document.getElementById('note_sales');
+            const submitButton = document.getElementById('submitBtn');
+
+            // Function to check the validity of the input fields
+            const validateInput = () => {
+                const isCustomerValid = customerInput.value.trim() !== ''; // Memastikan Field Customer diisi
+                const isNamaProjectValid = namaProjectInput.value.trim() !== ''; // Memastikan Field Nama Project diisi
+                const isNoSoValid = noSoInput.value.length === 6; // Memastikan panjang No SO adalah 6 digit
+                const isNoteSalesValid = noteSalesInput.value.trim() !== ''; // Memastikan Field Note Sales diisi (optional)
+
+                // Mengaktifkan tombol jika semua input valid
+                submitButton.disabled = !(isCustomerValid && isNamaProjectValid && isNoSoValid);
+            };
+
+            // Event listener untuk semua input
+            customerInput.addEventListener('input', validateInput);
+            namaProjectInput.addEventListener('input', validateInput);
+            noSoInput.addEventListener('input', validateInput);
+            noteSalesInput.addEventListener('input', validateInput);
+        });
 
             function calcProfit(hargaAwal, hargaAkhir) {
                 if (hargaAkhir > 0) {
@@ -797,9 +923,9 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const rows = document.querySelectorAll('tbody tr');
                 rows.forEach(row => {
-                    const hargaAwalCell = row.cells[8]; // Kolom Harga Awal
-                    const hargaAkhirCell = row.cells[9]; // Kolom Harga Akhir
-                    const profitCell = row.cells[10]; // Kolom Profit
+                    const hargaAwalCell = row.cells[13]; // Kolom Harga Awal
+                    const hargaAkhirCell = row.cells[14]; // Kolom Harga Akhir
+                    const profitCell = row.cells[15]; // Kolom Profit
 
                     // Memastikan kolom ada sebelum digunakan
                     if (hargaAwalCell && hargaAkhirCell && profitCell) {

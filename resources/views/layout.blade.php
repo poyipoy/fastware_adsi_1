@@ -151,8 +151,8 @@
                                     Kelola Data
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown1">
-                                    <li><a class="dropdown-item" href="#">Akun Users</a></li>
-                                    <li><a class="dropdown-item" href="#">Customers</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('dashboardusers') }}">Akun Users</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('dashboardcustomers') }}">Customers</a></li>
                                     {{-- <li>
                                     <hr class="dropdown-divider">
                                 </li>

@@ -14,10 +14,12 @@ class ImportAdministrationController extends Controller
 {
     public function showcreate()
     {
-        $admin = ImportAdministration::all();
+        $admin = ImportAdministration::orderBy('created_at', 'desc')->get();
 
         return view('import_adm.create', compact('admin'));
     }
+
+
 
 
     public function store(Request $request)

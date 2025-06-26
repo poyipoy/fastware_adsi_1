@@ -35,6 +35,9 @@ class MstPengajuanSubcont extends Model
         'confirm_prod',
         'sec_line',
         'is_active',
+        'so',
+        'note_sales',
+        'no_ref',
         'modified_at'
     ];
 

@@ -401,6 +401,9 @@
                 background-color: #0033da;
                 color: #ffffff;
             }
+            .datatable tbody td  {
+                background-color: transparent; /* Memungkinkan penggunaan latar belakang yang ditetapkan dengan inline style */
+            }
 
             .btn-add:hover {
                 background-color: #0026a3;
@@ -443,24 +446,49 @@
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">Tampilan Data Pengajuan Custom</h5>
+
+                            @if (!empty($CSTMTerbaru))
+                                <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+                                <script>
+                                    document.addEventListener('DOMContentLoaded', function() {
+                                        Swal.fire({
+                                            title: 'Pengajuan Terbaru!',
+                                            text: 'Ref Quotation Custom {{ is_array($CSTMTerbaru) ? implode(', ', $CSTMTerbaru) : $CSTMTerbaru }} meminta persetujuan',
+                                            icon: 'info',
+                                            confirmButtonText: 'OK'
+                                        });
+                                    });
+                                </script>
+                            @endif
                             
                             <!-- Table with stripped rows -->
                             <div class="table-responsive" style="height: 100%; overflow-y: auto;">
+                                <div class="mb-3 d-flex gap-2">
+                                    <button class="btn btn-secondary" onclick="filterTable('all')">All Data</button>
+                                    <button class="btn btn-danger" onclick="filterTable('lebih3')">Outstanding</button>
+                                    <button class="btn btn-success" onclick="filterTable('maks3')">On-Track</button>
+                                </div>
                                 <table class="datatable table">
                                     <thead>
                                         <tr>
+                                            <th class="text-center" width="50px"></th>
                                             <th class="text-center" width="50px">NO</th>
+                                            <th class="text-center" width="100px">No Ref</th>
                                             <th class="text-center" width="100px">PIC</th>
                                             <th class="text-center" width="100px">Nama Customer</th>
                                             <th class="text-center" width="100px">Nama Project</th>
+                                            <th class="text-center" width="100px">No SO</th>
                                             <th class="text-center" width="100px">Keterangan</th>
+                                            <th class="text-center" width="100px">Note Sales</th>
                                             <th class="text-center" width="100px">Jenis Proses</th>
                                             <th class="text-center" width="100px">Tgl Pengajuan</th>
+                                            <th class="text-center" width="100px">LeadTime</th>
                                             <th class="text-center" width="100px">Status</th>
                                             <th class="text-center" width="100px">Cost Process</th>
                                             <th class="text-center" width="100px">Selling Price</th>
-                                            <th class="text-center" width="100px">Profit (%)</th>
+                                            <th class="text-center" width="100px">Profit</th>
                                             <th class="text-center" width="100px">Custom</th>
+                                            <th class="text-center" width="100px">Custom Aprroval</th>
                                             <th class="text-center" width="100px">Marketing Dept Head</th>
                                             <th class="text-center" width="100px">Marketing Approval</th>
                                             <th class="text-center" width="100px">Finance Dept Head</th>
@@ -471,15 +499,41 @@
                                     <tbody>
                                         @foreach ($materials as $key => $pengajuan)
                                             <tr>
+                                                <td>
+                                                    @php
+                                                        $warna = '';
+                                                        if ($date[$pengajuan->id] > 3) {
+                                                            $warna = 'lebih3';
+                                                        } elseif (!is_null($date[$pengajuan->id]) && $date[$pengajuan->id] >= 0 && $date[$pengajuan->id] <= 3) {
+                                                            $warna = 'maks3';
+                                                        }
+                                                    @endphp
+                                                    <div class="indikator-warna {{ $warna }}" style="width: 20px; height: 20px;
+                                                        @if($date[$pengajuan->id] > 3)
+                                                            background-color: #ed2434;
+                                                        @elseif($date[$pengajuan->id] !== null && $date[$pengajuan->id] >= 0 && $date[$pengajuan->id] <= 3)
+                                                            background-color: #44ff4d;
+                                                        @else
+                                                            background-color: #ffffff;
+                                                        @endif
+                                                    ">
+                                                    </div>
+                                                </td>
                                                 <td class="text-center">{{ $key + 1 }}</td>
+                                                <td class="text-center">{{ $pengajuan->no_ref }}</td>
                                                 <td class="text-center">{{ $pengajuan->modified_at ? $pengajuan->modified_at : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->nama_customer }}</td>
                                                 <td class="text-center">{{ $pengajuan->nama_project }}</td>
+                                                <td class="text-center">{{ $pengajuan->so }}</td>
                                                 <td class="text-center">{{ $pengajuan->keterangan }}</td>
+                                                <td class="text-center">{{ $pengajuan->note_sales }}</td>
                                                 <td class="text-center">
                                                     {{ $pengajuan->jenis_proses_subcont !== 'Null' ? $pengajuan->jenis_proses_subcont : '' }}
                                                 </td>
                                                 <td class="text-center">{{ $pengajuan->created_at->format('d-m-Y') }}</td>
+                                                <td class="text-center">
+                                                    {{ $sincedays[$pengajuan->id] ?? '-' }} Hari
+                                                </td>
                                                 <td class="text-center">
                                                     @php
                                                         $statusClasses = [
@@ -525,6 +579,7 @@
                                                 <td class="text-center">Rp{{ number_format($pengajuan->harga_akhir, 0, ',', '.') }}</td>  
                                                 <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>                                            
                                                 <td class="text-center">{{ $pengajuan->confirm_prod ? $pengajuan->production->name : '' }}</td>
+                                                <td class="text-center">{{ $pengajuan->date_confirm_prod ? $pengajuan->date_confirm_prod : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->marketing ? $pengajuan->marketing->name : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->date_app_1 ? $pengajuan->date_app_1 : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->finance ? $pengajuan->finance->name : '' }}</td>
@@ -543,19 +598,24 @@
                                                         </a>
                                                         @endif
                                                     @if($pengajuan->status_1 == 4)
-                                                    {{-- Tombol Kirim ke Production --}}
-                                                    <button type="button" class="btn btn-sm btn-success btn-hover" id="productionButton" data-id="{{ $pengajuan->id }}">
+                                                    
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-success btn-hover productionButton"
+                                                            data-id="{{ $pengajuan->id }}"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#modalKeterangan">
                                                         <i class="fas fa-paper-plane"></i> Finish
                                                     </button>
 
+
                                                     {{-- Tombol Reject --}}
-                                                    <button type="button" class="btn btn-sm btn-danger btn-hover" id="rejectButton" data-id="{{ $pengajuan->id }}">
+                                                    <button type="button" class="btn btn-sm btn-danger btn-hover rejectButton" data-id="{{ $pengajuan->id }}"
+                                                            data-bs-toggle="modal" data-bs-target="#modalReject">
                                                         <i class="fas fa-times-circle"></i> Reject
                                                     </button>
+
                                                     @endif
                                                 </td>
-
-                                                
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -565,6 +625,56 @@
                     </div>
                 </div>
             </div>
+
+
+            <!-- Modal -->
+            <div class="modal fade" id="modalKeterangan" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Keterangan</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="pengajuanId">
+                            <div class="mb-3">
+                                <label for="keterangan" class="form-label">Masukkan Keterangan</label>
+                                <textarea class="form-control" id="keterangan" rows="3" required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" id="submitKeterangan">Kirim</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+           
+            <!-- Modal Reject -->
+            <div class="modal fade" id="modalReject" tabindex="-1" aria-labelledby="modalRejectLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalRejectLabel">Alasan Penolakan</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="rejectPengajuanId">
+                        <div class="mb-3">
+                            <label for="rejectKeterangan" class="form-label">Masukkan Keterangan Penolakan</label>
+                            <textarea class="form-control" id="rejectKeterangan" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" id="submitReject">Tolak</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+
+
             <form id="formKirim" method="POST" style="display:none;">
                 @csrf
             </form>
@@ -585,6 +695,26 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script>
+
+            function filterTable(type) {
+                const rows = document.querySelectorAll("table tbody tr");
+
+                rows.forEach(row => {
+                    const indicator = row.querySelector(".indikator-warna");
+
+                    if (!indicator) return;
+
+                    const classList = indicator.classList;
+
+                    if (type === "all") {
+                        row.style.display = "";
+                    } else if (type === "lebih3") {
+                        row.style.display = classList.contains("lebih3") ? "" : "none";
+                    } else if (type === "maks3") {
+                        row.style.display = classList.contains("maks3") ? "" : "none";
+                    }
+                });
+            }
             function konfirmasiKirim(url, tujuan) {
                 if (confirm(`Anda yakin ingin mengirim data ke bagian ${tujuan}?`)) {
                     const form = document.getElementById('formKirim');
@@ -598,58 +728,84 @@
                 new DataTable('#viewPoSecHead');
 
                 // Event listener untuk tombol "Finish"
-                $('#productionButton').on('click', function() {
-                    var pengajuanId = $(this).data('id');
-                    // Menampilkan jendela konfirmasi
-                    if (confirm("Apakah Anda yakin ingin mengirim ke Finance?")) {
-                        // Kirim permintaan AJAX
+                $(document).ready(function () {
+                    let selectedId = null;
+
+                    // Saat tombol "Finish" diklik, simpan ID ke modal
+                    $('.productionButton').on('click', function () {
+                        selectedId = $(this).data('id');
+                        $('#pengajuanId').val(selectedId);
+                        $('#keterangan').val('');
+                    });
+
+                    // Saat tombol submit di modal diklik
+                    $('#submitKeterangan').on('click', function () {
+                        const keterangan = $('#keterangan').val().trim();
+                        const pengajuanId = $('#pengajuanId').val();
+
+                        if (!keterangan) {
+                            alert('Keterangan wajib diisi.');
+                            return;
+                        }
+
                         $.ajax({
-                            url: '{{ route('approveFinance', '') }}/' + pengajuanId, // Rute dengan ID yang dinamis
+                            url: '{{ route('approveFinance', '') }}/' + pengajuanId,
                             method: 'POST',
                             data: {
-                                _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
+                                _token: '{{ csrf_token() }}',
+                                keterangan: keterangan
                             },
-                            success: function(response) {
-                                // Menampilkan pesan sukses
-                                alert(response.message);
-                                location.reload(); // Reload halaman setelah berhasil
+                            success: function (response) {
+                                alert(response.message || 'Berhasil dikirim.');
+                                location.reload();
                             },
-                            error: function(xhr) {
-                                // Menangani error
-                                alert('An error occurred: ' + xhr.responseText);
+                            error: function (xhr) {
+                                alert('Terjadi kesalahan: ' + xhr.responseText);
                             }
                         });
-                    } else {
-                        // Jika pengguna mengklik "Cancel"
-                        alert("Pengiriman dibatalkan.");
-                    }
+
+                        $('#modalKeterangan').modal('hide');
+                    });
                 });
                 
                 // Event listener untuk tombol "Reject" (tambahkan jika ada)
-                $('#rejectButton').on('click', function() {
-                    var pengajuanId = $(this).data('id');
-                    // Menampilkan jendela konfirmasi untuk penolakan
-                    if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
+                $(document).ready(function () {
+                    let rejectId = null;
+
+                    // Saat tombol Reject diklik, simpan ID ke modal
+                    $('.rejectButton').on('click', function () {
+                        rejectId = $(this).data('id');
+                        $('#rejectPengajuanId').val(rejectId);
+                        $('#rejectKeterangan').val('');
+                    });
+
+                    // Saat tombol submit dalam modal diklik
+                    $('#submitReject').on('click', function () {
+                        const keterangan = $('#rejectKeterangan').val().trim();
+                        const pengajuanId = $('#rejectPengajuanId').val();
+
+                        if (!keterangan) {
+                            alert('Keterangan penolakan wajib diisi.');
+                            return;
+                        }
+
                         $.ajax({
-                            url: '{{ route('rejectFinance', '') }}/' + pengajuanId, // Rute untuk menolak pengajuan
+                            url: '{{ route('rejectFinance', '') }}/' + pengajuanId,
                             method: 'POST',
                             data: {
-                                _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
+                                _token: '{{ csrf_token() }}',
+                                keterangan: keterangan
                             },
                             success: function(response) {
-                                // Menampilkan pesan sukses
-                                alert(response.message);
-                                location.reload(); // Reload halaman setelah berhasil
+                                alert(response.message || 'Pengajuan berhasil ditolak.');
+                                $('#modalReject').modal('hide');
+                                location.reload();
                             },
                             error: function(xhr) {
-                                // Menangani error
-                                alert('An error occurred: ' + xhr.responseText);
+                                alert('Terjadi kesalahan: ' + xhr.responseText);
                             }
                         });
-                    } else {
-                        // Jika pengguna membatalkan
-                        alert("Penolakan pengajuan dibatalkan.");
-                    }
+                    });
                 });
             });
             
@@ -673,9 +829,9 @@ function calcProfit(hargaAwal, hargaAkhir) {
 document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('tbody tr');
     rows.forEach(row => {
-        const hargaAwalCell = row.cells[8]; // Kolom Harga Awal
-        const hargaAkhirCell = row.cells[9]; // Kolom Harga Akhir
-        const profitCell = row.cells[10]; // Kolom Profit
+        const hargaAwalCell = row.cells[13]; // Kolom Harga Awal
+        const hargaAkhirCell = row.cells[14]; // Kolom Harga Akhir
+        const profitCell = row.cells[15]; // Kolom Profit
 
         // Memastikan kolom ada sebelum digunakan
         if (hargaAwalCell && hargaAkhirCell && profitCell) {

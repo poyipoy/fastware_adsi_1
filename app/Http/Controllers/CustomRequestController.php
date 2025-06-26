@@ -6,63 +6,159 @@ use Illuminate\Http\Request;
 use App\Models\MstPengajuanSubcont;
 use Illuminate\Auth\Events\Validated;
 use App\Models\Customer;
+use App\Models\MstPoPengajuan;
 use App\Models\User;
 use App\Models\TrsAttcCstm;
 use App\Models\TrsPengajuanSubcont;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use PhpOffice\PhpSpreadsheet\Calculation\TextData\Format;
+use Svg\Tag\Rect;
 
 class CustomRequestController extends Controller
 {
     public function showCstmReq()
     {
-
-        $query = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
+        $materials = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
             ->whereIn('sec_line', [1, 2])
-            ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        
-        $materials = $query->get();
+        $today = Carbon::now()->startOfDay(); // Hanya tanggal, jam diabaikan
+        $date = [];
+        $sincedays = [];
 
+        // Hitung durasi harian dari proses approval
+        foreach ($materials as $item) {
+            if ($item->confirm_prod && $item->harga_akhir && is_null($item->approval_1)) {
+                $date[$item->id] = Carbon::parse($item->updated_at)->startOfDay()->diffInDays($today);
+            } elseif ($item->approval_1 && $item->date_app_1) {
+                $date[$item->id] = Carbon::parse($item->date_app_1)->startOfDay()->diffInDays($today);
+            } else {
+                $date[$item->id] = null;
+            }
+        }
+
+        // Ambil semua log dan kelompokkan per id_subcont
+        $activity_logs = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
+            ->with('mstPengajuanSubcont')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('id_subcont');
+
+        // Hitung selisih hari sejak created_at
+        foreach ($materials as $item) {
+            $createdAt = Carbon::parse($item->created_at)->startOfDay();
+
+            if ($item->status_1 == 5) {
+                $latestLog = $activity_logs[$item->id]->sortByDesc('created_at')->first() ?? null;
+
+                if ($latestLog) {
+                    $logUpdatedAt = Carbon::parse($latestLog->updated_at)->startOfDay();
+                    $sincedays[$item->id] = $createdAt->diffInDays($logUpdatedAt);
+                } else {
+                    $sincedays[$item->id] = $createdAt->diffInDays($today); // fallback jika log kosong
+                }
+            } else {
+                $sincedays[$item->id] = $createdAt->diffInDays($today);
+            }
+        }
+
+        // Ambil file yang sudah status = 3
         $files = TrsAttcCstm::where('status', 3)
             ->whereIn('mst_id', $materials->pluck('id'))
             ->get()
             ->keyBy('mst_id');
 
+        // Ambil semua user
         $users = User::all();
+
+        // Ambil update terakhir berdasarkan subcont
         $updates = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
             ->get()
             ->keyBy('id_subcont');
 
-        return view('custom_req.index_cstm_req', compact('materials', 'users', 'files', 'updates'));
+        // Kirim data ke view
+        return view('custom_req.index_cstm_req', compact(
+            'materials', 'users', 'files', 'updates', 'date', 'sincedays'
+        ));
     }
 
 
-    public function showApprovalMarketing()
-    {
-        $materials = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
-            ->where('status_1', 3)
-            ->where('sec_line', [1,2])
-            ->where('confirm_prod', '!=', '')
-            ->orderBy('created_at', 'desc')
-            ->get();
 
-        $files = TrsAttcCstm::where('status', 3)
+
+
+    public function showApprovalMarketing()
+{
+    $materials = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
+        ->where('status_1', 3)
+        ->whereIn('sec_line', [1, 2])
+        ->where('confirm_prod', '!=', '')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    $today = Carbon::now()->startOfDay(); // Format: tanggal tanpa jam
+    $date = [];
+    $sincedays = [];
+
+    // Hitung durasi proses approval
+    foreach ($materials as $item) {
+        if ($item->confirm_prod && $item->harga_akhir && is_null($item->approval_1)) {
+            $updatedAt = Carbon::parse($item->updated_at)->startOfDay();
+            $date[$item->id] = $updatedAt->diffInDays($today);
+        } elseif ($item->approval_1 && $item->date_app_1 && is_null($item->approval_2)) {
+            $dateApp1 = Carbon::parse($item->date_app_1)->startOfDay();
+            $date[$item->id] = $dateApp1->diffInDays($today);
+        } else {
+            $date[$item->id] = null;
+        }
+    }
+
+    // Ambil dan kelompokkan log aktivitas
+    $activity_logs = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->groupBy('id_subcont');
+
+    // Hitung sincedays berdasarkan tanggal (bukan jam)
+    foreach ($materials as $item) {
+            $createdAt = Carbon::parse($item->created_at)->startOfDay();
+
+            if ($item->status_1 == 5) {
+                $latestLog = $activity_logs[$item->id]->sortByDesc('created_at')->first() ?? null;
+
+                if ($latestLog) {
+                    $logUpdatedAt = Carbon::parse($latestLog->updated_at)->startOfDay();
+                    $sincedays[$item->id] = $createdAt->diffInDays($logUpdatedAt);
+                } else {
+                    $sincedays[$item->id] = $createdAt->diffInDays($today); // fallback jika log kosong
+                }
+            } else {
+                $sincedays[$item->id] = $createdAt->diffInDays($today);
+            }
+        }
+
+    $files = TrsAttcCstm::where('status', 3)
         ->whereIn('mst_id', $materials->pluck('id'))
         ->get()
         ->keyBy('mst_id');
 
-        $users = User::all();
+    $users = User::all();
 
-        $updates = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
+    $updates = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
         ->get()
         ->keyBy('id_subcont');
 
-        return view('custom_req.showApprovalMarketing', compact('materials', 'users', 'files', 'updates'));
-    }
+    return view('custom_req.showApprovalMarketing', compact(
+        'materials', 'users', 'files', 'updates', 'date', 'sincedays'
+    ));
+}
 
-    public function approveMarketing($id)
+
+
+
+    public function approveMarketing(Request $request, $id)
     {
         $materials = MstPengajuanSubcont::findOrFail($id);
 
@@ -76,6 +172,13 @@ class CustomRequestController extends Controller
 
         TrsPengajuanSubcont::create([
             'id_subcont' => $materials->id,
+            'keterangan' => $request->keterangan, 
+            'status' => '4', 
+            'modified_at' => $userName 
+        ]);
+
+        TrsPengajuanSubcont::create([
+            'id_subcont' => $materials->id,
             'keterangan' => 'Approved by Marketing', 
             'status' => '4', 
             'modified_at' => $userName 
@@ -85,21 +188,39 @@ class CustomRequestController extends Controller
         
     }
 
-    public function rejectMarketing($id)
+    public function rejectMarketing(Request $request, $id)
     {
         $materials = MstPengajuanSubcont::findOrFail($id);
 
-        $materials->status_1 = 3;
-        $materials->status_2 = 3;
-        $materials->approval_1 = '';
+        $materials->status_1 = 2;
+        $materials->status_2 = 2;
+        $materials->approval_1 = Null;
         $materials->date_app_1 = Null;
+        $materials->confirm_prod = Null;
         $materials->save();
+
+        $files = TrsAttcCstm::where('mst_id', $id)->get();
+        $changefiles = $files->filter(function ($file) {
+            return $file->status == 4; // Hanya ambil file dengan status 4
+        }); 
+
+        foreach ($changefiles as $file) {
+            $file->status = 1; // Ubah status menjadi "rejected"
+            $file->save(); // Simpan perubahan ke database
+        }
 
         $userName = auth()->user()->name;
 
         TrsPengajuanSubcont::create([
             'id_subcont' => $materials->id,
             'keterangan' => 'Rejected by Marketing', 
+            'status' => '3', 
+            'modified_at' => $userName 
+        ]);
+
+        TrsPengajuanSubcont::create([
+            'id_subcont' => $materials->id,
+            'keterangan' => $request->keterangan, 
             'status' => '3', 
             'modified_at' => $userName 
         ]);
@@ -133,33 +254,79 @@ class CustomRequestController extends Controller
     }
 
     public function showApprovalFinance()
-    {
-        
-        $materials = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
-            ->whereIn('status_1', [4,5])
-            ->whereIn('sec_line', [1,2])
-            ->where('confirm_prod', '!=', '')
-            ->orderBy('created_at', 'desc')
-            ->get();
+{
+    $materials = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
+        ->whereIn('status_1', [4, 5])
+        ->whereIn('sec_line', [1, 2])
+        ->where('confirm_prod', '!=', '')
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        $files = TrsAttcCstm::where('status', 3)
+    $today = Carbon::now()->startOfDay(); // hanya tanggal, tanpa jam
+    $date = [];
+    $sincedays = [];
+
+    // Hitung durasi approval berdasarkan progress
+    foreach ($materials as $item) {
+        if ($item->confirm_prod && $item->harga_akhir && is_null($item->approval_1)) {
+            $date[$item->id] = Carbon::parse($item->updated_at)->startOfDay()->diffInDays($today);
+        } elseif ($item->approval_1 && $item->date_app_1) {
+            $date[$item->id] = Carbon::parse($item->date_app_1)->startOfDay()->diffInDays($today);
+        } else {
+            $date[$item->id] = null;
+        }
+    }
+
+    // Ambil log activity dan group by id_subcont
+    $activity_logs = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->groupBy('id_subcont');
+
+    // Hitung selisih hari antara created_at dan log updated_at (atau today)
+    foreach ($materials as $item) {
+        $createdAt = Carbon::parse($item->created_at)->startOfDay();
+
+        if ($item->status_1 == 5) {
+            $latestLog = $activity_logs[$item->id]->sortByDesc('created_at')->first() ?? null;
+
+            if ($latestLog) {
+                $logUpdatedAt = Carbon::parse($latestLog->updated_at)->startOfDay();
+                $sincedays[$item->id] = $createdAt->diffInDays($logUpdatedAt);
+            } else {
+                $sincedays[$item->id] = $createdAt->diffInDays($today);
+            }
+        } else {
+            $sincedays[$item->id] = $createdAt->diffInDays($today);
+        }
+    }
+
+    $files = TrsAttcCstm::where('status', 3)
         ->whereIn('mst_id', $materials->pluck('id'))
         ->get()
         ->keyBy('mst_id');
 
-        $users = User::all();
+    $users = User::all();
 
-        $updates = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
+    $customunfinished = MstPengajuanSubcont::where('status_1', 4)
+        ->whereIn('sec_line', [1, 2])
+        ->first();
+
+    $CSTMTerbaru = $customunfinished ? $customunfinished->no_ref : null;
+
+    $updates = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
         ->get()
         ->keyBy('id_subcont');
 
-        return view('custom_req.showApprovalFinance', compact('materials', 'users', 'files', 'updates'));
-    }
+    return view('custom_req.showApprovalFinance', compact(
+        'materials', 'users', 'files', 'updates', 'date', 'CSTMTerbaru', 'sincedays'
+    ));
+}
 
     
     
 
-    public function approveFinance($id)
+    public function approveFinance(Request $request, $id)
     {
         $materials = MstPengajuanSubcont::findOrFail($id);
 
@@ -172,9 +339,36 @@ class CustomRequestController extends Controller
 
         $userName = auth()->user()->name;
 
+        
+
         TrsPengajuanSubcont::create([
             'id_subcont' => $materials->id,
-            'keterangan' => 'Finished by Finance', 
+            'keterangan' => $request->keterangan, 
+            'status' => '5', 
+            'modified_at' => $userName 
+        ]);
+
+        TrsPengajuanSubcont::create([
+            'id_subcont' => $materials->id,
+            'keterangan' => 'Approved by Finance', 
+            'status' => '5', 
+            'modified_at' => $userName 
+        ]);
+        
+        return response()->json(['message' => 'Berhasil di selesaikan'], 200);
+    }
+
+    public function approveketeranganFinance(Request $request, $id)
+    {
+        $materials = MstPengajuanSubcont::findOrFail($id);
+        
+        $keterangan = $request->keterangan;
+
+        $userName = auth()->user()->name;
+
+        TrsPengajuanSubcont::create([
+            'id_subcont' => $materials->id,
+            'keterangan' => $keterangan, 
             'status' => '5', 
             'modified_at' => $userName 
         ]);
@@ -187,11 +381,21 @@ class CustomRequestController extends Controller
 
         $materials = MstPengajuanSubcont::findOrFail($id);
 
-        $materials->status_1 = 3;
-        $materials->status_2 = 3;
+        $materials->status_1 = 2;
+        $materials->status_2 = 2;
         $materials->approval_1 = '';
         $materials->date_app_1 = null;
         $materials->save();
+
+        $files = TrsAttcCstm::where('mst_id', $id)->get();
+        $changefiles = $files->filter(function ($file) {
+            return $file->status == 4; // Hanya ambil file dengan status 4
+        }); 
+
+        foreach ($changefiles as $file) {
+            $file->status = 1; // Ubah status menjadi "rejected"
+            $file->save(); // Simpan perubahan ke database
+        }
 
         $userName = auth()->user()->name;
 
@@ -210,12 +414,23 @@ class CustomRequestController extends Controller
     {
         $userName = auth()->user()->name;
 
-        // Buat pengajuan subcont dan simpan ke dalam variabel
+        // Ambil no_so langsung dari input tanpa modifikasi
+        $no_so = 'SO/' . now()->year . '/' . $request->no_so;
+
+        // Hitung semua data yang pernah ada (tanpa filter tahun)
+        $count = MstPengajuanSubcont::count();
+        $nextNumber = str_pad($count + 1, 6, '0', STR_PAD_LEFT);
+
+        // Format no_ref menjadi QCU-0001, QCU-0002, ...
+        $no_ref = 'QCU-' . $nextNumber;
+
+        // Simpan pengajuan baru
         $pengajuan = MstPengajuanSubcont::create([
             'nama_customer' => $request->customer,
             'nama_project' => $request->nama_project,
+            'so' => $no_so,
+            'note_sales' => $request->note_sales,
             'qty' => 1,
-            //'remark' => $request->remark,
             'tgl_permintaan' => now(),
             'status_1' => 1,
             'sec_line' => 1,
@@ -225,21 +440,21 @@ class CustomRequestController extends Controller
             'file_name' => "Null",
             'status_2' => 1,
             'modified_at' => $userName,
+            'no_ref' => $no_ref
         ]);
 
-        // Mendapatkan ID dari pengajuan yang baru dibuat
-        $mstid = $pengajuan->id; // Ambil ID dari objek yang baru saja dibuat
-
-        // Buat log pengajuan subcont
+        // Simpan log
         TrsPengajuanSubcont::create([
-            'id_subcont' => $mstid, // Gunakan ID yang baru diambil
-            'keterangan' => 'Pengajuan dibuat', // Deskripsi log aktivitas
-            'status' => '1', // Status atau keterangan tambahan
-            'modified_at' => $userName // Menyimpan nama user yang melakukan edit
+            'id_subcont' => $pengajuan->id,
+            'keterangan' => 'Pengajuan dibuat',
+            'status' => '1',
+            'modified_at' => $userName
         ]);
 
         return redirect()->back()->with('success', 'Material berhasil ditambahkan.');
     }
+
+
 
     public function deleteCstmReq($id)
     {
@@ -355,31 +570,59 @@ class CustomRequestController extends Controller
 
     public function formCstmReq($id)
     {
-        // Mengambil data MstPengajuanSubcont berdasarkan ID
-    $materials = MstPengajuanSubcont::with(['sales', 'production', 'marketing', 'finance'])->findOrFail($id);
-    
-    // Mengambil daftar file yang terkait
-    $files = TrsAttcCstm::where('mst_id', $id)
-        ->orderBy('created_at', 'desc')
-        ->get();
+        // Ambil data utama
+        $materials = MstPengajuanSubcont::with(['sales', 'production', 'marketing', 'finance'])->findOrFail($id);
 
-    $filesquotation = TrsAttcCstm::where('mst_id', $id)
-        ->where('status', 4)
-        ->get();
+        // Hitung jumlah hari berdasarkan kondisi status_1
+        $createdAtDate = $materials->created_at->toDateString();
 
-    // Mengambil log aktivitas yang terkait
-    $activity_logs = TrsPengajuanSubcont::where('id_subcont', $id)
-        ->with('mstPengajuanSubcont')
-        ->orderBy('created_at', 'desc')
-        ->get();
-    
-    // Cek apakah ada file dengan status 3
-    $hasStatusThree = $files->contains(function ($file) {
-        return $file->status == 3; // Memeriksa apakah status file 3
-    });
+        if ($materials->status_1 == 5) {
+            // Jika status finish, hitung sampai updated_at
+            $endDate = $materials->updated_at->toDateString();
+        } else {
+            // Jika belum finish, hitung sampai hari ini
+            $endDate = Carbon::now()->toDateString();
+        }
 
-    return view('custom_req.viewCstmReq', compact('materials', 'files', 'activity_logs', 'hasStatusThree', 'filesquotation'));
+        $daysnow = Carbon::parse($createdAtDate)->diffInDays(Carbon::parse($endDate)) . ' hari';
+
+        // Mengambil daftar file yang terkait
+        $files = TrsAttcCstm::where('mst_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $filesquotation = TrsAttcCstm::where('mst_id', $id)
+            ->where('status', 4)
+            ->get();
+
+        // Mengambil log aktivitas yang terkait
+        $activity_logs = TrsPengajuanSubcont::where('id_subcont', $id)
+            ->with('mstPengajuanSubcont')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Hitung selisih hari kalender antara created_at dan log created_at
+        $mstCreatedAt = $materials->created_at->toDateString();
+        $sincedays = $activity_logs->map(function ($log) use ($mstCreatedAt) {
+            $logDate = $log->created_at->toDateString();
+            return Carbon::parse($mstCreatedAt)->diffInDays(Carbon::parse($logDate)) . ' hari';
+        });
+
+        // Cek apakah ada file dengan status 3
+        $hasStatusThree = $files->contains(fn($file) => $file->status == 3);
+
+        return view('custom_req.viewCstmReq', compact(
+            'materials',
+            'files',
+            'filesquotation',
+            'activity_logs',
+            'hasStatusThree',
+            'sincedays',
+            'daysnow'
+        ));
     }
+
+
 
     public function submitData(Request $request, $id)
     {
