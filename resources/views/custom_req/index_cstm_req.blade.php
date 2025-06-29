@@ -716,7 +716,7 @@
                                 
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">No SO</label>
-                                    <input type="text" id="no_so" name="no_so" class="form-control" placeholder="SO/Tahun/....." required 
+                                    <input type="text" id="no_so" name="no_so" class="form-control" placeholder="SO/Tahun/.....(masukan 6 angka terakhir saja)" required 
                                         pattern="\d{6}" maxlength="6" title="Masukkan 6 digit angka saja">
                                 </div>
                                 
