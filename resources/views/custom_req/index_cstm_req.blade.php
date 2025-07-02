@@ -639,14 +639,14 @@
                                                     <div class="d-flex justify-content-center align-items-center">
                                                         {{-- Tombol Lihat --}}
 
-                                                        @if (auth()->user()->name == $pengajuan->modified_at)
+                                                        @if (auth()->user()->name == 'RAGIL ISHA RAHMANTO')
                                                         {{-- Jika user adalah sales dan statusnya draft --}}
-                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
+                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
                                                                 <i class="fas fa-eye"></i> Lihat
                                                             </a>
                                                         @else
                                                             
-                                                            <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
+                                                            <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
                                                             <i class="fas fa-eye"></i> Lihat
                                                         </a>
                                                         @endif
