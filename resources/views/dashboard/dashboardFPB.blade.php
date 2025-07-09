@@ -86,85 +86,97 @@
                 <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="0" class="active"></button>
                 <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="1"></button>
                 <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="2"></button>
+                <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="3"></button>
             </div>
             <div class="carousel-inner h-100">
                 <!-- Slide 1: Form Pengajuan Barang + 2 Pie Chart -->
                 <div class="carousel-item active h-100">
-                    <div class="row h-100">
-                        <div class="col-sm-8 h-100">
-                            <div class="card h-100">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h4>Form Pengajuan Barang</h4>
-                                    <form method="GET" action="{{ route('dashboardFPB') }}" class="d-flex align-items-center" style="gap: 10px;">
-                                        <input type="hidden" name="filter_type" value="fpb">
-                                        <div style="max-width: 150px;">
-                                            <label for="start_date_fpb" class="form-label sr-only">Dari</label>
-                                            <input type="date" name="start_date_fpb" id="start_date_fpb" class="form-control form-control-sm" value="{{ request('start_date_fpb', '2025-01-01') }}" aria-label="Tanggal mulai FPB">
-                                        </div>
-                                        <div style="max-width: 150px;">
-                                            <label for="end_date_fpb" class="form-label sr-only">Sampai</label>
-                                            <input type="date" name="end_date_fpb" id="end_date_fpb" class="form-control form-control-sm" value="{{ request('end_date_fpb', '2025-12-31') }}" aria-label="Tanggal akhir FPB">
-                                        </div>
-                                        <div style="max-width: 150px;">
-                                            <label for="kategori_po" class="form-label sr-only">Kategori</label>
-                                            <select name="kategori_po" id="kategori_po" class="form-control form-control-sm" aria-label="Kategori PO">
-                                                <option value="">Semua Kategori</option>
-                                                @foreach($kategoriList as $kategoriItem)
-                                                    <option value="{{ $kategoriItem }}" {{ request('kategori_po') == $kategoriItem ? 'selected' : '' }}>
-                                                        {{ $kategoriItem }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <input type="hidden" name="start_date_leadtime" value="{{ request('start_date_leadtime') }}">
-                                        <input type="hidden" name="end_date_leadtime" value="{{ request('end_date_leadtime') }}">
-                                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-                                    </form>
-                                    <div class="card p-2 bg-light text-dark">
-                                        <strong>Total: {{ $totalFPB }}</strong>
-                                    </div>
-                                </div>
-                                <div class="card-body h-100">
-                                    <div class="alert alert-info">
-                                        <p><strong>Periode:</strong> 
-                                            @if(request('start_date_fpb') && request('end_date_fpb'))
-                                                {{ \Carbon\Carbon::parse(request('start_date_fpb'))->format('d M Y') }} 
-                                                s/d 
-                                                {{ \Carbon\Carbon::parse(request('end_date_fpb'))->format('d M Y') }}
-                                            @else
-                                                Semua Tanggal
-                                            @endif
-                                        </p>
-                                        <p><strong>Kategori:</strong> 
-                                            {{ request('kategori_po') ? request('kategori_po') : 'Semua Kategori' }}
-                                        </p>
-                                    </div>
-                                    <figure class="highcharts-figure h-100">
-                                        <div id="chart-status-fpb" style="height: 100%; margin: 0 auto;"></div>
-                                    </figure>
-                                </div>
-                            </div>
+    <div class="row h-100">
+        {{-- Bagian Chart FPB (Column) --}}
+        <div class="col-sm-8 h-100">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                    <h4 class="mb-2 mb-sm-0">Form Pengajuan Barang</h4>
+                    <form method="GET" action="{{ route('dashboardFPB') }}" class="d-flex align-items-center flex-wrap gap-2">
+                        <input type="hidden" name="filter_type" value="fpb">
+                        
+                        <div style="max-width: 150px;">
+                            <input type="date" name="start_date_fpb" id="start_date_fpb" class="form-control form-control-sm"
+                                value="{{ request('start_date_fpb', '2024-01-01') }}" placeholder="Dari">
                         </div>
-                        <div class="col-sm-4 h-100">
-                            <div class="row h-100">
-                                <div class="col-sm-12 h-50">
-                                    <div class="card h-100">
-                                        <div class="card-body h-100">
-                                            <div id="pieChart" style="height: 100%;"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-sm-12 h-50">
-                                    <div class="card h-100">
-                                        <div class="card-body h-100">
-                                            <div id="pieChart1" style="height: 100%;"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+
+                        <div style="max-width: 150px;">
+                            <input type="date" name="end_date_fpb" id="end_date_fpb" class="form-control form-control-sm"
+                                value="{{ request('end_date_fpb', '2025-12-31') }}" placeholder="Sampai">
                         </div>
+
+                        <div style="max-width: 150px;">
+                            <select name="kategori_po" id="kategori_po" class="form-control form-control-sm">
+                                <option value="">Semua Kategori</option>
+                                @foreach($kategoriList as $kategoriItem)
+                                    <option value="{{ $kategoriItem }}" {{ request('kategori_po') == $kategoriItem ? 'selected' : '' }}>
+                                        {{ $kategoriItem }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <input type="hidden" name="start_date_leadtime" value="{{ request('start_date_leadtime') }}">
+                        <input type="hidden" name="end_date_leadtime" value="{{ request('end_date_leadtime') }}">
+
+                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                    </form>
+
+                    <div class="card p-2 bg-light text-dark mt-2 mt-sm-0">
+                        <strong>Total: {{ $totalFPB }}</strong>
                     </div>
                 </div>
+
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        <p><strong>Periode:</strong>
+                            @if(request('start_date_fpb') && request('end_date_fpb'))
+                                {{ \Carbon\Carbon::parse(request('start_date_fpb'))->format('d M Y') }} s/d
+                                {{ \Carbon\Carbon::parse(request('end_date_fpb'))->format('d M Y') }}
+                            @else
+                                Semua Tanggal
+                            @endif
+                        </p>
+                        <p><strong>Kategori:</strong>
+                            {{ request('kategori_po') ?: 'Semua Kategori' }}
+                        </p>
+                    </div>
+
+                    <figure class="highcharts-figure" style="height: 100%;">
+                        <div id="chart-status-fpb" style="height: 400px; margin: 0 auto;"></div>
+                    </figure>
+                </div>
+            </div>
+        </div>
+
+        {{-- Bagian Pie Chart --}}
+        <div class="col-sm-4 h-100 d-flex flex-column">
+            <div class="card flex-fill mb-2">
+                <div class="card-header">
+                    <h6 class="mb-0">Status FPB</h6>
+                </div>
+                <div class="card-body p-2">
+                    <div id="pieChart" style="height: 250px;"></div>
+                </div>
+            </div>
+
+            <div class="card flex-fill mt-2">
+                <div class="card-header">
+                    <h6 class="mb-0">Status Inquiry</h6>
+                </div>
+                <div class="card-body p-2">
+                    <div id="pieChart1" style="height: 250px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
                 <!-- Slide 2: Leadtime + Form Inquiry -->
                 <div class="carousel-item h-100">
                     <div class="row h-100">
@@ -296,6 +308,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div class="carousel-item h-100">
+                    <div class="container-fluid h-100 d-flex flex-column">
                         <div class="row flex-grow-1 g-2">
                             <div class="col-12 h-100">
                                 <div class="card h-100 d-flex flex-column">
@@ -405,15 +421,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const endDate = @json($endDate1);
     const leadTimeData = @json($leadTimeData);
     const monthlyData1 = @json($monthlyData1);
+    const $startDate1 = @json($startDate1);
+    const $endDate1 = @json($endDate1);
 
     // Debugging data
-    console.log('actuals[Total]:', actuals['Total']);
-    console.log('plans[Total]:', plans['Total']);
-    console.log('grandTotalData[Total]:', grandTotalData['Total']);
-    console.log('allMonthlyData[Total]:', allMonthlyData['Total']);
-    console.log('monthlyData:', monthlyData);
-    console.log('leadTimeData:', leadTimeData);
-    console.log('monthlyData1:', monthlyData1);
+    // console.log('actuals[Total]:', actuals['Total']);
+    // console.log('plans[Total]:', plans['Total']);
+    // console.log('grandTotalData[Total]:', grandTotalData['Total']);
+    // console.log('allMonthlyData[Total]:', allMonthlyData['Total']);
+    // console.log('monthlyData:', monthlyData);
+    // console.log('leadTimeData:', leadTimeData);
+    // console.log('monthlyData1:', monthlyData1);
 
     // Inisialisasi chart
     let chart = null;
@@ -581,16 +599,16 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('category-grandtot-filter').addEventListener('change', updateGrandTotChart);
     document.getElementById('category-filter-cumulative').addEventListener('change', updateCategory);
 
-    // Chart FPB
-    function renderChartStatusFpb() {
-        const monthlyData = @json($monthlyData);
+   function renderChartStatusFpb() {
+    const monthlyData = @json($monthlyData);
     const startDate = @json($startDate1);
     const endDate = @json($endDate1);
+    const fpbCategoryBreakdown = @json($fpbCategoryBreakdown);
+    const inquiryStatusBreakdown = @json($inquiryStatusBreakdown); // sekarang ini berasal dari FPB, bukan inquiry
 
-    // Nama bulan (indeks 0 untuk Jan, dst.)
-    const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    // Konversi startDate & endDate ke objek Date
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
 
@@ -598,111 +616,83 @@ document.addEventListener('DOMContentLoaded', function () {
     let openData = [];
     let finishData = [];
 
-    if (!start && !end) {
-        // Jika tidak ada filter, tampilkan semua bulan dari Januari sampai Desember
-        for (let i = 0; i < 12; i++) {
-        filteredMonths.push(allMonths[i]);
-        openData.push(monthlyData.open[i]);
-        finishData.push(monthlyData.finish[i]);
+    if (!start || !end) {
+        const allYears = Object.keys(monthlyData.open_by_year).sort((a, b) => a - b);
+        for (const year of allYears) {
+            for (let month = 0; month < 12; month++) {
+                const label = `${allMonths[month]} ${year}`;
+                filteredMonths.push(label);
+                openData.push(monthlyData.open_by_year[year]?.[month] || 0);
+                finishData.push(monthlyData.finish_by_year[year]?.[month] || 0);
+            }
         }
     } else {
-        let startYear = start ? start.getFullYear() : new Date().getFullYear();
-        let endYear = end ? end.getFullYear() : new Date().getFullYear();
+        let startYear = start.getFullYear();
+        let startMonth = start.getMonth();
+        let endYear = end.getFullYear();
+        let endMonth = end.getMonth();
 
-        // Looping tahun untuk memastikan bulan dari dua tahun yang berbeda bisa tampil
         for (let year = startYear; year <= endYear; year++) {
-        // Tentukan bulan mulai dan bulan akhir berdasarkan tahun yang bersangkutan
-        let startMonth = (year === startYear) ? start.getMonth() : 0;
-        let endMonth = (year === endYear) ? end.getMonth() : 11;
+            let monthStart = (year === startYear) ? startMonth : 0;
+            let monthEnd = (year === endYear) ? endMonth : 11;
 
-        // Loop untuk setiap bulan dalam tahun yang sedang diproses
-        for (let month = startMonth; month <= endMonth; month++) {
-            filteredMonths.push(`${allMonths[month]} ${year}`); // Menambahkan bulan dan tahun yang sesuai
-            openData.push(monthlyData.open[month]); // Menambahkan data Open bulan tersebut
-            finishData.push(monthlyData.finish[month]); // Menambahkan data Finish bulan tersebut
-        }
+            for (let month = monthStart; month <= monthEnd; month++) {
+                const label = `${allMonths[month]} ${year}`;
+                filteredMonths.push(label);
+                openData.push(monthlyData.open_by_year[year]?.[month] || 0);
+                finishData.push(monthlyData.finish_by_year[year]?.[month] || 0);
+            }
         }
     }
 
-        Highcharts.chart('chart-status-fpb', {
-            chart: { type: 'column' },
-            title: { align: 'center', text: 'Form Pengajuan Barang' },
-            xAxis: { categories: filteredMonths },
-            yAxis: {
-                allowDecimals: false,
-                min: 0,
-                title: { text: 'Jumlah FPB' }
-            },
-            tooltip: {
-                formatter: function () {
-                    return `<b>${this.series.name}</b><br>Jumlah: ${this.point.y}`;
-                }
-            },
-            plotOptions: {
-                column: {
-                    dataLabels: {
-                        enabled: true,
-                        formatter: function () {
-                            return `${this.y} FPB`;
-                        },
-                        style: {
-                            fontWeight: 'bold',
-                            color: 'black',
-                            textOutline: 'none'
-                        }
-                    }
-                }
-            },
-            colors: ['#f1c40f', '#3498db'],
-            series: [
-                { name: 'Open', data: openData },
-                { name: 'Finish', data: finishData }
-            ],
-            credits: { enabled: false }
-        });
-    }
-
-    // Pie Chart FPB
-    function renderPieChart() {
-        Highcharts.chart('pieChart', {
-            chart: { type: 'pie' },
-            title: { text: 'Non Material' },
-            tooltip: { valueSuffix: '%' },
-            plotOptions: {
-                pie: {
-                    allowPointSelect: true,
-                    cursor: 'pointer',
-                    dataLabels: {
-                        enabled: true,
-                        format: '{point.name}: {point.percentage:.1f}% ({point.count})',
-                        style: {
-                            fontWeight: 'bold',
-                            color: 'black',
-                            textOutline: 'none'
-                        }
-                    }
-                }
-            },
-            colors: ['#f1c40f', '#3498db'],
-            credits: { enabled: false },
-            series: [{
-                name: 'Status',
-                colorByPoint: true,
-                data: [
-                    { name: 'Open', y: {{ $fpbOpenPercentage }}, count: {{ $fpbOpenUnique }} },
-                    { name: 'Finish', y: {{ $fpbFinishPercentage }}, count: {{ $fpbFinishUnique }} }
-                ]
-            }]
-        });
-
-        Highcharts.chart('pieChart1', {
-        chart: { type: 'pie' },
-        title: { text: 'Status Inquiry' },
-        credits: {
-            enabled: false // Menghapus credit "Highcharts.com"
+    // Column Chart (FPB)
+    Highcharts.chart('chart-status-fpb', {
+        chart: { type: 'column' },
+        title: { align: 'center', text: 'Form Pengajuan Barang (FPB)' },
+        xAxis: { categories: filteredMonths },
+        yAxis: {
+            allowDecimals: false,
+            min: 0,
+            title: { text: 'Jumlah FPB' }
         },
         tooltip: {
-            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b> ({point.count})'
+            formatter: function () {
+                return `<b>${this.series.name}</b><br>Jumlah: ${this.point.y}`;
+            }
+        },
+        plotOptions: {
+            column: {
+                dataLabels: {
+                    enabled: true,
+                    formatter: function () {
+                        return `${this.y} FPB`;
+                    },
+                    style: {
+                        fontWeight: 'bold',
+                        color: 'black',
+                        textOutline: 'none'
+                    }
+                }
+            }
+        },
+        colors: ['#f1c40f', '#3498db'],
+        series: [
+            { name: 'Open', data: openData },
+            { name: 'Finish', data: finishData }
+        ],
+        credits: { enabled: false }
+    });
+
+    // Pie Chart 1: FPB kategori Consumable
+    const consumableOpen = fpbCategoryBreakdown?.Consumable?.open || 0;
+    const consumableFinish = fpbCategoryBreakdown?.Consumable?.finish || 0;
+    const totalConsumable = consumableOpen + consumableFinish;
+
+    Highcharts.chart('pieChart', {
+        chart: { type: 'pie' },
+        title: { text: 'Non Material' },
+        tooltip: {
+            pointFormat: '<b>{point.percentage:.1f}%</b> ({point.count})'
         },
         plotOptions: {
             pie: {
@@ -725,169 +715,284 @@ document.addEventListener('DOMContentLoaded', function () {
             data: [
                 {
                     name: 'Open',
-                    y: {{ $inquiryOpenPercentage }},
-                    count: {{ $inquiryOpenCount }}
-                },
-                {
-                    name: 'On Progress',
-                    y: {{ $inquiryOnprogressPercentage }},
-                    count: {{ $inquiryOnprogressCount }}
+                    y: totalConsumable ? (consumableOpen / totalConsumable) * 100 : 0,
+                    count: consumableOpen
                 },
                 {
                     name: 'Finish',
-                    y: {{ $inquiryFinishPercentage }},
-                    count: {{ $inquiryFinishCount }}
+                    y: totalConsumable ? (consumableFinish / totalConsumable) * 100 : 0,
+                    count: consumableFinish
                 }
             ]
-        }]
+        }],
+        credits: { enabled: false },
+        colors: ['#f1c40f', '#3498db']
     });
+
+    // Pie Chart 2: Status berdasarkan FPB (bukan inquiry lagi)
+    const openCount = inquiryStatusBreakdown?.open || 0;
+    const onProgressCount = inquiryStatusBreakdown?.onprogress || 0;
+    const finishCount = inquiryStatusBreakdown?.finish || 0;
+    const totalFPBStatus = openCount + onProgressCount + finishCount;
+
+    const pieChartContainer = document.getElementById('pieChart1');
+    if (!pieChartContainer) return;
+
+    if (totalFPBStatus === 0) {
+        pieChartContainer.innerHTML = '<div class="text-center text-muted">Tidak ada data FPB status.</div>';
+        return;
     }
+
+    Highcharts.chart('pieChart1', {
+        chart: { type: 'pie' },
+        title: { text: 'Status FPB' },
+        tooltip: {
+            formatter: function () {
+                return `<b>${this.point.name}</b>: ${this.percentage.toFixed(1)}% (${this.point.custom.count})`;
+            }
+        },
+        plotOptions: {
+            pie: {
+                allowPointSelect: true,
+                cursor: 'pointer',
+                dataLabels: {
+                    enabled: true,
+                    formatter: function () {
+                        return `${this.point.name}: ${this.percentage.toFixed(1)}% (${this.point.custom.count})`;
+                    },
+                    style: {
+                        fontWeight: 'bold',
+                        color: 'black',
+                        textOutline: 'none'
+                    }
+                }
+            }
+        },
+        series: [{
+            name: 'Status',
+            colorByPoint: true,
+            data: [
+                {
+                    name: 'Open',
+                    y: openCount,
+                    custom: { count: openCount }
+                },
+                {
+                    name: 'On Progress',
+                    y: onProgressCount,
+                    custom: { count: onProgressCount }
+                },
+                {
+                    name: 'Finish',
+                    y: finishCount,
+                    custom: { count: finishCount }
+                }
+            ]
+        }],
+        credits: { enabled: false },
+        colors: ['#f1c40f', '#f39c12', '#3498db']
+    });
+}
+
+
 
     // Chart Lead Time
-    function renderChartLeadTime() {
-        const categories = ['Total', 'IT', 'Spareparts', 'Consumable', 'GA', 'Subcont'];
-        const targetCategories = ['IT', 'Spareparts', 'Consumable'];
-        let leadDaysFirst = categories.map(category => leadTimeData[category]?.average_lead_days_first || 0);
-        let leadDaysSecond = categories.map(category => leadTimeData[category]?.average_lead_days_second || 0);
-        let totalLeadDays = leadDaysFirst.map((value, index) => value + leadDaysSecond[index]);
-        let avgLeadDaysFirst = leadDaysFirst.slice(1).reduce((sum, val) => sum + val, 0) / (categories.length - 1);
-        let avgLeadDaysSecond = leadDaysSecond.slice(1).reduce((sum, val) => sum + val, 0) / (categories.length - 1);
-        leadDaysFirst[0] = avgLeadDaysFirst;
-        leadDaysSecond[0] = avgLeadDaysSecond;
-        totalLeadDays[0] = avgLeadDaysFirst + avgLeadDaysSecond;
-        let targetData = categories.map(category => targetCategories.includes(category) ? 5 : null);
-        let fpbFirst = categories.map(category => leadTimeData[category]?.submit_confirm || 0);
-        let fpbSecond = categories.map(category => leadTimeData[category]?.confirm_finish || 0);
-        fpbFirst[0] = fpbFirst.slice(1).reduce((sum, val) => sum + val, 0);
-        fpbSecond[0] = fpbSecond.slice(1).reduce((sum, val) => sum + val, 0);
-        Highcharts.chart('chart-lead-time', {
-            chart: { type: 'column' },
-            title: { text: 'Non Material FPB (Lead Time)' },
-            xAxis: { categories: categories },
-            yAxis: {
-                title: { text: 'Total Lead Time (Hari)' },
-                min: 0,
-                labels: { format: '{value} Hari' }
-            },
-            tooltip: {
-                shared: true,
-                headerFormat: '<b>{point.key}</b><br>',
-                pointFormatter: function () {
-                    let seriesName = this.series.name;
-                    let value = Math.round(this.y);
-                    if (seriesName === 'Target') return '';
-                    let fpbCount = seriesName === 'Submit - Confirm' ? fpbFirst[this.index] : fpbSecond[this.index];
-                    return `<span style="color:${this.color}">●</span> ${seriesName}: <b>${value} hari</b> (${fpbCount} FPB)`;
-                }
-            },
-            plotOptions: {
-                column: {
-                    stacking: 'normal',
-                    dataLabels: {
-                        enabled: true,
-                        formatter: function () {
-                            let fpbCount = this.series.name === 'Submit - Confirm' ? fpbFirst[this.index] : fpbSecond[this.index];
-                            return Math.round(this.y) + ' hari<br>' + `(${fpbCount} FPB)`;
-                        },
-                        style: {
-                            fontWeight: 'bold',
-                            color: 'black',
-                            textOutline: 'none'
-                        }
-                    }
-                },
-                line: {
-                    dashStyle: 'Solid',
-                    marker: { enabled: false }
-                }
-            },
-            series: [
-                { name: 'Confirm - Finish', data: leadDaysSecond, color: '#3498db' },
-                { name: 'Submit - Confirm', data: leadDaysFirst, color: '#f1c40f' },
-                { name: 'Target', type: 'line', data: targetData, color: 'red', lineWidth: 2, tooltip: { pointFormat: '' } }
-            ],
-            credits: { enabled: false }
-        });
-    }
+    function renderChartFpbAndInquiry() {
+        
+    // === Bagian Lead Time FPB (Highcharts) ===
+    const categories = ['Total', 'IT', 'Spareparts', 'Consumable', 'GA', 'Subcont'];
+    const targetCategories = ['IT', 'Spareparts', 'Consumable'];
 
-    // Chart Inquiry
-    function renderCharts() {
-        const monthlyData = @json($monthlyData);
-        const startDate = @json($startDate1);
-        const endDate = @json($endDate1);
-        
-        // Nama bulan
-        const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        
-        // Konversi startDate & endDate ke objek Date
-        const start = startDate ? new Date(startDate) : null;
-        const end = endDate ? new Date(endDate) : null;
-        
-        let filteredMonths = [];
-        let openData = [];
-        let onProgressData = [];
-        let finishData = [];
-        
-        // Filter data berdasarkan tanggal jika ada
-        if (!start && !end) {
-            // Jika tidak ada filter, tampilkan semua bulan dari Januari sampai Desember
-            for (let i = 0; i < 12; i++) {
-                filteredMonths.push(allMonths[i]);
-                openData.push(monthlyData.open[i]);
-                onProgressData.push(monthlyData.onprogress[i]);
-                finishData.push(monthlyData.finish[i]);
+    const leadDaysFirst = categories.map(cat => leadTimeData[cat]?.average_lead_days_first || 0);
+    const leadDaysSecond = categories.map(cat => leadTimeData[cat]?.average_lead_days_second || 0);
+    const totalLeadDays = leadDaysFirst.map((val, i) => val + leadDaysSecond[i]);
+
+    const avgFirst = leadDaysFirst.slice(1).reduce((sum, v) => sum + v, 0) / (categories.length - 1);
+    const avgSecond = leadDaysSecond.slice(1).reduce((sum, v) => sum + v, 0) / (categories.length - 1);
+
+    leadDaysFirst[0] = Math.round(avgFirst);
+    leadDaysSecond[0] = Math.round(avgSecond);
+    totalLeadDays[0] = Math.round(avgFirst + avgSecond);
+
+    const targetData = categories.map(cat => targetCategories.includes(cat) ? 5 : null);
+
+    const fpbFirst = categories.map(cat => leadTimeData[cat]?.submit_confirm || 0);
+    const fpbSecond = categories.map(cat => leadTimeData[cat]?.confirm_finish || 0);
+
+    fpbFirst[0] = fpbFirst.slice(1).reduce((sum, val) => sum + val, 0);
+    fpbSecond[0] = fpbSecond.slice(1).reduce((sum, val) => sum + val, 0);
+
+    Highcharts.chart('chart-lead-time', {
+        chart: { type: 'column' },
+        title: { text: 'Non Material FPB (Lead Time)' },
+        xAxis: { categories: categories },
+        yAxis: {
+            title: { text: 'Total Lead Time (Hari)' },
+            min: 0,
+            labels: { format: '{value} Hari' }
+        },
+        tooltip: {
+            shared: true,
+            useHTML: true,
+            formatter: function () {
+                const i = this.points[0].point.index;
+                return `
+                    <b>${categories[i]}</b><br>
+                    Submit - Confirm: <b>${leadDaysFirst[i]} hari</b> (${fpbFirst[i]} FPB)<br>
+                    Confirm - Finish: <b>${leadDaysSecond[i]} hari</b> (${fpbSecond[i]} FPB)<br>
+                    Total: <b>${totalLeadDays[i]} hari</b>
+                `;
             }
-        } else {
-            let startYear = start ? start.getFullYear() : new Date().getFullYear();
-            let endYear = end ? end.getFullYear() : new Date().getFullYear();
-            
-            for (let year = startYear; year <= endYear; year++) {
-                let startMonth = (year === startYear) ? start.getMonth() : 0;
-                let endMonth = (year === endYear) ? end.getMonth() : 11;
-                
-                for (let month = startMonth; month <= endMonth; month++) {
-                    filteredMonths.push(`${allMonths[month]} ${year}`);
-                    openData.push(monthlyData.open[month]);
-                    onProgressData.push(monthlyData.onprogress[month]);
-                    finishData.push(monthlyData.finish[month]);
+        },
+        plotOptions: {
+            column: {
+                stacking: 'normal',
+                dataLabels: {
+                    enabled: true,
+                    formatter: function () {
+                        const idx = this.point.index;
+                        const fpbCount = this.series.name === 'Submit - Confirm'
+                            ? fpbFirst[idx]
+                            : fpbSecond[idx];
+                        return `${Math.round(this.y)} hari<br>(${fpbCount} FPB)`;
+                    },
+                    style: {
+                        fontWeight: 'bold',
+                        color: 'black',
+                        textOutline: 'none'
+                    }
                 }
+            },
+            line: {
+                dashStyle: 'Solid',
+                marker: { enabled: false }
+            }
+        },
+        series: [
+            {
+                name: 'Confirm - Finish',
+                data: leadDaysSecond,
+                color: '#3498db'
+            },
+            {
+                name: 'Submit - Confirm',
+                data: leadDaysFirst,
+                color: '#f1c40f'
+            },
+            {
+                name: 'Target',
+                type: 'line',
+                data: targetData,
+                color: 'red',
+                lineWidth: 2,
+                tooltip: { pointFormat: '' }
+            }
+        ],
+        credits: { enabled: false }
+    });
+
+    // === Bagian Inquiry Status (Chart.js) ===
+    const monthlyData = monthlyData1;
+    const startDate = $startDate1;
+    const endDate = $endDate1;
+
+    const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    let filteredMonths = [];
+    let openData = [];
+    let onProgressData = [];
+    let finishData = [];
+
+    if (!start && !end) {
+        for (let i = 0; i < 12; i++) {
+            filteredMonths.push(allMonths[i]);
+            openData.push(monthlyData.open[i] ?? 0);
+            onProgressData.push(monthlyData.onprogress[i] ?? 0);
+            finishData.push(monthlyData.finish[i] ?? 0);
+        }
+    } else {
+        const startYear = start?.getFullYear() ?? new Date().getFullYear();
+        const endYear = end?.getFullYear() ?? new Date().getFullYear();
+
+        for (let year = startYear; year <= endYear; year++) {
+            const startMonth = (year === startYear) ? start.getMonth() : 0;
+            const endMonth = (year === endYear) ? end.getMonth() : 11;
+
+            for (let month = startMonth; month <= endMonth; month++) {
+                filteredMonths.push(`${allMonths[month]} ${year}`);
+                openData.push(monthlyData.open[month] ?? 0);
+                onProgressData.push(monthlyData.onprogress[month] ?? 0);
+                finishData.push(monthlyData.finish[month] ?? 0);
             }
         }
+    }
 
-        // Grafik Kolom
-        Highcharts.chart('chart-status-inquiry', {
-            chart: { type: 'column' },
-            title: { text: 'Form Inquiry Local' },
-            credits: { enabled: false }, // Menghapus credit "Highcharts.com"
-            xAxis: { categories: filteredMonths }, // Ganti dengan kategori yang telah difilter
-            yAxis: { title: { text: 'Jumlah Inquiry' } },
-            tooltip: {
-                formatter: function () {
-                    return `<b>${this.series.name}</b><br>Jumlah: ${this.point.y}`;
-                }
-            },
-            plotOptions: {
-                column: {
-                    dataLabels: {
-                        enabled: true,
-                        formatter: function () {
-                            return `${this.y} `;
-                        },
-                        style: {
-                            fontWeight: 'bold',
-                            color: 'black',
-                            textOutline: 'none'
-                        }
+    Highcharts.chart('chart-status-inquiry', {
+        chart: {
+            type: 'column'
+        },
+        title: {
+            text: 'Form Inquiry Local'
+        },
+        xAxis: {
+            categories: filteredMonths,
+            title: {
+                text: 'Bulan'
+            }
+        },
+        yAxis: {
+            min: 0,
+            title: {
+                text: 'Jumlah Inquiry'
+            }
+        },
+        tooltip: {
+            shared: true,
+            valueSuffix: ' Inquiry'
+        },
+        plotOptions: {
+            column: {
+                grouping: true,       // ✅ Default true, pastikan ini true
+                pointPadding: 0.1,    // ✅ Lebar antar bar
+                borderWidth: 0,
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontWeight: 'bold'
                     }
                 }
+            }
+        },
+        series: [
+            {
+                name: 'Open',
+                data: openData,
+                color: '#3498db'
             },
-            series: [
-                { name: 'Open', data: openData },
-                { name: 'On Progress', data: onProgressData },
-                { name: 'Finish', data: finishData }
-            ]
-        });
-    }
+            {
+                name: 'On Progress',
+                data: onProgressData,
+                color: '#e67e22'
+            },
+            {
+                name: 'Finish',
+                data: finishData,
+                color: '#2ecc71'
+            }
+        ],
+        credits: {
+            enabled: false
+        }
+    });
+
+
+}
+
+
     // Grafik Pie
     
 
@@ -923,8 +1028,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Inisialisasi chart FPB, Lead Time, dan Inquiry
         renderChartStatusFpb();
         renderPieChart();
-        renderChartLeadTime();
-        renderChartStatusInquiry();
+        
+        renderChartFpbAndInquiry();
         renderPieChart1();
         // Pastikan filter CRP diatur ke Total
         const selectElement = document.getElementById('category-filter');
@@ -944,12 +1049,25 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Resize chart saat slide carousel berubah
-    carousel.addEventListener('slid.bs.carousel', function () {
-        if (chart) chart.reflow();
-        if (grandTotChart) grandTotChart.reflow();
-        if (chartCumulativeCrp) chartCumulativeCrp.reflow();
-        Highcharts.charts.forEach(c => c && c.reflow());
-    });
+    carousel.addEventListener('slid.bs.carousel', function (e) {
+    const activeSlide = e.relatedTarget || carousel.querySelector('.carousel-item.active');
+
+    if (activeSlide) {
+        if (activeSlide.querySelector('#chart-crp') && window.chart) chart.reflow();
+        if (activeSlide.querySelector('#grandtot-chart') && window.grandTotChart) grandTotChart.reflow();
+        if (activeSlide.querySelector('#chart-cumulative-crp') && window.chartCumulativeCrp) chartCumulativeCrp.reflow();
+        if (
+            activeSlide.querySelector('#chart-lead-time') ||
+            activeSlide.querySelector('#chart-status-inquiry')
+        ) {
+            setTimeout(() => {
+                renderChartFpbAndInquiry();
+            }, 200);
+        }
+    }
+});
+
+
 });
 </script>
 

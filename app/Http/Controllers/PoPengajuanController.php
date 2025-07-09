@@ -14,7 +14,9 @@ use Illuminate\Support\Carbon;
 use ZipArchive;
 use Illuminate\Support\Facades\Auth;
 use App\Models\MstDboCrp;
+use App\Models\MstPengajuanSubcont;
 use App\Models\TrsDboCrp;
+use Carbon\CarbonPeriod;
 
 class PoPengajuanController extends Controller
 {
@@ -321,44 +323,71 @@ class PoPengajuanController extends Controller
         $inquirysales = $query->get();
         $uniqueinquiry = $inquirysales->unique('id');
 
+        // Tentukan rentang bulan dari data
+        $minDate = $inquirysales->min('created_at');
+        $maxDate = $inquirysales->max('updated_at') ?? now();
+
+        $period = CarbonPeriod::create(
+            $startDate ?: $minDate->startOfMonth(),
+            '1 month',
+            $endDate ?: $maxDate->endOfMonth()
+        );
+
+        $monthsIndex = []; // Map untuk bulan ke index
+        $monthLabels = [];
+        $idx = 0;
+        foreach ($period as $month) {
+            $label = $month->format('M Y');
+            $monthLabels[] = $label;
+            $monthsIndex[$label] = $idx++;
+        }
+
+        // Inisialisasi array hasil
         $monthlyData1 = [
-            'open' => array_fill(0, 12, 0),
-            'onprogress' => array_fill(0, 12, 0),
-            'finish' => array_fill(0, 12, 0)
+            'open' => array_fill(0, count($monthLabels), 0),
+            'onprogress' => array_fill(0, count($monthLabels), 0),
+            'finish' => array_fill(0, count($monthLabels), 0)
         ];
 
-        $currentMonth1 = Carbon::now()->month - 1;
+        $startMonthIndex = $startDate ? Carbon::parse($startDate)->month - 1 : 0;
+        $endMonthIndex = $endDate ? Carbon::parse($endDate)->month - 1 : 11;
+
         $processedinquiry = [];
 
         foreach ($uniqueinquiry as $inquiry) {
-            $createdMonth1 = Carbon::parse($inquiry->created_at)->month - 1;
-            $lastRecord1 = InquirySales::where('id', $inquiry->id)
-                ->orderBy('updated_at', 'desc')
-                ->first();
+        $createdMonth1 = Carbon::parse($inquiry->created_at)->month - 1;
+        $lastRecord1 = InquirySales::where('id', $inquiry->id)
+            ->orderBy('updated_at', 'desc')
+            ->first();
 
-            if (!isset($processedinquiry[$inquiry->id])) {
-                $processedinquiry[$inquiry->id] = true;
+        if (!isset($processedinquiry[$inquiry->id])) {
+            $processedinquiry[$inquiry->id] = true;
 
-                if ($lastRecord1) {
-                    if ($lastRecord1->status == 6) {
-                        $finishMonth1 = Carbon::parse($lastRecord1->updated_at)->month - 1;
-                        for ($m = $createdMonth1; $m <= $finishMonth1; $m++) {
-                            $monthlyData1['open'][$m]++;
-                        }
+            if ($lastRecord1) {
+                if ($lastRecord1->status == 6) {
+                    $finishMonth1 = Carbon::parse($lastRecord1->updated_at)->month - 1;
+                    $endLoop = $finishMonth1 <= $endMonthIndex ? $finishMonth1 : $endMonthIndex;
+                    for ($m = max($createdMonth1, $startMonthIndex); $m <= $endLoop; $m++) {
+                        $monthlyData1['open'][$m]++;
+                    }
+                    if ($finishMonth1 >= $startMonthIndex && $finishMonth1 <= $endMonthIndex) {
                         $monthlyData1['finish'][$finishMonth1]++;
-                    } elseif (in_array($lastRecord1->status, [5, 8, 9, 7])) {
-                        for ($m = $createdMonth1; $m <= $currentMonth1; $m++) {
-                            $monthlyData1['open'][$m]++;
-                        }
-                        $monthlyData1['onprogress'][$currentMonth1]++;
-                    } elseif (in_array($lastRecord1->status, [1, 2, 3, 4])) {
-                        for ($m = $createdMonth1; $m <= $currentMonth1; $m++) {
-                            $monthlyData1['open'][$m]++;
-                        }
+                    }
+                } elseif (in_array($lastRecord1->status, [5, 8, 9, 7])) {
+                    for ($m = max($createdMonth1, $startMonthIndex); $m <= $endMonthIndex; $m++) {
+                        $monthlyData1['open'][$m]++;
+                    }
+                    $monthlyData1['onprogress'][$endMonthIndex]++;
+                } else {
+                    for ($m = max($createdMonth1, $startMonthIndex); $m <= $endMonthIndex; $m++) {
+                        $monthlyData1['open'][$m]++;
                     }
                 }
             }
         }
+    }
+
+
 
         $inquiryOpenUnique = 0;
         $inquiryOnprogressUnique = 0;
@@ -600,57 +629,72 @@ class PoPengajuanController extends Controller
         $filteredMst2 = $uniqueFPB2;
         $categoryTotal2 = $filteredMst2->count();
 
-        // Menghitung data unik untuk FPB
         $fpbOpenUnique = 0;
         $fpbFinishUnique = 0;
         $processedFPB = [];
         $monthlyData = [
-            'open' => array_fill(0, 12, 0),
-            'finish' => array_fill(0, 12, 0)
+            'open_by_year' => [],
+            'finish_by_year' => []
         ];
+        $fpbCategoryBreakdown = [
+            'Consumable' => ['open' => 0, 'finish' => 0]
+        ];
+
         $currentYear = Carbon::now()->year;
         $currentMonth = Carbon::now()->month - 1;
 
         foreach ($trsPoPengajuan as $id_fpb => $trsEntries) {
             $fpbEntry = $trsEntries->first();
             $no_fpb = MstPoPengajuan::where('id', $id_fpb)->value('no_fpb');
+            $kategori = MstPoPengajuan::where('id', $id_fpb)->value('kategori_po');
 
             if (!isset($processedFPB[$no_fpb])) {
                 $processedFPB[$no_fpb] = true;
+
                 $lastRecord = $trsEntries->sortByDesc('updated_at')->first();
                 $createdDate = Carbon::parse($fpbEntry->created_at);
                 $createdYear = $createdDate->year;
                 $createdMonth = $createdDate->month - 1;
 
                 if ($lastRecord && $lastRecord->status == 9) {
+                    // Selesai
                     $finishDate = Carbon::parse($lastRecord->updated_at);
                     $finishYear = $finishDate->year;
                     $finishMonth = $finishDate->month - 1;
 
-                    if ($finishYear > $createdYear) {
-                        for ($year = $createdYear; $year <= $finishYear; $year++) {
-                            $startMonth = ($year == $createdYear) ? $createdMonth : 0;
-                            $endMonth = ($year == $finishYear) ? $finishMonth : 11;
-                            for ($m = $startMonth; $m <= $endMonth; $m++) {
-                                $monthlyData['open'][$m]++;
-                            }
-                        }
-                    } else {
-                        for ($m = $createdMonth; $m <= $finishMonth; $m++) {
-                            $monthlyData['open'][$m]++;
+                    for ($year = $createdYear; $year <= $finishYear; $year++) {
+                        $startMonth = ($year == $createdYear) ? $createdMonth : 0;
+                        $endMonth = ($year == $finishYear) ? $finishMonth : 11;
+                        for ($m = $startMonth; $m <= $endMonth; $m++) {
+                            $monthlyData['open_by_year'][$year][$m] = 
+                                ($monthlyData['open_by_year'][$year][$m] ?? 0) + 1;
                         }
                     }
-                    $monthlyData['finish'][$finishMonth]++;
+
+                    $monthlyData['finish_by_year'][$finishYear][$finishMonth] = 
+                        ($monthlyData['finish_by_year'][$finishYear][$finishMonth] ?? 0) + 1;
+
                     $fpbFinishUnique++;
+
+                    if ($kategori === 'Consumable') {
+                        $fpbCategoryBreakdown['Consumable']['finish']++;
+                    }
                 } else {
+                    // Masih open
                     for ($year = $createdYear; $year <= $currentYear; $year++) {
                         $startMonth = ($year == $createdYear) ? $createdMonth : 0;
                         $endMonth = ($year == $currentYear) ? $currentMonth : 11;
                         for ($m = $startMonth; $m <= $endMonth; $m++) {
-                            $monthlyData['open'][$m]++;
+                            $monthlyData['open_by_year'][$year][$m] = 
+                                ($monthlyData['open_by_year'][$year][$m] ?? 0) + 1;
                         }
                     }
+
                     $fpbOpenUnique++;
+
+                    if ($kategori === 'Consumable') {
+                        $fpbCategoryBreakdown['Consumable']['open']++;
+                    }
                 }
             }
         }
@@ -659,7 +703,34 @@ class PoPengajuanController extends Controller
         $fpbOpenPercentage = $totalFPB > 0 ? round(($fpbOpenUnique / $totalFPB) * 100) : 0;
         $fpbFinishPercentage = $totalFPB > 0 ? round(($fpbFinishUnique / $totalFPB) * 100) : 0;
 
-        // Lead Time Calculation
+       // Inisialisasi variabel breakdown status FPB
+        $inquiryStatusBreakdown = [
+            'open' => 0,
+            'onprogress' => 0,
+            'finish' => 0,
+        ];
+
+        // Ambil seluruh data dari mst_po_pengajuans2
+        $mstbreakdown = MstPoPengajuan::all(); // pastikan modelnya benar
+
+        // Hitung breakdown status berdasarkan kategori status
+        foreach ($mstbreakdown as $fpb) {
+            $status = $fpb->status_1;
+
+            if (in_array($status, [1, 2, 3, 4])) {
+                $inquiryStatusBreakdown['open']++;
+            } elseif (in_array($status, [5, 7, 8, 9])) {
+                $inquiryStatusBreakdown['onprogress']++;
+            } elseif ($status == 6) {
+                $inquiryStatusBreakdown['finish']++;
+            }
+        }
+
+        // Debug hasil jika diperlukan (hapus di produksi)
+        
+
+
+
         $categories = ['IT', 'Spareparts', 'Consumable', 'GA', 'Subcont'];
         $leadTimeData = [];
         $totalPercentage = 0;
@@ -677,10 +748,12 @@ class PoPengajuanController extends Controller
 
             foreach ($filteredMst as $fpb) {
                 $fpbStartDate = $fpb->created_at;
+
                 $trsPoFirstJob = TrsPoPengajuan::where('id_fpb', $fpb->id)
                     ->whereBetween('status', [2, 6])
                     ->orderBy('updated_at', 'desc')
                     ->first();
+
                 $trsPoSecondJob = TrsPoPengajuan::where('id_fpb', $fpb->id)
                     ->whereBetween('status', [7, 9])
                     ->orderBy('updated_at', 'desc')
@@ -690,10 +763,12 @@ class PoPengajuanController extends Controller
                     $leadDaysFirstJob = $trsPoFirstJob->updated_at->diffInDays($fpbStartDate);
                     $categoryLeadDaysFirstJob[] = $leadDaysFirstJob;
                 }
+
                 if ($trsPoSecondJob && $trsPoSecondJob->status >= 6) {
                     $leadDaysSecondJob = $trsPoSecondJob->updated_at->diffInDays($trsPoFirstJob ? $trsPoFirstJob->updated_at : $fpbStartDate);
                     $categoryLeadDaysSecondJob[] = $leadDaysSecondJob;
                 }
+
                 if ($trsPoSecondJob && in_array($trsPoSecondJob->status, [10, 9])) {
                     $categoryConfirmFinish++;
                 } elseif ($trsPoFirstJob && in_array($trsPoFirstJob->status, [6, 7, 8])) {
@@ -703,8 +778,11 @@ class PoPengajuanController extends Controller
 
             $averageLeadDaysFirstJob = count($categoryLeadDaysFirstJob) > 0 ? round(array_sum($categoryLeadDaysFirstJob) / count($categoryLeadDaysFirstJob)) : 0;
             $averageLeadDaysSecondJob = count($categoryLeadDaysSecondJob) > 0 ? round(array_sum($categoryLeadDaysSecondJob) / count($categoryLeadDaysSecondJob)) : 0;
+
             $categoryPercentage = $totalFPB > 0 ? round(($categoryTotal / $totalFPB) * 100) : 0;
             $totalPercentage += $categoryPercentage;
+
+            // Tambahkan ke total global
             $totalSubmitConfirm += $categorySubmitConfirm;
             $totalConfirmFinish += $categoryConfirmFinish;
 
@@ -718,6 +796,7 @@ class PoPengajuanController extends Controller
             ];
         }
 
+        // Hitung total keseluruhan
         $leadTimeData['Total'] = [
             'average_lead_days_first' => count($categories) > 0 ? round(array_sum(array_column($leadTimeData, 'average_lead_days_first')) / count($categories)) : 0,
             'average_lead_days_second' => count($categories) > 0 ? round(array_sum(array_column($leadTimeData, 'average_lead_days_second')) / count($categories)) : 0,
@@ -727,19 +806,46 @@ class PoPengajuanController extends Controller
             'confirm_finish' => $totalConfirmFinish
         ];
 
+
+
         // Inquiry Calculation
-        $queryInquiry = InquirySales::query();
-        if ($startDateInquiry && $endDateInquiry) {
-            $queryInquiry->whereBetween('created_at', [$startDateInquiry, $endDateInquiry]);
+        $startDate = $request->input('start_date_inquiry')  ?: '2025-01-01';
+        $endDate = $request->input('end_date_inquiry')  ?: '2025-12-31';
+
+        $query = InquirySales::query();
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
         }
-        $inquirysales = $queryInquiry->get();
+
+        $inquirysales = $query->get();
         $uniqueinquiry = $inquirysales->unique('id');
 
+        // Tentukan rentang bulan dari data
+        $minDate = $inquirysales->min('created_at');
+        $maxDate = $inquirysales->max('updated_at') ?? now();
+
+        $period = CarbonPeriod::create(
+            $startDate ?: $minDate->startOfMonth(),
+            '1 month',
+            $endDate ?: $maxDate->endOfMonth()
+        );
+
+        $monthsIndex = []; // Map untuk bulan ke index
+        $monthLabels = [];
+        $idx = 0;
+        foreach ($period as $month) {
+            $label = $month->format('M Y');
+            $monthLabels[] = $label;
+            $monthsIndex[$label] = $idx++;
+        }
+
+        // Inisialisasi array hasil
         $monthlyData1 = [
-            'open' => array_fill(0, 12, 0),
-            'onprogress' => array_fill(0, 12, 0),
-            'finish' => array_fill(0, 12, 0)
+            'open' => array_fill(0, count($monthLabels), 0),
+            'onprogress' => array_fill(0, count($monthLabels), 0),
+            'finish' => array_fill(0, count($monthLabels), 0)
         ];
+
         $currentMonth1 = Carbon::now()->month - 1;
         $processedinquiry = [];
 
@@ -751,6 +857,7 @@ class PoPengajuanController extends Controller
 
             if (!isset($processedinquiry[$inquiry->id])) {
                 $processedinquiry[$inquiry->id] = true;
+
                 if ($lastRecord1) {
                     if ($lastRecord1->status == 6) {
                         $finishMonth1 = Carbon::parse($lastRecord1->updated_at)->month - 1;
@@ -776,6 +883,7 @@ class PoPengajuanController extends Controller
         $inquiryOnprogressUnique = 0;
         $inquiryFinishUnique = 0;
         $processedinquiry = [];
+
         $inquiryOpenCount = 0;
         $inquiryOnprogressCount = 0;
         $inquiryFinishCount = 0;
@@ -784,6 +892,7 @@ class PoPengajuanController extends Controller
             $lastRecord1 = InquirySales::where('id', $inquiry->id)
                 ->orderBy('updated_at', 'desc')
                 ->first();
+
             if (!isset($processedinquiry[$inquiry->id])) {
                 if ($lastRecord1) {
                     if ($lastRecord1->status == 6) {
@@ -807,6 +916,8 @@ class PoPengajuanController extends Controller
         $inquiryOpenPercentage = $totalinquiry > 0 ? round(($inquiryOpenUnique / $totalinquiry) * 100) : 0;
         $inquiryOnprogressPercentage = $totalinquiry > 0 ? round(($inquiryOnprogressUnique / $totalinquiry) * 100) : 0;
         $inquiryFinishPercentage = $totalinquiry > 0 ? round(($inquiryFinishUnique / $totalinquiry) * 100) : 0;
+
+
 
         // --- Bagian dashboardcrp ---
         $user = Auth::user();
@@ -897,9 +1008,9 @@ class PoPengajuanController extends Controller
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
         ];
 
-        // Debugging data Total untuk CRP
-        Log::info('monthlyActuals[Total]:', $monthlyActuals['Total']);
-        Log::info('monthlyPlans[Total]:', $monthlyPlans['Total']);
+        // // Debugging data Total untuk CRP
+        // Log::info('monthlyActuals[Total]:', $monthlyActuals['Total']);
+        // Log::info('monthlyPlans[Total]:', $monthlyPlans['Total']);
 
         return view('dashboard.dashboardFPB', compact(
             // FPB
@@ -928,6 +1039,8 @@ class PoPengajuanController extends Controller
             'inquiryFinishPercentage',
             'monthlyData1',
             'totalinquiry',
+            'fpbCategoryBreakdown',
+            'inquiryStatusBreakdown',
             // CRP
             'mstDboCrps',
             'trsDboCrps',
