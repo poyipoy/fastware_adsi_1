@@ -468,6 +468,7 @@
                                             <th class="text-center" width="100px">Nama Project</th>
                                             <th class="text-center" width="100px">No SO</th>
                                             <th class="text-center" width="100px">Keterangan</th>
+                                            <th class="text-center" width="100px">Part Name</th>
                                             <th class="text-center" width="100px">Note Sales</th>
                                             <th class="text-center" width="100px">Jenis Proses</th>
                                             <th class="text-center" width="100px">Tgl Pengajuan</th>
@@ -515,6 +516,7 @@
                                                 <td class="text-center">{{ $pengajuan->nama_project }}</td>
                                                 <td class="text-center">{{ $pengajuan->so }}</td>
                                                 <td class="text-center">{{ $pengajuan->keterangan }}</td>
+                                                <td class="text-center">{{ $pengajuan->part_name }}</td>
                                                 <td class="text-center">{{ $pengajuan->note_sales }}</td>
                                                 <td class="text-center">
                                                     {{ $pengajuan->jenis_proses_subcont !== 'Null' ? $pengajuan->jenis_proses_subcont : '' }}
@@ -612,48 +614,48 @@
 
             <!-- Modal Reject Marketing -->
                 <div class="modal fade" id="modalRejectMarketing" tabindex="-1" aria-labelledby="modalRejectMarketingLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="modalRejectMarketingLabel">Alasan Penolakan (Marketing)</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
-                        </div>
-                        <div class="modal-body">
-                            <input type="hidden" id="rejectMarketingId">
-                            <div class="mb-3">
-                                <label for="rejectMarketingKeterangan" class="form-label">Keterangan</label>
-                                <textarea class="form-control" id="rejectMarketingKeterangan" rows="3" required></textarea>
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalRejectMarketingLabel">Alasan Penolakan (Marketing)</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" id="rejectMarketingId">
+                                <div class="mb-3">
+                                    <label for="rejectMarketingKeterangan" class="form-label">Keterangan</label>
+                                    <textarea class="form-control" id="rejectMarketingKeterangan" rows="3" required></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-danger" id="submitRejectMarketing">Tolak</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" id="submitRejectMarketing">Tolak</button>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        </div>
                     </div>
-                </div>
                 </div>
 
                 <!-- Modal Keterangan Marketing -->
                 <div class="modal fade" id="modalMarketing" tabindex="-1" aria-labelledby="modalMarketingLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Keterangan Diperlukan (Profit ≤ 25%)</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
-                        </div>
-                        <div class="modal-body">
-                            <input type="hidden" id="marketingId">
-                            <div class="mb-3">
-                                <label for="marketingKeterangan" class="form-label">Keterangan</label>
-                                <textarea class="form-control" id="marketingKeterangan" rows="3" required></textarea>
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Keterangan Diperlukan (Profit ≤ 25%)</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" id="marketingId">
+                                <div class="mb-3">
+                                    <label for="marketingKeterangan" class="form-label">Keterangan</label>
+                                    <textarea class="form-control" id="marketingKeterangan" rows="3" required></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-success" id="submitMarketing">Kirim</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-success" id="submitMarketing">Kirim</button>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        </div>
                     </div>
-                </div>
                 </div>
 
             <form id="formKirim" method="POST" style="display:none;">
@@ -718,9 +720,9 @@
         const rows = document.querySelectorAll('tbody tr');
 
         rows.forEach(row => {
-            const hargaAwal = parseFloat(row.cells[13]?.innerText.replace(/[^0-9.-]+/g, "")) || 0;
-            const hargaAkhir = parseFloat(row.cells[14]?.innerText.replace(/[^0-9.-]+/g, "")) || 0;
-            const profitCell = row.cells[15];
+            const hargaAwal = parseFloat(row.cells[14]?.innerText.replace(/[^0-9.-]+/g, "")) || 0;
+            const hargaAkhir = parseFloat(row.cells[15]?.innerText.replace(/[^0-9.-]+/g, "")) || 0;
+            const profitCell = row.cells[16];
             const marketingButton = row.querySelector('.marketingButton');
 
             const profitPercentage = calcProfit(hargaAwal, hargaAkhir);

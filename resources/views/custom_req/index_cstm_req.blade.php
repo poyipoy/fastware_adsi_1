@@ -497,6 +497,7 @@
                                     <button class="btn btn-success" onclick="filterTable('maks3')">On-Track</button>
                                 </div>
 
+                                
                                 <table class="datatable table">
                                     <thead>
                                         <tr>
@@ -508,6 +509,7 @@
                                             <th class="text-center" width="100px">Nama Project</th>
                                             <th class="text-center" width="100px">No SO</th>
                                             <th class="text-center" width="100px">Keterangan</th>
+                                            <th class="text-center" width="100px">Part Name</th>
                                             <th class="text-center" width="100px">Note Sales</th>
                                             <th class="text-center" width="100px">Jenis Proses</th>
                                             <th class="text-center" width="100px">Tgl Pengajuan</th>
@@ -561,6 +563,7 @@
                                                 <td class="text-center">{{ $pengajuan->nama_project }}</td>
                                                 <td class="text-center">{{ $pengajuan->so }}</td>
                                                 <td class="text-center">{{ $pengajuan->keterangan }}</td>
+                                                <td class="text-center">{{ $pengajuan->part_name }}</td>
                                                 <td class="text-center">{{ $pengajuan->note_sales }}</td>
                                                 <td class="text-center">
                                                     {{ $pengajuan->jenis_proses_subcont !== 'Null' ? $pengajuan->jenis_proses_subcont : '' }}
@@ -719,6 +722,11 @@
                                     <input type="text" id="no_so" name="no_so" class="form-control" placeholder="SO/Tahun/.....(masukan 6 angka terakhir saja)" required 
                                         pattern="\d{6}" maxlength="6" title="Masukkan 6 digit angka saja">
                                 </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Nama Part</label>
+                                    <input type="text" id="part_name" name="part_name" class="form-control" placeholder="Masukkan Nama Part..." required>
+                                </div>
                                 
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Note Sales</label>
@@ -746,9 +754,13 @@
                                 <label for="jenisProcessInput">Jenis Proses Subcont</label>
                                 <input type="text" class="form-control" id="jenisProcessInput" required>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group mt-2">
                                 <label for="keteranganInput">Keterangan</label>
                                 <input type="text" class="form-control" id="keteranganInput" required>
+                            </div>
+                            <div class="form-group mt-2">
+                                <label for="fileInput">Upload File</label>
+                                <input type="file" class="form-control" id="fileInput">
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -758,6 +770,7 @@
                     </div>
                 </div>
             </div>
+
 
             <form id="formKirim" method="POST" style="display:none;">
                 @csrf
@@ -779,6 +792,7 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script>
+            
             function filterTable(type) {
                 const rows = document.querySelectorAll("table tbody tr");
 
@@ -875,43 +889,45 @@
             }
 
             document.addEventListener('DOMContentLoaded', function() {
-                // Ambil ID dari tombol saat modal dibuka
                 $('#modalKeterangan').on('show.bs.modal', function(event) {
-                    const button = $(event.relatedTarget); // Tombol yang memicu modal
-                    const idPengajuan = button.data('id'); // Ambil ID dari data-id
-                    // Simpan ID ini untuk digunakan dalam pengiriman data
+                    const button = $(event.relatedTarget);
+                    const idPengajuan = button.data('id');
                     $(this).data('pengajuanId', idPengajuan);
                 });
 
                 document.getElementById('submitKirim').addEventListener('click', function() {
                     const keterangan = document.getElementById('keteranganInput').value.trim();
                     const jenisProcess = document.getElementById('jenisProcessInput').value.trim();
-                    const idPengajuan = $('#modalKeterangan').data('pengajuanId'); // Ambil ID dari modal
-                    const route = '{{ route('kirimsubcont', '') }}' + '/' + idPengajuan; // Gabungkan dengan ID untuk route
+                    const fileInput = document.getElementById('fileInput');
+                    const file = fileInput.files[0]; // Ambil file
 
-                    // Validasi input
+                    const idPengajuan = $('#modalKeterangan').data('pengajuanId');
+                    const route = '{{ route('kirimsubcont', '') }}' + '/' + idPengajuan;
+
                     if (!keterangan || !jenisProcess) {
                         alert('Silakan lengkapi keterangan dan jenis proses.');
-                        return; // Hentikan eksekusi jika input tidak lengkap
+                        return;
                     }
 
-                    // Lakukan pengiriman data menggunakan fetch
+                    const formData = new FormData();
+                    formData.append('keterangan', keterangan);
+                    formData.append('jenis_process_subcont', jenisProcess);
+                    if (file) {
+                        formData.append('file', file);
+                    }
+
                     fetch(route, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}' // Token CSRF
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
-                        body: JSON.stringify({
-                            keterangan: keterangan,
-                            jenis_process_subcont: jenisProcess
-                        })
+                        body: formData
                     })
                     .then(response => response.json())
                     .then(data => {
-                        $('#modalKeterangan').modal('hide'); // Menutup modal
-                        alert(data.message); // Menampilkan pesan sukses
-                        location.reload(); // Reload halaman setelah pengiriman sukses
+                        $('#modalKeterangan').modal('hide');
+                        alert(data.message);
+                        location.reload();
                     })
                     .catch((error) => {
                         console.error('Error:', error);
@@ -919,13 +935,14 @@
                 });
             });
 
+
             // Menjalankan perhitungan profit saat halaman dimuat
             document.addEventListener('DOMContentLoaded', function() {
                 const rows = document.querySelectorAll('tbody tr');
                 rows.forEach(row => {
-                    const hargaAwalCell = row.cells[13]; // Kolom Harga Awal
-                    const hargaAkhirCell = row.cells[14]; // Kolom Harga Akhir
-                    const profitCell = row.cells[15]; // Kolom Profit
+                    const hargaAwalCell = row.cells[14]; // Kolom Harga Awal
+                    const hargaAkhirCell = row.cells[15]; // Kolom Harga Akhir
+                    const profitCell = row.cells[16]; // Kolom Profit
 
                     // Memastikan kolom ada sebelum digunakan
                     if (hargaAwalCell && hargaAkhirCell && profitCell) {

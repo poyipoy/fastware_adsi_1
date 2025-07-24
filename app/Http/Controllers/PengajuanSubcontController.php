@@ -41,17 +41,18 @@ class PengajuanSubcontController extends Controller
     }
 
     public function indexProc()
-    {
-        // Ambil hanya pengajuan yang status_1 adalah 2, 3, 4, atau 5 dan urutkan secara descending berdasarkan created_at
-        $pengajuanSubconts = MstPengajuanSubcont::whereIn('status_1', [2, 3, 4, 5])
-            ->where(function($query) {
-                $query->where('sec_line', 2)
-                      ->orWhere('sec_line', '');
-            })
-            ->orderByDesc('created_at')
-            ->get();
-        return view('pengajuan_subcont.index_pengajuan_proc', compact('pengajuanSubconts'));
-    }
+{
+    $pengajuanSubconts = MstPengajuanSubcont::whereIn('status_1', [2, 3, 4, 5])
+        ->where(function($query) {
+            $query->where('sec_line', 2)
+                  ->orWhereNull('sec_line');
+        })
+        ->orderByDesc('created_at')
+        ->get();
+
+    return view('pengajuan_subcont.index_pengajuan_proc', compact('pengajuanSubconts'));
+}
+
 
     // Method untuk menampilkan view form tambah data
     public function create()
@@ -143,6 +144,7 @@ class PengajuanSubcontController extends Controller
             'file_name' => $data['file_name'] ?? null, // Nama asli file
             'status_1' => 1,
             'status_2' => 1,
+            'is_active' => 1,
             'modified_at' => Auth::user()->name, // Mengambil nama user yang sedang login
         ]);
 

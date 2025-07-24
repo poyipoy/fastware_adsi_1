@@ -245,6 +245,7 @@
                                     <th>Nama Project</th>
                                     <th>No SO</th>
                                     <th>Keterangan</th>
+                                    <th>Part Name</th>
                                     <th>Note Sales</th>
                                     <th>Jenis Proses</th>
                                     <th>Tgl Pengajuan</th>
@@ -268,6 +269,7 @@
                                     <td>{{ $materials->nama_project }}</td>
                                     <td>{{ $materials->so }}</td>
                                     <td>{{ $materials->keterangan }}</td>
+                                    <td>{{ $materials->part_name }}</td>
                                     <td>{{ $materials->note_sales }}</td>
                                     <td>
                                         {{ $materials->jenis_proses_subcont !== 'Null' ? $materials->jenis_proses_subcont : '' }}
@@ -349,14 +351,23 @@
                         </button>
 
                         @if ($materials->status_1 == 3 && !is_null($materials->harga_akhir) && $materials->harga_akhir !== '' && $materials->approval_1 == 'Waiting')
-                            <button class="btn btn-success marketingButton" data-id="{{ $materials->id }}" data-harga-awal="{{ $materials->harga_awal }}" data-harga-akhir="{{ $materials->harga_akhir }}">
-                                Submit
+                            <!-- Tombol Approve -->
+                            <button type="button" class="btn btn-sm btn-success btn-hover marketingButton"
+                                data-id="{{ $materials->id }}"
+                                data-harga-awal="{{ $materials->harga_awal }}"
+                                data-harga-akhir="{{ $materials->harga_akhir }}"
+                                data-bs-toggle="modal" data-bs-target="#modalMarketing">
+                                <i class="fas fa-paper-plane"></i> Submit
                             </button>
 
-                            <button class="btn btn-danger rejectButton" data-id="{{ $materials->id }}">
-                                Reject
+                            <!-- Tombol Reject -->
+                            <button type="button" class="btn btn-sm btn-danger btn-hover rejectButton"
+                                data-id="{{ $materials->id }}"
+                                data-bs-toggle="modal" data-bs-target="#modalRejectMarketing">
+                                <i class="fas fa-times-circle"></i> Reject
                             </button>
                         @endif
+
 
                         @if ($materials->status_1 == 3 && !is_null($materials->harga_akhir) && $materials->harga_akhir !== '' && $materials->approval_1 == '')
                             <button type="button" class="btn btn-success" id="salesButton" data-id="{{ $materials->id }}">
@@ -365,35 +376,60 @@
                         @endif
 
                         @if ($materials->status_1 == 4 )
-                            <button type="button" class="btn btn-success" id="financeButton" data-id="{{ $materials->id }}">
-                                <i class="fas fa-paper-plane"></i> Submit
+                            <button type="button"
+                                    class="btn btn-sm btn-success btn-hover productionButton"
+                                    data-id="{{ $materials->id }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalKeterangan">
+                                <i class="fas fa-paper-plane"></i> Finish
                             </button>
-                            <button class="btn btn-danger" id="rejectfinanceButton" data-id="{{ $materials->id }}">Reject</button>
+
+
+                            {{-- Tombol Reject --}}
+                            <button type="button" class="btn btn-sm btn-danger btn-hover rejectButton" data-id="{{ $materials->id }}"
+                                    data-bs-toggle="modal" data-bs-target="#modalReject">
+                                <i class="fas fa-times-circle"></i> Reject
+                            </button>
                         @endif
                         
                       
-                        @if ($materials->status_1 == 3 && $materials->approval_1 == null && !empty($materials->quotation_file) && !empty($materials->confirm_prod))
+                        @if ($materials->status_1 == 3 && $materials->approval_1 == null && !empty($materials->confirm_prod))
                             <button type="button" class="btn btn-modal" data-bs-toggle="modal" data-bs-target="#inputDataModal1">
                                 Input
                             </button>
                         @endif
-                      @if ($materials->status_1 == 1 && $materials->sec_line == 1)
-                        @php
-                            // Cek apakah ada file dengan status 2 atau 3
-                            $fileStatusExists = $files->contains(function ($file) {
-                                return $file->status == 2 || $file->status == 3;
-                            });
-                        @endphp
-                        @if ($fileStatusExists && $materials->sec_line == 1)
-                            <button type="button" class="btn btn-success" id="productionButton" data-id="{{ $materials->id }}">
-                                <i class="fas fa-paper-plane"></i> Submit
-                            </button>
-                        @else
-                            <div class="alert alert-warning mt-3" role="alert">
-                                Untuk melakukan Submit, unggah file terlebih dahulu.
-                            </div>
+                        @if ($materials->status_1 == 1 && $materials->sec_line == 1)
+                            @php
+                                // Cek apakah ada file dengan status 2 atau 3
+                                $fileStatusExists = $files->contains(function ($file) {
+                                    return $file->status == 2 || $file->status == 3;
+                                });
+                            @endphp
+                            @if ($fileStatusExists && $materials->sec_line == 1)
+                                <button type="button" class="btn btn-success" id="productionButton" data-id="{{ $materials->id }}">
+                                    <i class="fas fa-paper-plane"></i> Submit
+                                </button>
+                            @else
+                                <div class="alert alert-warning mt-3" role="alert">
+                                    Untuk melakukan Submit, unggah file terlebih dahulu.
+                                </div>
+                            @endif
                         @endif
-                    @endif
+
+                        @if($materials->status_1 == 5)
+                            <button
+                                type="button"
+                                class="btn btn-warning"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editNoSoModal"
+                                data-id="{{ $materials->id }}"
+                                data-noso="{{ $materials->so }}">
+                                Edit No SO
+                            </button>
+                        @endif
+
+
+
                         
                       </div>
                 </section>
@@ -487,39 +523,7 @@
                 </section>
             </div>
 
-            {{-- <div class="modal fade" id="inputDataModal" tabindex="-1" aria-labelledby="inputDataModalLabel" aria-hidden="true">
-              <div class="modal-dialog modal-lg">
-                  <form action="{{ route('CustomRequest.updateCstmReq', $materials->id) }}" method="POST">
-                      @csrf
-                      <div class="modal-content">
-                          <div class="modal-header">
-                              <h5 class="modal-title">Input Data</h5>
-                              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                          </div>
-                          <div class="modal-body">
-                              <div class="mb-3">
-                                  <label class="form-label fw-bold">Keterangan</label>
-                                  <input type="text" name="keterangan" class="form-control" placeholder="Masukkan Keterangan..." required>
-                              </div>
-                              
-                              <div class="mb-3">
-                                  <label class="form-label fw-bold">Jenis Proses</label>
-                                  <input type="text" name="jenis_proses_subcont" class="form-control" placeholder="Masukkan Jenis Proses..." required>
-                              </div>
 
-                              <div class="mb-3">
-                                  <label class="form-label fw-bold">Harga Awal</label>
-                                  <input type="number" name="harga_awal" class="form-control" placeholder="Masukkan Harga Awal..." required>
-                              </div>
-                          </div>
-                          <div class="modal-footer">
-                              <button type="submit" class="btn btn-primary" id="submitBtn">Simpan</button>
-                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                          </div>
-                      </div>
-                  </form>
-              </div>
-          </div> --}}
 
         <div class="modal fade" id="inputDataModal1" tabindex="-1" aria-labelledby="inputDataModalLabel1" aria-hidden="true">
             <div class="modal-dialog modal-lg">
@@ -549,6 +553,51 @@
                 </form>
             </div>
         </div>
+
+        <div class="modal fade" id="modalRejectMarketing" tabindex="-1" aria-labelledby="modalRejectMarketingLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalRejectMarketingLabel">Alasan Penolakan (Marketing)</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" id="rejectMarketingId">
+                                <div class="mb-3">
+                                    <label for="rejectMarketingKeterangan" class="form-label">Keterangan</label>
+                                    <textarea class="form-control" id="rejectMarketingKeterangan" rows="3" required></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-danger" id="submitRejectMarketing">Tolak</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Keterangan Marketing -->
+                <div class="modal fade" id="modalMarketing" tabindex="-1" aria-labelledby="modalMarketingLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Keterangan Diperlukan (Profit ≤ 25%)</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" id="marketingId">
+                                <div class="mb-3">
+                                    <label for="marketingKeterangan" class="form-label">Keterangan</label>
+                                    <textarea class="form-control" id="marketingKeterangan" rows="3" required></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-success" id="submitMarketing">Kirim</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
               <div class="modal-dialog">
@@ -593,6 +642,90 @@
                   </div>
               </div>
           </div>
+
+            <div class="modal fade" id="editNoSoModal" tabindex="-1" aria-labelledby="editNoSoModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form action="{{ route('customrequest.updateNoSo') }}" method="POST" id="editNoSoForm">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="id" id="editNoSoId">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Nomor SO</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Tampilkan No SO Lama di Luar Input -->
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold">No SO Saat Ini:</label>
+                                    <div id="currentNoSo" class="form-control-plaintext text-primary fw-semibold"></div>
+                                </div>
+
+                                <!-- Input Hanya untuk 6 Digit Baru -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">6 Digit Terakhir No SO Baru</label>
+                                    <input type="text" id="editNoSoInput" name="no_so_suffix" class="form-control"
+                                        placeholder="SO/Tahun/.....(masukan 6 angka terakhir saja)" required pattern="\d{6}" maxlength="6"
+                                        title="No SO">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-success">Update</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+
+            <div class="modal fade" id="modalKeterangan" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Keterangan</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="pengajuanId">
+                            <div class="mb-3">
+                                <label for="keterangan" class="form-label">Masukkan Keterangan</label>
+                                <textarea class="form-control" id="keterangan" rows="3" required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" id="submitKeterangan">Kirim</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+           
+            <!-- Modal Reject -->
+            <div class="modal fade" id="modalReject" tabindex="-1" aria-labelledby="modalRejectLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalRejectLabel">Alasan Penolakan</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="rejectPengajuanId">
+                        <div class="mb-3">
+                            <label for="rejectKeterangan" class="form-label">Masukkan Keterangan Penolakan</label>
+                            <textarea class="form-control" id="rejectKeterangan" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" id="submitReject">Tolak</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+
+
 
           <div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -691,6 +824,185 @@
                     });
                 });
 
+                document.addEventListener('DOMContentLoaded', function () {
+                    var editNoSoModal = document.getElementById('editNoSoModal');
+                    editNoSoModal.addEventListener('show.bs.modal', function (event) {
+                        var button = event.relatedTarget;
+                        var id = button.getAttribute('data-id');
+                        var fullSo = button.getAttribute('data-noso');
+
+                        // Tampilkan SO lama
+                        document.getElementById('editNoSoId').value = id;
+                        document.getElementById('currentNoSo').textContent = fullSo;
+
+                        // Kosongkan input agar tidak ada default value
+                        document.getElementById('editNoSoInput').value = '';
+                    });
+                });
+
+                // Saat tombol Submit ditekan, isi modal Marketing
+                document.addEventListener('click', function (e) {
+                    const button = e.target.closest('.marketingButton');
+                    if (button) {
+                        const id = button.getAttribute('data-id');
+                        document.getElementById('marketingId').value = id;
+                        document.getElementById('marketingKeterangan').value = ''; // Kosongkan sebelumnya
+                    }
+                });
+
+                // Saat tombol Reject ditekan, isi modal Reject
+                document.addEventListener('click', function (e) {
+                    const button = e.target.closest('.rejectButton');
+                    if (button) {
+                        const id = button.getAttribute('data-id');
+                        document.getElementById('rejectMarketingId').value = id;
+                        document.getElementById('rejectMarketingKeterangan').value = ''; // Kosongkan sebelumnya
+                    }
+                });
+
+                document.getElementById('submitMarketing').addEventListener('click', function () {
+                    const id = document.getElementById('marketingId').value;
+                    const keterangan = document.getElementById('marketingKeterangan').value.trim();
+
+                    if (!keterangan) {
+                        alert('Keterangan wajib diisi.');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: '{{ route('approveMarketing', '') }}/' + id,
+                        method: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            keterangan: keterangan
+                        },
+                        success: function (response) {
+                            alert(response.message || 'Berhasil dikirim ke Finance.');
+                            $('#modalMarketing').modal('hide');
+                            location.reload();
+                        },
+                        error: function (xhr) {
+                            alert('Terjadi kesalahan: ' + xhr.responseText);
+                        }
+                    });
+                });
+
+                document.getElementById('submitRejectMarketing').addEventListener('click', function () {
+                    const id = document.getElementById('rejectMarketingId').value;
+                    const keterangan = document.getElementById('rejectMarketingKeterangan').value.trim();
+
+                    if (!keterangan) {
+                        alert('Keterangan wajib diisi.');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: '{{ route('rejectMarketing', '') }}/' + id,
+                        method: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            keterangan: keterangan
+                        },
+                        success: function (response) {
+                            alert(response.message || 'Pengajuan ditolak.');
+                            $('#modalRejectMarketing').modal('hide');
+                            location.reload();
+                        },
+                        error: function (xhr) {
+                            alert('Terjadi kesalahan: ' + xhr.responseText);
+                        }
+                    });
+                });
+
+
+
+
+$(document).ready(function() {
+                new DataTable('#viewPoSecHead');
+
+                // Event listener untuk tombol "Finish"
+                $(document).ready(function () {
+                    let selectedId = null;
+
+                    // Saat tombol "Finish" diklik, simpan ID ke modal
+                    $('.productionButton').on('click', function () {
+                        selectedId = $(this).data('id');
+                        $('#pengajuanId').val(selectedId);
+                        $('#keterangan').val('');
+                    });
+
+                    // Saat tombol submit di modal diklik
+                    $('#submitKeterangan').on('click', function () {
+                        const keterangan = $('#keterangan').val().trim();
+                        const pengajuanId = $('#pengajuanId').val();
+
+                        if (!keterangan) {
+                            alert('Keterangan wajib diisi.');
+                            return;
+                        }
+
+                        $.ajax({
+                            url: '{{ route('approveFinance', '') }}/' + pengajuanId,
+                            method: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                keterangan: keterangan
+                            },
+                            success: function (response) {
+                                alert(response.message || 'Berhasil dikirim.');
+                                location.reload();
+                            },
+                            error: function (xhr) {
+                                alert('Terjadi kesalahan: ' + xhr.responseText);
+                            }
+                        });
+
+                        $('#modalKeterangan').modal('hide');
+                    });
+                });
+                
+                // Event listener untuk tombol "Reject" (tambahkan jika ada)
+                $(document).ready(function () {
+                    let rejectId = null;
+
+                    // Saat tombol Reject diklik, simpan ID ke modal
+                    $('.rejectButton').on('click', function () {
+                        rejectId = $(this).data('id');
+                        $('#rejectPengajuanId').val(rejectId);
+                        $('#rejectKeterangan').val('');
+                    });
+
+                    // Saat tombol submit dalam modal diklik
+                    $('#submitReject').on('click', function () {
+                        const keterangan = $('#rejectKeterangan').val().trim();
+                        const pengajuanId = $('#rejectPengajuanId').val();
+
+                        if (!keterangan) {
+                            alert('Keterangan penolakan wajib diisi.');
+                            return;
+                        }
+
+                        $.ajax({
+                            url: '{{ route('rejectFinance', '') }}/' + pengajuanId,
+                            method: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                keterangan: keterangan
+                            },
+                            success: function(response) {
+                                alert(response.message || 'Pengajuan berhasil ditolak.');
+                                $('#modalReject').modal('hide');
+                                location.reload();
+                            },
+                            error: function(xhr) {
+                                alert('Terjadi kesalahan: ' + xhr.responseText);
+                            }
+                        });
+                    });
+                });
+            });
+
+
                 $(document).ready(function() {
                     $('#salesButton').on('click', function() {
                         var materialsId = $(this).data('id');
@@ -721,243 +1033,7 @@
                     });
                 });
 
-                $(document).ready(function() {
-                    $('#financeButton').on('click', function() {
-                        var materialsId = $(this).data('id');
-
-                        // Menampilkan jendela konfirmasi
-                        if (confirm("Apakah Anda yakin ingin menyelesaikan?")) {
-                            // Mengirim permintaan AJAX ke server
-                            $.ajax({
-                                url: '{{ route('approveFinance', '') }}/' + materialsId, // Menggunakan route yang telah dibuat
-                                method: 'POST',
-                                data: {
-                                    _token: '{{ csrf_token() }}' // Token CSRF untuk keamanan
-                                },
-                                success: function(response) {
-                                    // Menampilkan pesan sukses
-                                    alert(response.message); // Tampilkan pesan sukses
-                                    location.reload(); // Reload halaman
-                                },
-                                error: function(xhr) {
-                                    console.log(xhr);  // Tampilkan detail kesalahan di konsol
-                                    alert('An error occurred: ' + xhr.responseText); // Tampilkan pesan error
-                                }
-                            });
-                        } else {
-                            // Jika pengguna batal konfirmasi
-                            alert("Pengiriman dibatalkan.");
-                        }
-                    });
-                });
-
-                $(document).ready(function() {
-                    // Event handler untuk tombol Reject: hanya membuka modal
-                    $('#rejectfinanceButton').on('click', function() {
-                        var materialsId = $(this).data('id');
-                        // Simpan ID material di modal
-                        $('#rejectModal').data('materialsId', materialsId);
-                        // Tampilkan modal
-                        $('#rejectModal').modal('show');
-                    });
-
-                    // Event handler untuk tombol Kirim di modal: mengirim permintaan ke route rejectFinance
-                    $('#submitReject').on('click', function() {
-                        var materialsId = $('#rejectModal').data('materialsId');
-                        var keterangan = $('#keterangan').val();
-
-                        // Validasi keterangan tidak kosong
-                        if (keterangan.trim() === '') {
-                            alert('Keterangan tidak boleh kosong.');
-                            return;
-                        }
-
-                        // Kirim permintaan AJAX ke server
-                        $.ajax({
-                            url: '{{ route('rejectFinance', '') }}/' + materialsId,
-                            method: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}',
-                                keterangan: keterangan
-                            },
-                            success: function(response) {
-                                alert(response.message);
-                                $('#rejectModal').modal('hide');
-                                location.reload();
-                            },
-                            error: function(xhr) {
-                                console.log(xhr);
-                                alert('Terjadi kesalahan: ' + xhr.responseText);
-                            }
-                        });
-                    });
-                });
-
-                $(document).ready(function() {
-                    $('.marketingButton').on('click', function() {
-                        const materialsId = $(this).data('id');
-                        const hargaAwal = parseFloat($(this).data('harga-awal'));
-                        const hargaAkhir = parseFloat($(this).data('harga-akhir'));
-                        
-                        // Menghitung profit
-                        const profitResult = calcProfit(hargaAwal, hargaAkhir);
-                        const profitPercentage = profitResult.value ? parseFloat(profitResult.value) : 0; 
-
-                        // Menampilkan jendela konfirmasi
-                        if (confirm("Apakah Anda yakin ingin mengirim?")) {
-                            if (profitPercentage > 25) {
-                                if (confirm("Profit lebih dari 25%. Apakah Anda yakin ingin menyelesaikan pengajuan ini?")) {
-                                    $.ajax({
-                                        url: '{{ route('approveMarketing2', '') }}/' + materialsId,
-                                        method: 'POST',
-                                        data: {
-                                            _token: '{{ csrf_token() }}'
-                                        },
-                                        success: function(response) {
-                                            alert(response.message);
-                                            location.reload();
-                                        },
-                                        error: function(xhr) {
-                                            alert('An error occurred: ' + xhr.responseText);
-                                        }
-                                    });
-                                }
-                            } else {
-                                if (confirm("Profit kurang dari atau sama dengan 25%. Apakah Anda yakin ingin mengirim ke Finance?")) {
-                                    $.ajax({
-                                        url: '{{ route('approveMarketing', '') }}/' + materialsId,
-                                        method: 'POST',
-                                        data: {
-                                            _token: '{{ csrf_token() }}'
-                                        },
-                                        success: function(response) {
-                                            alert(response.message);
-                                            location.reload();
-                                        },
-                                        error: function(xhr) {
-                                            alert('An error occurred: ' + xhr.responseText);
-                                        }
-                                    });
-                                }
-                            }
-                        } else {
-                            alert("Pengiriman dibatalkan.");
-                        }
-                    });
-
-                    // Fungsi untuk menangani tombol reject
-                    $('.rejectButton').on('click', function() {
-                        const id = $(this).data('id');
-                        if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
-                            $.ajax({
-                                url: '{{ route('rejectMarketing', '') }}/' + id,
-                                method: 'POST',
-                                data: {
-                                    _token: '{{ csrf_token() }}'
-                                },
-                                success: function(response) {
-                                    alert(response.message);
-                                    location.reload();
-                                },
-                                error: function(xhr) {
-                                    alert('An error occurred: ' + xhr.responseText);
-                                }
-                            });
-                        } else {
-                            alert("Penolakan pengajuan dibatalkan.");
-                        }
-                    });
-                });
                 
-
-
-                // document.addEventListener('DOMContentLoaded', function() {
-                //     const rows = document.querySelectorAll('tbody tr');
-                //         rows.forEach(row => {
-                //             const hargaAwal = parseFloat(row.cells[7].innerText) || 0; // Kolom Harga Awal
-                //             const hargaAkhir = parseFloat(row.cells[8].innerText) || 0; // Kolom Harga Akhir
-                //             const profitCell = row.cells[9]; // Kolom Profit
-
-                //             // Menghitung profit
-                //             const profitPercentage = calcProfit(hargaAwal, hargaAkhir);
-
-                //             // Menampilkan profit dalam persen
-                //             profitCell.innerText = profitPercentage.toFixed(2) + '%'; 
-                //             // Menyesuaikan warna berdasarkan profit
-                //             profitCell.style.color = (profitPercentage <= 25) ? 'red' : 'black';
-
-                //             // Menambahkan event listener untuk tombol marketing
-                //             const marketingButton = row.querySelector('.marketingButton');
-                //             if (marketingButton) {
-                //                 marketingButton.addEventListener('click', function() {
-                //                     if (confirm("Apakah Anda yakin ingin mengirim?")) {
-                //                         if (profitPercentage > 25) {
-                //                             if (confirm("Profit lebih dari 25%. Apakah Anda yakin ingin menyelesaikan pengajuan ini?")) {
-                //                                 $.ajax({
-                //                                     url: '{{ route('approveMarketing2', '') }}/' + this.dataset.id,
-                //                                     method: 'POST',
-                //                                     data: {
-                //                                         _token: '{{ csrf_token() }}'
-                //                                     },
-                //                                     success: function(response) {
-                //                                         alert(response.message);
-                //                                         location.reload();
-                //                                     },
-                //                                     error: function(xhr) {
-                //                                         alert('An error occurred: ' + xhr.responseText);
-                //                                     }
-                //                                 });
-                //                             }
-                //                         } else {
-                //                             if (confirm("Profit kurang dari atau sama dengan 25%. Apakah Anda yakin ingin mengirim ke Finance?")) {
-                //                                 $.ajax({
-                //                                     url: '{{ route('approveMarketing', '') }}/' + this.dataset.id,
-                //                                     method: 'POST',
-                //                                     data: {
-                //                                         _token: '{{ csrf_token() }}'
-                //                                     },
-                //                                     success: function(response) {
-                //                                         alert(response.message);
-                //                                         location.reload();
-                //                                     },
-                //                                     error: function(xhr) {
-                //                                         alert('An error occurred: ' + xhr.responseText);
-                //                                     }
-                //                                 });
-                //                             }
-                //                         }
-                //                     } else {
-                //                         alert("Pengiriman dibatalkan.");
-                //                     }
-                //                 });
-                //             }
-                        
-                //         // Menambahkan event listener untuk tombol reject
-                //         const rejectButton = row.querySelector('.rejectButton');
-                //         if (rejectButton) {
-                //             rejectButton.addEventListener('click', function() {
-                //                 if (confirm("Apakah Anda yakin ingin menolak pengajuan ini?")) {
-                //                     $.ajax({
-                //                         url: '{{ route('rejectMarketing', '') }}/' + this.dataset.id,
-                //                         method: 'POST',
-                //                         data: {
-                //                             _token: '{{ csrf_token() }}'
-                //                         },
-                //                         success: function(response) {
-                //                             alert(response.message);
-                //                             location.reload();
-                //                         },
-                //                         error: function(xhr) {
-                //                             alert('An error occurred: ' + xhr.responseText);
-                //                         }
-                //                     });
-                //                 } else {
-                //                     alert("Penolakan pengajuan dibatalkan.");
-                //                 }
-                //             });
-                //         }
-                //     });
-                // });
 
 
                 document.addEventListener('DOMContentLoaded', function () {
@@ -1031,11 +1107,16 @@
 
                 // Menjalankan perhitungan profit saat halaman dimuat
                 document.addEventListener('DOMContentLoaded', function() {
-                    const rows = document.querySelectorAll('tbody tr');
-                    rows.forEach(row => {
-                        const hargaAwal = parseFloat(row.cells[10].innerText) || 0; // Kolom Harga Awal
-                        const hargaAkhir = parseFloat(row.cells[11].innerText) || 0; // Kolom Harga Akhir
-                        const profitCell = row.cells[12]; // Kolom Profit
+                const rows = document.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const hargaAwalCell = row.cells[11]; // Kolom Harga Awal
+                    const hargaAkhirCell = row.cells[12]; // Kolom Harga Akhir
+                    const profitCell = row.cells[13]; // Kolom Profit
+
+                    // Memastikan kolom ada sebelum digunakan
+                    if (hargaAwalCell && hargaAkhirCell && profitCell) {
+                        const hargaAwal = parseFloat(hargaAwalCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
+                        const hargaAkhir = parseFloat(hargaAkhirCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
                         
                         // Menghitung profit dan menampilkannya
                         const profitResult = calcProfit(hargaAwal, hargaAkhir);
@@ -1046,8 +1127,11 @@
                         } else {
                             profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
                         }
-                    });
+                    } else {
+                        console.warn('Kolom tidak ditemukan pada baris ini:', row);
+                    }
                 });
+            });
         </script>
 
     </main><!-- End #main -->

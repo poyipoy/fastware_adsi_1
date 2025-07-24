@@ -246,6 +246,7 @@
                                     <th>Nama Project</th>
                                     <th>No SO</th>
                                     <th>Keterangan</th>
+                                    <th>Part Name</th>
                                     <th>Note Sales</th>
                                     <th>Jenis Proses</th>
                                     <th>Tgl Pengajuan</th>
@@ -270,6 +271,7 @@
                                     <td>{{ $materials->nama_project }}</td>
                                     <td>{{ $materials->so }}</td>
                                     <td>{{ $materials->keterangan }}</td>
+                                    <td>{{ $materials->part_name }}</td>
                                     <td>{{ $materials->note_sales }}</td>
                                     <td>
                                         {{ $materials->jenis_proses_subcont !== 'Null' ? $materials->jenis_proses_subcont : '' }}
@@ -697,9 +699,9 @@
                 const rows = document.querySelectorAll('tbody tr');
 
                 rows.forEach(row => {
-                    const hargaAwal = parseFloat(row.cells[10].innerText) || 0; // Kolom Harga Awal
-                    const hargaAkhir = parseFloat(row.cells[11].innerText) || 0; // Kolom Harga Akhir
-                    const profitCell = row.cells[12]; // Kolom Profit
+                    const hargaAwal = parseFloat(row.cells[11].innerText) || 0; // Kolom Harga Awal
+                    const hargaAkhir = parseFloat(row.cells[12].innerText) || 0; // Kolom Harga Akhir
+                    const profitCell = row.cells[13]; // Kolom Profit
                     
                     // Menghitung profit dan menampilkan hasil
                     const profitPercentage = calcProfit(hargaAwal, hargaAkhir);
@@ -956,9 +958,9 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const rows = document.querySelectorAll('tbody tr');
                 rows.forEach(row => {
-                    const hargaAwalCell = row.cells[10]; // Kolom Harga Awal
-                    const hargaAkhirCell = row.cells[11]; // Kolom Harga Akhir
-                    const profitCell = row.cells[12]; // Kolom Profit
+                    const hargaAwalCell = row.cells[11]; // Kolom Harga Awal
+                    const hargaAkhirCell = row.cells[12]; // Kolom Harga Akhir
+                    const profitCell = row.cells[13]; // Kolom Profit
 
                     // Memastikan kolom ada sebelum digunakan
                     if (hargaAwalCell && hargaAkhirCell && profitCell) {

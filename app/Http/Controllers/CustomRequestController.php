@@ -15,6 +15,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Calculation\TextData\Format;
 use Svg\Tag\Rect;
+use Illuminate\Support\Facades\File;
+
 
 class CustomRequestController extends Controller
 {
@@ -433,6 +435,7 @@ class CustomRequestController extends Controller
             'qty' => 1,
             'tgl_permintaan' => now(),
             'status_1' => 1,
+            'part_name' => $request->part_name,
             'sec_line' => 1,
             'is_active' => 1,
             'jenis_proses_subcont' => 'Null',
@@ -766,13 +769,6 @@ class CustomRequestController extends Controller
         $file->status = 3;
         $file->save();
 
-        $mst = $file->mst_id;
-
-        $fileoke = MstPengajuanSubcont::findOrFail($mst);
-        $fileoke->file = 'assets/custom_request/' . $file->file_name;
-        $fileoke->file_name = $file->file_name;
-        $fileoke->save(); 
-
         $filename = $file->file_name;
         
 
@@ -908,6 +904,7 @@ class CustomRequestController extends Controller
         $pengajuan->status_1 = 3;
         $pengajuan->status_2 = 3;
         $pengajuan->confirm_prod = auth()->user()->id;
+        $pengajuan->date_confirm_prod = now();
         $pengajuan->save();
 
         $userName = auth()->user()->name;
@@ -928,31 +925,82 @@ class CustomRequestController extends Controller
         $pengajuan = MstPengajuanSubcont::findOrFail($id);
 
         // Validasi input
-        $request->validate([
-            'keterangan' => 'required',
-            'jenis_process_subcont' => 'required',
+        $validated = $request->validate([
+            'keterangan' => 'required|string',
+            'jenis_process_subcont' => 'required|string',
+            'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
-        // Update status dan sec_line
+        // Default folder penyimpanan
+        $uploadPath = public_path('assets/subcont');
+
+        if (!File::exists($uploadPath)) {
+            File::makeDirectory($uploadPath, 0755, true);
+        }
+
+        // Proses file jika ada
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+
+            $fileName = $originalName . '.' . $extension;
+            $counter = 1;
+
+            // Tambahkan angka jika file dengan nama sama sudah ada
+            while (File::exists($uploadPath . '/' . $fileName)) {
+                $fileName = $originalName . '(' . $counter . ').' . $extension;
+                $counter++;
+            }
+
+            // Simpan file ke folder publik
+            $file->move($uploadPath, $fileName);
+
+            // Simpan nama dan path ke database
+            $pengajuan->file = 'assets/subcont/' . $fileName;
+            $pengajuan->file_name = $fileName;
+        }
+
+        // Update data lainnya
         $pengajuan->status_1 = 2;
         $pengajuan->status_2 = 2;
         $pengajuan->sec_line = 2;
-        $pengajuan->jenis_proses_subcont = $request->jenis_process_subcont; // Simpan jenis proses subcont
-        $pengajuan->keterangan = $request->keterangan; // Simpan keterangan
+        $pengajuan->jenis_proses_subcont = $request->jenis_process_subcont;
+        $pengajuan->keterangan = $request->keterangan;
         $pengajuan->save();
 
-
-        // Simpan informasi ke TrsPengajuanSubcont
+        // Simpan log proses
         $userName = auth()->user()->name;
         TrsPengajuanSubcont::create([
             'id_subcont' => $id,
             'keterangan' => 'Menginput Keterangan :' . $request->keterangan . ' dan jenis proses: ' . $request->jenis_process_subcont,
             'status' => '2',
-            'modified_at' => $userName 
+            'modified_at' => $userName,
         ]);
 
         return response()->json(['message' => 'Berhasil dikirim ke Subcont'], 200);
     }
+
+    public function updateNoSo(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+            'no_so_suffix' => 'required|digits:6',
+        ]);
+
+        $suffix = $request->no_so_suffix;
+        $prefix = 'SO/' . date('Y') . '/'; // Atau sesuaikan jika tahun tidak dinamis
+        $fullNoSo = $prefix . $suffix;
+
+        $requestModel = MstPengajuanSubcont::findOrFail($request->id);
+        $requestModel->so = $fullNoSo;
+        $requestModel->save();
+
+        return redirect()->back()->with('success', 'Nomor SO berhasil diperbarui.');
+    }
+
+
+
 
     public function kirimsales(Request $request, $id)
     {

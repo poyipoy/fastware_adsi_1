@@ -479,6 +479,7 @@
                                             <th class="text-center" width="100px">Nama Project</th>
                                             <th class="text-center" width="100px">No SO</th>
                                             <th class="text-center" width="100px">Keterangan</th>
+                                            <th class="text-center" width="100px">Part Name</th>
                                             <th class="text-center" width="100px">Note Sales</th>
                                             <th class="text-center" width="100px">Jenis Proses</th>
                                             <th class="text-center" width="100px">Tgl Pengajuan</th>
@@ -526,6 +527,7 @@
                                                 <td class="text-center">{{ $pengajuan->nama_project }}</td>
                                                 <td class="text-center">{{ $pengajuan->so }}</td>
                                                 <td class="text-center">{{ $pengajuan->keterangan }}</td>
+                                                <td class="text-center">{{ $pengajuan->part_name }}</td>
                                                 <td class="text-center">{{ $pengajuan->note_sales }}</td>
                                                 <td class="text-center">
                                                     {{ $pengajuan->jenis_proses_subcont !== 'Null' ? $pengajuan->jenis_proses_subcont : '' }}
@@ -829,9 +831,9 @@ function calcProfit(hargaAwal, hargaAkhir) {
 document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('tbody tr');
     rows.forEach(row => {
-        const hargaAwalCell = row.cells[13]; // Kolom Harga Awal
-        const hargaAkhirCell = row.cells[14]; // Kolom Harga Akhir
-        const profitCell = row.cells[15]; // Kolom Profit
+        const hargaAwalCell = row.cells[14]; // Kolom Harga Awal
+        const hargaAkhirCell = row.cells[15]; // Kolom Harga Akhir
+        const profitCell = row.cells[16]; // Kolom Profit
 
         // Memastikan kolom ada sebelum digunakan
         if (hargaAwalCell && hargaAkhirCell && profitCell) {

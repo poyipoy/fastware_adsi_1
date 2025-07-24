@@ -589,4 +589,5 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/custom-request/submit-send/{id}', [CustomRequestController::class, 'submitproduction'])->name('SubmitProduction');
     Route::post('/custom-request/rejected-production/{id}', [CustomRequestController::class, 'rejectproduction'])->name('RejectProduction');
     Route::post('/custom-request/submit-quotation/{id}', [CustomRequestController::class, 'submitData'])->name('submit.quotation');
+    Route::put('/custom-request/update-no-so', [CustomRequestController::class, 'updateNoSo'])->name('customrequest.updateNoSo');
 });
