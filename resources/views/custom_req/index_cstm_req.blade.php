@@ -882,7 +882,7 @@
                     };
                 } else {
                     return {
-                        value: 'N/A', // Tidak bisa dihitung jika harga akhir 0
+                        value: '', // Tidak bisa dihitung jika harga akhir 0
                         isLow: false
                     };
                 }
