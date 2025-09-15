@@ -10,7 +10,7 @@ class JadwalPreventif extends Model
     protected $table = 'jadwal_preventif';
     use HasFactory;
     protected $fillable = [
-        'id', 'nomor_mesin', 'tipe', 'jadwal_rencana', 'jadwal_aktual', 'status',
+        'id', 'nomor_mesin', 'tipe', 'jadwal_rencana', 'jadwal_aktual', 'status','keterangan'
     ];
 
     protected $dates = ['created_at', 'updated_at'];

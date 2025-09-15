@@ -481,6 +481,14 @@
                                                     </button>
                                                 </form>
                                             @endif
+                                            @if ($materials->status_1 == 1 && auth()->user()->name == $file->create_by)
+                                                <form action="{{ route('cstm.filehapussales', $file->id) }}" method="POST" class="ml-2">
+                                                    @csrf
+                                                    <button type="submit" aria-label="Hapus" class="icon-btn hapus" title="Hapus">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
                                         @endif
                                         <a href="{{ route('file.download', $file->id) }}" aria-label="Download" class="icon-btn" title="Download">
                                             <i class="fas fa-download"></i>

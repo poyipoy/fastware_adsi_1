@@ -52,7 +52,6 @@
                                         Schedule Plan<span style="color: red;">*</span>
                                     </label>
                                     <input type="date" class="form-control" id="jadwal_rencana" name="jadwal_rencana" value="{{$preventive->jadwal_rencana}}" readonly>
-
                                 </div>
 
                                 <!-- Input issue -->

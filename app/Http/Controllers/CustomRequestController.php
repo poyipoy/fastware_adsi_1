@@ -684,6 +684,27 @@ class CustomRequestController extends Controller
         return view('custom_req.viewCstmReqSales', compact('materials', 'files', 'activity_logs'));
     }
 
+    public function cancel($id)
+    {
+        // Ambil record beserta relasi (jika perlu untuk view), tapi tidak mengubah relasi/field lain
+        $materials = MstPengajuanSubcont::with(['sales', 'production', 'marketing', 'finance'])->findOrFail($id);
+
+        // Jika sudah non-aktif, cukup kembali dan reload halaman tanpa mengubah field lain
+        if ($materials->is_active == 0) {
+            return redirect()->back()->with('info', 'sudah tidak-aktif.');
+        }
+
+        // Ubah hanya field is_active
+        $materials->is_active = 0;
+
+        // Simpan perubahan (hanya is_active yang berubah)
+        $materials->save();
+
+        // Redirect back untuk me-reload halaman
+        return redirect()->back()->with('success', 'Pengajuan berhasil dibatalkan.');
+    }
+
+
     public function upload(Request $request, $id)
     {
         // Validasi file upload
@@ -840,6 +861,25 @@ class CustomRequestController extends Controller
 
         return redirect()->back()->with('message', 'File berhasil di reject');
     }
+
+    public function filehapussales($id)
+    {
+        $file = TrsAttcCstm::findOrFail($id);
+
+        // Path lengkap file di public
+        $filePath = public_path('assets/custom_request/' . $file->file_name);
+
+        // Hapus file fisik jika ada
+        if (File::exists($filePath)) {
+            File::delete($filePath);
+        }
+
+        // Hapus data dari database
+        $file->delete();
+
+        return redirect()->back()->with('message', 'File berhasil dihapus');
+    }
+
 
     public function download($id)
     {

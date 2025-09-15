@@ -600,6 +600,11 @@
                                                             data-bs-toggle="modal" data-bs-target="#modalRejectMarketing">
                                                         <i class="fas fa-times-circle"></i> Reject
                                                     </button>
+                                                    @if (in_array($pengajuan->status_1, [1, 2, 3]) && auth()->user()->name == 'ADMINSTRATOR' && $pengajuan->is_active == 1)
+                                                            <a href="{{ route('CustomRequest.formSalescancel', $pengajuan->id) }}" class="btn btn-danger btn-sm d-inline-flex align-items-center me-2">
+                                                                <i class="fas fa-trash"></i> Cancel
+                                                            </a>
+                                                    @endif
 
                                                 </td>
                                             </tr>

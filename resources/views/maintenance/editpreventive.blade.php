@@ -61,25 +61,74 @@
 
                                     </div>
 
+                                    <div class="mb-3">
+                                        <label for="jadwal_aktual" class="form-label">
+                                            Jadwal Aktual <span style="color: red;">*</span>
+                                        </label>
+                                        <input type="date"
+                                            class="form-control @error('jadwal_aktual') is-invalid @enderror"
+                                            id="jadwal_aktual"
+                                            name="jadwal_aktual"
+                                            @php
+                                                use Carbon\Carbon;
+                                            @endphp
+
+                                            value="{{ old('jadwal_aktual', $preventive->jadwal_aktual ? Carbon::parse($preventive->jadwal_aktual)->format('Y-m-d') : '') }}"
+
+                                            required>
+                                        @error('jadwal_aktual')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+
                                     <!-- Input issue -->
                                     <div id="input-container">
-                                        <!-- Input awal issue -->
-                                        <label for="issues[]" class="form-label">
-                                            Isu<span style="color: red;">*</span>
-                                        </label>
+                                    <label class="form-label">Isu<span style="color:red;">*</span></label>
+
                                         @foreach ($issues as $key => $issue)
                                             <div class="mb-3">
                                                 <div class="input-group">
+
+                                                    {{-- Kotak centang di kiri --}}
                                                     <span class="input-group-text">
                                                         <input type="checkbox" name="checked[]" value="{{ $key }}"
                                                             @if ($checkedIssues[$key] == 1) checked @endif>
                                                     </span>
+
+                                                    {{-- Input teks issue --}}
                                                     <input type="text" class="form-control" name="issue[]"
                                                         value="{{ $issue }}">
+
+                                                    {{-- Tanggal updated_at **hanya** jika sudah dicentang --}}
+                                                    @if ($checkedIssues[$key] == 1 && !empty($updatedAts[$key]))
+                                                        <span class="input-group-text bg-light">
+                                                            {{ \Carbon\Carbon::parse($updatedAts[$key])->format('Y-m-d') }}
+                                                        </span>
+                                                    @endif
+
                                                 </div>
                                             </div>
                                         @endforeach
                                     </div>
+
+                                    <div class="mb-3">
+                                        <label for="keterangan" class="form-label">
+                                            Keterangan <span style="color:red;">*</span>
+                                        </label>
+
+                                        <textarea
+                                            class="form-control @error('keterangan') is-invalid @enderror"
+                                            id="keterangan"
+                                            name="keterangan"
+                                            rows="3"
+                                            required>{{ $preventive->keterangan }}</textarea>
+
+                                        @error('keterangan')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
 
                                     <input type="hidden" name="confirmed_event" id="confirmed_event" value='0'>
 
@@ -92,13 +141,54 @@
                                             class="btn btn-primary">Batal</a>
                                     </div>
                                 </form>
+                                {{-- Wrapper utama untuk log --}}
+                                  <div class="mt-4 border rounded p-3">
+                                @if($logs->isNotEmpty())
+                                    @php $first = $logs->first(); @endphp
+
+                                    <div class="mb-3">
+                                        <h5>{{ $first->userprev->name ?? 'Log Aktivitas' }}</h5>
+                                        <p>{{ $first->keterangan ?? '-' }}</p>
+                                        <small>{{ \Carbon\Carbon::parse($first->created_at)->format('d M Y, H:i') }}</small>
+                                    </div>
+
+                                    {{-- Collapse --}}
+                                    <div class="collapse" id="logCollapse">
+                                        @foreach($logs->skip(1) as $log)
+                                            <div class="mb-3">
+                                                <h6>{{ $log->userprev->name ?? 'Log Aktivitas' }}</h6>
+                                                <p>{{ $log->keterangan ?? '-' }}</p>
+                                                <small>{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y, H:i') }}</small>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    {{-- Tombol toggle --}}
+                                    <button 
+                                        class="btn btn-outline-secondary d-flex align-items-center" 
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#logCollapse"
+                                        aria-expanded="false"
+                                        aria-controls="logCollapse">
+                                        <span class="me-2">Tampilkan log lain</span>
+                                        <svg id="logIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                @else
+                                    <p class="text-muted">Tidak ada log aktivitas.</p>
+                                @endif
+                            </div>
+
+
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
-
                         <!-- jQuery -->
                         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
                         <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
@@ -112,9 +202,26 @@
                                 });
                             });
                             </script>
-    </main><!-- End #main -->
-@endsection
 
+    </main><!-- End #main -->
+    {{-- Script Bootstrap --}}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const icon = document.getElementById('logIcon');
+    const collapseEl = document.getElementById('logCollapse');
+
+    collapseEl.addEventListener('show.bs.collapse', function () {
+        icon.style.transform = 'rotate(180deg)';
+    });
+
+    collapseEl.addEventListener('hide.bs.collapse', function () {
+        icon.style.transform = 'rotate(0deg)';
+    });
+});
+</script>
+
+@endsection
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Ambil elemen-elemen yang diperlukan

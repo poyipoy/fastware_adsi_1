@@ -6,6 +6,7 @@ use App\Models\Preventive;
 use App\Models\Mesin;
 use App\Models\DetailPreventive;
 use App\Models\JadwalPreventif;
+use App\Models\TrsPreventive;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -103,24 +104,43 @@ class PreventiveController extends Controller
             ->pluck('issue_checked')
             ->toArray();
 
+        $logs = TrsPreventive::with('jadwalPreventif', 'userprev')
+            ->where('prev_id', $preventive->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         // Ambil daftar data mesin dari database
         $mesins = Mesin::all();
         $preventives = JadwalPreventif::all();
         $selected_mesin_nomor = $preventive->nomor_mesin;
 
-        return view('deptmtce.lihatpreventive', compact('preventive', 'issues', 'mesins', 'checkedIssues', 'selected_mesin_nomor'));
+        return view('deptmtce.lihatpreventive', compact('logs', 'preventive', 'issues', 'mesins', 'checkedIssues', 'selected_mesin_nomor'));
     }
 
 
     public function editIssue(JadwalPreventif $preventive, Mesin $mesin, DetailPreventive $detailpreventive)
     {
         // Ambil detail preventive berdasarkan nomor mesin dan jadwal rencana dari preventive
-        $issues = $detailpreventive->where('nomor_mesin', $preventive->nomor_mesin)
+        // Ambil semua issue sesuai filter
+        $issues = $detailpreventive
+            ->where('nomor_mesin', $preventive->nomor_mesin)
             ->where('jadwal_rencana', $preventive->jadwal_rencana)
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
+            ->orderBy('id')                     // memastikan urutan konsisten
             ->pluck('issue')
             ->toArray();
+
+        // Ambil tanggal updated_at dengan filter yang **sama persis**
+        $updatedAts = $detailpreventive
+            ->where('nomor_mesin', $preventive->nomor_mesin)
+            ->where('jadwal_rencana', $preventive->jadwal_rencana)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->orderBy('id')                     // urutan harus sama dengan $issues
+            ->pluck('updated_at')
+            ->toArray();
+
 
         $checkedIssues = $detailpreventive->where('nomor_mesin', $preventive->nomor_mesin)
             ->where('jadwal_rencana', $preventive->jadwal_rencana)
@@ -135,6 +155,11 @@ class PreventiveController extends Controller
             ->where('jadwal_aktual', $preventive->jadwal_aktual)
             ->where('status', 1)
             ->exists();
+        
+        $logs = TrsPreventive::with('jadwalPreventif', 'userprev')
+        ->where('prev_id', $preventive->id)
+        ->orderBy('created_at', 'desc')
+        ->get();
 
         // Ambil daftar data mesin dari database
         $mesins = Mesin::all();
@@ -144,67 +169,138 @@ class PreventiveController extends Controller
         // Tampilkan view sesuai dengan kondisi
         if (!$existingEventStatus1) {
             // Jika tidak ada event dengan status 1, tampilkan form edit event
-            return view('maintenance.editpreventive', compact('preventives', 'issues', 'mesins', 'checkedIssues', 'selected_mesin_nomor', 'preventive'));
+            return view('maintenance.editpreventive', compact('logs', 'preventives', 'issues', 'mesins', 'checkedIssues', 'selected_mesin_nomor', 'preventive', 'updatedAts'));
         } else {
             // Jika ada event dengan status 1, tampilkan detail event
-            return view('maintenance.lihatpreventive', compact('preventive', 'issues', 'mesins', 'checkedIssues', 'selected_mesin_nomor'));
+            return view('maintenance.lihatpreventive', compact('logs', 'preventive', 'issues', 'mesins', 'checkedIssues', 'selected_mesin_nomor', 'updatedAts'));
         }
     }
 
 
-    public function updateIssue(Request $request, JadwalPreventif $preventive, DetailPreventive $detailPreventive): RedirectResponse
-    {
-        // Ambil semua nilai issue dan perbaikan dari request
-        $issues = $request->input('issue');
-        $checkedIssues = $request->input('checked') ?? [];
+    public function updateIssue(
+    Request $request,
+    JadwalPreventif $preventive,
+    DetailPreventive $detailPreventive
+): RedirectResponse {
+    $issues        = $request->input('issue', []);
+    $checkedIssues = $request->input('checked', []);
+    $jadwalAktual  = $request->input('jadwal_aktual');
+    $keterangan    = $request->input('keterangan');
 
-        // Loop melalui setiap issue dari request
-        foreach ($issues as $key => $issue) {
-            // Cek apakah issue saat ini sudah diceklis atau tidak
-            $isChecked = in_array($key, $checkedIssues);
+    // -------------------------------------------------
+    // 1. Cek perubahan di jadwal_aktual dan keterangan
+    // -------------------------------------------------
+    $updateData = [];
 
-            // Cari jika ada detail preventive sebelumnya dengan issue yang sama berdasarkan nomor mesin dan jadwal rencana
-            $existingDetailPreventive = DetailPreventive::where('nomor_mesin', $preventive->nomor_mesin)
-                ->where('issue', $issue)
-                ->where('jadwal_rencana', $preventive->jadwal_rencana)
-                ->first();
-
-            if ($existingDetailPreventive) {
-                // Jika sudah ada, update status checklist
-                $existingDetailPreventive->update([
-                    'issue_checked' => $isChecked ? '1' : '0'
-                ]);
-            } else {
-                // Jika belum ada, buat detail preventive baru
-                DetailPreventive::create([
-                    'nomor_mesin' => $preventive->nomor_mesin,
-                    'issue' => $issue,
-                    'issue_checked' => $isChecked ? '1' : '0',
-                    'jadwal_rencana' => $preventive->jadwal_rencana // tambahkan jadwal_rencana
-                ]);
-            }
-        }
-
-        // Proses pembaruan status dan jadwal aktual jika diperlukan
-        if ($request->confirmed_event === '1') {
-            // Memperbarui jadwal_aktual berdasarkan tanggal hari ini
-            $preventive->update([
-                'status' => 1,
-                'jadwal_aktual' => now() // menggunakan now() untuk mendapatkan tanggal dan waktu saat ini
-            ]);
-
-            $detailPreventive->update([
-                'jadwal_aktual' => now() // menggunakan now() untuk mendapatkan tanggal dan waktu saat ini
-            ]);
-        } else {
-            $preventive->update([
-                'status' => 0
-            ]);
-        }
-
-        // Redirect atau response sesuai kebutuhan Anda
-        return redirect()->route('dashboardPreventiveMaintenance');
+    if ($jadwalAktual && $jadwalAktual !== $preventive->jadwal_aktual) {
+        $updateData['jadwal_aktual'] = $jadwalAktual;
+        TrsPreventive::create([
+            'prev_id'     => $preventive->id,
+            'keterangan'  => "jadwal aktual: {$jadwalAktual}",
+            'modified_at' => auth()->id()
+        ]);
     }
+
+    if ($keterangan && $keterangan !== $preventive->keterangan) {
+        $updateData['keterangan'] = $keterangan;
+        TrsPreventive::create([
+            'prev_id'     => $preventive->id,
+            'keterangan'  => "keterangan: {$keterangan}",
+            'modified_at' => auth()->id()
+        ]);
+    }
+
+    if (!empty($updateData)) {
+        $preventive->update($updateData);
+    }
+
+    // -------------------------------------------------
+    // 2. Proses issue checklist
+    // -------------------------------------------------
+    foreach ($issues as $key => $issue) {
+    $isChecked = in_array($key, $checkedIssues); // true jika dicentang
+    $newStatus = $isChecked ? '1' : '0';
+
+    $existing = DetailPreventive::where('nomor_mesin', $preventive->nomor_mesin)
+        ->where('issue', $issue)
+        ->where('jadwal_rencana', $preventive->jadwal_rencana)
+        ->first();
+
+    if ($existing) {
+        // Jika status berbeda, update
+        if ($existing->issue_checked !== $newStatus) {
+            $existing->update(['issue_checked' => $newStatus]);
+
+            TrsPreventive::create([
+                'prev_id'     => $preventive->id,
+                'keterangan'  => "Issue \"{$issue}\" " . ($isChecked ? "dicentang" : "tidak dicentang"),
+                'modified_at' => auth()->id()
+            ]);
+        }
+        // Jika status sama, tidak lakukan apa-apa
+    } else {
+        // Jika belum ada data dan sekarang dicentang (1), simpan
+        if ($newStatus === '1') {
+            DetailPreventive::create([
+                'nomor_mesin'    => $preventive->nomor_mesin,
+                'issue'          => $issue,
+                'issue_checked'  => $newStatus,
+                'jadwal_rencana' => $preventive->jadwal_rencana,
+            ]);
+
+            TrsPreventive::create([
+                'prev_id'     => $preventive->id,
+                'keterangan'  => "Issue \"{$issue}\" dicentang",
+                'modified_at' => auth()->id()
+            ]);
+        }
+        // Jika belum ada dan tidak dicentang (0), tidak perlu simpan apa-apa
+    }
+}
+
+
+    // -------------------------------------------------
+    // 3. Konfirmasi Selesai Preventive
+    // -------------------------------------------------
+    if ($request->confirmed_event === '1') {
+        if ($preventive->status != 1) {
+            $preventive->update([
+                'status'        => 1,
+                'jadwal_aktual' => now(),
+            ]);
+
+            TrsPreventive::create([
+                'prev_id'     => $preventive->id,
+                'keterangan'  => "Status preventive diubah menjadi selesai",
+                'modified_at' => auth()->id()
+            ]);
+        }
+
+        if (is_null($detailPreventive->jadwal_aktual)) {
+            $detailPreventive->update(['jadwal_aktual' => now()]);
+
+            TrsPreventive::create([
+                'prev_id'     => $preventive->id,
+                'keterangan'  => "Jadwal aktual pada detail preventive diperbarui",
+                'modified_at' => auth()->id()
+            ]);
+        }
+    } else {
+        if ($preventive->status != 0) {
+            $preventive->update(['status' => 0]);
+
+            TrsPreventive::create([
+                'prev_id'     => $preventive->id,
+                'keterangan'  => "Status preventive direset menjadi 0",
+                'modified_at' => auth()->id()
+            ]);
+        }
+    }
+
+    return redirect()->route('dashboardPreventiveMaintenance');
+}
+
+
 
 
 

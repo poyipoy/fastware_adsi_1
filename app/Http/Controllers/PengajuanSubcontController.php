@@ -21,8 +21,13 @@ class PengajuanSubcontController extends Controller
 
         // Mengambil data dari tabel mst_pengajuan_subconts sesuai dengan nama user yang login
         $pengajuanSubconts = MstPengajuanSubcont::where('modified_at', $userName)
-            ->orderByDesc('id') // Order by id in descending order as a base sorting
-            ->get();
+        ->where(function ($query) {
+            $query->whereNull('sec_line')
+                ->orWhere('sec_line', '');
+        })
+        ->orderByDesc('id')
+        ->get();
+
 
         // Sort so that status_1 = 5 is moved to the bottom
         $pengajuanSubconts = $pengajuanSubconts->sortBy(function ($item) {

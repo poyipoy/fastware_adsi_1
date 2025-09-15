@@ -667,6 +667,15 @@
                                                                 <i class="fas fa-paper-plane"></i> Subcont
                                                             </button>
                                                         @endif
+
+                                                        @if (in_array($pengajuan->status_1, [1, 2, 3]) && auth()->user()->name == 'ADMINSTRATOR' && $pengajuan->is_active == 1)
+                                                            <a href="{{ route('CustomRequest.formSalescancel', $pengajuan->id) }}" class="btn btn-danger btn-sm d-inline-flex align-items-center me-2">
+                                                                <i class="fas fa-trash"></i> Cancel
+                                                            </a>
+                                                        @endif
+
+
+                                                        
                                                     </div>
                                                 </td>
                                                 @if (auth()->user()->name == 'RAGIL ISHA RAHMANTO')
