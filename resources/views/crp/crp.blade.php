@@ -162,6 +162,18 @@
                         Export to Excel
                     </a>
 
+                    <div class="mb-3 d-flex align-items-center">
+                        <label for="filterYear" class="mr-2 font-weight-bold">Tahun:</label>
+                        <select id="filterYear" class="form-control" style="width: 120px;">
+                            @php
+                                $years = range(date('Y'), date('Y') - 5); // 5 tahun terakhir
+                            @endphp
+                            @foreach($years as $year)
+                                <option value="{{ $year }}" {{ $year == $currentYear ? 'selected' : '' }}>{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div class="table-responsive">
                         <table id="tabelsummary" class="table table-striped table-bordered table-hover text-center">
                             <thead class="thead-dark">
@@ -218,8 +230,18 @@
                                         <td class="font-weight-bold text-primary">Plan</td>
                                         @for ($i = 1; $i <= 12; $i++)
                                             <td>
-                                                <input type="text" class="form-control text-center" name="plan_values[{{ $category }}][{{ $i }}]"
-                                                    value="{{ $plan ? $plan->{'month_' . $i} : '' }}" oninput="calculateYTD()">
+                                                @php
+                                                    $allowedUsers = ['ADMINSTRATOR', 'JESSICA PAUNE'];
+                                                    $isAdmin = in_array(Auth::user()->name, $allowedUsers);
+                                                @endphp
+
+
+                                                <input type="text" class="form-control text-center"
+                                                name="plan_values[{{ $category }}][{{ $i }}]"
+                                                value="{{ $plan ? $plan->{'month_' . $i} : '' }}"
+                                                @if(!$isAdmin) readonly @else oninput="calculateYTD()" @endif>
+
+
                                             </td>
                                         @endfor
                                         <td>
@@ -240,11 +262,14 @@
                                                 $planValue = $plan ? $plan->{'month_' . $i} : 0;
                                                 $bgColorActual = '';
 
-                                                if ($actualValue < $planValue) {
+                                                if ($actualValue == 0) {
+                                                    $bgColorActual = ''; // Tidak diberi warna
+                                                } elseif ($actualValue < $planValue) {
                                                     $bgColorActual = '#dc3545'; // Warna merah
-                                                } elseif ($actualValue > $planValue) {
+                                                } elseif ($actualValue >= $planValue) {
                                                     $bgColorActual = '#28a745'; // Warna hijau
                                                 }
+
                                             @endphp
                                             <td>
                                                 <input type="text" class="form-control text-center" name="actual_values[{{ $category }}][{{ $i }}]"
@@ -284,27 +309,57 @@
                                             value="{{ $mstDboCrps->where('plan_actual', 'Plan')->sum('grand_tot') }}" readonly />
                                     </td>
                                 </tr>
+
                                 <tr>
                                     <td></td>
                                     <td class="font-weight-bold text-dark">Total Actual</td>
                                     <td></td>
                                     @for ($i = 1; $i <= 12; $i++)
+                                        @php
+                                            $actualTotal = $mstDboCrps->where('plan_actual', 'Actual')->sum('month_' . $i);
+                                            $planTotal = $mstDboCrps->where('plan_actual', 'Plan')->sum('month_' . $i);
+                                            $bgColor = '';
+
+                                            if ($actualTotal == 0) {
+                                                $bgColor = ''; // tidak diberi warna
+                                            } elseif ($actualTotal < $planTotal) {
+                                                $bgColor = '#dc3545'; // Merah
+                                            } elseif ($actualTotal >= $planTotal) {
+                                                $bgColor = '#28a745'; // Hijau
+                                            }
+                                        @endphp
                                         <td>
                                             <input type="text" class="form-control text-center font-weight-bold" 
-                                                value="{{ $mstDboCrps->where('plan_actual', 'Actual')->sum('month_' . $i) }}" readonly />
+                                                value="{{ $actualTotal }}" readonly style="background-color: {{ $bgColor }};" />
                                         </td>
                                     @endfor
+
+                                    @php
+                                        $actualGrandTot = $mstDboCrps->where('plan_actual', 'Actual')->sum('grand_tot');
+                                        $planGrandTot = $mstDboCrps->where('plan_actual', 'Plan')->sum('grand_tot');
+                                        $bgGrand = '';
+
+                                        if ($actualGrandTot == 0) {
+                                            $bgGrand = '';
+                                        } elseif ($actualGrandTot < $planGrandTot) {
+                                            $bgGrand = '#dc3545';
+                                        } elseif ($actualGrandTot >= $planGrandTot) {
+                                            $bgGrand = '#28a745';
+                                        }
+                                    @endphp
+
                                     <td>
                                         <input type="text" class="form-control text-center font-weight-bold" 
-                                            value="{{ $mstDboCrps->where('plan_actual', 'Actual')->sum('grand_tot') }}" readonly />
+                                            value="{{ $actualGrandTot }}" readonly style="background-color: {{ $bgGrand }};" />
                                     </td>
                                     <td>
                                         <input type="text" class="form-control text-center font-weight-bold" 
-                                            value="{{ $mstDboCrps->where('plan_actual', 'Actual')->sum('grand_tot') }}" readonly />
+                                            value="{{ $actualGrandTot }}" readonly style="background-color: {{ $bgGrand }};" />
                                     </td>
                                     <td></td>
                                 </tr>
                             </tfoot>
+
                         </table>
 
                     </div>
@@ -628,6 +683,10 @@
                 window.mstCategories = @json($mstDboCrps->pluck('nm_category')->unique()->values());
             </script>
             <script>
+    document.getElementById('filterYear').addEventListener('change', function() {
+        const year = this.value;
+        window.location.href = `?year=${year}`;
+    });
 
 
                 function openModal(crpId) {
@@ -1308,7 +1367,7 @@
                     let totalActualFY = 0;
                     let totalActualExisting = 0;
                     if (actualRow) {
-                        for (let col = 2; col <= 13; col++) { // Kolom bulan 1 hingga bulan 12
+                        for (let col = 2; col <= 13 col++) { // Kolom bulan 1 hingga bulan 12
                             const input = actualRow.cells[col]?.querySelector('input');
                             if (input) {
                                 totalActualFY += parseFloat(input.value) || 0; // Untuk menghitung FY

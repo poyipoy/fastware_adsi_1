@@ -24,4 +24,6 @@ class TrsPoPengajuan extends Model
     {
         return $this->belongsTo(MstPoPengajuan::class, 'id_fpb');
     }
+
+        // app/Models/MstPoPengajuan.php
 }

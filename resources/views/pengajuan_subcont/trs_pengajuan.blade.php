@@ -79,32 +79,64 @@
                             <br>
                             <!-- File -->
                             @if (in_array($pengajuan->status_1, [3, 4, 5]))
-                                <div class="mb-4 p-3 border rounded shadow-sm bg-light">
-                                    <label for="quotation_file" class="form-label fw-bold text-primary">
-                                        <i class="fas fa-upload"></i> Upload Quotation
-                                    </label>
+    @if (is_null($pengajuan->sec_line) || $pengajuan->sec_line === '')
+        <div class="mb-4 p-3 border rounded shadow-sm bg-light">
+            <label for="quotation_file" class="form-label fw-bold text-primary">
+                <i class="fas fa-upload"></i> Upload Quotation
+            </label>
 
-                                    @if (!$pengajuan->quotation_file)
-                                        <input type="file" class="form-control" id="quotation_file"
-                                            name="quotation_file">
-                                    @endif
+            @if (!$pengajuan->quotation_file)
+                <input type="file" class="form-control" id="quotation_file" name="quotation_file">
+            @endif
 
-                                    @if ($pengajuan->quotation_file)
-                                        <div class="mt-3">
-                                            <p class="mb-1 fw-bold text-secondary">Download Quotation</p>
-                                            <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
-                                                class="btn btn-outline-secondary" data-bs-toggle="tooltip"
-                                                title="Click to download the quotation file">
-                                                <i class="fas fa-file-pdf fa-lg me-2"></i> View Quotation
-                                            </a>
-                                        </div>
-                                    @else
-                                        <div class="mt-3">
-                                            <span class="text-muted fst-italic">Quotation belum tersedia</span>
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
+            @if ($pengajuan->quotation_file)
+                <div class="mt-3">
+                    <p class="mb-1 fw-bold text-secondary">Download Quotation</p>
+                    <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
+                        class="btn btn-outline-secondary" data-bs-toggle="tooltip"
+                        title="Click to download the quotation file">
+                        <i class="fas fa-file-pdf fa-lg me-2"></i> View Quotation
+                    </a>
+                </div>
+            @else
+                <div class="mt-3">
+                    <span class="text-muted fst-italic">Quotation belum tersedia</span>
+                </div>
+            @endif
+        </div>
+
+    @elseif ($pengajuan->sec_line == 2 && empty($pengajuan->quotation_file))
+        <div class="mb-4 p-3 border rounded shadow-sm bg-light">
+            <label for="quotation_file" class="form-label fw-bold text-primary">
+                <i class="fas fa-upload"></i> Upload Quotation
+            </label>
+
+            <input type="file" class="form-control" id="quotation_file" name="quotation_file">
+
+            <div class="mt-3">
+                <span class="text-muted fst-italic">Quotation belum tersedia</span>
+            </div>
+        </div>
+
+    @elseif ($pengajuan->sec_line == 2 && !empty($pengajuan->quotation_file))
+        <div class="mb-4 p-3 border rounded shadow-sm bg-light">
+            <label class="form-label fw-bold text-primary">
+                <i class="fas fa-file-upload"></i> Quotation File
+            </label>
+
+            <div class="mt-3">
+                <p class="mb-1 fw-bold text-secondary">Download Quotation</p>
+                <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
+                    class="btn btn-outline-secondary" data-bs-toggle="tooltip"
+                    title="Click to download the quotation file">
+                    <i class="fas fa-file-pdf fa-lg me-2"></i> View Quotation
+                </a>
+            </div>
+        </div>
+    @endif
+@endif
+
+
 
                             <!-- Tombol Submit -->
                             <div class="d-flex justify-content-between" style="margin-top: 3%">
@@ -119,15 +151,32 @@
                                 <!-- Div untuk tombol di sebelah kanan -->
                                 <div class="d-flex justify-content-end">
                                     <!-- Cek jika status_1 memiliki nilai 2 -->
-                                    @if ($pengajuan->status_1 == 2)
+                                    @if ((is_null($pengajuan->sec_line) || $pengajuan->sec_line === '') && $pengajuan->status_1 == 2)
+                                        <button id="confirmButton" type="button" class="btn btn-warning mb-4 me-3"
+                                            onclick="kirimData('{{ route('pengajuan-subcont.kirim2', $pengajuan->id) }}')">
+                                            <i class="fas fa-check-circle"></i> Konfirmasi
+                                        </button>
+                                    @elseif ($pengajuan->sec_line == 2 && $pengajuan->status_1 == 2 && empty($pengajuan->quotation_file))
                                         <button id="confirmButton" type="button" class="btn btn-warning mb-4 me-3"
                                             onclick="kirimData('{{ route('pengajuan-subcont.kirim2', $pengajuan->id) }}')">
                                             <i class="fas fa-check-circle"></i> Konfirmasi
                                         </button>
                                     @endif
 
+
                                     <!-- Cek jika status_1 memiliki nilai 3 -->
-                                    @if ($pengajuan->status_1 == 3 || $pengajuan->status_1 == 4)
+                                    @if ((is_null($pengajuan->sec_line) || $pengajuan->sec_line === '') && in_array($pengajuan->status_1, [3, 4]))
+                                        <button id="saveButton" type="button" class="btn btn-primary mb-4 me-3"
+                                            onclick="submitData('{{ route('submit.data', $pengajuan->id) }}', {{ $pengajuan->id }})">
+                                            <i class="fas fa-save"></i> Submit
+                                        </button>
+
+                                        <button id="finishButton" type="button" class="btn btn-success mb-4 me-3"
+                                            onclick="kirimData2('{{ route('FinishProc', $pengajuan->id) }}')">
+                                            <i class="fas fa-flag-checkered"></i> Finish
+                                        </button>
+
+                                    @elseif ($pengajuan->sec_line == 2 && in_array($pengajuan->status_1, [3, 4]) && empty($pengajuan->quotation_file))
                                         <button id="saveButton" type="button" class="btn btn-primary mb-4 me-3"
                                             onclick="submitData('{{ route('submit.data', $pengajuan->id) }}', {{ $pengajuan->id }})">
                                             <i class="fas fa-save"></i> Submit
@@ -138,6 +187,7 @@
                                             <i class="fas fa-flag-checkered"></i> Finish
                                         </button>
                                     @endif
+
 
                                     <a href="{{ route('indexProc') }}" class="btn btn-primary mb-4 me-2">
                                         <i class="fas fa-arrow-left"></i> Kembali

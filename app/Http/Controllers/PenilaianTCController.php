@@ -20,7 +20,7 @@ class PenilaianTCController extends Controller
     public function indexTrs()
     {
         // Mengambil semua data penilaian
-        $allPenilaianData = TrsPenilaianTc::all();
+        $allPenilaianData = TrsPenilaianTc::where('status', 1)->get();
 
         // Mengambil data unik berdasarkan id_job_position
         $penilaianData = $allPenilaianData->unique('id_job_position');
@@ -315,6 +315,218 @@ class PenilaianTCController extends Controller
 
         // Menampilkan halaman penilaian dan mengirimkan data yang telah diambil ke view
         return view('tc_penilaian.penilaian_index_dept', compact('penilaianData', 'positions', 'employees'));
+    }
+
+    public function indexTrs3()
+    {
+        // Mengambil semua data penilaian
+        $allPenilaianData = TrsPenilaianTc::all();
+
+        // Mengambil data unik berdasarkan id_job_position
+        $penilaianData = $allPenilaianData->unique('id_job_position');
+
+        // Ambil nama dan role_id user yang sedang login
+        $userName = auth()->user()->name;
+        $roleId = auth()->user()->role_id;
+
+        // Cek apakah role_id adalah 1, 14, atau 15
+        if (!in_array($roleId, [1, 14, 15])) {
+            // Tentukan data yang ditampilkan berdasarkan nama user
+            if ($userName == 'ABDUR RAHMAN AL FAAIZ') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'Logistic Admin',
+                        'Admin Cutting Sheet(ACS)',
+                        'Delivery Staff',
+                        'Feeder',
+                        'Logistic Foreman',
+                        'PPIC Staff'
+                    ]);
+                });
+            } elseif ($userName == 'MUGI PRAMONO') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        // 'Produksi HT Sec. Head',
+                        'Foreman CT',
+                        'Foreman QC',
+                        'Leader HT',
+                        'Operator CT',
+                        'Admin HT & PPC',
+                        'Operator MTN',
+                        'Operator HT',
+                        'Leader Cutting',
+                    ]);
+                });
+            } elseif ($userName == 'RAGIL ISHA RAHMANTO') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        // 'Machining Custom Sec. Head',
+                        'Leader MC',
+                        'Operator Bubut',
+                        'Operator Mc. Custom',
+                        'MC Custom Staff',
+                        'Operator Machining',
+                        'Foreman Machining Custom',
+                        'Foreman MC',
+                    ]);
+                });
+            } elseif ($userName == 'ILHAM CHOLID') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'Sales Admin',
+                        // 'SOH Region 1',
+                        'Sales Engineer Reg 1',
+                        // 'SOH Region 2',
+                        'Sales Engineer Reg 2',
+                    ]);
+                });
+            } elseif ($userName == 'MARTINUS CAHYO RAHASTO') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'HR & GA Section Head',
+                        'HR & Legal Staff',
+                        'HRGA & CSR Staff',
+                        'Finance & Accounting Sec. Head',
+                        // 'Accounting Staff & Kasir',
+                        'Finance Admin',
+                        'Finance & Treasury Sec. Head',
+                        'Invoicing Staff',
+                        'AR Staff',
+                        'PDCA, Inventory, Procurement & IT Sec. Head',
+                        'Procurement Material Staff',
+                        'PDCA & Procurement Non Material Staff',
+                        'Procurement Administration',
+                        'Inventory Staff',
+                        'IT Staff',
+                    ]);
+                });
+            } elseif ($userName == 'JESSICA PAUNE' || $userName == 'SITI MARIA ULFA') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'PDCA, Inventory, Procurement & IT Sec. Head',
+                        'PDCA & Procurement Non Material Staff',
+                        'Procurement Material Staff',
+                        'Procurement Administration',
+                        'Inventory Staff',
+                        'IT Staff',
+                        'HR & GA Section Head',
+                        'HR & Legal Staff',
+                        'HRGA & CSR Staff',
+                        'Finance & Accounting Sec. Head',
+                        // 'Accounting Staff & Kasir',
+                        'Finance Admin',
+                        'Finance & Treasury Sec. Head',
+                        'Invoicing Staff',
+                        'AR Staff',
+                        'Produksi HT Sec. Head',
+                        'Foreman CT',
+                        'Foreman QC',
+                        'Leader HT',
+                        'Operator CT',
+                        'Admin HT & PPC',
+                        'Operator MTN',
+                        'Operator HT',
+                        'Leader Cutting',
+                        'Machining Custom Sec. Head',
+                        'Leader MC',
+                        'Operator Bubut',
+                        'Operator Mc. Custom',
+                        'MC Custom Staff',
+                        'Operator Machining',
+                        'Foreman Machining Custom',
+                        'Foreman MC',
+                        'Sales Admin',
+                        'SOH Region 1',
+                        'Sales Engineer Reg 1',
+                        'SOH Region 2',
+                        'Sales Engineer Reg 2',
+                        'Logistic Admin',
+                        'Admin Cutting Sheet(ACS)',
+                        'Delivery Staff',
+                        'Feeder',
+                        'Logistic Foreman',
+                        'PPIC Staff',
+                    ]);
+                });
+            } elseif ($userName == 'ADHI PRASETIYO') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        // 'Finance & Accounting Sec. Head',
+                        // 'Accounting Staff & Kasir',
+                        'Finance Admin',
+                        'Finance & Treasury Sec. Head',
+                        'Invoicing Staff',
+                        'AR Staff',
+                    ]);
+                });
+            } elseif ($userName == 'JUN JOHAMIN PD') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'Sales Engineer Reg 3',
+                        'Sales Engineer Reg 4'
+                    ]);
+                });
+            } elseif ($userName == 'HARDI SAPUTRA') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'Logistic Admin',
+                        'Admin Cutting Sheet(ACS)',
+                        'Delivery Staff',
+                        'Feeder',
+                        'Logistic Foreman',
+                        'PPIC Staff'
+                    ]);
+                });
+            } elseif ($userName == 'ARY RODJO PRASETYO') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'Produksi HT Sec. Head',
+                        'Foreman CT',
+                        'Foreman QC',
+                        'Leader HT',
+                        'Operator CT',
+                        'Admin HT & PPC',
+                        'Operator MTN',
+                        'Operator HT',
+                        'Leader Cutting',
+                        'Machining Custom Sec. Head',
+                        'Leader MC',
+                        'Operator Bubut',
+                        'Operator Mc. Custom',
+                        'MC Custom Staff',
+                        'Operator Machining',
+                        'Foreman Machining Custom',
+                        'Foreman MC',
+                    ]);
+                });
+            } elseif ($userName == 'YULMAI RIDO WINANDA') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'Sales Admin',
+                        'SOH Region 1',
+                        'Sales Engineer Reg 1',
+                        'SOH Region 2',
+                        'Sales Engineer Reg 2',
+                    ]);
+                });
+            } elseif ($userName == 'ANDIK TOTOK SISWOYO') {
+                $penilaianData = $penilaianData->filter(function ($item) {
+                    return in_array($item->id_job_position, [
+                        'SOH Region 3',
+                        'Sales Engineer Reg 3',
+                        'SOH Region 4',
+                        'Sales Engineer Reg 4',
+                    ]);
+                });
+            }
+        }
+
+        // Ambil semua data posisi dan karyawan
+        $positions = TcJobPosition::all();
+        $employees = User::all();
+
+        // Menampilkan halaman penilaian dan mengirimkan data yang telah diambil ke view
+        return view('tc_penilaian.penilaian_index', compact('penilaianData', 'positions', 'employees'));
     }
 
     public function createPenilaian()

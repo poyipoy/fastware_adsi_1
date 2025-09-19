@@ -77,23 +77,25 @@
                                                     <td class="text-center">{{ $pengajuan->created_at->format('d-m-Y') }}
                                                     </td>
                                                     <td class="text-center">
-                                                        @if ($pengajuan->status_1 == 1)
-                                                            <span class="badge bg-secondary align-items-center"
-                                                                style="font-size: 18px;">Draf</span>
-                                                        @elseif($pengajuan->status_1 == 2)
-                                                            <span class="badge bg-primary align-items-center"
-                                                                style="font-size: 18px;">Open</span>
-                                                        @elseif($pengajuan->status_1 == 3 || $pengajuan->status_1 == 4)
-                                                            <span class="badge bg-warning align-items-center"
-                                                                style="font-size: 18px;">On Progress</span>
-                                                        @elseif($pengajuan->status_1 == 5)
-                                                            <span class="badge bg-info align-items-center"
-                                                                style="font-size: 18px;">Finish</span>
+                                                        @php
+                                                            $isFinishOverride = !empty($pengajuan->quotation_file) && $pengajuan->sec_line == 2;
+                                                        @endphp
+
+                                                        @if ($isFinishOverride)
+                                                            <span class="badge bg-info align-items-center" style="font-size: 18px;">Finish</span>
+                                                        @elseif ($pengajuan->status_1 == 1)
+                                                            <span class="badge bg-secondary align-items-center" style="font-size: 18px;">Draf</span>
+                                                        @elseif ($pengajuan->status_1 == 2)
+                                                            <span class="badge bg-primary align-items-center" style="font-size: 18px;">Open</span>
+                                                        @elseif ($pengajuan->status_1 == 3 || $pengajuan->status_1 == 4)
+                                                            <span class="badge bg-warning align-items-center" style="font-size: 18px;">On Progress</span>
+                                                        @elseif ($pengajuan->status_1 == 5)
+                                                            <span class="badge bg-info align-items-center" style="font-size: 18px;">Finish</span>
                                                         @else
-                                                            <span class="badge bg-danger align-items-center"
-                                                                style="font-size: 18px;">Status Tidak Tersedia</span>
+                                                            <span class="badge bg-danger align-items-center" style="font-size: 18px;">Status Tidak Tersedia</span>
                                                         @endif
                                                     </td>
+
                                                     <td class="text-center">
                                                         <a href="{{ route('pengajuan-subcont.editProc', $pengajuan->id) }}"
                                                             class="btn btn-sm btn-primary">

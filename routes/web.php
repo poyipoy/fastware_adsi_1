@@ -27,6 +27,9 @@ use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\ImportAdministrationController;
 use App\Models\InquirySales;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SupplierFormController;
+use App\Models\SupplierFormToken;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,6 +51,12 @@ Route::resource('approvedfpps', FormFPPController::class);
 Route::resource('tindaklanjuts', FormFPPController::class);
 Route::resource('preventives', PreventiveController::class);
 Route::resource('spareparts', SparepartController::class);
+
+Route::get('/supplier/form/success', [SupplierFormController::class, 'showSuccessPage'])->name('supplierform.public.success');
+Route::get('/supplier/form/{token}', [SupplierFormController::class, 'showPublicForm'])->name('supplierform.public.show');
+Route::post('/supplier/form/create', [SupplierFormController::class, 'storePublicForm'])->name('supplierform.public.store');
+Route::get('/download/template-rek', [SupplierFormController::class, 'downloadTemplateRek'])->name('download.template.rek');
+
 
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
 
@@ -423,6 +432,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     //Route untuk menampilkan halaman penilaian (index)
     Route::get('/penilaian', [PenilaianTCController::class, 'indexTrs'])->name('penilaian.index');
     Route::get('/penilaian-dept', [PenilaianTCController::class, 'indexTrs2'])->name('penilaian.index2');
+    Route::get('/penilaian-hr', [PenilaianTCController::class, 'indexTrs3'])->name('penilaian.index3');
     Route::get('/dashboard-competency', [PenilaianTCController::class, 'dsCompetency'])->name('dsCompetency');
     Route::get('/dashboard-detail-competency', [PenilaianTCController::class, 'dsDetailCompetency'])->name('dsDetailCompetency');
 
@@ -533,7 +543,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/download-file/{id}', [PoPengajuanController::class, 'downloadFile'])->name('download.file');
     Route::get('/get-data', [PoPengajuanController::class, 'getData'])->name('getData');
 
-    Route::get('/dashboardFPB', [PoPengajuanController::class, 'dashboardCombined'])->name('dashboardFPB');
+    // Route::get('/dashboardFPB', [PoPengajuanController::class, 'dashboardCombined'])->name('dashboardFPB');
 
 
     //E-Mading Adasi
@@ -568,6 +578,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/materials/update/{id}', [CustomRequestController::class, 'updateCstmReq'])->name('CustomRequest.update');
     Route::get('/custom-request/form/{id}', [CustomRequestController::class, 'formCstmReq'])->name('CustomRequest.form');
     Route::get('/custom-request/form-Sales/{id}', [CustomRequestController::class, 'formCstmReqSales'])->name('CustomRequest.formSales');
+    Route::get('/custom-request/form-Sales-cancel/{id}', [CustomRequestController::class, 'cancel'])->name('CustomRequest.formSalescancel');
     Route::post('/custom-request/update/{id}', [CustomRequestController::class, 'inputCstmReq'])->name('CustomRequest.updateCstmReq');
     Route::post('/custom-request/update/harga-akhir/{id}', [CustomRequestController::class, 'inputhrgakhr'])->name('CustomRequest.hargaakhir');
     Route::get('/custom-request/approve-marketing-cstmreq', [CustomRequestController::class, 'showApprovalMarketing'])->name('showApproveMarketing');
@@ -583,6 +594,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/custom-request/file/approve/{id}', [CustomRequestController::class, 'fileapprove'])->name('cstm.fileapprove');
     Route::post('/custom-request/file/rejected/{id}', [CustomRequestController::class, 'filerejected'])->name('cstm.filerejected');
     Route::post('/custom-request/file/rejected-sales/{id}', [CustomRequestController::class, 'filerejectedsales'])->name('cstm.filerejectedsales');
+    Route::post('/custom-request/file/delete-sales/{id}', [CustomRequestController::class, 'filehapussales'])->name('cstm.filehapussales');
     Route::post('/custom-request/subcont-send/{id}', [CustomRequestController::class, 'kirimsubcont'])->name('kirimsubcont');
     Route::post('/custom-request/sales-send/{id}', [CustomRequestController::class, 'kirimsales'])->name('kirimsales');
     Route::post('/custom-request/production-send/{id}', [CustomRequestController::class, 'kirimproduction'])->name('kirimproduction');
@@ -590,4 +602,49 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/custom-request/rejected-production/{id}', [CustomRequestController::class, 'rejectproduction'])->name('RejectProduction');
     Route::post('/custom-request/submit-quotation/{id}', [CustomRequestController::class, 'submitData'])->name('submit.quotation');
     Route::put('/custom-request/update-no-so', [CustomRequestController::class, 'updateNoSo'])->name('customrequest.updateNoSo');
+    
+    Route::get('/dashboard-fpb', [DashboardController::class, 'dashboardFPB'])->name('dashboardFPB');
+    
+    // Grup Rute API untuk dipanggil oleh JavaScript
+    Route::prefix('api/dashboard')->name('api.dashboard.')->group(function () {
+        Route::get('/fpb', [DashboardController::class, 'getFpbData'])->name('fpb');
+        Route::get('/leadtime', [DashboardController::class, 'getLeadTimeData'])->name('leadtime');
+        Route::get('/inquiry', [DashboardController::class, 'getInquiryData'])->name('inquiry');
+        Route::get('/crp', [DashboardController::class, 'getCrpData'])->name('crp');
+    });
+
+
+    // Supplier Form
+    Route::get('/supplier-form/index', [SupplierFormController::class, 'index'])->name('supplierform.index');
+    Route::get('/supplier-form/create', [SupplierFormController::class, 'create'])->name('supplierform.create'); // opsional
+    Route::get('/supplier-form/show/{id}', [SupplierFormController::class, 'show'])->name('supplierform.show');
+    Route::get('/supplier-form/{id}/download', [SupplierFormController::class, 'download'])->name('supplierform.download');
+    Route::patch('/supplier-form/{id}/reject', [SupplierFormController::class, 'hapus'])->name('supplierform.reject');
+    Route::post('/supplierform/generate-link', [SupplierFormController::class, 'generateLink'])->name('supplierform.generate-link');
+    Route::patch('/supplierform/{id}/update-category', [SupplierFormController::class, 'updateCategory'])->name('supplierform.update.category');
+    Route::patch('/supplierform/{id}/schedule-actions', [SupplierFormController::class, 'scheduleActions'])->name('supplierform.update.schedule');
+    Route::post('/supplierform/{id}/submit-trial', [SupplierFormController::class, 'submitTrialEvidence'])->name('supplierform.update.submittrial');
+    Route::patch('/supplierform/{id}/approve', [SupplierFormController::class, 'approve'])->name('supplierform.approve');
+    Route::patch('/supplierform/{id}/disapprove', [SupplierFormController::class, 'disapprove'])->name('supplierform.disapprove');
+    Route::get('/supplierform/visit-form/{id}', [SupplierFormController::class, 'createVisitAssessment'])->name('assessment.visit.create');
+    Route::get('/supplierform/visit-form/edit/{id}', [SupplierFormController::class, 'editVisitAssessment'])->name('assessment.visit.edit');
+    Route::put('/supplierform/visit-form/{id}', [SupplierFormController::class, 'updateVisit'])->name('assessment.visit.update');
+    Route::post('/supplierform/visit-form/store/{id}', [SupplierFormController::class, 'storeVisit'])->name('assessment.visit.store');
+    Route::post('/supplierform/trial-upload/store/{id}', [SupplierFormController::class, 'storeTrialUpload'])->name('assessment.trial.store');
+    Route::get('/supplier-forms/{id}/print', [SupplierFormController::class, 'printReport'])->name('supplierform.print');
+    Route::post('/supplier-form/{id}/choose-action', [SupplierFormController::class, 'scheduleActions'])->name('supplierform.choose.action');
+    Route::post('/supplier-form/{id}/schedule-visit', [SupplierFormController::class, 'storeVisitSchedule'])->name('supplierform.schedule.visit');
+    Route::post('/supplier-form/{id}/schedule-trial', [SupplierFormController::class, 'storeTrialSchedule'])->name('supplierform.schedule.trial');
+    Route::get('/supplier/file/{id}/{type}', [SupplierFormController::class, 'downloadFile'])->name('supplier.file.download');
+    Route::patch('/supplier-form/{id}/reject-type', [SupplierFormController::class, 'rejectType'])->name('supplierform.reject.type');
+    Route::patch('/supplier-form/{id}/reject-schedule', [SupplierFormController::class, 'rejectSchedule'])->name('supplierform.reject.schedule');
+    Route::patch('/supplier-form/{id}/reject-trial', [SupplierFormController::class, 'rejectTrial'])->name('supplierform.reject.trial');
+    Route::post('/supplierform/{id}/trial/update', [SupplierFormController::class, 'updateTrialUpload'])->name('assessment.trial.update');
+    Route::post('/supplierform/{id}/trial/delete', [SupplierFormController::class, 'deleteTrialUpload'])    ->name('assessment.trial.delete');
+    Route::post('/supplier-form/visit-approval/{id}', [SupplierFormController::class, 'visitApproval'])->name('supplier.visit.approval');
+    Route::post('/supplier-form/trial-approval/{id}', [SupplierFormController::class, 'trialApproval'])->name('supplier.trial.approval');
+    Route::get('/supplier-form/trial-file/{id}', [SupplierFormController::class, 'downloadTrial'])->name('supplierform.download.trial');
+
+
+
 });

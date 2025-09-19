@@ -142,4 +142,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(MstPengajuanSubcont::class, 'modifiet_at', 'id');
     }
+
+    //relasi ke sales logbook
+    public function logbookVisits(): HasMany
+    {
+        return $this->hasMany(LogbookVisits::class, 'id_user');
+    }
+    public function trsLogbookVisits(): HasMany
+    {
+        return $this->hasMany(TrsLogbookVisits::class, 'id_user');
+    }
 }

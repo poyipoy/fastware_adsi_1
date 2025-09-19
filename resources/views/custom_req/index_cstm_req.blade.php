@@ -568,7 +568,7 @@
                                                 <td class="text-center">
                                                     {{ $pengajuan->jenis_proses_subcont !== 'Null' ? $pengajuan->jenis_proses_subcont : '' }}
                                                 </td>
-                                                <td class="text-center">{{ $pengajuan->created_at->format('d-m-Y') }}</td>
+                                                <td class="text-center">{{ $pengajuan->created_at ? $pengajuan->created_at : '' }}</td>
                                                 <td class="text-center">
                                                     {{ $sincedays[$pengajuan->id] ?? '-' }} Hari
                                                 </td>

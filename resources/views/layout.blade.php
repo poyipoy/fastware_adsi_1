@@ -1078,7 +1078,16 @@
                                         <li><a class="dropdown-item" href="{{ route('createadministration') }}">Form
                                                 Administration Purchasing</a></li>
                                         <li><a class="dropdown-item" href="{{ route('createadministration') }}">Form
-                                                Administration Admin</a></li>
+                                                   Administration Admin</a></li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Supplier Form
+                                    </a>
+                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                        <li><a class="dropdown-item" href="{{ route('supplierform.index') }}">Index Supplier</a></li>
                                     </ul>
                                 </li>
 
@@ -1187,7 +1196,7 @@
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
                                             <li><a class="dropdown-item"
-                                                    href="{{ route('penilaian.index') }}">Penilaian Technical
+                                                    href="{{ route('penilaian.index2') }}">Penilaian Technical
                                                     Competency Ka. Dept</a></li>
                                         @endif
 
@@ -1209,7 +1218,7 @@
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
                                             <li><a class="dropdown-item"
-                                                    href="{{ route('penilaian.index') }}">Penilaian Technical
+                                                    href="{{ route('penilaian.index3') }}">Penilaian Technical
                                                     Competency HR</a></li>
                                         @endif
 
