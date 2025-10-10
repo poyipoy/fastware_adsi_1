@@ -25,6 +25,8 @@ use App\Http\Controllers\JsonToCsvController;
 use App\Http\Controllers\CrpController;
 use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\ImportAdministrationController;
+use App\Http\Controllers\LayoutMenuController;
+use App\Http\Controllers\LayoutEditorController;
 use App\Models\InquirySales;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
@@ -66,6 +68,11 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('full-calender', [EventController::class, 'blokMaintanence'])->name('blokMaintanence');
+    Route::get('/admin/layout-menu', [LayoutMenuController::class, 'edit'])->name('layout-menu.edit');
+    Route::post('/admin/layout-menu', [LayoutMenuController::class, 'update'])->name('layout-menu.update');
+    Route::get('/admin/layout-menu/json', [LayoutMenuController::class, 'index'])->name('layout-menu.index');
+    Route::get('/admin/layout-editor', [LayoutEditorController::class, 'edit'])->name('layout-editor.edit');
+    Route::post('/admin/layout-editor', [LayoutEditorController::class, 'update'])->name('layout-editor.update');
     Route::get('full-calenderDept', [EventController::class, 'blokDeptMaintenance'])->name('blokDeptMaintenance');
 
     Route::post('full-calender-AJAX', [EventController::class, 'ajax']);
@@ -290,7 +297,11 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/inquiry/approve-ka-dept/{id}', [InquirySalesController::class, 'approveKaDept'])->name('approveKaDept');
     Route::post('/inquiry/reject-ka-dept/{id}', [InquirySalesController::class, 'rejectKaDept'])->name('rejectKaDept');
     Route::get('/inquiry/overview-purchase', [InquirySalesController::class, 'overviewPurchase'])->name('overviewPurchase');
+    Route::get('/inquiry/overview-purchase-2', [InquirySalesController::class, 'overviewPurchase2'])->name('overviewPurchase2');
+    Route::get('/inquiry/overview-purchase/data', [InquirySalesController::class, 'overviewPurchaseData'])->name('overviewPurchase.data');
+    Route::post('/inquiry/overview-purchase/export', [InquirySalesController::class, 'exportOverviewPurchase'])->name('overviewPurchase.export');
     Route::post('/inquiry/confirm-purchase/{id}', [InquirySalesController::class, 'confirmPurchase'])->name('confirmPurchase');
+    Route::post('/inquiry/detail-status', [InquirySalesController::class, 'updateDetailStatuses'])->name('inquiry.detail-status');
     Route::post('/inquiry/update', [InquirySalesController::class, 'updateInquiry'])->name('updateInquiry');
     Route::post('/inquiry/upload-file', [InquirySalesController::class, 'uploadFile'])->name('uploadFile');
     Route::post('/save-inquiry', [InquirySalesController::class, 'saveInquiry'])->name('saveInquiry');
@@ -551,6 +562,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     //Pengajuan Subcont
     Route::get('/dashboard-pengajuan-sales', [PengajuanSubcontController::class, 'indexSales'])->name('indexSales');
+    Route::post('/dashboard-pengajuan-sales/export', [PengajuanSubcontController::class, 'exportSales'])->name('indexSales.export');
     Route::get('/dashboard-pengajuan-procurment', [PengajuanSubcontController::class, 'indexProc'])->name('indexProc');
     Route::get('/pengajuan-subcont/create', [PengajuanSubcontController::class, 'create'])->name('pengajuan-subcont.create');
     Route::get('/pengajuan-subcont/{id}/edit', [PengajuanSubcontController::class, 'edit'])->name('pengajuan-subcont.edit');
@@ -573,6 +585,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     //custom request
     Route::get('/custom-request', [CustomRequestController::class, 'showCstmReq'])->name('showCustomRequest');
+    Route::post('/custom-request/export', [CustomRequestController::class, 'exportCustomRequests'])->name('customrequest.export');
     Route::post('/materials/store', [CustomRequestController::class, 'createCstmReq'])->name('CustomRequest.store');
     Route::post('/materials/delete', [CustomRequestController::class, 'deleteCstmReq'])->name('CustomRequest.delete');
     Route::put('/materials/update/{id}', [CustomRequestController::class, 'updateCstmReq'])->name('CustomRequest.update');
@@ -604,6 +617,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/custom-request/update-no-so', [CustomRequestController::class, 'updateNoSo'])->name('customrequest.updateNoSo');
     
     Route::get('/dashboard-fpb', [DashboardController::class, 'dashboardFPB'])->name('dashboardFPB');
+    Route::get('/dashboard-tcpd', [DashboardController::class, 'dashboardTCPD'])->name('dashboardTCPD');
     
     // Grup Rute API untuk dipanggil oleh JavaScript
     Route::prefix('api/dashboard')->name('api.dashboard.')->group(function () {
@@ -648,3 +662,4 @@ Route::middleware(['web', 'auth'])->group(function () {
 
 
 });
+

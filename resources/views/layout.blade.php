@@ -51,7 +51,7 @@
                 box-shadow: 1px 2px 2px rgba(247, 247, 247, 0.767);
             }
 
-            .navbar-nav .nav-link.active,
+            .nav-nav .nav-link.active,
             .navbar-nav .nav-link.show {
                 color: #fffb00;
             }
@@ -153,6 +153,7 @@
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown1">
                                     <li><a class="dropdown-item" href="{{ route('dashboardusers') }}">Akun Users</a></li>
                                     <li><a class="dropdown-item" href="{{ route('dashboardcustomers') }}">Customers</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('layout-editor.edit') }}">Layout</a></li>
                                     {{-- <li>
                                     <hr class="dropdown-divider">
                                 </li>
@@ -338,6 +339,8 @@
                                     <li><a class="dropdown-item" href="{{ route('dashboardFPB') }}">Pengajuan
                                             Barang</a></li>
                                 @endif
+                                <li><a class="dropdown-item" href="{{ route('dashboardTCPD') }}">Dashboard
+                                            TCPD</a></li>
 
                                 {{-- <li><a class="dropdown-item" href="{{ route('reportpatrol') }}">Safety Patrol</a>
                                 </li> --}}
@@ -1044,6 +1047,10 @@
                                         @if (in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'M. IQBAL']))
                                             <li><a class="dropdown-item"
                                                     href="{{ route('overviewPurchase') }}">Overview Purchase</a></li>
+                                        @endif
+                                        @if (in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'M. IQBAL']))
+                                            <li><a class="dropdown-item"
+                                                    href="{{ route('overviewPurchase2') }}">Overview Purchase 2</a></li>
                                         @endif
                                         <li><a class="dropdown-item" href="{{ route('overviewInquiry') }}">Overview
                                                 Inquiry Order Local</a></li>
