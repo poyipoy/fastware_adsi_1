@@ -139,6 +139,7 @@
                                         ['type' => 'sppkp', 'column' => 'sppkp_file', 'label' => 'SPPKP'],
                                         ['type' => 'nib',   'column' => 'nib_file',   'label' => 'NIB'],
                                         ['type' => 'rek',   'column' => 'rek_bank',   'label' => 'Rek'],
+                                        ['type' => 'compro', 'column' => 'lampiran_compro',    'label' => 'COMPRO'],
                                     ];
                                 @endphp
 
@@ -256,7 +257,7 @@
                                 <h5 class="fw-semibold mb-3">Trial</h5>
 
                                 {{-- Status 4: jadwal & tombol modal upload --}}
-                                @if($form->status == 4 && $form->trial)
+                                @if($form->status == 4 && $form->trial || $form->status == 5 && $form->trial && is_null($form->trial_file))
                                     @if(is_null($form->trial_schedule))
                                         <form action="{{ route('supplierform.schedule.trial', $form->id) }}" method="POST">
                                             @csrf
