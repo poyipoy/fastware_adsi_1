@@ -484,23 +484,45 @@
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">Tampilan Data Pengajuan Custom</h5>
-                            <div class="d-flex align-item-center justify-content-start mt-4 mb-3">
-                                <button class="btn btn-add btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
-                                    <i class="bi bi-plus-circle"> Add Request Custom</i>
-                                </button>
+                            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between mt-4 mb-3 gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-add btn-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+                                        <i class="bi bi-plus-circle"></i> Add Request Custom
+                                    </button>
+                                    <button type="submit" class="btn btn-success btn-sm" id="export-selected-btn" form="export-selected-form" disabled>
+                                        <i class="bi bi-file-earmark-excel"></i> Export Excel
+                                    </button>
+                                </div>
+                                <form method="GET" action="{{ route('showCustomRequest') }}" class="d-flex align-items-center gap-2">
+                                    @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                    @endforeach
+                                    <label for="per-page" class="form-label mb-0 small text-muted">Data per halaman</label>
+                                    <select name="per_page" id="per-page" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                                        @foreach ($perPageOptions as $option)
+                                            <option value="{{ $option }}" {{ (int) $perPage === (int) $option ? 'selected' : '' }}>
+                                                {{ $option }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </form>
                             </div>
                             <!-- Table with stripped rows -->
-                            <div class="table-responsive" style="height: 100%; overflow-y: auto;">
-                                <div class="mb-3 d-flex gap-2">
-                                    <button class="btn btn-secondary" onclick="filterTable('all')">All Data</button>
-                                    <button class="btn btn-danger" onclick="filterTable('lebih3')">Outstanding</button>
-                                    <button class="btn btn-success" onclick="filterTable('maks3')">On-Track</button>
-                                </div>
+                            <form id="export-selected-form" method="POST" action="{{ route('customrequest.export') }}">
+                                @csrf
+                                <div class="table-responsive" style="height: 100%; overflow-y: auto;">
+                                    <div class="mb-3 d-flex gap-2">
+                                        <button type="button" class="btn btn-secondary" onclick="filterTable('all')">All Data</button>
+                                        <button type="button" class="btn btn-danger" onclick="filterTable('lebih3')">Outstanding</button>
+                                        <button type="button" class="btn btn-success" onclick="filterTable('maks3')">On-Track</button>
+                                    </div>
 
-                                
-                                <table class="datatable table">
+                                    <table class="datatable table">
                                     <thead>
                                         <tr>
+                                            <th class="text-center" width="40px">
+                                                <input type="checkbox" id="select-all">
+                                            </th>
                                             <th class="text-center" width="50px"></th>
                                             <th class="text-center" width="50px">NO</th>
                                             <th class="text-center" width="100px">No Ref</th>
@@ -531,22 +553,26 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($materials as $key => $pengajuan)
+                                        @forelse ($materials as $pengajuan)
+                                            @php
+                                                $rowNumber = ($materials->currentPage() - 1) * $materials->perPage() + $loop->iteration;
+                                                $indicatorDays = $date[$pengajuan->id] ?? null;
+                                                $indicatorClass = '';
+                                                if (is_numeric($indicatorDays) && $indicatorDays > 3) {
+                                                    $indicatorClass = 'lebih3';
+                                                } elseif (is_numeric($indicatorDays) && $indicatorDays >= 0 && $indicatorDays <= 3) {
+                                                    $indicatorClass = 'maks3';
+                                                }
+                                            @endphp
                                             <tr data-id="{{ $pengajuan->id }}">
-                                                
+                                                <td class="text-center align-middle">
+                                                    <input type="checkbox" class="form-check-input select-row" name="selected_ids[]" value="{{ $pengajuan->id }}">
+                                                </td>
                                                 <td>
-                                                    @php
-                                                        $warna = '';
-                                                        if ($date[$pengajuan->id] > 3) {
-                                                            $warna = 'lebih3';
-                                                        } elseif (!is_null($date[$pengajuan->id]) && $date[$pengajuan->id] >= 0 && $date[$pengajuan->id] <= 3) {
-                                                            $warna = 'maks3';
-                                                        }
-                                                    @endphp
-                                                    <div class="indikator-warna {{ $warna }}" style="width: 20px; height: 20px;
-                                                        @if($date[$pengajuan->id] > 3)
+                                                    <div class="indikator-warna {{ $indicatorClass }}" style="width: 20px; height: 20px;
+                                                        @if (is_numeric($indicatorDays) && $indicatorDays > 3)
                                                             background-color: #ed2434;
-                                                        @elseif($date[$pengajuan->id] !== null && $date[$pengajuan->id] >= 0 && $date[$pengajuan->id] <= 3)
+                                                        @elseif (is_numeric($indicatorDays) && $indicatorDays >= 0 && $indicatorDays <= 3)
                                                             background-color: #44ff4d;
                                                         @else
                                                             background-color: #ffffff;
@@ -555,9 +581,8 @@
                                                     </div>
                                                 </td>
 
-                                                <td class="text-center">{{ $key + 1 }}</td>
-                                                <td class="text-center">{{ $pengajuan->no_ref}}</td>
-                                                {{-- Menampilkan nama user yang terakhir mengubah data --}}
+                                                <td class="text-center">{{ $rowNumber }}</td>
+                                                <td class="text-center">{{ $pengajuan->no_ref }}</td>
                                                 <td class="text-center">{{ $pengajuan->modified_at ? $pengajuan->modified_at : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->nama_customer }}</td>
                                                 <td class="text-center">{{ $pengajuan->nama_project }}</td>
@@ -570,55 +595,52 @@
                                                 </td>
                                                 <td class="text-center">{{ $pengajuan->created_at ? $pengajuan->created_at : '' }}</td>
                                                 <td class="text-center">
-                                                    {{ $sincedays[$pengajuan->id] ?? '-' }} Hari
+                                                    {{ isset($sincedays[$pengajuan->id]) ? $sincedays[$pengajuan->id] . ' Hari' : '-' }}
                                                 </td>
                                                 <td class="text-center">
                                                     @php
                                                         $statusClasses = [
-                                                            1 => ['bg' => 'bg-secondary', 'label' => 'Draft'], // Abu-abu
-                                                            2 => ['bg' => 'bg-primary', 'label' => 'Open'], // Hijau
-                                                            3 => ['bg' => 'bg-warning', 'label' => 'On Progress'], // Kuning
-                                                            4 => ['bg' => 'bg-warning', 'label' => 'On Progress'], // Kuning (sama dengan status 3)
-                                                            5 => ['bg' => 'bg-info', 'label' => 'Finish'], // Biru Muda
+                                                            1 => ['bg' => 'bg-secondary', 'label' => 'Draft'],
+                                                            2 => ['bg' => 'bg-primary', 'label' => 'Open'],
+                                                            3 => ['bg' => 'bg-warning', 'label' => 'On Progress'],
+                                                            4 => ['bg' => 'bg-warning', 'label' => 'On Progress'],
+                                                            5 => ['bg' => 'bg-info', 'label' => 'Finish'],
                                                         ];
 
-                                                        // Menentukan status saat ini berdasarkan sec_line
                                                         if ($pengajuan->sec_line == 1) {
-                                                            // Jika sec_line == 1
                                                             switch ($pengajuan->status_1) {
                                                                 case 1:
-                                                                    $currentStatus = $statusClasses[1]; // Draf
+                                                                    $currentStatus = $statusClasses[1];
                                                                     break;
                                                                 case 2:
-                                                                    $currentStatus = $statusClasses[2]; // Open
+                                                                    $currentStatus = $statusClasses[2];
                                                                     break;
                                                                 case 3:
-                                                                    $currentStatus = $statusClasses[3]; // On Progress
+                                                                    $currentStatus = $statusClasses[3];
                                                                     break;
                                                                 case 4:
-                                                                    $currentStatus = $statusClasses[4]; // On Progress
+                                                                    $currentStatus = $statusClasses[4];
                                                                     break;
                                                                 case 5:
-                                                                    $currentStatus = $statusClasses[5]; // Finish
+                                                                    $currentStatus = $statusClasses[5];
                                                                     break;
                                                                 default:
                                                                     $currentStatus = ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
                                                             }
                                                         } else {
-                                                            // Jika sec_line == 2
                                                             switch ($pengajuan->status_1) {
                                                                 case 1:
                                                                 case 2:
-                                                                    $currentStatus = $statusClasses[2]; // Open
+                                                                    $currentStatus = $statusClasses[2];
                                                                     break;
                                                                 case 3:
-                                                                    $currentStatus = $statusClasses[3]; // On Progress
+                                                                    $currentStatus = $statusClasses[3];
                                                                     break;
                                                                 case 4:
-                                                                    $currentStatus = $statusClasses[4]; // On Progress
+                                                                    $currentStatus = $statusClasses[4];
                                                                     break;
                                                                 case 5:
-                                                                    $currentStatus = $statusClasses[5]; // Finish
+                                                                    $currentStatus = $statusClasses[5];
                                                                     break;
                                                                 default:
                                                                     $currentStatus = ['bg' => 'bg-danger', 'label' => 'Status Tidak Tersedia'];
@@ -630,8 +652,8 @@
                                                     </span>
                                                 </td>
                                                 <td class="text-center">Rp{{ number_format($pengajuan->harga_awal, 0, ',', '.') }}</td>
-                                                <td class="text-center">Rp{{ number_format($pengajuan->harga_akhir, 0, ',', '.') }}</td>         
-                                                <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>                                       
+                                                <td class="text-center">Rp{{ number_format($pengajuan->harga_akhir, 0, ',', '.') }}</td>
+                                                <td class="text-center profit-cell" data-harga-awal="{{ $pengajuan->harga_awal }}" data-harga-akhir="{{ $pengajuan->harga_akhir }}"></td>
                                                 <td class="text-center">{{ $pengajuan->confirm_prod ? $pengajuan->production->name : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->date_confirm_prod ? $pengajuan->date_confirm_prod : '' }}</td>
                                                 <td class="text-center">{{ $pengajuan->marketing ? $pengajuan->marketing->name : '' }}</td>
@@ -640,30 +662,20 @@
                                                 <td class="text-center">{{ $pengajuan->date_app_2 ? $pengajuan->date_app_2 : '' }}</td>
                                                 <td class="text-center">
                                                     <div class="d-flex justify-content-center align-items-center">
-                                                        {{-- Tombol Lihat --}}
-
                                                         @if (auth()->user()->name == 'RAGIL ISHA RAHMANTO')
-                                                        {{-- Jika user adalah sales dan statusnya draft --}}
                                                             <a href="{{ route('CustomRequest.form', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
                                                                 <i class="fas fa-eye"></i> Lihat
                                                             </a>
                                                         @else
-                                                            
                                                             <a href="{{ route('CustomRequest.formSales', $pengajuan->id) }}" class="btn btn-warning btn-sm d-inline-flex align-items-center me-2">
-                                                            <i class="fas fa-eye"></i> Lihat
-                                                        </a>
+                                                                <i class="fas fa-eye"></i> Lihat
+                                                            </a>
                                                         @endif
-                                                        {{-- @if ($pengajuan->status_1 == 1)
-                                                            <button type="button" class="btn btn-green btn-sm d-inline-flex align-items-center me-2" 
-                                                                onclick="konfirmasiKirim('{{ route('kirimproduction', $pengajuan->id) }}', 'Production')">
-                                                                <i class="fas fa-paper-plane"></i> Submit
-                                                            </button>
-                                                        @endif --}}
                                                         @if ($pengajuan->status_1 == 2 && auth()->user()->name == 'RAGIL ISHA RAHMANTO' && $pengajuan->sec_line == 1)
-                                                            <button type="button" class="btn btn-yellow btn-sm d-inline-flex align-items-center" 
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#modalKeterangan" 
-                                                                    data-id="{{ $pengajuan->id }}"> <!-- Tambahkan data-id -->
+                                                            <button type="button" class="btn btn-yellow btn-sm d-inline-flex align-items-center"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#modalKeterangan"
+                                                                    data-id="{{ $pengajuan->id }}">
                                                                 <i class="fas fa-paper-plane"></i> Subcont
                                                             </button>
                                                         @endif
@@ -673,34 +685,50 @@
                                                                 <i class="fas fa-trash"></i> Cancel
                                                             </a>
                                                         @endif
-
-
-                                                        
                                                     </div>
                                                 </td>
                                                 @if (auth()->user()->name == 'RAGIL ISHA RAHMANTO')
-                                                <td class="text-center align-middle">
-                                                    @if ($pengajuan->quotation_file)
-                                                        <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank" 
-                                                           class="d-inline-block p-3 bg-white rounded border shadow-sm text-decoration-none" 
-                                                           style="color: inherit; transition: transform 0.2s ease;" 
-                                                           onmouseover="this.style.transform='scale(1.05)'" 
-                                                           onmouseout="this.style.transform='scale(1)'"
-                                                           data-bs-toggle="tooltip" title="Click to view or download the quotation file">
-                                                            <i class="fas fa-file-pdf fa-2x text-danger mb-1"></i>
-                                                            <p class="mb-0 fw-bold">View Quotation</p>
-                                                        </a>
-                                                    @else
-                                                        <span class="text-muted fst-italic">Quotation belum tersedia</span>
-                                                    @endif
-                                                </td>
-                                                
+                                                    <td class="text-center align-middle">
+                                                        @if ($pengajuan->quotation_file)
+                                                            <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
+                                                               class="d-inline-block p-3 bg-white rounded border shadow-sm text-decoration-none"
+                                                               style="color: inherit; transition: transform 0.2s ease;"
+                                                               onmouseover="this.style.transform='scale(1.05)'"
+                                                               onmouseout="this.style.transform='scale(1)'"
+                                                               data-bs-toggle="tooltip" title="Click to view or download the quotation file">
+                                                                <i class="fas fa-file-pdf fa-2x text-danger mb-1"></i>
+                                                                <p class="mb-0 fw-bold">View Quotation</p>
+                                                            </a>
+                                                        @else
+                                                            <span class="text-muted fst-italic">Quotation belum tersedia</span>
+                                                        @endif
+                                                    </td>
                                                 @endif
                                             </tr>
-                                        @endforeach
+                                        @empty
+                                            @php
+                                                $columnSpan = auth()->user()->name == 'RAGIL ISHA RAHMANTO' ? 26 : 25;
+                                            @endphp
+                                            <tr>
+                                                <td colspan="{{ $columnSpan }}" class="text-center py-4">
+                                                    Data pengajuan belum tersedia.
+                                                </td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
-                            </div>
+                                @if ($materials->count())
+                                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mt-3 gap-2">
+                                        <div class="text-muted small">
+                                            Menampilkan {{ $materials->firstItem() }} - {{ $materials->lastItem() }} dari {{ $materials->total() }} data
+                                        </div>
+                                        @if ($materials->hasPages())
+                                            {{ $materials->links('pagination::bootstrap-4') }}
+                                        @endif
+                                    </div>
+                                @endif
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -945,32 +973,62 @@
             });
 
 
-            // Menjalankan perhitungan profit saat halaman dimuat
             document.addEventListener('DOMContentLoaded', function() {
-                const rows = document.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const hargaAwalCell = row.cells[14]; // Kolom Harga Awal
-                    const hargaAkhirCell = row.cells[15]; // Kolom Harga Akhir
-                    const profitCell = row.cells[16]; // Kolom Profit
+                const profitCells = document.querySelectorAll('.profit-cell');
+                profitCells.forEach(cell => {
+                    const hargaAwal = parseFloat(cell.dataset.hargaAwal || '0');
+                    const hargaAkhir = parseFloat(cell.dataset.hargaAkhir || '0');
+                    const profitResult = calcProfit(hargaAwal, hargaAkhir);
 
-                    // Memastikan kolom ada sebelum digunakan
-                    if (hargaAwalCell && hargaAkhirCell && profitCell) {
-                        const hargaAwal = parseFloat(hargaAwalCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
-                        const hargaAkhir = parseFloat(hargaAkhirCell.innerText.replace(/[^0-9.-]+/g,"")) || 0; // Menghapus simbol
-                        
-                        // Menghitung profit dan menampilkannya
-                        const profitResult = calcProfit(hargaAwal, hargaAkhir);
-                        
-                        // Mengatur teks dan warna berdasarkan profit
-                        if (profitResult.isLow) {
-                            profitCell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`; // Tampilkan dalam warna merah
-                        } else {
-                            profitCell.innerText = profitResult.value; // Tampilkan hasil biasa
-                        }
+                    if (profitResult.isLow) {
+                        cell.innerHTML = `<span style="color: red;">${profitResult.value}</span>`;
                     } else {
-                        console.warn('Kolom tidak ditemukan pada baris ini:', row);
+                        cell.textContent = profitResult.value;
                     }
                 });
+
+                const selectAllCheckbox = document.getElementById('select-all');
+                const rowCheckboxes = Array.from(document.querySelectorAll('.select-row'));
+                const exportButton = document.getElementById('export-selected-btn');
+
+                const toggleExportButton = () => {
+                    if (!exportButton) {
+                        return;
+                    }
+                    const anyChecked = rowCheckboxes.some(cb => cb.checked);
+                    exportButton.disabled = !anyChecked;
+                };
+
+                const syncSelectAllState = () => {
+                    if (!selectAllCheckbox) {
+                        return;
+                    }
+                    const totalCheckboxes = rowCheckboxes.length;
+                    const checkedCount = rowCheckboxes.filter(cb => cb.checked).length;
+
+                    selectAllCheckbox.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+                    selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
+                };
+
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.addEventListener('change', function() {
+                        rowCheckboxes.forEach(cb => {
+                            cb.checked = selectAllCheckbox.checked;
+                        });
+                        toggleExportButton();
+                        syncSelectAllState();
+                    });
+                }
+
+                rowCheckboxes.forEach(cb => {
+                    cb.addEventListener('change', function() {
+                        syncSelectAllState();
+                        toggleExportButton();
+                    });
+                });
+
+                syncSelectAllState();
+                toggleExportButton();
             });
         </script>
 

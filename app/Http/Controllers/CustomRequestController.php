@@ -16,22 +16,37 @@ use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Calculation\TextData\Format;
 use Svg\Tag\Rect;
 use Illuminate\Support\Facades\File;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\CustomRequestExport;
 
 
 class CustomRequestController extends Controller
 {
-    public function showCstmReq()
+    public function showCstmReq(Request $request)
     {
+        $perPageOptions = [10, 25, 50, 100];
+        $requestedPerPage = (int) $request->input('per_page', 25);
+        $perPage = in_array($requestedPerPage, $perPageOptions, true) ? $requestedPerPage : 25;
+
         $materials = MstPengajuanSubcont::with(['sales', 'marketing', 'production', 'finance'])
             ->whereIn('sec_line', [1, 2])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
-        $today = Carbon::now()->startOfDay(); // Hanya tanggal, jam diabaikan
+        $today = Carbon::now()->startOfDay();
         $date = [];
         $sincedays = [];
 
-        // Hitung durasi harian dari proses approval
+        $materialIds = $materials->pluck('id');
+
+        $activityLogs = $materialIds->isNotEmpty()
+            ? TrsPengajuanSubcont::whereIn('id_subcont', $materialIds)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->groupBy('id_subcont')
+            : collect();
+
         foreach ($materials as $item) {
             if ($item->confirm_prod && $item->harga_akhir && is_null($item->approval_1)) {
                 $date[$item->id] = Carbon::parse($item->updated_at)->startOfDay()->diffInDays($today);
@@ -40,51 +55,45 @@ class CustomRequestController extends Controller
             } else {
                 $date[$item->id] = null;
             }
-        }
 
-        // Ambil semua log dan kelompokkan per id_subcont
-        $activity_logs = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
-            ->with('mstPengajuanSubcont')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->groupBy('id_subcont');
-
-        // Hitung selisih hari sejak created_at
-        foreach ($materials as $item) {
             $createdAt = Carbon::parse($item->created_at)->startOfDay();
 
             if ($item->status_1 == 5) {
-                $latestLog = $activity_logs[$item->id]->sortByDesc('created_at')->first() ?? null;
+                $logsForItem = $activityLogs->get($item->id, collect());
+                $latestLog = $logsForItem->first();
 
                 if ($latestLog) {
                     $logUpdatedAt = Carbon::parse($latestLog->updated_at)->startOfDay();
                     $sincedays[$item->id] = $createdAt->diffInDays($logUpdatedAt);
                 } else {
-                    $sincedays[$item->id] = $createdAt->diffInDays($today); // fallback jika log kosong
+                    $sincedays[$item->id] = $createdAt->diffInDays($today);
                 }
             } else {
                 $sincedays[$item->id] = $createdAt->diffInDays($today);
             }
         }
 
-        // Ambil file yang sudah status = 3
-        $files = TrsAttcCstm::where('status', 3)
-            ->whereIn('mst_id', $materials->pluck('id'))
-            ->get()
-            ->keyBy('mst_id');
+        return view('custom_req.index_cstm_req', [
+            'materials' => $materials,
+            'date' => $date,
+            'sincedays' => $sincedays,
+            'perPage' => $perPage,
+            'perPageOptions' => $perPageOptions,
+        ]);
+    }
 
-        // Ambil semua user
-        $users = User::all();
+    public function exportCustomRequests(Request $request)
+    {
+        $selectedIds = $request->input('selected_ids', []);
+        if (!is_array($selectedIds)) {
+            $selectedIds = [];
+        }
 
-        // Ambil update terakhir berdasarkan subcont
-        $updates = TrsPengajuanSubcont::whereIn('id_subcont', $materials->pluck('id'))
-            ->get()
-            ->keyBy('id_subcont');
+        $selectedIds = array_values(array_unique(array_filter(array_map('intval', $selectedIds))));
 
-        // Kirim data ke view
-        return view('custom_req.index_cstm_req', compact(
-            'materials', 'users', 'files', 'updates', 'date', 'sincedays'
-        ));
+        $fileName = 'custom_request_' . now()->format('Ymd_His') . '.xlsx';
+
+        return Excel::download(new CustomRequestExport($selectedIds), $fileName);
     }
 
 
