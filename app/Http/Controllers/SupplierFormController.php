@@ -36,19 +36,47 @@ class SupplierFormController extends Controller
         ]);
     }
 
-    public function generateLink(Request $request)
+    public function generateLink(\Illuminate\Http\Request $request)
     {
+        $digits     = 12;                 // panjang token numeric
+        $expiresAt  = now()->addDays(7);  // masa berlaku
+        $maxAttempt = 100;                // batas retry jika duplikat
+
         try {
-            $token = Str::random(40);
-            SupplierFormToken::create([
-                'token' => $token,
-                'is_used' => false,
-                'expires_at' => now()->addDays(7)
-            ]);
-            $url = route('supplierform.public.show', ['token' => $token]);
-            return response()->json(['success' => true, 'url' => $url]);
-        } catch (\Exception $e) {
-            Log::error('Error generating supplier link: ' . $e->getMessage());
+            for ($attempt = 0; $attempt < $maxAttempt; $attempt++) {
+                // Generate token angka murni (boleh leading zero)
+                $token = '';
+                for ($i = 0; $i < $digits; $i++) {
+                    $token .= (string) random_int(0, 9);
+                }
+
+                try {
+                    \App\Models\SupplierFormToken::create([
+                        'token'      => $token,
+                        'is_used'    => false,
+                        'expires_at' => $expiresAt,
+                    ]);
+
+                    $url = route('supplierform.public.show', ['token' => $token]);
+                    return response()->json(['success' => true, 'url' => $url]);
+
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Duplicate key (UNIQUE index) -> retry kandidat baru
+                    $sqlState   = $e->errorInfo[0] ?? null;   // '23000' (MySQL) / '23505' (Pg)
+                    $driverCode = $e->errorInfo[1] ?? null;   // 1062 (MySQL duplicate)
+                    if ($driverCode === 1062 || in_array($sqlState, ['23000', '23505'], true)) {
+                        continue;
+                    }
+                    Log::error('Error generating supplier link: '.$e->getMessage());
+                    return response()->json(['success' => false, 'message' => 'Gagal membuat link. Silakan coba lagi.'], 500);
+                }
+            }
+
+            Log::warning('Failed to generate unique token after many attempts');
+            return response()->json(['success' => false, 'message' => 'Gagal membuat link. Silakan coba lagi.'], 500);
+
+        } catch (\Throwable $e) {
+            Log::error('Error generating supplier link: '.$e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal membuat link. Silakan coba lagi.'], 500);
         }
     }
@@ -57,33 +85,38 @@ class SupplierFormController extends Controller
     {
         $supplier = MstSupplierForm::findOrFail($id);
 
+        // Mapping tipe -> kolom DB & path relatif di public/
         $fileMapping = [
-            'npwp'  => ['column' => 'npwp_file',  'folder' => 'npwp'],
-            'sppkp' => ['column' => 'sppkp_file', 'folder' => 'sppkp'],
-            'nib'   => ['column' => 'nib_file',   'folder' => 'nib'],
-            'rek'   => ['column' => 'rek_bank',   'folder' => 'rek'], // <--- tambahan
+            'npwp'   => ['column' => 'npwp_file',   'path' => 'assets/form_supplier/npwp'],
+            'sppkp'  => ['column' => 'sppkp_file',  'path' => 'assets/form_supplier/sppkp'],
+            'nib'    => ['column' => 'nib_file',    'path' => 'assets/form_supplier/nib'],
+            'rek'    => ['column' => 'rek_bank',    'path' => 'assets/form_supplier/rek'],
+            'compro' => ['column' => 'lampiran_compro',      'path' => 'assets/form_supplier/visit/compro'], // <— baru
         ];
 
         if (!isset($fileMapping[$type])) {
             abort(404, 'Jenis file tidak valid.');
         }
 
-        $column = $fileMapping[$type]['column'];
-        $folder = $fileMapping[$type]['folder'];
-        $fileName = $supplier->$column;
+        $column   = $fileMapping[$type]['column'];
+        $fileName = trim((string) $supplier->$column);
 
-        if (!$fileName) {
+        if ($fileName === '') {
             return back()->with('error', 'File tidak tercatat di database.');
         }
 
-        $filePath = public_path("assets/form_supplier/{$folder}/{$fileName}");
+        // Hardening terhadap path traversal
+        $safeName = basename($fileName);
 
-        if (!file_exists($filePath)) {
+        $filePath = public_path($fileMapping[$type]['path'] . DIRECTORY_SEPARATOR . $safeName);
+
+        if (!is_file($filePath)) {
             abort(404, 'File fisik tidak ditemukan di server.');
         }
 
         return response()->file($filePath);
     }
+
 
 
     public function showPublicForm($token)

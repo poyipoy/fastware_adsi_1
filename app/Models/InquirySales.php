@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\TrxDboProgPurchase;
 
 class InquirySales extends Model
 {
@@ -72,5 +75,28 @@ class InquirySales extends Model
     public function purchasing()
     {
         return $this->belongsTo(User::class, 'purchasing_id');
+    }
+
+    public function purchaseProgresses(): HasMany
+    {
+        return $this->hasMany(TrxDboProgPurchase::class, 'inquiry_id');
+    }
+
+    public function latestPurchaseProgress(): HasOne
+    {
+        return $this->hasOne(TrxDboProgPurchase::class, 'inquiry_id')->latestOfMany();
+    }
+
+    public function earliestPurchaseProgress(): HasOne
+    {
+        return $this->hasOne(TrxDboProgPurchase::class, 'inquiry_id')->oldestOfMany();
+    }
+
+    public function approvedPurchaseProgress(): HasOne
+    {
+        return $this->hasOne(TrxDboProgPurchase::class, 'inquiry_id')
+            ->ofMany('created_at', 'min', function ($query) {
+                $query->where('description', 'Inquiry Approved');
+            });
     }
 }

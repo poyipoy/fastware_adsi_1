@@ -14,86 +14,132 @@ use App\Models\TrsLogbookVisit;
 use App\Models\TrsLogbookVisits;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Illuminate\Support\Facades\DB;
 
 class SalesVisitController extends Controller
 {
     public function store(Request $request)
     {
-        // Validasi input, customer_name dan new_customer_name optional
-        $validated = $request->validate([
-            'customer_name' => 'nullable|string|max:255',
-            'new_customer_name' => 'nullable|string|max:255',
-            'pic_cust' => 'required|string|max:255',
-            'jabatan' => 'nullable|string|max:255',
-            'visit_result' => 'nullable|string',
-            'location' => 'nullable|string|max:255',
-            'attachment' => 'nullable|file|mimes:jpg,jpeg,png', // max 5MB
-        ]);
+        try {
+            // VALIDASI: TANPA 'files' dan 'files.*'
+            $validated = $request->validate([
+                'customer_name'     => 'nullable|string|max:255',
+                'new_customer_name' => 'nullable|string|max:255',
+                'pic_cust'          => 'required|string|max:255',
+                'jabatan'           => 'nullable|string|max:255',
+                'visit_result'      => 'nullable|string',
+                'location'          => 'nullable|string|max:255',
+                'remark'            => 'nullable|string|max:50',
+                // attachment tetap opsional & divalidasi wajar
+                'attachment'        => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            ]);
 
-        $logbookVisit = new LogbookVisits();
-        $logbookVisit->id_user = auth()->id();
+            DB::beginTransaction();
 
-        $customerNameRaw = $validated['customer_name'] ?? $validated['new_customer_name'] ?? 'unknown_customer';
-        // Hapus spasi dan karakter khusus dari nama customer
-        $customerNameClean = Str::slug(str_replace(' ', '', $customerNameRaw));
-        if (empty($customerNameClean)) {
-            $customerNameClean = 'unknown';
-        }
+            $logbookVisit = new LogbookVisits();
+            $logbookVisit->id_user = auth()->id();
 
-        $file = $request->file('attachment');
+            $customerNameRaw   = $validated['customer_name'] ?? $validated['new_customer_name'] ?? 'unknown_customer';
+            $customerNameClean = Str::slug($customerNameRaw) ?: 'unknown';
 
-        if ($file && $file->isValid()) {
-            $timestamp = now()->format('Ymd_His');
-            $extension = $file->getClientOriginalExtension();
+            // ===== Foto utama (opsional) -> public/assets/sales_report/kunjungan =====
+            $attachmentName = null;
+            if ($request->hasFile('attachment') && $request->file('attachment')->isValid()) {
+                $folder = public_path('assets/sales_report/kunjungan');
+                if (!is_dir($folder)) mkdir($folder, 0755, true);
 
-            $customerNameRaw = $validated['customer_name'] ?? $validated['new_customer_name'] ?? 'unknown_customer';
-            $customerNameClean = Str::slug(str_replace(' ', '', $customerNameRaw)) ?: 'unknown_customer';
+                $ext       = strtolower($request->file('attachment')->getClientOriginalExtension());
+                $timestamp = now()->format('Ymd_His');
+                $rand      = Str::random(6);
+                $attachmentName = "kunjungan_{$customerNameClean}_u".auth()->id()."_{$timestamp}_{$rand}.{$ext}";
 
-            // Path folder tujuan di dalam public/
-            $folderPath = public_path('assets/sales_report/kunjungan');
-            $fileName = "kunjungan_{$timestamp}.{$extension}";
-
-            // Pastikan folder ada
-            if (!file_exists($folderPath)) {
-                mkdir($folderPath, 0755, true);
+                $request->file('attachment')->move($folder, $attachmentName);
+                $logbookVisit->attachment = $attachmentName; // simpan nama file saja
+            } else {
+                $logbookVisit->attachment = null;
             }
 
-            // Simpan file di public/assets/sales_report/kunjungan
-            $file->move($folderPath, $fileName);
+            // ===== Dokumen tambahan (BENAR-BENAR OPSIONAL) -> public/assets/sales_report/file =====
+            $savedDocNames = [];
+            $docInputs = $request->file('files'); // bisa null / array<UploadedFile>
+            if (is_array($docInputs) && count($docInputs) > 0) {
+                $docFolder = public_path('assets/sales_report/file');
+                if (!is_dir($docFolder)) mkdir($docFolder, 0755, true);
 
-            // Simpan hanya nama file saja
-            $logbookVisit->attachment = $fileName;
-        } else {
-            $logbookVisit->attachment = null;
+                // Guard minimal (hapus blok ini jika ingin tanpa cek sama sekali)
+                $allowedExt = ['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','zip','rar','7z','jpg','jpeg','png'];
+
+                foreach ($docInputs as $idx => $doc) {
+                    if (!$doc || !$doc->isValid()) continue;
+
+                    $ext = strtolower($doc->getClientOriginalExtension());
+                    if (!in_array($ext, $allowedExt, true)) {
+                        // lewati tipe yang tidak diizinkan
+                        continue;
+                    }
+
+                    $timestamp = now()->format('Ymd_His');
+                    $rand      = Str::random(6);
+                    $fileName  = "file_{$customerNameClean}_u".auth()->id()."_{$timestamp}_{$idx}_{$rand}.{$ext}";
+
+                    $doc->move($docFolder, $fileName);
+                    $savedDocNames[] = $fileName;
+                }
+            }
+
+            // Kolom 'file' hanya diisi jika ada dokumen; kalau tidak, null
+            $logbookVisit->file = !empty($savedDocNames)
+                ? json_encode($savedDocNames, JSON_UNESCAPED_SLASHES)
+                : null;
+
+            // ===== Field lainnya =====
+            if (!empty($validated['new_customer_name'])) {
+                $logbookVisit->customer_name     = $validated['new_customer_name'];
+                $logbookVisit->new_customer_name = $validated['new_customer_name'];
+            } else {
+                $logbookVisit->customer_name     = $validated['customer_name'] ?? null;
+                $logbookVisit->new_customer_name = null;
+            }
+            $logbookVisit->pic_cust     = $validated['pic_cust'] ?? null;
+            $logbookVisit->jabatan      = $validated['jabatan'] ?? null;
+            $logbookVisit->visit_result = $validated['visit_result'] ?? null;
+            $logbookVisit->location     = $validated['location'] ?? null;
+            $logbookVisit->remark       = $validated['remark'] ?? null;
+
+            $logbookVisit->is_active  = 1;
+            $logbookVisit->visit_date = now();
+
+            $logbookVisit->save();
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visit log saved successfully',
+                'data'    => [
+                    'id'         => $logbookVisit->id,
+                    'attachment' => $logbookVisit->attachment,
+                    'files'      => $savedDocNames, // kosong jika tidak ada
+                ],
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve; // biarkan 422 dari Laravel
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error saving visit log', ['msg' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Gagal menyimpan visit log'], 500);
         }
-
-
-        $logbookVisit->id_user = auth()->id();
-
-        // Set data lainnya
-        if (!empty($validated['new_customer_name'])) {
-            $logbookVisit->customer_name = $validated['new_customer_name'];
-            $logbookVisit->new_customer_name = $validated['new_customer_name'];
-        } else {
-            $logbookVisit->customer_name = $validated['customer_name'] ?? null;
-            $logbookVisit->new_customer_name = null;
-        }
-        $logbookVisit->pic_cust = $validated['pic_cust'] ?? null;
-        $logbookVisit->jabatan = $validated['jabatan'] ?? null;
-        $logbookVisit->visit_result = $validated['visit_result'] ?? null;
-        // Lokasi diisi dari input langsung
-        $logbookVisit->location = $validated['location'] ?? null;
-        $logbookVisit->visit_date = now(); // Diisi otomatis nanti
-
-        // is_active diset 1
-        $logbookVisit->is_active = 1;
-
-        // visit_date otomatis current timestamp
-        $logbookVisit->visit_date = now();
-
-        $logbookVisit->save();
-
-        return response()->json(['message' => 'Visit log saved successfully']);
     }
 
     public function customerList()
@@ -446,27 +492,22 @@ class SalesVisitController extends Controller
         // Cari ID user yang cocok dengan nama di atas
         $salesUserIds = User::whereIn('name', $sales)->pluck('id');
 
-        // === Hitung Data ===
-
-        // 1. Total Sales (kunjungan oleh sales tertentu dalam minggu berjalan)
+        // === Hitung Data (lama, tetap) ===
         $totalSales = LogbookVisits::whereIn('id_user', $salesUserIds)
             ->whereBetween('visit_date', [$startDate, $endDate])
             ->count();
 
-        // 2. Total Kunjungan (semua kunjungan dalam minggu berjalan)
         $totalKunjungan = LogbookVisits::whereBetween('visit_date', [$startDate, $endDate])
             ->count();
 
-        // 3. Total Plan (semua plan visit minggu berjalan)
         $totalPlan = TrsLogbookVisits::whereBetween('plan_visit', [$startDate, $endDate])
             ->count();
 
-        // 4. Follow Up (ambil dari tabel yang benar)
         $followUp = LogbookVisits::where('remark', 'Follow Up')
             ->whereBetween('visit_date', [$startDate, $endDate])
             ->count();
 
-       $oldCustomer = LogbookVisits::whereNull('new_customer_name')
+        $oldCustomer = LogbookVisits::whereNull('new_customer_name')
             ->whereNotNull('customer_name')
             ->whereBetween('visit_date', [$startDate, $endDate])
             ->count();
@@ -477,12 +518,38 @@ class SalesVisitController extends Controller
 
         $totalCustomer = $oldCustomer + $newCustomer;
 
+        // === Tambahan: data chart (labels, visits, plans) ===
+        $usersMap = User::whereIn('name', $sales)->pluck('id', 'name'); // ['ADMINSTRATOR'=>1, 'asep'=>2, ...]
 
-        // Pastikan variabel tanggal adalah objek Carbon untuk pemformatan yang konsisten
+        $visitsAgg = LogbookVisits::whereIn('id_user', $salesUserIds)
+            ->whereBetween('visit_date', [$startDate, $endDate])
+            ->selectRaw('id_user, COUNT(*) as c')
+            ->groupBy('id_user')
+            ->pluck('c', 'id_user'); // [id_user => jumlah]
+
+        $plansAgg = TrsLogbookVisits::whereIn('id_user', $salesUserIds)
+            ->whereBetween('plan_visit', [$startDate, $endDate])
+            ->selectRaw('id_user, COUNT(*) as c')
+            ->groupBy('id_user')
+            ->pluck('c', 'id_user'); // [id_user => jumlah]
+
+        $chartLabels = [];
+        $chartVisits = [];
+        $chartPlans  = [];
+
+        foreach ($sales as $name) {
+            $uid = $usersMap[$name] ?? null;
+            $chartLabels[] = $name;
+            $chartVisits[] = $uid ? (int) ($visitsAgg[$uid] ?? 0) : 0;
+            $chartPlans[]  = $uid ? (int) ($plansAgg[$uid]  ?? 0) : 0;
+        }
+
+        // Konsistensi format tanggal
         $startDateCarbon = \Carbon\Carbon::parse($startDate);
         $endDateCarbon   = \Carbon\Carbon::parse($endDate);
 
         return response()->json([
+            // data lama (tetap)
             'total_sales'     => $totalSales,
             'total_kunjungan' => $totalKunjungan,
             'total_plan'      => $totalPlan,
@@ -492,8 +559,14 @@ class SalesVisitController extends Controller
             'follow_up'       => $followUp,
             'filter_start'    => $startDateCarbon->format('Y-m-d'),
             'filter_end'      => $endDateCarbon->format('Y-m-d'),
+
+            // hanya yang dibutuhkan untuk Android
+            'chart_labels'    => $chartLabels,
+            'chart_visits'    => $chartVisits,
+            'chart_plans'     => $chartPlans,
         ]);
     }
+
 
     private function getRegionMappings()
     {
@@ -576,5 +649,556 @@ class SalesVisitController extends Controller
         return response()->json($regionNames);
     }
 
+    private function parseDateRange(Request $request): array
+{
+    $request->validate([
+        'start_date' => ['nullable', 'date'],
+        'end_date'   => ['nullable', 'date'],
+        'days'       => ['nullable', 'integer', 'min:1', 'max:366'], // opsional
+    ]);
+
+    $days  = (int) $request->input('days', 7);
+    $start = $request->input('start_date');
+    $end   = $request->input('end_date');
+
+    if (!$start && !$end) {
+        // DEFAULT: pekan berjalan (Senin–Minggu)
+        $startDate = Carbon::now()->startOfWeek()->startOfDay();
+        $endDate   = Carbon::now()->endOfWeek()->endOfDay();
+    } elseif ($start && !$end) {
+        $startDate = Carbon::parse($start)->startOfDay();
+        $endDate   = $startDate->copy()->addDays($days - 1)->endOfDay();
+    } elseif (!$start && $end) {
+        $endDate   = Carbon::parse($end)->endOfDay();
+        $startDate = $endDate->copy()->subDays($days - 1)->startOfDay();
+    } else {
+        $startDate = Carbon::parse($start)->startOfDay();
+        $endDate   = Carbon::parse($end)->endOfDay();
+    }
+
+    if ($endDate->lt($startDate)) {
+        [$startDate, $endDate] = [
+            $endDate->copy()->startOfDay(),
+            $startDate->copy()->endOfDay(),
+        ];
+    }
+
+    return [$startDate, $endDate];
+}
+
+/**
+ * GET /reports/visits/summary
+ * Ringkasan total visit & total plan pada rentang tanggal.
+ * (Optional) Filter user via ?sales[]=Nama1&sales[]=Nama2
+ */
+public function summary(Request $request): JsonResponse
+{
+    [$startDate, $endDate] = $this->parseDateRange($request);
+
+    $salesNames   = (array) $request->query('sales', []);
+    $salesUserIds = collect();
+    if (!empty($salesNames)) {
+        $salesUserIds = User::whereIn('name', $salesNames)->pluck('id');
+    }
+
+    $visitQuery = LogbookVisits::whereBetween('visit_date', [$startDate, $endDate]);
+    if ($salesUserIds->isNotEmpty()) $visitQuery->whereIn('id_user', $salesUserIds);
+    $totalVisit = $visitQuery->count();
+
+    $planQuery = TrsLogbookVisits::whereBetween('plan_visit', [$startDate, $endDate]);
+    if ($salesUserIds->isNotEmpty()) $planQuery->whereIn('id_user', $salesUserIds);
+    $totalPlan = $planQuery->count();
+
+    return response()->json([
+        'total_visit'   => $totalVisit,
+        'total_plan'    => $totalPlan,
+        'filter_start'  => $startDate->format('Y-m-d'),
+        'filter_end'    => $endDate->format('Y-m-d'),
+    ]);
+}
+
+/**
+ * GET /sales-summary
+ * Ringkasan untuk satu sales + daftar kunjungan (paging).
+ * Query: ?sales_id=123 | ?sales_name=Nama  (&page=1&limit=15)
+ */
+    public function salesSummary(Request $request): JsonResponse
+    {
+        // Validasi ringan untuk paging & identitas sales
+        $request->validate([
+            'sales_name' => ['required', 'string'],
+            'page'       => ['nullable', 'integer', 'min:1'],
+            'limit'      => ['nullable', 'integer', 'min:1', 'max:100'],
+            // start_date, end_date, days divalidasi di parseDateRange()
+        ]);
+
+        [$startDate, $endDate] = $this->parseDateRange($request);
+
+        $salesName = $request->query('sales_name');
+        $salesUser = User::where('name', $salesName)->first();
+
+        if (!$salesUser) {
+            return response()->json(['message' => 'Sales tidak ditemukan.'], 404);
+        }
+
+        // Agregasi
+        $totalVisit = LogbookVisits::where('id_user', $salesUser->id)
+            ->whereBetween('visit_date', [$startDate, $endDate])
+            ->count();
+
+        $totalPlan = TrsLogbookVisits::where('id_user', $salesUser->id)
+            ->whereBetween('plan_visit', [$startDate, $endDate])
+            ->count();
+
+        // Paging
+        $page  = max((int) $request->query('page', 1), 1);
+        $limit = min(max((int) $request->query('limit', 15), 1), 100);
+
+        // Listing
+        $visitsQuery = LogbookVisits::with('user')
+            ->where('id_user', $salesUser->id)
+            ->whereBetween('visit_date', [$startDate, $endDate])
+            ->orderBy('visit_date', 'desc');
+
+        $totalRows = (clone $visitsQuery)->count();
+
+        $visits = $visitsQuery->forPage($page, $limit)
+            ->get([
+                'id','id_user','customer_name','new_customer_name','pic_cust','jabatan',
+                'visit_result','attachment','location','visit_date','remark','file','created_at'
+            ])
+            ->map(function ($v) {
+                return [
+                    'id'            => $v->id,
+                    'customer_name' => $v->customer_name ?? $v->new_customer_name,
+                    'pic_cust'      => $v->pic_cust,
+                    'jabatan'       => $v->jabatan,
+                    'visit_result'  => $v->visit_result,
+                    'attachment'    => $v->attachment,
+                    'location'      => $v->location,
+                    'remark'        => $v->remark,
+                    'visit_date'    => $v->visit_date ? Carbon::parse($v->visit_date)->format('Y-m-d H:i:s') : null,
+                    'created_at'    => optional($v->created_at)->format('Y-m-d H:i:s'),
+                ];
+            });
+
+        return response()->json([
+            'filter' => [
+                'start' => $startDate->format('Y-m-d'),
+                'end'   => $endDate->format('Y-m-d'),
+            ],
+            'sales' => [
+                'id'    => $salesUser->id,
+                'name'  => $salesUser->name,
+                'email' => $salesUser->email,
+                'telp'  => $salesUser->telp ?? null,
+            ],
+            'totals' => [
+                'visit' => $totalVisit,
+                'plan'  => $totalPlan,
+            ],
+            'visits' => [
+                'data'         => $visits,
+                'current_page' => $page,
+                'per_page'     => $limit,
+                'total'        => $totalRows,
+                'last_page'    => (int) ceil($totalRows / $limit),
+            ],
+        ]);
+    }
+
+    // Parse "lat,lng" atau "lat lng" -> [lat, lng] | null
+    private function parseLatLng(?string $raw): ?array
+    {
+        if (!$raw) return null;
+        $s = trim($raw);
+        $delim = str_contains($s, ',') ? ',' : (str_contains($s, ' ') ? ' ' : null);
+        if ($delim === null) return null;
+
+        $parts = array_values(array_filter(array_map('trim', explode($delim, $s)), fn($v) => $v !== ''));
+        if (count($parts) < 2) return null;
+
+        $lat = filter_var($parts[0], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION | FILTER_FLAG_ALLOW_SCIENTIFIC);
+        $lng = filter_var($parts[1], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION | FILTER_FLAG_ALLOW_SCIENTIFIC);
+
+        if (!is_numeric($lat) || !is_numeric($lng)) return null;
+        $lat = (float)$lat; $lng = (float)$lng;
+        if (abs($lat) > 90 || abs($lng) > 180) return null;
+
+        return [$lat, $lng];
+    }
+
+    // Reverse geocode pakai Nominatim + cache 1 hari
+    private function reverseGeocode(float $lat, float $lng): ?string
+    {
+        $key = sprintf('revgeo:%f,%f', $lat, $lng);
+        return Cache::remember($key, now()->addDay(), function () use ($lat, $lng) {
+            // Nominatim minta User-Agent yang jelas
+            $resp = Http::withHeaders([
+                    'User-Agent' => 'SalesReport/1.0 (contact: admin@yourdomain.com)'
+                ])
+                ->timeout(8)
+                ->get('https://nominatim.openstreetmap.org/reverse', [
+                    'lat' => $lat,
+                    'lon' => $lng,
+                    'format' => 'jsonv2',
+                    'accept-language' => 'id'
+                ]);
+
+            if (!$resp->ok()) return null;
+            $json = $resp->json();
+            return $json['display_name'] ?? null;
+        });
+    }
+
+
+    /**
+     * GET /reports/visits/download
+     * Unduh CSV kunjungan pada rentang tanggal (opsional filter sales[]).
+     */
+    public function downloadVisits(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        [$startDate, $endDate] = $this->parseDateRange($request);
+
+        // 1) Baca tiga varian input:
+        //    - sales_ids[]    : array ID user (preferensi utama)
+        //    - sales_names[]  : array nama user (akan di-resolve ke ID)
+        //    - sales[]        : array campuran ID/nama (kompatibel dengan kode lama)
+        $ids   = array_filter(array_map('intval', (array) $request->query('sales_ids', [])));
+        $names = array_filter(array_map('strval', (array) $request->query('sales_names', [])));
+
+        // Backward compatible & mixed input
+        $mixed = (array) $request->query('sales', []);
+        if (!empty($mixed)) {
+            $mixedIds   = array_filter($mixed, fn($v) => ctype_digit((string) $v));
+            $mixedNames = array_diff($mixed, $mixedIds);
+            $ids        = array_merge($ids, array_map('intval', $mixedIds));
+            $names      = array_merge($names, array_map('strval', $mixedNames));
+        }
+
+        // Resolve nama -> ID hanya bila perlu
+        $idsFromNames = !empty($names)
+            ? User::whereIn('name', $names)->pluck('id')->all()
+            : [];
+
+        // Gabungkan & dedup
+        $salesUserIds = array_values(array_unique(array_map('intval', array_merge($ids, $idsFromNames))));
+
+        $filename = sprintf('visits_%s_to_%s.xlsx', $startDate->format('Ymd'), $endDate->format('Ymd'));
+
+        $parseLatLng = \Closure::fromCallable([$this, 'parseLatLng']);
+        $reverseGeo  = \Closure::fromCallable([$this, 'reverseGeocode']);
+
+        $export = new class($startDate, $endDate, $salesUserIds, $parseLatLng, $reverseGeo)
+            implements FromQuery, WithHeadings, WithMapping, ShouldAutoSize
+        {
+            public function __construct(
+                private Carbon   $startDate,
+                private Carbon   $endDate,
+                private array    $salesUserIds,
+                private \Closure $parseLatLng,
+                private \Closure $reverseGeocode,
+            ) {}
+
+            public function query()
+            {
+                $q = LogbookVisits::query()
+                    ->leftJoin('users', 'users.id', '=', 'logbook_visits.id_user')
+                    ->select([
+                        'logbook_visits.visit_date',
+                        'users.name as sales_name',
+                        // Jika Anda juga ingin cetak Sales ID di Excel, tambahkan baris ini:
+                        // 'users.id as sales_id',
+                        'logbook_visits.pic_cust',
+                        'logbook_visits.jabatan',
+                        'logbook_visits.customer_name',
+                        'logbook_visits.remark',
+                        'logbook_visits.visit_result',
+                        'logbook_visits.location',
+                    ])
+                    ->whereBetween('logbook_visits.visit_date', [$this->startDate, $this->endDate])
+                    ->orderBy('logbook_visits.visit_date');
+
+                if (!empty($this->salesUserIds)) {
+                    $q->whereIn('logbook_visits.id_user', $this->salesUserIds);
+                }
+                return $q;
+            }
+
+            public function headings(): array
+            {
+                // Jika ingin menampilkan Sales ID, sisipkan 'Sales ID' setelah 'Sales'
+                return ['Tanggal','Sales','Pic','Jabatan','Customer','Remark','Hasil','Lokasi','Alamat'];
+                // return ['Tanggal','Sales ID','Sales','Pic','Jabatan','Customer','Remark','Hasil','Lokasi','Alamat'];
+            }
+
+            public function map($r): array
+            {
+                $alamat = '';
+                if (!empty($r->location)) {
+                    $coords = ($this->parseLatLng)($r->location);
+                    if (is_array($coords)) {
+                        [$lat, $lng] = $coords;
+                        $alamat = ($this->reverseGeocode)($lat, $lng) ?? '';
+                    }
+                }
+
+                // Jika Anda menambah 'Sales ID' di headings(), mapping-nya juga tambahkan $r->sales_id
+                return [
+                    Carbon::parse($r->visit_date)->format('Y-m-d'),
+                    // $r->sales_id ?? '',    // aktifkan bila headings ikut menampilkan Sales ID
+                    $r->sales_name ?? '',
+                    $r->pic_cust ?? '',
+                    $r->jabatan ?? '',
+                    $r->customer_name ?? '',
+                    $r->remark ?? '',
+                    $r->visit_result ?? '',
+                    $r->location ?? '',
+                    $alamat,
+                ];
+            }
+        };
+
+        return Excel::download($export, $filename);
+    }
+
+
+
+    
+
+    /**
+     * GET /logbook-visits
+     * Filter daftar kunjungan (dept head / admin bisa melihat semua).
+     * Query: ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&sales_id=&search=&page=&limit=
+     */
+    public function getFilteredVisits(Request $request): JsonResponse
+    {
+        [$startDate, $endDate] = $this->parseDateRange($request);
+
+        $page   = max((int) $request->query('page', 1), 1);
+        $limit  = min(max((int) $request->query('limit', 15), 1), 100);
+        $salesId = $request->query('sales_id');
+        $search  = $request->query('search');
+
+        $q = LogbookVisits::with('user')
+            ->whereBetween('visit_date', [$startDate, $endDate])
+            ->orderBy('visit_date','desc');
+
+        if ($salesId) $q->where('id_user', $salesId);
+
+        if ($search) {
+            $q->where(function ($w) use ($search) {
+                $w->where('customer_name','like',"%$search%")
+                ->orWhere('new_customer_name','like',"%$search%")
+                ->orWhere('visit_result','like',"%$search%");
+            });
+        }
+
+        $total = (clone $q)->count();
+        $rows  = $q->forPage($page, $limit)->get([
+            'id','id_user','customer_name','new_customer_name','pic_cust','jabatan',
+            'visit_result','attachment','location','visit_date','created_at'
+        ]);
+
+        return response()->json([
+            'data'         => $rows,
+            'current_page' => $page,
+            'per_page'     => $limit,
+            'total'        => $total,
+            'last_page'    => (int) ceil($total / $limit),
+        ]);
+    }
+
+    /**
+     * GET /depthead/data
+     * Data ringkas untuk Dept Head (mingguan by default).
+     * (Total visit, total plan, total unique customer, follow up).
+     */
+    public function getDeptHeadData(Request $request): JsonResponse
+    {
+        [$startDate, $endDate] = $this->parseDateRange($request);
+
+        $totalVisit = LogbookVisits::whereBetween('visit_date', [$startDate, $endDate])->count();
+
+        $totalPlan  = TrsLogbookVisits::whereBetween('plan_visit', [$startDate, $endDate])->count();
+
+        $totalCustomer = LogbookVisits::whereBetween('visit_date', [$startDate, $endDate])
+            ->whereNotNull('customer_name')
+            ->distinct('customer_name')
+            ->count('customer_name');
+
+        $followUp = LogbookVisits::whereBetween('visit_date', [$startDate, $endDate])
+            ->where('remark', 'Follow Up')
+            ->count();
+
+        return response()->json([
+            'total_visit'   => $totalVisit,
+            'total_plan'    => $totalPlan,
+            'total_customer'=> $totalCustomer,
+            'follow_up'     => $followUp,
+            'filter_start'  => $startDate->format('Y-m-d'),
+            'filter_end'    => $endDate->format('Y-m-d'),
+        ]);
+    }
+
+    /**
+     * GET /{visit}/files/download
+     * Zip & download semua file terkait sebuah visit.
+     * Catatan: saat ini field file yang dipakai: `attachment` (nama file).
+     */
+    public function downloadAll(LogbookVisits $visit, Request $request)
+    {
+        $baseDir = public_path('assets/sales_report/file');
+
+        // --- Kumpulkan nama file yang diizinkan dari kolom `file` (array JSON / JSON string / CSV)
+        $names = [];
+        $raw = $visit->file;
+
+        if (is_array($raw)) {
+            foreach ($raw as $v) {
+                $t = trim((string) $v);
+                if ($t !== '') $names[] = $t;
+            }
+        } else {
+            $str = trim((string) $raw);
+            if ($str !== '') {
+                $decoded = json_decode($str, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    foreach ($decoded as $v) {
+                        $t = trim((string) $v);
+                        if ($t !== '') $names[] = $t;
+                    }
+                } else {
+                    foreach (explode(',', $str) as $v) {
+                        $t = trim($v);
+                        if ($t !== '') $names[] = $t;
+                    }
+                }
+            }
+        }
+
+        // --- Validasi file yang benar-benar ada di disk (hindari path traversal)
+        $files = [];
+        foreach ($names as $name) {
+            $safe = basename($name);
+            $path = $baseDir . DIRECTORY_SEPARATOR . $safe;
+            if (is_file($path)) {
+                $files[$safe] = $path; // [nama_dalam_zip => path_penuh]
+            }
+        }
+
+        if (empty($files)) {
+            return response()->json(['message' => 'Tidak ada file untuk diunduh.'], 404);
+        }
+
+        // --- Jika hanya 1 file: stream langsung file tersebut (bukan ZIP)
+        if (count($files) === 1) {
+            $safeName = array_key_first($files);
+            $path     = $files[$safeName];
+
+            $mime = @mime_content_type($path) ?: 'application/octet-stream';
+            $size = @filesize($path) ?: 0;
+
+            $headers = [
+                'Content-Type'              => $mime,
+                'Content-Length'            => (string) $size,
+                'Content-Disposition'       => 'attachment; filename="' . $safeName . '"',
+                'Content-Transfer-Encoding' => 'binary',
+                'Accept-Ranges'             => 'bytes',
+                'Cache-Control'             => 'private, max-age=0, must-revalidate',
+                'Pragma'                    => 'public',
+            ];
+
+            if (function_exists('ob_get_level')) {
+                while (ob_get_level() > 0) { @ob_end_clean(); }
+            }
+
+            return new StreamedResponse(function () use ($path) {
+                $fp = fopen($path, 'rb');
+                if ($fp) {
+                    fpassthru($fp);
+                    fclose($fp);
+                }
+            }, 200, $headers);
+        }
+
+        // --- Jika >1 file: buat ZIP sementara lalu kirim
+        $zipName = sprintf('visit_%d_files_%s.zip', $visit->id, now()->format('Ymd_His'));
+        $tmpZip  = tempnam(sys_get_temp_dir(), 'zip');
+
+        $zip = new \ZipArchive();
+        if ($zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            @unlink($tmpZip);
+            return response()->json(['message' => 'Gagal membuat arsip ZIP.'], 500);
+        }
+        foreach ($files as $safe => $path) {
+            $zip->addFile($path, $safe);
+        }
+        $zip->close();
+
+        $headers = [
+            'Content-Type'              => 'application/zip',
+            'Content-Length'            => (string) @filesize($tmpZip),
+            'Content-Disposition'       => 'attachment; filename="' . $zipName . '"',
+            'Content-Transfer-Encoding' => 'binary',
+            'Accept-Ranges'             => 'bytes',
+            'Cache-Control'             => 'private, max-age=0, must-revalidate',
+            'Pragma'                    => 'public',
+        ];
+
+        return response()->download($tmpZip, $zipName, $headers)->deleteFileAfterSend(true);
+    }
+
+
+    // GET /{visit}/files/{fileName}
+    public function downloadSingle(LogbookVisits $visit, string $fileName)
+{
+    $safeName = basename($fileName);
+    $baseDir  = public_path('assets/sales_report/file');
+    $path     = $baseDir . DIRECTORY_SEPARATOR . $safeName;
+
+    // Ambil daftar file yang diizinkan dari kolom `file` (JSON array atau CSV)
+    $allowed = [];
+    if (!empty($visit->file)) {
+        $decoded = json_decode($visit->file, true);
+        if (is_array($decoded)) {
+            $allowed = array_map('basename', $decoded);
+        } else {
+            $parts = array_map('trim', explode(',', (string) $visit->file));
+            $allowed = array_map('basename', array_filter($parts));
+        }
+    }
+
+    if (!in_array($safeName, $allowed, true) || !is_file($path)) {
+        return response()->json(['message' => 'File tidak ditemukan.'], 404);
+    }
+
+    // Header yang ramah DownloadManager (tanpa FileFacade)
+    $mime = @mime_content_type($path) ?: 'application/octet-stream';
+    $size = @filesize($path) ?: 0;
+
+    $headers = [
+        'Content-Type'              => $mime,
+        'Content-Length'            => (string) $size,
+        'Content-Disposition'       => 'attachment; filename="' . $safeName . '"',
+        'Content-Transfer-Encoding' => 'binary',
+        'Accept-Ranges'             => 'bytes',
+        'Cache-Control'             => 'private, max-age=0, must-revalidate',
+        'Pragma'                    => 'public',
+    ];
+
+    // Bersihkan output buffer agar stream bersih
+    if (function_exists('ob_get_level')) {
+        while (ob_get_level() > 0) { @ob_end_clean(); }
+    }
+
+    return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($path) {
+        $fp = fopen($path, 'rb');
+        if ($fp) {
+            fpassthru($fp);
+            fclose($fp);
+        }
+    }, 200, $headers);
+}
 
 }

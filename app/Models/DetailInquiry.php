@@ -31,6 +31,7 @@ class DetailInquiry extends Model
         'ship',
         'note',
         'file',
+        'status',
     ];
 
     public function inquirySales()
