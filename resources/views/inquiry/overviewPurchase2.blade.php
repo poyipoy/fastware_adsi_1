@@ -1,4 +1,4 @@
-@extends('layout')
+﻿@extends('layout')
 
 @section('content')
     <main id="main" class="main">
@@ -50,7 +50,7 @@
             .table-1 {
                 margin: 5px auto;
                 /* Pusatkan tabel */
-                padding: 1rem;
+                padding: 0.6rem;
                 /* Padding di sekeliling tabel */
                 background-color: #f7f7f7;
                 /* Warna latar belakang */
@@ -69,79 +69,13 @@
                 /* Bayangan untuk efek kedalaman */
                 text-align: center;
                 font-family: 'Cambria', serif;
+                padding: 0.45rem 0.5rem;
             }
 
             .table-1 td {
                 font-size: 8pt;
                 font-family: 'Cambria', serif;
-            }
-
-            .datatable-table>tbody>tr>td {
-                text-align: center;
-            }
-
-
-            .dataTable-pagination {
-                padding: 0.25rem;
-                /* Padding lebih kecil untuk pagination */
-                font-size: 0.8rem;
-                /* Ukuran font lebih kecil */
-            }
-
-            .dataTable-pagination .dataTable-info,
-            .dataTable-pagination .dataTable-pagination-button {
-                margin: 0;
-                /* Hapus margin untuk elemen info dan tombol pagination */
-            }
-
-            .datatable-dropdown {
-                font-family: 'Cambria', serif;
-                font-size: 0.8rem;
-            }
-
-            .datatable-selector {
-                padding: 0.2rem;
-                /* Padding lebih kecil pada dropdown pagination */
-                font-size: 0.8rem;
-                /* Ukuran font lebih kecil */
-                border-radius: 4px;
-                /* Sudut membulat */
-                border: 1px solid #ddd;
-                /* Border untuk dropdown */
-                font-family: 'Cambria', serif;
-            }
-
-            input[type="search"] {
-                width: 100%;
-                /* Lebar input pencarian */
-                padding: 0.5rem;
-                /* Padding untuk input */
-                border: 1px solid #ddd;
-                /* Border untuk input */
-                border-radius: 10px;
-                /* Sudut membulat untuk input */
-                margin-bottom: 0.5rem;
-                /* Jarak antara input dan tabel */
-                transition: border-color 0.3s;
-                /* Transisi saat berinteraksi */
-                font-family: 'Cambria', serif;
-            }
-
-            input[type="search"] {
-                padding: 0.3rem;
-                /* Padding lebih kecil untuk input pencarian */
-                font-size: 0.8rem;
-                /* Ukuran font lebih kecil */
-                border-radius: 10px;
-                /* Sudut membulat */
-                border: 1px solid #ddd;
-                /* Border untuk input */
-            }
-
-            .dataTable-search {
-                margin-bottom: 0.5rem;
-                /* Jarak antara input pencarian dan tabel */
-                font-family: 'Cambria', serif;
+                padding: 0.4rem 0.45rem;
             }
 
             .modal {
@@ -341,9 +275,51 @@
             .btn-stts {
                 text-align: center;
             }
-        </style>
 
-        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+            .detail-container {
+                background-color: #fdfdfd;
+                border-left: 3px solid #0d6efd;
+                padding: 0.75rem;
+                border-radius: 4px;
+            }
+
+            .detail-container .mb-3 {
+                margin-bottom: 0.6rem !important;
+            }
+
+            .detail-stack-table th,
+            .detail-stack-table td {
+                font-size: 8pt;
+                font-family: 'Cambria', serif;
+                vertical-align: middle;
+                padding: 0.4rem 0.45rem;
+            }
+
+            .detail-stack-table td.note-cell {
+                white-space: normal;
+                min-width: 160px;
+            }
+
+            .detail-row {
+                display: none;
+            }
+
+            .detail-row.show {
+                display: table-row;
+            }
+
+            .toggle-details i {
+                transition: transform 0.2s ease;
+            }
+
+            .toggle-details {
+                cursor: pointer;
+            }
+
+            .toggle-details[aria-expanded="true"] i {
+                transform: rotate(90deg);
+            }
+        </style>
 
         <section class="section">
             <div class="card">
@@ -403,6 +379,7 @@
                                     <table class="table table-1" id="overviewTable">
                                         <thead>
                                             <tr>
+                                                <th class="text-center" style="width: 40px;"></th>
                                                 <th>No</th>
                                                 <th class="text-center">PO Number</th>
                                                 <th class="text-center">Create By</th>
@@ -514,16 +491,50 @@
             </div>
         </section>
 
+                    <!-- Modal for Detail Status Update -->
+                    <div class="modal fade" id="detailStatusModal" tabindex="-1" aria-labelledby="detailStatusModalLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title testfont" id="detailStatusModalLabel">Update Detail Status</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="detailStatusForm">
+                                        @csrf
+                                        <input type="hidden" name="inquiry_id" id="detailStatusInquiryId">
+                                        <div id="detailStatusSelected"></div>
+                                        <div class="mb-3">
+                                            <label for="detailStatusSelect" class="form-label">Status</label>
+                                            <select class="form-select" id="detailStatusSelect" name="status" required>
+                                                <option value="" disabled selected>Select status</option>
+                                                <option value="8">Approve Inventory</option>
+                                                <option value="9">Confirm</option>
+                                                <option value="6">Finish</option>
+                                            </select>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary btn-sm"
+                                        data-bs-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                        id="detailStatusSubmit">Update</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 
-        <script>
+                <script>
             $(document).ready(function() {
-                // Hover function for dropdowns
-                $('.nav-item.dropdown').hover(function() {
+                $(".nav-item.dropdown").hover(function() {
                     $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
                 }, function() {
                     $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
@@ -533,8 +544,30 @@
             jQuery(function ($) {
                 const initialSelected = (@json($preselected ?? [])) || [];
                 const selectedInquiries = new Set(initialSelected.map(Number));
+                const selectedDetails = new Map();
                 const hiddenContainer = $('#selectedHiddenInputs');
                 const selectAll = document.getElementById('select-all');
+                const detailStatusModalEl = document.getElementById('detailStatusModal');
+                const detailStatusModal = detailStatusModalEl ? new bootstrap.Modal(detailStatusModalEl) : null;
+                const detailStatusForm = $('#detailStatusForm');
+                const detailStatusSelected = $('#detailStatusSelected');
+                const detailStatusSelect = $('#detailStatusSelect');
+                const detailStatusInquiryId = $('#detailStatusInquiryId');
+                const detailStatusSubmit = $('#detailStatusSubmit');
+                const detailStatusSubmitText = detailStatusSubmit.text();
+
+                const ensureArray = (value) => Array.isArray(value) ? value : [];
+                const escapeHtml = (value) => {
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+                    return String(value)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                };
 
                 const syncSelectedInputs = () => {
                     hiddenContainer.empty();
@@ -555,24 +588,164 @@
                         selectAll.indeterminate = false;
                         return;
                     }
-
-                    const allChecked = checkboxes.toArray().every((checkbox) => checkbox.checked);
-                    const anyChecked = checkboxes.toArray().some((checkbox) => checkbox.checked);
-
-                    selectAll.checked = allChecked;
-                    selectAll.indeterminate = !allChecked && anyChecked;
+                    let checkedCount = 0;
+                    checkboxes.each(function () {
+                        if (this.checked) {
+                            checkedCount += 1;
+                        }
+                    });
+                    selectAll.checked = checkedCount === checkboxes.length;
+                    selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
                 };
+
+                const formatDetailRows = (rowData) => {
+                    const details = ensureArray(rowData.detail_rows);
+                    if (!details.length) {
+                        return `
+                            <div class="detail-container">
+                                <em class="text-muted">Belum ada detail untuk inquiry ini.</em>
+                            </div>
+                        `;
+                    }
+
+                    const rowsHtml = details.map((detail) => {
+                        const statusClass = detail.status_class || 'badge bg-secondary';
+                        const statusLabel = detail.status_label || 'Pending';
+                        return `
+                            <tr data-detail-id="${detail.id}">
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input detail-checkbox" value="${detail.id}">
+                                </td>
+                                <td>${escapeHtml(detail.material ?? '-')}</td>
+                                <td>${escapeHtml(detail.jenis ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.thickness ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.weight ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.inner_diameter ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.outer_diameter ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.length ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.qty ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.m1 ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.m2 ?? '-')}</td>
+                                <td class="text-center">${escapeHtml(detail.m3 ?? '-')}</td>
+                                <td>${escapeHtml(detail.so ?? '-')}</td>
+                                <td class="note-cell">${escapeHtml(detail.note ?? '-')}</td>
+                                <td>${escapeHtml(detail.ship ?? '-')}</td>
+                                <td class="text-center">
+                                    <span class="detail-status ${statusClass}">${escapeHtml(statusLabel)}</span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    return `
+                        <div class="detail-container">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Detail Material</h6>
+                                <small class="text-muted">Pilih item untuk update status melalui tombol aksi di baris master.</small>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-bordered detail-stack-table mb-0">
+                                    <thead>
+                                        <tr class="table-light">
+                                            <th class="text-center" style="width: 55px;">Pilih</th>
+                                            <th>Material</th>
+                                            <th>Jenis</th>
+                                            <th class="text-center" style="width: 70px;">Thickness</th>
+                                            <th class="text-center" style="width: 70px;">Weight</th>
+                                            <th class="text-center" style="width: 80px;">Inner Ø</th>
+                                            <th class="text-center" style="width: 80px;">Outer Ø</th>
+                                            <th class="text-center" style="width: 70px;">Length</th>
+                                            <th class="text-center" style="width: 60px;">Qty</th>
+                                            <th class="text-center" style="width: 60px;">M1</th>
+                                            <th class="text-center" style="width: 60px;">M2</th>
+                                            <th class="text-center" style="width: 60px;">M3</th>
+                                            <th class="text-center" style="width: 90px;">SO</th>
+                                            <th>Note</th>
+                                            <th>Ship-to</th>
+                                            <th class="text-center" style="width: 140px;">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${rowsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                };
+
+                const bindDetailEvents = (childRow, rowData) => {
+                    const inquiryId = parseInt(rowData.id, 10);
+                    const currentSelection = selectedDetails.get(inquiryId) || new Set();
+
+                    childRow.find('.detail-checkbox').each(function () {
+                        const detailId = parseInt(this.value, 10);
+                        this.checked = currentSelection.has(detailId);
+                    });
+
+                    childRow.find('.detail-checkbox').on('change', function () {
+                        const detailId = parseInt(this.value, 10);
+                        const selection = selectedDetails.get(inquiryId) || new Set();
+
+                        if (this.checked) {
+                            selection.add(detailId);
+                            selectedDetails.set(inquiryId, selection);
+                        } else {
+                            selection.delete(detailId);
+                            if (selection.size === 0) {
+                                selectedDetails.delete(inquiryId);
+                            } else {
+                                selectedDetails.set(inquiryId, selection);
+                            }
+                        }
+                    });
+                };
+
+                const findRowByInquiryId = (inquiryId) => {
+                    let targetRow = null;
+                    overviewTable.rows().every(function () {
+                        const data = this.data();
+                        if (data && parseInt(data.id, 10) === inquiryId) {
+                            targetRow = this;
+                        }
+                    });
+                    return targetRow;
+                };
+
+                if (selectAll) {
+                    selectAll.addEventListener('change', function () {
+                        const checkboxes = $('#overviewTable').find('.inquiry-checkbox');
+                        checkboxes.each(function () {
+                            const id = parseInt(this.value, 10);
+                            this.checked = selectAll.checked;
+                            if (selectAll.checked) {
+                                selectedInquiries.add(id);
+                            } else {
+                                selectedInquiries.delete(id);
+                            }
+                        });
+                        syncSelectedInputs();
+                        updateSelectAllState();
+                    });
+                }
 
                 const overviewTable = $('#overviewTable').DataTable({
                     processing: true,
                     serverSide: true,
                     ajax: {
-                        url: '{{ route('overviewPurchase') }}',
+                        url: '{{ route('overviewPurchase2') }}',
                         data: function (params) {
                             params.format = 'json';
                         }
                     },
                     columns: [
+                        {
+                            data: null,
+                            orderable: false,
+                            searchable: false,
+                            className: 'text-center align-middle',
+                            defaultContent: '<button type="button" class="btn btn-outline-secondary btn-sm toggle-details" aria-label="Toggle detail" aria-expanded="false"><i class="bi bi-chevron-down"></i></button>'
+                        },
                         {
                             data: null,
                             orderable: false,
@@ -600,48 +773,15 @@
                         { data: 'ship_to', name: 'ship_to', orderable: false, defaultContent: '--- No Shipping Options ---' },
                         { data: 'last_update', name: 'last_update', defaultContent: 'No updates yet' },
                         { data: 'est_date', name: 'est_date', defaultContent: '-' },
-                        {
-                            data: null,
-                            orderable: false,
-                            searchable: false,
-                            defaultContent: '',
-                            render: function (data, type, row) {
-                                if (type !== 'display') {
-                                    return row && row.actions ? row.actions : '';
-                                }
-
-                                if (row && typeof row.actions === 'string' && row.actions.includes('bi bi-pencil')) {
-                                    return row.actions;
-                                }
-
-                                const id = row && row.id ? Number(row.id) : null;
-                                if (!id) {
-                                    return row && row.actions ? row.actions : '';
-                                }
-
-                                const supplier = row && row.supplier ? JSON.stringify(String(row.supplier)) : '""';
-                                const progress = row && row.last_update ? JSON.stringify(String(row.last_update)) : '""';
-                                const refnopo = row && row.refnopo ? JSON.stringify(String(row.refnopo)) : '""';
-                                const estSource = row && row.est_date ? String(row.est_date) : '';
-                                let estNormalized = estSource;
-                                if (/^\d{2}-\d{2}-\d{4}$/.test(estSource)) {
-                                    const parts = estSource.split('-');
-                                    estNormalized = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : estSource;
-                                }
-                                const estDate = JSON.stringify(estNormalized);
-
-                                const editBtn = '<a href="#" class="btn btn-primary btn-sm" onclick=\'showEditDataModal('
-                                    + id + ', ' + supplier + ', ' + progress + ', ' + refnopo + ', ' + estDate
-                                    + '); return false;\' title="Edit Inquiry"><i class="bi bi-pencil"></i></a>';
-
-                                const baseActions = row && row.actions ? row.actions + ' ' : '';
-                                return baseActions + editBtn;
-                            }
-                        },
+                        { data: 'actions', orderable: false, searchable: false, defaultContent: '' },
                         { data: 'checkbox', orderable: false, searchable: false, defaultContent: '' }
                     ],
-                    order: [[3, 'desc']],
+                    order: [[4, 'desc']],
                     lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]]
+                });
+
+                overviewTable.on('preXhr.dt', function () {
+                    selectedDetails.clear();
                 });
 
                 overviewTable.on('draw', function () {
@@ -652,7 +792,7 @@
                     updateSelectAllState();
                 });
 
-                $(document).on('change', '.inquiry-checkbox', function () {
+                $('#overviewTable tbody').on('change', '.inquiry-checkbox', function () {
                     const id = parseInt(this.value, 10);
                     if (this.checked) {
                         selectedInquiries.add(id);
@@ -663,31 +803,157 @@
                     updateSelectAllState();
                 });
 
-                if (selectAll) {
-                    selectAll.addEventListener('change', function () {
-                        const checkboxes = $('#overviewTable').find('.inquiry-checkbox');
-                        checkboxes.each(function () {
-                            const id = parseInt(this.value, 10);
-                            this.checked = selectAll.checked;
-                            if (selectAll.checked) {
-                                selectedInquiries.add(id);
-                            } else {
-                                selectedInquiries.delete(id);
-                            }
-                        });
-                        syncSelectedInputs();
-                        updateSelectAllState();
-                    });
-                }
+                $('#overviewTable tbody').on('click', '.toggle-details', function () {
+                    const button = $(this);
+                    const tr = button.closest('tr');
+                    const row = overviewTable.row(tr);
+
+                    if (row.child.isShown()) {
+                        row.child.hide();
+                        tr.removeClass('shown');
+                        button.attr('aria-expanded', 'false');
+                        button.find('i').removeClass('bi-chevron-up').addClass('bi-chevron-down');
+                    } else {
+                        row.child(formatDetailRows(row.data())).show();
+                        tr.addClass('shown');
+                        button.attr('aria-expanded', 'true');
+                        button.find('i').removeClass('bi-chevron-down').addClass('bi-chevron-up');
+                        const childRow = tr.next('tr');
+                        childRow.addClass('detail-child-row');
+                        childRow.find('td').addClass('p-0');
+                        bindDetailEvents(childRow, row.data());
+                    }
+                });
 
                 syncSelectedInputs();
+                updateSelectAllState();
+
+                const resetDetailModal = () => {
+                    if (!detailStatusModalEl) {
+                        return;
+                    }
+                    if (detailStatusForm.length) {
+                        const formElement = detailStatusForm.get(0);
+                        if (formElement) {
+                            formElement.reset();
+                        }
+                    }
+                    detailStatusSelected.empty();
+                };
+
+                if (detailStatusModalEl) {
+                    detailStatusModalEl.addEventListener('hidden.bs.modal', resetDetailModal);
+                }
+
+                window.openDetailStatusModal = function (inquiryId) {
+                    if (!detailStatusModal) {
+                        return;
+                    }
+                    const selection = selectedDetails.get(inquiryId);
+                    if (!selection || selection.size === 0) {
+                        Swal.fire('Informasi', 'Silakan pilih detail yang ingin diperbarui.', 'info');
+                        return;
+                    }
+
+                    detailStatusSelected.empty();
+                    Array.from(selection).forEach(function (detailId) {
+                        detailStatusSelected.append(
+                            $('<input>', { type: 'hidden', name: 'detail_ids[]', value: detailId })
+                        );
+                    });
+
+                    detailStatusInquiryId.val(inquiryId);
+                    if (detailStatusSelect.length) {
+                        detailStatusSelect.get(0).selectedIndex = 0;
+                    }
+                    detailStatusModal.show();
+                };
+
+                if (detailStatusSubmit.length) {
+                    detailStatusSubmit.on('click', function () {
+                        if (!detailStatusModal) {
+                            return;
+                        }
+
+                        const statusValue = detailStatusSelect.val();
+                        if (!statusValue) {
+                            Swal.fire('Informasi', 'Silakan pilih status yang ingin diterapkan.', 'info');
+                            return;
+                        }
+
+                        const inquiryId = parseInt(detailStatusInquiryId.val(), 10);
+                        if (!inquiryId) {
+                            Swal.fire('Error', 'Inquiry tidak valid.', 'error');
+                            return;
+                        }
+
+                        const payload = detailStatusForm.serialize();
+                        detailStatusSubmit.prop('disabled', true).text('Memproses...');
+
+                        $.ajax({
+                            url: '{{ route('inquiry.detail-status') }}',
+                            method: 'POST',
+                            data: payload,
+                            success: function (response) {
+                                detailStatusSubmit.prop('disabled', false).text(detailStatusSubmitText);
+                                detailStatusModal.hide();
+                                resetDetailModal();
+                                selectedDetails.delete(inquiryId);
+
+                                const updates = Array.isArray(response.details) ? response.details : [];
+                                if (updates.length) {
+                                    const rowApi = findRowByInquiryId(inquiryId);
+                                    if (rowApi) {
+                                        const rowData = rowApi.data();
+                                        const updateMap = new Map(updates.map((detail) => [parseInt(detail.id, 10), detail]));
+                                        rowData.detail_rows = ensureArray(rowData.detail_rows).map((detail) => {
+                                            const update = updateMap.get(parseInt(detail.id, 10));
+                                            if (update) {
+                                                detail.status = update.status;
+                                                detail.status_label = update.status_label;
+                                                detail.status_class = update.status_class;
+                                            }
+                                            return detail;
+                                        });
+                                        rowApi.data(rowData);
+                                        if (rowApi.child && rowApi.child.isShown()) {
+                                            rowApi.child(formatDetailRows(rowData)).show();
+                                            const tr = $(rowApi.node());
+                                            const childRow = tr.next('tr');
+                                            childRow.addClass('detail-child-row');
+                                            childRow.find('td').addClass('p-0');
+                                            bindDetailEvents(childRow, rowData);
+                                        }
+                                    }
+                                }
+
+                                const message = response.message || 'Status detail berhasil diperbarui.';
+                                Swal.fire('Success!', message, 'success');
+                                overviewTable.ajax.reload(null, false);
+                            },
+                            error: function (xhr) {
+                                detailStatusSubmit.prop('disabled', false).text(detailStatusSubmitText);
+                                let message = 'Terjadi kesalahan saat memperbarui status.';
+                                if (xhr.responseJSON) {
+                                    if (xhr.responseJSON.message) {
+                                        message = xhr.responseJSON.message;
+                                    } else if (xhr.responseJSON.errors) {
+                                        const firstError = Object.values(xhr.responseJSON.errors)[0];
+                                        if (Array.isArray(firstError) && firstError.length) {
+                                            message = firstError[0];
+                                        }
+                                    }
+                                }
+                                Swal.fire('Error', message, 'error');
+                            }
+                        });
+                    });
+                }
             });
         </script>
 
-
         <script>
             function confirmPurchasing(id) {
-                // Tampilkan pertanyaan konfirmasi dengan SweetAlert
                 Swal.fire({
                     title: 'Confirm',
                     text: "Are you sure?",
@@ -703,17 +969,16 @@
                             url: '{{ route('confirmPurchase', '') }}/' + id,
                             method: 'POST',
                             data: {
-                                '_token': '{{ csrf_token() }}' // CSRF token
+                                '_token': '{{ csrf_token() }}'
                             },
                             success: function(response) {
                                 Swal.fire('Sukses!', response.success, 'success').then(() => {
-                                    location.reload(); // Reload halaman
+                                    location.reload();
                                 });
                             },
                             error: function(xhr) {
                                 console.error(xhr.responseText);
-                                Swal.fire('Error!', xhr.responseJSON.error,
-                                    'error'); // Tampilkan pesan error
+                                Swal.fire('Error!', xhr.responseJSON.error, 'error');
                             }
                         });
                     } else {
@@ -723,16 +988,14 @@
             }
 
             function showEditDataModal(id, supplier, progress, refnopo, estDate) {
-                // Set inquiry_id
                 document.getElementById('inquiryId').value = id;
-                document.getElementById('supplier').value = supplier; // Set supplier
-                document.getElementById('progress').value = progress; // Set last update
-                document.getElementById('refnopo').value = refnopo; // Set nopo
-                document.getElementById('estDate').value = estDate; // Set est. date
+                document.getElementById('supplier').value = supplier;
+                document.getElementById('progress').value = progress;
+                document.getElementById('refnopo').value = refnopo;
+                document.getElementById('estDate').value = estDate;
 
-                // Tampilkan modal
-                var myModal = new bootstrap.Modal(document.getElementById('editDataModal'), {});
-                myModal.show();
+                const modal = new bootstrap.Modal(document.getElementById('editDataModal'), {});
+                modal.show();
             }
 
             function submitEditDataForm() {
@@ -740,14 +1003,14 @@
                 const formData = new FormData(form);
 
                 $.ajax({
-                    url: '{{ route('updateInquiry') }}', // Route untuk update inquiry
+                    url: '{{ route('updateInquiry') }}',
                     method: 'POST',
                     data: formData,
                     processData: false,
                     contentType: false,
                     success: function(response) {
                         Swal.fire('Success!', response.message, 'success').then(() => {
-                            location.reload(); // Reload halaman
+                            location.reload();
                         });
                     },
                     error: function(xhr) {
@@ -758,7 +1021,6 @@
             }
 
             function finishInquiry(id) {
-                // Menampilkan konfirmasi sebelum melanjutkan
                 Swal.fire({
                     title: 'Are you sure?',
                     text: "This will mark the inquiry as finished.",
@@ -769,22 +1031,20 @@
                     confirmButtonText: 'Yes, finish it!'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Jika pengguna mengkonfirmasi, lanjutkan dengan AJAX
                         $.ajax({
-                            url: '{{ route('finishInquiry', '') }}/' + id, // Route untuk finishing inquiry
+                            url: '{{ route('finishInquiry', '') }}/' + id,
                             method: 'POST',
                             data: {
-                                '_token': '{{ csrf_token() }}' // CSRF token
+                                '_token': '{{ csrf_token() }}'
                             },
                             success: function(response) {
                                 Swal.fire('Success!', 'Inquiry marked as finished.', 'success').then(() => {
-                                    location.reload(); // Reload halaman untuk melihat update
+                                    location.reload();
                                 });
                             },
                             error: function(xhr) {
                                 console.error(xhr.responseText);
-                                Swal.fire('Error!', 'An error occurred while finishing the inquiry.',
-                                    'error');
+                                Swal.fire('Error!', 'An error occurred while finishing the inquiry.', 'error');
                             }
                         });
                     }
@@ -792,10 +1052,11 @@
             }
 
             function showInquiry(id) {
-                // Tampilkan detail inquiry dan tambahkan parameter query
                 window.location.href = '{{ route('showFormSS', '') }}/' + id + '?source=approval';
             }
         </script>
 
     </main>
 @endsection
+
+

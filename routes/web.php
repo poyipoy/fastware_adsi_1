@@ -300,6 +300,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/inquiry/overview-purchase-2', [InquirySalesController::class, 'overviewPurchase2'])->name('overviewPurchase2');
     Route::get('/inquiry/overview-purchase/data', [InquirySalesController::class, 'overviewPurchaseData'])->name('overviewPurchase.data');
     Route::post('/inquiry/overview-purchase/export', [InquirySalesController::class, 'exportOverviewPurchase'])->name('overviewPurchase.export');
+    Route::get('/inquiry/overview-purchase/export/date-range', [InquirySalesController::class, 'exportOverviewPurchaseByDate'])->name('overviewPurchase.exportByDate');
     Route::post('/inquiry/confirm-purchase/{id}', [InquirySalesController::class, 'confirmPurchase'])->name('confirmPurchase');
     Route::post('/inquiry/detail-status', [InquirySalesController::class, 'updateDetailStatuses'])->name('inquiry.detail-status');
     Route::post('/inquiry/update', [InquirySalesController::class, 'updateInquiry'])->name('updateInquiry');
@@ -594,6 +595,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/custom-request/form-Sales-cancel/{id}', [CustomRequestController::class, 'cancel'])->name('CustomRequest.formSalescancel');
     Route::post('/custom-request/update/{id}', [CustomRequestController::class, 'inputCstmReq'])->name('CustomRequest.updateCstmReq');
     Route::post('/custom-request/update/harga-akhir/{id}', [CustomRequestController::class, 'inputhrgakhr'])->name('CustomRequest.hargaakhir');
+    Route::post('/custom-request/reject-input/{id}', [CustomRequestController::class, 'rejectInputSales'])->name('CustomRequest.rejectInput');
     Route::get('/custom-request/approve-marketing-cstmreq', [CustomRequestController::class, 'showApprovalMarketing'])->name('showApproveMarketing');
     Route::post('/custom-request/marketing-approved/{id}', [CustomRequestController::class, 'approveMarketing'])->name('approveMarketing');
     Route::post('/custom-request/marketing-approved-2/{id}', [CustomRequestController::class, 'approveMarketing2'])->name('approveMarketing2');
@@ -618,6 +620,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     
     Route::get('/dashboard-fpb', [DashboardController::class, 'dashboardFPB'])->name('dashboardFPB');
     Route::get('/dashboard-tcpd', [DashboardController::class, 'dashboardTCPD'])->name('dashboardTCPD');
+    Route::get('/dashboard-tcpd/data', [DashboardController::class, 'getTcpdCompetencyData'])->name('dashboardTCPD.data');
+    Route::get('/dashboard-tcpd/company-data', [DashboardController::class, 'getTcpdCompanyData'])->name('dashboardTCPD.companyData');
     
     // Grup Rute API untuk dipanggil oleh JavaScript
     Route::prefix('api/dashboard')->name('api.dashboard.')->group(function () {

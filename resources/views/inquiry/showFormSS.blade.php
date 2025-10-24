@@ -188,6 +188,14 @@
                     </div>
 
                     <div class="table-responsive" >
+                        @php
+                            $statusLabels = [
+                                1 => 'Approve Inventory',
+                                2 => 'Confirm',
+                                3 => 'Finished',
+                            ];
+                        @endphp
+
                         <table>
                             <thead>
                                 <tr>
@@ -199,7 +207,8 @@
                                     <th style="width: 40px; text-align:center;">Inner Dia</th>
                                     <th style="width: 40px; text-align:center;">Outer Dia</th>
                                     <th style="width: 50px;">Length</th>
-                                    <th style="width: 50px; text-align:center;">Qty
+                                    <th style="width: 50px; text-align:center;">
+                                        Qty
                                         <p style="font-size: 9pt; text-align:center;">(in Pcs)</p>
                                     </th>
                                     <th style="width: 50px; text-align:center;">Forecast Month 1</th>
@@ -207,6 +216,7 @@
                                     <th style="width: 50px; text-align:center;">Forecast Month 3</th>
                                     <th style="width: 90px; text-align:center;">Ship-to</th>
                                     <th style="width: 50px; text-align:center;">Sales Order</th>
+                                    <th style="width: 50px; text-align:center;">Status</th>
                                     {{-- <th style="width: 50px; text-align:center;">PO Number</th> --}}
                                     <th style="width: 50px; text-align:center;">Remark</th>
                                     <th style="width: 50px; text-align:center;">Aksi</th>
@@ -218,11 +228,10 @@
                                     @forelse ($materials as $index => $material)
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
+
                                             <td contenteditable="false" class="editable">
                                                 <input type="hidden" name="materials[{{ $index }}][id]" value="{{ $material->id }}">
-
-                                                <select name="id_type" class="material-dropdown" style="width: 180px;"
-                                                    disabled>
+                                                <select name="id_type" class="material-dropdown" style="width: 180px;" disabled>
                                                     <option value="" disabled selected>Cari Material...</option>
                                                     @foreach ($typeMaterials as $type)
                                                         <option value="{{ $type->id }}"
@@ -232,80 +241,78 @@
                                                     @endforeach
                                                 </select>
                                             </td>
+
                                             <td contenteditable="false" class="editable">
                                                 <select name="jenis" class="jenis-dropdown" style="width: 80px;" disabled
-                                                    onchange="handleShapeChange(this)">
-                                                    <option value="Flat"
-                                                        {{ $material['jenis'] == 'Flat' ? 'selected' : '' }}>Flat</option>
-                                                    <option value="Round"
-                                                        {{ $material['jenis'] == 'Round' ? 'selected' : '' }}>Round
-                                                    </option>
-                                                    <option value="Honed Tube"
-                                                        {{ $material['jenis'] == 'Honed Tube' ? 'selected' : '' }}>Honed
-                                                        Tube</option>
+                                                        onchange="handleShapeChange(this)">
+                                                    <option value="Flat" {{ $material['jenis'] == 'Flat' ? 'selected' : '' }}>Flat</option>
+                                                    <option value="Round" {{ $material['jenis'] == 'Round' ? 'selected' : '' }}>Round</option>
+                                                    <option value="Honed Tube" {{ $material['jenis'] == 'Honed Tube' ? 'selected' : '' }}>Honed Tube</option>
                                                 </select>
                                             </td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="thickness" value="{{ $material['thickness'] }}" size="10"
-                                                    disabled></td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="weight" value="{{ $material['weight'] }}" size="5"
-                                                    disabled></td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="inner_diameter" value="{{ $material['inner_diameter'] }}"
-                                                    size="10" disabled></td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="outer_diameter" value="{{ $material['outer_diameter'] }}"
-                                                    size="10" disabled></td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="length" value="{{ $material['length'] }}" size="10"
-                                                    disabled></td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="qty" value="{{ $material['qty'] }}" size="10" disabled>
-                                            </td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="m1" value="{{ $material['m1'] }}" size="10" disabled>
-                                            </td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="m2" value="{{ $material['m2'] }}" size="10"
-                                                    disabled></td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="m3" value="{{ $material['m3'] }}" size="10"
-                                                    disabled></td>
+
                                             <td contenteditable="false" class="editable">
-                                                <select name="ship" class="jenis-dropdown" style="width: 100px;"
-                                                    disabled>
-                                                    <option value="Deltamas"
-                                                        {{ $material['ship'] == 'Deltamas' ? 'selected' : '' }}>Deltamas
-                                                    </option>
-                                                    <option value="DS8"
-                                                        {{ $material['ship'] == 'DS8' ? 'selected' : '' }}>DS8</option>
+                                                <input type="text" name="thickness" value="{{ $material['thickness'] }}" size="10" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="weight" value="{{ $material['weight'] }}" size="5" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="inner_diameter" value="{{ $material['inner_diameter'] }}" size="10" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="outer_diameter" value="{{ $material['outer_diameter'] }}" size="10" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="length" value="{{ $material['length'] }}" size="10" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="qty" value="{{ $material['qty'] }}" size="10" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="m1" value="{{ $material['m1'] }}" size="10" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="m2" value="{{ $material['m2'] }}" size="10" disabled>
+                                            </td>
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="m3" value="{{ $material['m3'] }}" size="10" disabled>
+                                            </td>
+
+                                            <td contenteditable="false" class="editable">
+                                                <select name="ship" class="jenis-dropdown" style="width: 100px;" disabled>
+                                                    <option value="Deltamas" {{ $material['ship'] == 'Deltamas' ? 'selected' : '' }}>Deltamas</option>
+                                                    <option value="DS8" {{ $material['ship'] == 'DS8' ? 'selected' : '' }}>DS8</option>
                                                 </select>
                                             </td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="so" value="{{ $material['so'] }}" size="10"
-                                                    disabled></td>
-                                            <td contenteditable="false" class="editable"><input type="text"
-                                                    name="note" value="{{ $material['note'] }}" size="10"
-                                                    disabled></td>
+
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="so" value="{{ $material['so'] }}" size="10" disabled>
+                                            </td>
+
+                                            {{-- Status label dari angka 1/2/3 --}}
+                                            <td>{{ $statusLabels[$material['status'] ?? null] ?? '—' }}</td>
+
+                                            <td contenteditable="false" class="editable">
+                                                <input type="text" name="note" value="{{ $material['note'] }}" size="10" disabled>
+                                            </td>
+
                                             <td>
                                                 @if ($inquiry->status == 1)
-                                                    <button class="btn btn-danger btn-sm"
-                                                        onclick="deleteRow({{ $material->id }})">Delete</button>
+                                                    <button class="btn btn-danger btn-sm" onclick="deleteRow({{ $material->id }})">Delete</button>
                                                 @endif
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="15" style="text-align: center;">Data tidak ditemukan</td>
+                                            <td colspan="17" style="text-align: center;">Data tidak ditemukan</td>
                                         </tr>
                                     @endforelse
                                 @else
                                     @forelse ($materials as $index => $material)
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
-                                            <td>{{ $material->type_materials ? $material->type_materials->type_name : 'N/A' }}
-                                            </td>
+                                            <td>{{ $material->type_materials ? $material->type_materials->type_name : 'N/A' }}</td>
                                             <td>{{ $material['jenis'] }}</td>
                                             <td>{{ $material['thickness'] }}</td>
                                             <td>{{ $material['weight'] }}</td>
@@ -318,18 +325,22 @@
                                             <td>{{ $material['m3'] }}</td>
                                             <td>{{ $material['ship'] }}</td>
                                             <td>{{ $material['so'] }}</td>
+
+                                            {{-- Status label dari angka 1/2/3 --}}
+                                            <td>{{ $statusLabels[$material['status'] ?? null] ?? '—' }}</td>
+
                                             <td>{{ $material['note'] }}</td>
                                             <td></td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="16" style="text-align: center;">Data tidak ditemukan</td>
+                                            <td colspan="17" style="text-align: center;">Data tidak ditemukan</td>
                                         </tr>
                                     @endforelse
                                 @endif
                             </tbody>
-
                         </table>
+
                     </div>
                     @if ($isFromApproval)
                         <a href="{{ url()->previous() }}" class="btn btn-secondary btn-sm m-1">Kembali</a>

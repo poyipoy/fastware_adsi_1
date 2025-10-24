@@ -18,10 +18,14 @@ use App\Exports\InquirySalesExport;
 use App\Exports\DraftInquiryExport;
 use App\Exports\InquiryImportInventoryExport;
 use App\Exports\InquiryImportPurchaseExport;
+use App\Exports\OverviewPurchaseExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Response;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 
 
 class InquirySalesController extends Controller
@@ -30,9 +34,9 @@ class InquirySalesController extends Controller
     {
         $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
         $inquiries = InquirySales::with('customer')
-            ->whereIn('status', $statuses)
-            ->where('is_active', 1)
-            ->where('loc_imp', 'Local')
+                ->whereIn('status', $statuses)
+                ->where('is_active', 1)
+                ->where('loc_imp', 'Local')
             ->orderByRaw('FIELD(status, 0, 1, 2, 3, 4, 5, 6, 7,8,9)')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -825,23 +829,195 @@ class InquirySalesController extends Controller
         return redirect()->route('showApprovalInventory')->with('success', 'Inquiry rejected successfully by Inventory');
     }
 
-    public function overviewPurchase()
+    public function overviewPurchase(Request $request)
     {
-        // Ambil semua inquiry dengan status relevan
-        $inquiries = InquirySales::with('customer')
-            ->whereIn('status', [5, 6, 8, 9]) // Mengambil status On Progress, Finished, etc.
-            ->where('is_active', 1)
-            ->where('loc_imp', 'Local')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if ($this->isDataTableRequest($request)) {
+            return $this->overviewPurchase2($request);
+        }
 
-        $draftInquiries = InquirySales::with('customer')
-            ->whereIn('status', [1, 2, 3, 4]) // Draft dan Open
-            ->where('is_active', 1)
-            ->where('loc_imp', 'Local')
-            ->get();
+        $preselected = array_map(
+            'intval',
+            (array) session()->getOldInput('selected_inquiries', [])
+        );
 
-        return view('inquiry.overviewPurchase', compact('inquiries', 'draftInquiries'));
+        return view('inquiry.overviewPurchase', [
+            'preselected' => $preselected,
+        ]);
+    }
+
+    public function overviewPurchase2(Request $request)
+    {
+        $statuses = [5, 6, 8, 9];
+
+        if ($this->isDataTableRequest($request)) {
+            $baseQuery = InquirySales::with([
+                'customer:id,name_customer',
+                'details:id,id_inquiry,id_type,jenis,qty,ship,status,thickness,weight,inner_diameter,outer_diameter,length,m1,m2,m3,so,note',
+                'details.type_materials:id,type_name',
+                'latestPurchaseProgress',
+            ])
+                ->select('inquiry_sales.*')
+                ->whereIn('status', $statuses)
+                ->where('is_active', 1)
+                ->where('loc_imp', 'Local');
+
+            $searchCallback = function (Builder $query, string $search): void {
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('refnopo', 'like', "%{$search}%")
+                        ->orWhere('create_by', 'like', "%{$search}%")
+                        ->orWhere('kode_inquiry', 'like', "%{$search}%")
+                        ->orWhere('loc_imp', 'like', "%{$search}%")
+                        ->orWhere('supplier', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function (Builder $customer) use ($search) {
+                            $customer->where('name_customer', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('details', function (Builder $details) use ($search) {
+                            $details->where('ship', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
+                            $progress->where('description', 'like', "%{$search}%");
+                        });
+                });
+            };
+
+            return $this->dataTableResponse(
+                $request,
+                $baseQuery,
+                function (InquirySales $inquiry): array {
+                    $statusMeta = $this->statusMeta((int) $inquiry->status);
+                    $latestProgress = $inquiry->latestPurchaseProgress;
+
+                    $shipLines = $inquiry->details
+                        ->pluck('ship')
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    $shipHtml = $shipLines->isEmpty()
+                        ? '--- No Shipping Options ---'
+                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
+
+                    $estimatedDate = $inquiry->est_date ? Carbon::parse($inquiry->est_date)->format('d-m-Y') : '-';
+
+                    return [
+                        'id' => $inquiry->id,
+                        'refnopo' => $inquiry->refnopo ?? '-',
+                        'create_by' => $inquiry->create_by,
+                        'kode_inquiry' => $inquiry->kode_inquiry,
+                        'loc_imp' => $inquiry->loc_imp,
+                        'supplier' => $inquiry->supplier ?? '-',
+                        'customer_name' => optional($inquiry->customer)->name_customer ?? 'N/A',
+                        'status_label' => $statusMeta['label'],
+                        'status_class' => $statusMeta['class'],
+                        'ship_to' => $shipHtml,
+                        'last_update' => $latestProgress ? $latestProgress->description : 'No updates yet',
+                        'est_date' => $estimatedDate,
+                        'actions' => $this->renderOverviewPurchaseActions($inquiry),
+                        'checkbox' => '<input type="checkbox" name="selected_inquiries[]" value="' . e($inquiry->id) . '" class="form-check-input inquiry-checkbox">',
+                        'detail_rows' => $inquiry->details
+                            ->map(function (DetailInquiry $detail): array {
+                                $meta = $this->detailStatusMeta((int) ($detail->status ?? 0));
+                                $materialName = optional($detail->type_materials)->type_name ?? '-';
+
+                                return [
+                                    'id' => $detail->id,
+                                    'material' => $materialName,
+                                    'jenis' => $detail->jenis ?? '-',
+                                    'thickness' => $detail->thickness ?? '-',
+                                    'weight' => $detail->weight ?? '-',
+                                    'inner_diameter' => $detail->inner_diameter ?? '-',
+                                    'outer_diameter' => $detail->outer_diameter ?? '-',
+                                    'length' => $detail->length ?? '-',
+                                    'qty' => $detail->qty ?? 0,
+                                    'm1' => $detail->m1 ?? '-',
+                                    'm2' => $detail->m2 ?? '-',
+                                    'm3' => $detail->m3 ?? '-',
+                                    'so' => $detail->so ?? '-',
+                                    'note' => $detail->note ?? '-',
+                                    'ship' => $detail->ship ?? '-',
+                                    'status' => (int) ($detail->status ?? 0),
+                                    'status_label' => $meta['label'],
+                                    'status_class' => $meta['class'],
+                                ];
+                            })
+                            ->values()
+                            ->all(),
+                    ];
+                },
+                $searchCallback,
+                [
+                    2 => 'refnopo',
+                    3 => 'create_by',
+                    4 => 'kode_inquiry',
+                    5 => 'loc_imp',
+                    6 => 'supplier',
+                    11 => 'est_date',
+                ],
+                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+            );
+        }
+
+        $preselected = array_map(
+            'intval',
+            (array) session()->getOldInput('selected_inquiries', [])
+        );
+
+        return view('inquiry.overviewPurchase2', [
+            'preselected' => $preselected,
+        ]);
+    }
+
+    public function exportOverviewPurchase(Request $request)
+    {
+        $messages = [
+            'selected_inquiries.required' => 'Silakan pilih data yang ingin diexport.',
+            'selected_inquiries.array' => 'Format pemilihan export tidak valid.',
+            'selected_inquiries.min' => 'Silakan pilih minimal satu data untuk diexport.',
+            'selected_inquiries.*.exists' => 'Data yang dipilih tidak ditemukan.',
+        ];
+
+        $validated = $request->validate([
+            'selected_inquiries' => 'required|array|min:1',
+            'selected_inquiries.*' => 'integer|exists:inquiry_sales,id',
+        ], $messages);
+
+        $ids = array_map('intval', $validated['selected_inquiries']);
+        $fileName = 'Purchasing_Overview_' . Carbon::now()->format('Ymd_His') . '.xlsx';
+
+        return Excel::download(new OverviewPurchaseExport($ids), $fileName);
+    }
+
+    public function exportOverviewPurchaseByDate(Request $request)
+    {
+        $validated = $request->validate([
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+        ]);
+
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+        $endDate = Carbon::parse($validated['end_date'])->endOfDay();
+
+        $ids = DetailInquiryImport::query()
+            ->join('inquiry_sales', 'detail_inquiry_import.id_inquiry', '=', 'inquiry_sales.id')
+            ->whereNull('detail_inquiry_import.deleted_at')
+            ->whereBetween('detail_inquiry_import.created_at', [$startDate, $endDate])
+            ->where('inquiry_sales.is_active', 1)
+            ->where('inquiry_sales.loc_imp', 'Import')
+            ->whereIn('inquiry_sales.status', [5, 6, 8, 9])
+            ->pluck('detail_inquiry_import.id_inquiry')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return back()->withInput()->withErrors([
+                'start_date' => 'Data tidak ditemukan pada rentang tanggal tersebut.',
+            ]);
+        }
+
+        $fileName = 'InquiryImport_' . $startDate->format('Ymd') . '_' . $endDate->format('Ymd') . '.xlsx';
+
+        return Excel::download(new InquiryImportInventoryExport($ids), $fileName);
     }
 
     public function overviewPurchaseImport()
@@ -860,6 +1036,59 @@ class InquirySalesController extends Controller
             ->get();
 
         return view('inquiry.overviewPurchaseImport', compact('inquiries', 'draftInquiries'));
+    }
+
+    public function updateDetailStatuses(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'inquiry_id' => ['required', 'integer', 'exists:inquiry_sales,id'],
+            'detail_ids' => ['required', 'array', 'min:1'],
+            'detail_ids.*' => ['integer', 'exists:detail_inquiry,id'],
+            'status' => ['required', 'integer', Rule::in([6, 8, 9])],
+        ]);
+
+        $inquiryId = (int) $validated['inquiry_id'];
+        $detailIds = array_map('intval', $validated['detail_ids']);
+        $status = (int) $validated['status'];
+
+        $details = DetailInquiry::whereIn('id', $detailIds)->get();
+
+        if ($details->isEmpty()) {
+            return response()->json([
+                'message' => 'Detail inquiry tidak ditemukan.',
+            ], 404);
+        }
+
+        $invalidDetail = $details->firstWhere('id_inquiry', '!=', $inquiryId);
+
+        if ($invalidDetail) {
+            return response()->json([
+                'message' => 'Sebagian detail tidak terkait dengan inquiry yang dipilih.',
+            ], 422);
+        }
+
+        DetailInquiry::where('id_inquiry', $inquiryId)
+            ->whereIn('id', $detailIds)
+            ->update([
+            'status' => $status,
+            'updated_at' => now(),
+        ]);
+
+        $statusMeta = $this->detailStatusMeta($status);
+
+        $detailPayload = array_map(static function (int $id) use ($status, $statusMeta): array {
+            return [
+                'id' => $id,
+                'status' => $status,
+                'status_label' => $statusMeta['label'],
+                'status_class' => $statusMeta['class'],
+            ];
+        }, $detailIds);
+
+        return response()->json([
+            'message' => 'Status detail berhasil diperbarui.',
+            'details' => $detailPayload,
+        ]);
     }
 
 
@@ -1146,7 +1375,7 @@ class InquirySalesController extends Controller
                 'message' => 'Progress updated successfully',
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('Error updating progress: ' . $e->getMessage());
+            Log::error('Error updating progress: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update progress',
@@ -1798,7 +2027,7 @@ class InquirySalesController extends Controller
 
             return Response::json(['success' => true, 'message' => 'Material permanently deleted']);
         } catch (\Exception $e) {
-            \Log::error('Delete Permanen Error: ' . $e->getMessage());
+            Log::error('Delete Permanen Error: ' . $e->getMessage());
             return Response::json(['success' => false, 'message' => 'Failed to permanently delete material'], 500);
         }
     }
@@ -1941,8 +2170,8 @@ class InquirySalesController extends Controller
         $ids = !empty($idString) ? explode(',', $idString) : [];
 
         // Log raw dan processed IDs untuk debugging
-        \Log::info('Raw ID string received: ' . $idString);
-        \Log::info('IDs received for export:', $ids);
+        Log::info('Raw ID string received: ' . $idString);
+        Log::info('IDs received for export:', $ids);
 
         // Pastikan ID tidak kosong
         if (empty($ids)) {
@@ -2146,18 +2375,195 @@ class InquirySalesController extends Controller
         return view('showFormSS', compact('inquiry', 'materials', 'uploadedFiles'));
     }
 
-    public function overviewInquiry()
+    public function overviewInquiry(Request $request)
     {
+        $statuses = [1, 2, 3, 4, 5, 6, 8, 9];
 
-        // Ambil semua inquiry dengan status relevan
-        $draftInquiries = InquirySales::with('customer')
-            ->whereIn('status', [1, 2, 3, 4, 5, 6, 8, 9]) // Draft for Finish Process
-            ->where('is_active', 1)
-            ->where('loc_imp', 'Local')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if ($this->isDataTableRequest($request)) {
+            $baseQuery = InquirySales::with([
+                'customer:id,name_customer',
+                'details:id,id_inquiry,ship',
+                'latestPurchaseProgress',
+            ])
+                ->select('inquiry_sales.*')
+                ->whereIn('status', $statuses)
+                ->where('is_active', 1)
+                ->where('loc_imp', 'Local');
 
-        return view('inquiry.overviewInquiry', compact('draftInquiries'));
+            $searchCallback = function (Builder $query, string $search): void {
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('create_by', 'like', "%{$search}%")
+                        ->orWhere('kode_inquiry', 'like', "%{$search}%")
+                        ->orWhere('loc_imp', 'like', "%{$search}%")
+                        ->orWhere('supplier', 'like', "%{$search}%")
+                        ->orWhere('source_pr', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function (Builder $customer) use ($search) {
+                            $customer->where('name_customer', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('details', function (Builder $details) use ($search) {
+                            $details->where('ship', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
+                            $progress->where('description', 'like', "%{$search}%");
+                        });
+                });
+            };
+
+            return $this->dataTableResponse(
+                $request,
+                $baseQuery,
+                function (InquirySales $inquiry): array {
+                    $statusMeta = $this->statusMeta((int) $inquiry->status);
+                    $latestProgress = $inquiry->latestPurchaseProgress;
+
+                    $shipLines = $inquiry->details
+                        ->pluck('ship')
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    $shipHtml = $shipLines->isEmpty()
+                        ? '--- No Shipping Options ---'
+                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
+
+                    $estimatedDate = $inquiry->est_date ? Carbon::parse($inquiry->est_date)->format('d-m-Y') : '-';
+
+                    return [
+                        'id' => $inquiry->id,
+                        'create_by' => $inquiry->create_by,
+                        'kode_inquiry' => $inquiry->kode_inquiry,
+                        'loc_imp' => $inquiry->loc_imp,
+                        'supplier' => $inquiry->supplier ?? '-',
+                        'customer_name' => optional($inquiry->customer)->name_customer ?? 'N/A',
+                        'status_label' => $statusMeta['label'],
+                        'status_class' => $statusMeta['class'],
+                        'ship_to' => $shipHtml,
+                        'last_update' => $latestProgress ? $latestProgress->description : 'No updates yet',
+                        'est_date' => $estimatedDate,
+                        'source_pr' => $inquiry->source_pr ?? '-',
+                        'actions' => $this->renderOverviewInquiryActions($inquiry),
+                    ];
+                },
+                $searchCallback,
+                [
+                    1 => 'create_by',
+                    2 => 'kode_inquiry',
+                    3 => 'loc_imp',
+                    4 => 'supplier',
+                    9 => 'est_date',
+                ],
+                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+            );
+        }
+
+        return view('inquiry.overviewInquiry');
+    }
+
+    public function overviewInquiryImport(Request $request)
+    {
+        $statuses = [1, 2, 3, 4, 5, 6, 8, 9];
+
+        if ($this->isDataTableRequest($request)) {
+            $baseQuery = InquirySales::with([
+                'customer:id,name_customer',
+                'detailinquiryimport:id,id_inquiry,ship,klasifikasi,supplier',
+                'latestPurchaseProgress',
+            ])
+                ->select('inquiry_sales.*')
+                ->whereIn('status', $statuses)
+                ->where('is_active', 1)
+                ->where('loc_imp', 'Import');
+
+            $searchCallback = function (Builder $query, string $search): void {
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('create_by', 'like', "%{$search}%")
+                        ->orWhere('kode_inquiry', 'like', "%{$search}%")
+                        ->orWhere('loc_imp', 'like', "%{$search}%")
+                        ->orWhere('supplier', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function (Builder $customer) use ($search) {
+                            $customer->where('name_customer', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('detailinquiryimport', function (Builder $details) use ($search) {
+                            $details->where('ship', 'like', "%{$search}%")
+                                ->orWhere('klasifikasi', 'like', "%{$search}%")
+                                ->orWhere('supplier', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
+                            $progress->where('description', 'like', "%{$search}%");
+                        });
+                });
+            };
+
+            return $this->dataTableResponse(
+                $request,
+                $baseQuery,
+                function (InquirySales $inquiry): array {
+                    $statusMeta = $this->statusMeta((int) $inquiry->status);
+                    $latestProgress = $inquiry->latestPurchaseProgress;
+
+                    $shipLines = $inquiry->detailinquiryimport
+                        ->pluck('ship')
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    $shipText = $shipLines->isEmpty()
+                        ? '--- No Shipping Options ---'
+                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
+
+                    $klasifikasiLines = $inquiry->detailinquiryimport
+                        ->pluck('klasifikasi')
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    $klasifikasiText = $klasifikasiLines->isEmpty()
+                        ? '-'
+                        : $klasifikasiLines->map(fn ($value) => e($value))->implode('<br>');
+
+                    $supplierLines = $inquiry->detailinquiryimport
+                        ->pluck('supplier')
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    $supplierText = $supplierLines->isEmpty()
+                        ? e($inquiry->supplier ?? '-')
+                        : $supplierLines->map(fn ($value) => e($value))->implode('<br>');
+
+                    $estimatedDate = $inquiry->est_date
+                        ? Carbon::parse($inquiry->est_date)->format('d-m-Y')
+                        : '-';
+
+                    return [
+                        'id' => $inquiry->id,
+                        'create_by' => $inquiry->create_by,
+                        'kode_inquiry' => $inquiry->kode_inquiry,
+                        'loc_imp' => $inquiry->loc_imp,
+                        'supplier' => $supplierText,
+                        'customer_name' => optional($inquiry->customer)->name_customer ?? 'N/A',
+                        'status_label' => $statusMeta['label'],
+                        'status_class' => $statusMeta['class'],
+                        'ship_to' => $shipText,
+                        'last_update' => $latestProgress ? $latestProgress->description : 'No updates yet',
+                        'est_date' => $estimatedDate,
+                        'klasifikasi' => $klasifikasiText,
+                        'actions' => $this->renderImportActions($inquiry),
+                    ];
+                },
+                $searchCallback,
+                [
+                    1 => 'create_by',
+                    2 => 'kode_inquiry',
+                    3 => 'loc_imp',
+                    4 => 'supplier',
+                    9 => 'est_date',
+                ],
+                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+            );
+        }
+
+        return view('inquiry.overviewInquiryImport');
     }
 
     public function showApprovalPurchaseImport()
@@ -2283,132 +2689,406 @@ class InquirySalesController extends Controller
     //     return view('inquiry.createImport', compact('inquiries', 'customers'));
     // }
 
-   public function createInquirySalesImport()
-{
-    $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    $authName = auth()->user()->name;
+    public function createInquirySalesImport(Request $request)
+    {
+        $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        $visibleUsers = $this->resolveVisibleUsers();
 
-    $userHierarchy = [
-        'YULMAI RIDO WINANDA' => [
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID',
-            'SONY STIAWAN',
-            'SARAH EGA BUDI ASTUTI',
-            'HERY HERMAWAN',
-            'HEXAPA DARMADI',
-            'DIMAS ADITYA PRIANDANA',
-            'JUN JOHAMIN PD',
-            'WULYO EKO PRASETYO',
-            'YAN WELEM MANGINSELA',
-            'SENDY PRABOWO'
-        ],
-        'ILHAM CHOLID' => [
-            'ILHAM CHOLID',
-            'SONY STIAWAN',
-            'SARAH EGA BUDI ASTUTI',
-            'HERY HERMAWAN',
-            'HEXAPA DARMADI',
-            'DIMAS ADITYA PRIANDANA'
-        ],
-        'HERY HERMAWAN' => [
-            'HERY HERMAWAN',
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID'
-        ],
-        'SONY STIAWAN' => [
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID'
-        ],
-        'HEXAPA DARMADI' => [
-            'HEXAPA DARMADI',
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID'
-        ],
-        'DIMAS ADITYA PRIANDANA' => [
-            'DIMAS ADITYA PRIANDANA',
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID'
-        ],
-        'ADMINSTRATOR' => [
-            'ADMINSTRATOR',
-            'JESSICA PAUNE',
-            'ANDIK TOTOK SISWOYO',
-            'RISFAN FAISAL',
-            'DWI KUNTORO',
-            'YUNASIS PALGUNADI',
-            'DANIA ISNAWATI',
-            'FISKA CHRISMAS YUDHA',
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID',
-            'SONY STIAWAN',
-            'SARAH EGA BUDI ASTUTI',
-            'HERY HERMAWAN',
-            'HEXAPA DARMADI',
-            'DIMAS ADITYA PRIANDANA',
-            'JUN JOHAMIN PD',
-            'WULYO EKO PRASETYO',
-            'YAN WELEM MANGINSELA',
-            'SENDY PRABOWO'
-        ],
-        'JESSICA PAUNE' => [
-            'ADMINSTRATOR',
-            'JESSICA PAUNE',
-            'ANDIK TOTOK SISWOYO',
-            'RISFAN FAISAL',
-            'DWI KUNTORO',
-            'YUNASIS PALGUNADI',
-            'DANIA ISNAWATI',
-            'FISKA CHRISMAS YUDHA',
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID',
-            'SONY STIAWAN',
-            'SARAH EGA BUDI ASTUTI',
-            'HERY HERMAWAN',
-            'HEXAPA DARMADI',
-            'DIMAS ADITYA PRIANDANA',
-            'JUN JOHAMIN PD',
-            'WULYO EKO PRASETYO',
-            'YAN WELEM MANGINSELA',
-            'SENDY PRABOWO'
-        ]
-    ];
+        if ($this->isDataTableRequest($request)) {
+            $region = (int) $request->input('region', 0);
 
-    $visibleUsers = collect([$authName]);
+          if ($region === 0) {
+              return response()->json([
+                  'draw' => (int) $request->input('draw', 0),
+                  'recordsTotal' => 0,
+                  'recordsFiltered' => 0,
+                  'data' => [],
+              ]);
+          }
 
-    // Tambahkan bawahan
-    if (isset($userHierarchy[$authName])) {
-        $visibleUsers = $visibleUsers->merge($userHierarchy[$authName]);
-    }
+          $baseQuery = InquirySales::with([
+              'customer:id,name_customer',
+              'latestPurchaseProgress',
+              'earliestPurchaseProgress',
+              'purchaseProgresses' => function ($query): void {
+                  $query->select('id', 'inquiry_id', 'description', 'created_at')
+                      ->orderBy('created_at');
+              },
+          ])
+                ->select('inquiry_sales.*')
+                ->where('region', $region)
+                ->where('loc_imp', 'Import')
+                ->where('is_active', 1)
+                ->whereIn('status', $statuses);
 
-    // Tambahkan atasan
-    foreach ($userHierarchy as $superior => $subordinates) {
-        if (in_array($authName, $subordinates)) {
-            $visibleUsers->push($superior);
+            if (!empty($visibleUsers)) {
+                $baseQuery->whereIn('create_by', $visibleUsers);
+            }
+
+          $baseQuery->whereIn('id', function ($sub) use ($statuses, $visibleUsers, $region) {
+              $sub->selectRaw('MAX(id)')
+                  ->from('inquiry_sales')
+                  ->whereIn('status', $statuses)
+                  ->where('is_active', 1)
+                  ->where('loc_imp', 'Import')
+                  ->where('region', $region);
+
+              if (!empty($visibleUsers)) {
+                  $sub->whereIn('create_by', $visibleUsers);
+              }
+
+              $sub->groupBy('kode_inquiry');
+          });
+
+          $searchCallback = function (Builder $query, string $search): void {
+              $query->where(function (Builder $inner) use ($search) {
+                  $inner->where('kode_inquiry', 'like', "%{$search}%")
+                      ->orWhere('create_by', 'like', "%{$search}%")
+                      ->orWhere('loc_imp', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function (Builder $customer) use ($search) {
+                          $customer->where('name_customer', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
+                          $progress->where('description', 'like', "%{$search}%");
+                      });
+              });
+          };
+
+          $user = Auth::user();
+          $request->attributes->set('visible_users', $visibleUsers);
+          $visibilityMode = empty($visibleUsers) ? 'all' : 'restricted';
+
+          Log::info('createInquiryImport datatable request', [
+              'user_id' => $user->id ?? null,
+              'user_name' => $user->name ?? null,
+              'role_id' => $user->role_id ?? null,
+              'region' => $region,
+              'visible_users' => $visibleUsers,
+              'visibility_mode' => $visibilityMode,
+              'search' => $request->input('search.value'),
+              'draw' => (int) $request->input('draw', 0),
+          ]);
+
+          return $this->dataTableResponse(
+                $request,
+                $baseQuery,
+                function (InquirySales $inquiry): array {
+                    $statusMeta = $this->statusMeta((int) $inquiry->status);
+                    $firstProgress = $inquiry->earliestPurchaseProgress;
+                      $allProgress = $inquiry->purchaseProgresses ?? collect();
+                      $approvedProgress = $allProgress->firstWhere('description', 'Inquiry Approved');
+                    $latestProgress = $inquiry->latestPurchaseProgress;
+
+                    $monthLabel = $firstProgress && $firstProgress->created_at
+                        ? $firstProgress->created_at->format('F Y')
+                        : 'No updates yet';
+
+                    $submitDate = $approvedProgress && $approvedProgress->created_at
+                        ? $approvedProgress->created_at->format('d-m-Y H:i')
+                        : 'No updates yet';
+
+                    $lastUpdateDescription = $latestProgress ? $latestProgress->description : 'No updates yet';
+
+                    $lastUpdateTime = $latestProgress && $latestProgress->created_at
+                        ? $latestProgress->created_at->format('d-m-Y H:i')
+                        : 'No updates yet';
+
+                    return [
+                        'id' => $inquiry->id,
+                        'month_label' => $monthLabel,
+                        'create_by' => $inquiry->create_by,
+                        'kode_inquiry' => $inquiry->kode_inquiry,
+                        'submit_date' => $submitDate,
+                        'category' => $inquiry->loc_imp,
+                        'status_label' => $statusMeta['label'],
+                        'status_class' => $statusMeta['class'],
+                        'last_update' => $lastUpdateDescription,
+                        'update_time' => $lastUpdateTime,
+                        'actions' => $this->renderImportActions($inquiry),
+                    ];
+                },
+                $searchCallback,
+                [
+                    2 => 'create_by',
+                    3 => 'kode_inquiry',
+                ],
+                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+            );
         }
+
+        $customers = Customer::orderBy('name_customer')->get();
+        $inquiries = collect();
+
+        return view('inquiry.createImport', compact('customers', 'inquiries'));
     }
 
-    $visibleUsers = $visibleUsers->unique();
+    /**
+     * Determine whether the current request targets a DataTables server-side endpoint.
+     */
+    private function isDataTableRequest(Request $request): bool
+    {
+        if ($request->input('format') === 'json') {
+            return true;
+        }
 
-    // Jika user BUKAN admin atau jessica, maka hapus data dari mereka
-    if (!in_array($authName, ['ADMINSTRATOR', 'JESSICA PAUNE'])) {
-        $visibleUsers = $visibleUsers->reject(function ($user) {
-            return in_array($user, ['ADMINSTRATOR', 'JESSICA PAUNE']);
-        });
+        if ($request->has('draw') && $request->has('columns')) {
+            return true;
+        }
+
+        return $request->expectsJson() || $request->ajax();
     }
 
-    $query = InquirySales::with('customer')
-        ->whereIn('status', $statuses)
-        ->whereIn('create_by', $visibleUsers->toArray());
+    /**
+     * Build a standard DataTables-compliant JSON response.
+     *
+     * @param  Request $request
+     * @param  Builder $baseQuery
+     * @param  callable $rowTransformer
+     * @param  callable|null $searchCallback
+     * @param  array<int, string> $columnOrderMap
+     * @param  callable|null $defaultOrderCallback
+     */
+    private function dataTableResponse(
+        Request $request,
+        Builder $baseQuery,
+        callable $rowTransformer,
+        ?callable $searchCallback = null,
+        array $columnOrderMap = [],
+        ?callable $defaultOrderCallback = null
+    ): JsonResponse {
+        $draw = (int) $request->input('draw', 0);
+        $start = max((int) $request->input('start', 0), 0);
+        $length = (int) $request->input('length', 10);
 
-    $inquiries = $query->orderByRaw('FIELD(status, 0,1,2,3,4,5,6,7,8,9)')
-        ->orderBy('created_at', 'desc')
-        ->get()
-        ->unique('kode_inquiry');
+        $searchValue = trim((string) $request->input('search.value', ''));
 
-    $customers = Customer::all();
+        $totalQuery = clone $baseQuery;
+        $recordsTotal = $totalQuery->toBase()->getCountForPagination();
 
-    return view('inquiry.createImport', compact('inquiries', 'customers'));
-}
+        $filteredQuery = clone $baseQuery;
 
+        if ($searchCallback && $searchValue !== '') {
+            $searchCallback($filteredQuery, $searchValue);
+        }
 
+        $recordsFilteredQuery = clone $filteredQuery;
+        $recordsFiltered = $recordsFilteredQuery->toBase()->getCountForPagination();
+
+        $orders = (array) $request->input('order', []);
+        $appliedOrder = false;
+
+        foreach ($orders as $order) {
+            $columnIndex = isset($order['column']) ? (int) $order['column'] : null;
+
+            if ($columnIndex === null || !array_key_exists($columnIndex, $columnOrderMap)) {
+                continue;
+            }
+
+            $direction = strtolower((string) ($order['dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+            $filteredQuery->orderBy($columnOrderMap[$columnIndex], $direction);
+            $appliedOrder = true;
+        }
+
+        if (!$appliedOrder) {
+            if ($defaultOrderCallback) {
+                $defaultOrderCallback($filteredQuery);
+            } else {
+                $filteredQuery->orderBy('created_at', 'desc');
+            }
+        }
+
+        if ($length !== -1) {
+            $length = max($length, 1);
+            $filteredQuery->skip($start)->take($length);
+        } elseif ($start > 0) {
+            $filteredQuery->skip($start);
+        }
+
+        $executionQuery = clone $filteredQuery;
+        $sql = $executionQuery->toSql();
+        $bindings = $executionQuery->getBindings();
+        $results = $executionQuery->get();
+
+        $data = $results->map(static function ($row) use ($rowTransformer) {
+            return $rowTransformer($row);
+        })->all();
+
+        $routeName = optional($request->route())->getName();
+        if ($routeName === 'createinquiryImport') {
+            $visibleUsersAttr = $request->attributes->get('visible_users', []);
+            Log::info('createInquiryImport datatable response', [
+                'user_id' => optional($request->user())->id,
+                'user_name' => optional($request->user())->name,
+                'region' => $request->input('region'),
+                'records_total' => $recordsTotal,
+                'records_filtered' => $recordsFiltered,
+                'returned' => count($data),
+                'sql' => $sql,
+                'bindings' => $bindings,
+                'visible_users' => $visibleUsersAttr,
+                'visibility_mode' => empty($visibleUsersAttr) ? 'all' : 'restricted',
+                'search' => $request->input('search.value'),
+            ]);
+        }
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * Map numeric inquiry statuses to display metadata.
+     *
+     * @return array{label: string, class: string}
+     */
+    private function statusMeta(int $status): array
+    {
+        $map = [
+            0 => ['label' => 'Draft', 'class' => 'btn-secondary btn-custom-draft'],
+            1 => ['label' => 'Draft', 'class' => 'btn-secondary btn-custom-draft'],
+            2 => ['label' => 'Open', 'class' => 'btn-success btn-custom-open'],
+            3 => ['label' => 'Approve Ka.Dept', 'class' => 'btn-danger btn-custom-approve-dept'],
+            4 => ['label' => 'Approve Ka.Sie', 'class' => 'btn-info btn-custom-approve-sie'],
+            5 => ['label' => 'On Progress', 'class' => 'btn-warning btn-custom-in-progress'],
+            6 => ['label' => 'Finished', 'class' => 'btn-primary btn-custom-finished'],
+            7 => ['label' => 'Rejected', 'class' => 'btn-danger btn-custom-rejected'],
+            8 => ['label' => 'Approve Inventory', 'class' => 'btn-danger btn-custom-inventory'],
+            9 => ['label' => 'Confirm Purchasing', 'class' => 'btn-warning btn-custom-confirm-purchasing'],
+        ];
+
+        return $map[$status] ?? ['label' => 'Unknown', 'class' => 'btn-light'];
+    }
+
+    /**
+     * Map numeric detail statuses to display metadata.
+     *
+     * @return array{label: string, class: string}
+     */
+    private function detailStatusMeta(int $status): array
+    {
+        $map = [
+            8 => ['label' => 'Approve Inventory', 'class' => 'badge bg-info text-dark'],
+            9 => ['label' => 'Confirm', 'class' => 'badge bg-warning text-dark'],
+            6 => ['label' => 'Finish', 'class' => 'badge bg-primary'],
+        ];
+
+        return $map[$status] ?? ['label' => 'Pending', 'class' => 'badge bg-secondary'];
+    }
+
+    /**
+     * Determine which creators should be visible to the authenticated user.
+     *
+     * @return string[]
+     */
+    private function resolveVisibleUsers(): array
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return [];
+        }
+
+        $roleId = (int) ($user->role_id ?? 0);
+        $rolesWithFullAccess = [1, 14, 15];
+        $namesWithFullAccess = [
+            'ADMINSTRATOR',
+            'JESSICA PAUNE',
+            'JUN JOHAMIN PD',
+            'YULMAI RIDO WINANDA',
+            'ILHAM CHOLID',
+            'SONY STIAWAN',
+            'SARAH EGA BUDI ASTUTI',
+            'HERY HERMAWAN',
+            'HEXAPA DARMADI',
+            'DIMAS ADITYA PRIANDANA',
+            'WULYO EKO PRASETYO',
+            'YAN WELEM MANGINSELA',
+            'SENDY PRABOWO',
+            'ANDIK TOTOK SISWOYO',
+            'DANIA ISNAWATI',
+        ];
+
+        $normalizedName = strtoupper(trim((string) ($user->name ?? '')));
+
+        if (
+            in_array($roleId, $rolesWithFullAccess, true)
+            || ($normalizedName !== '' && in_array($normalizedName, $namesWithFullAccess, true))
+        ) {
+            return [];
+        }
+
+        return [$user->name];
+    }
+
+    /**
+     * Render action buttons for the overview purchase table row.
+     */
+    private function renderOverviewPurchaseActions(InquirySales $inquiry): string
+    {
+        $id = (int) $inquiry->id;
+        $buttons = [];
+
+        if ((int) $inquiry->status === 8) {
+            $buttons[] = '<a href="#" class="btn btn-warning btn-sm" onclick="confirmPurchasing(' . $id . '); return false;" title="Confirm Purchase"><i class="bi bi-hand-index-thumb-fill"></i></a>';
+        }
+
+        $supplier = $this->jsonEncodeString($inquiry->supplier ?? '');
+        $progressValue = $inquiry->progress ?? optional($inquiry->latestPurchaseProgress)->description ?? '';
+        $progress = $this->jsonEncodeString($progressValue);
+        $refnopo = $this->jsonEncodeString($inquiry->refnopo ?? '');
+
+        $estDateValue = $inquiry->est_date;
+        if ($estDateValue instanceof Carbon) {
+            $estDateValue = $estDateValue->format('Y-m-d');
+        } else {
+            $estDateValue = (string) ($estDateValue ?? '');
+        }
+        $estDate = $this->jsonEncodeString($estDateValue);
+
+        $buttons[] = '<a href="#" class="btn btn-info btn-sm" onclick=\'openDetailStatusModal(' . $id . '); return false;\' title="Update Detail Status"><i class="bi bi-sliders"></i></a>';
+        $buttons[] = '<a href="#" class="btn btn-primary btn-sm" onclick=\'showEditDataModal(' . $id . ', ' . $supplier . ', ' . $progress . ', ' . $refnopo . ', ' . $estDate . '); return false;\' title="Edit Inquiry"><i class="bi bi-pencil"></i></a>';
+        $buttons[] = '<a href="#" class="btn btn-warning btn-sm" onclick="showInquiry(' . $id . '); return false;" title="View Form"><i class="bi bi-eye-fill"></i></a>';
+        $buttons[] = '<a href="#" class="btn btn-primary btn-sm" onclick="finishInquiry(' . $id . '); return false;" title="Finish Inquiry"><i class="bi bi-emoji-sunglasses-fill"></i></a>';
+
+        return implode(' ', $buttons);
+    }
+
+    /**
+     * Render action buttons for the overview inquiry table row.
+     */
+    private function renderOverviewInquiryActions(InquirySales $inquiry): string
+    {
+        $id = (int) $inquiry->id;
+        $viewUrl = e(route('showFormSS', ['id' => $inquiry->id]));
+        $sourcePr = $this->jsonEncodeString($inquiry->source_pr ?? '');
+
+        $buttons = [];
+        $buttons[] = '<a href="' . $viewUrl . '" class="btn btn-warning btn-sm" title="View Form"><i class="bi bi-eye-fill"></i></a>';
+        $buttons[] = '<a href="#" class="btn btn-primary btn-sm" onclick=\'showEditDataModal1(' . $id . ', ' . $sourcePr . '); return false;\' title="Edit Inquiry"><i class="bi bi-pencil"></i></a>';
+
+        return implode(' ', $buttons);
+    }
+
+    /**
+     * Render action buttons for the import inquiry table row.
+     */
+    private function renderImportActions(InquirySales $inquiry): string
+    {
+        $viewUrl = e(route('showFormSSimport', ['id' => $inquiry->id]));
+
+        return '<a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="' . $viewUrl . '"><i class="bi bi-eye-fill"></i></a>';
+    }
+
+    /**
+     * Safely encode a string for inline JavaScript usage.
+     */
+    private function jsonEncodeString(?string $value): string
+    {
+        $encoded = json_encode((string) ($value ?? ''), JSON_UNESCAPED_UNICODE);
+
+        return $encoded !== false ? $encoded : '""';
+    }
 }

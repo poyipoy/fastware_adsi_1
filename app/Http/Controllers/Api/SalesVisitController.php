@@ -212,8 +212,8 @@ class SalesVisitController extends Controller
         }
 
         if ($startDate && $endDate) {
-            $query->whereDate('visit_date', '>=', $startDate)
-                ->whereDate('visit_date', '<=', $endDate);
+            $query->whereDate('plan_visit', '>=', $startDate)
+                ->whereDate('plan_visit', '<=', $endDate);
         }
 
         return $query->paginate($limit, ['*'], 'page', $page);
@@ -486,8 +486,21 @@ class SalesVisitController extends Controller
         $startDate = $request->input('start_date', $startOfWeek);
         $endDate   = $request->input('end_date', $endOfWeek);
 
-        // Daftar sales yang mau dihitung
-        $sales = ['ADMINSTRATOR', 'asep'];
+        // Definisikan semua sales yang tersedia untuk filter
+        $allSales = ['ADMINSTRATOR', 'asep']; // Tambahkan nama sales secara manual di sini
+
+        // Ambil daftar sales dari request (bisa berupa array atau string dipisah koma)
+        $selectedSales = $request->input('sales', $allSales);
+        if (is_string($selectedSales)) {
+            $selectedSales = array_filter(array_map('trim', explode(',', $selectedSales)));
+        }
+        // Jika setelah filter hasilnya kosong (misal input string kosong), gunakan semua sales
+        if (empty($selectedSales)) {
+            $selectedSales = $allSales;
+        }
+
+        // Untuk backward compatibility dengan sisa fungsi, kita sebut variabelnya $sales
+        $sales = $selectedSales;
 
         // Cari ID user yang cocok dengan nama di atas
         $salesUserIds = User::whereIn('name', $sales)->pluck('id');
@@ -559,6 +572,9 @@ class SalesVisitController extends Controller
             'follow_up'       => $followUp,
             'filter_start'    => $startDateCarbon->format('Y-m-d'),
             'filter_end'      => $endDateCarbon->format('Y-m-d'),
+
+            // Data untuk filter di Android
+            'available_sales' => $allSales,
 
             // hanya yang dibutuhkan untuk Android
             'chart_labels'    => $chartLabels,

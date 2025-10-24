@@ -37,10 +37,22 @@ class AuthController extends Controller
         $user = $request->user();
         $token = $user->createToken('auth-token')->plainTextToken;
 
+        // Definisikan pengguna sales dan depthead secara manual
+        $salesUsers = ['asep', 'boy'];
+        $deptHeadUsers = ['doni', 'eka']; // Contoh untuk depthead
+
+        $role = 'unknown'; // Peran default
+        if (in_array($user->username, $salesUsers)) {
+            $role = 'sales';
+        } elseif (in_array($user->username, $deptHeadUsers)) {
+            $role = 'depthead';
+        }
+
         return response()->json([
             'message' => 'Login successful',
             'user' => $user,
             'token' => $token,
+            'role' => $role, // Tambahkan peran ke respons
         ]);
     }
 

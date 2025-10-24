@@ -1,12 +1,12 @@
-@extends('layout')
 
-@section('content')
+
+<?php $__env->startSection('content'); ?>
 
     <main id="main" class="main">
 
-        @php
+        <?php
             $inquiries = $inquiries ?? collect();
-        @endphp
+        ?>
 
         <style>
             .card-title1 {
@@ -429,23 +429,23 @@
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-start mt-4 mb-3">
-                        @php
+                        <?php
                             $user = Auth::user();
-                        @endphp
+                        ?>
 
-                        @if ($user && in_array($user->name, ['YULMAI RIDO WINANDA', 'ILHAM CHOLID','ADMINSTRATOR','JESSICA PAUNE','JUN JOHAMIN PD','ANDIK TOTOK SISWOYO']))
+                        <?php if($user && in_array($user->name, ['YULMAI RIDO WINANDA', 'ILHAM CHOLID','ADMINSTRATOR','JESSICA PAUNE','JUN JOHAMIN PD','ANDIK TOTOK SISWOYO'])): ?>
                         <button class="btn btn-add btn-sm me-2" data-bs-toggle="modal" data-bs-target="#inquiryImportModal">
                             <i class="bx bx-plus-medical fw-bold"> Add Import</i>
                         </button>
-                        @endif
-                        {{-- <h5 class="card-title1 font-sii text-center">Data Inquiry Sales View</h5> --}}
+                        <?php endif; ?>
+                        
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            @php $user = Auth::user(); @endphp
+                            <?php $user = Auth::user(); ?>
 
-                            {{-- Region 1 --}}
-                            @if ($user && in_array($user->name, [
+                            
+                            <?php if($user && in_array($user->name, [
                                 'YULMAI RIDO WINANDA', 
                                 'JUN JOHAMIN PD',
                                 'ADMINSTRATOR',
@@ -453,7 +453,7 @@
                                 'WULYO EKO PRASETYO',
                                 'YAN WELEM MANGINSELA',
                                 'SENDY PRABOWO'
-                                ]))
+                                ])): ?>
                                 <div class="card">
                                     <div class="card-body">
                                         <h5 class="card-title fo fw-bold">Inquiry Region 1</h5>
@@ -478,10 +478,10 @@
                                         </div>
                                     </div>
                                 </div>
-                            @endif
+                            <?php endif; ?>
 
-                            {{-- Region 2 --}}
-                            @if ($user && in_array($user->name, [
+                            
+                            <?php if($user && in_array($user->name, [
                                 'ADMINSTRATOR',
                                 'JESSICA PAUNE',
                                 'YULMAI RIDO WINANDA', 
@@ -491,7 +491,7 @@
                                 'HERY HERMAWAN',
                                 'HEXAPA DARMADI',
                                 'DIMAS ADITYA PRIANDANA'
-                                ]))
+                                ])): ?>
                                 <div class="card">
                                     <div class="card-body">
                                         <h5 class="card-title fo fw-bold">Inquiry Region 2</h5>
@@ -516,17 +516,17 @@
                                         </div>
                                     </div>
                                 </div>
-                            @endif
+                            <?php endif; ?>
 
-                            {{-- Region 3 --}}
-                            @if ($user && in_array($user->name, [
+                            
+                            <?php if($user && in_array($user->name, [
                                 'ANDIK TOTOK SISWOYO',
                                 'ADMINSTRATOR',
                                 'JESSICA PAUNE',
                                 'RISFAN FAISAL',
                                 'DWI KUNTORO',
                                 'YUNASIS PALGUNADI'
-                                ]))  {{-- Pengguna yang diizinkan untuk region 3 --}}
+                                ])): ?>  
                                 <div class="card">
                                     <div class="card-body">
                                         <h5 class="card-title fo fw-bold">Inquiry Region 3</h5>
@@ -551,10 +551,10 @@
                                         </div>
                                     </div>
                                 </div>
-                            @endif
+                            <?php endif; ?>
 
-                            {{-- Region 4 --}}
-                            @if ($user && in_array($user->name, ['ANDIK TOTOK SISWOYO', 'DANIA ISNAWATI','ADMINSTRATOR','JESSICA PAUNE']))  {{-- Pengguna yang diizinkan untuk region 4 --}}
+                            
+                            <?php if($user && in_array($user->name, ['ANDIK TOTOK SISWOYO', 'DANIA ISNAWATI','ADMINSTRATOR','JESSICA PAUNE'])): ?>  
                                 <div class="card">
                                     <div class="card-body">
                                         <h5 class="card-title fo fw-bold">Inquiry Region 4</h5>
@@ -579,7 +579,7 @@
                                         </div>
                                     </div>
                                 </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
 
                     <!-- Modal Add-->
@@ -593,9 +593,9 @@
                                         aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <form action="{{ route('storeinquiryImport') }}" method="POST"
+                                    <form action="<?php echo e(route('storeinquiryImport')); ?>" method="POST"
                                         enctype="multipart/form-data">
-                                        @csrf
+                                        <?php echo csrf_field(); ?>
                                         <div class="mb-3">
                                             <label for="loc_imp" class="form-label fw-bold">Jenis Inquiry <span
                                                     class="disabledform">
@@ -613,19 +613,7 @@
 
                                         </div>
 
-                                        {{-- <div class="mb-3">
-                                            <label for="id_customer" class="form-label fw-bold">Order from</label>
-                                            <div class="searchable-dropdown">
-                                                <input type="text" id="search_customer">
-                                                <div class="dropdown-items" id="customer_list" style="display: none;">
-                                                    @foreach ($customers as $customer)
-                                                        <div data-value="{{ $customer->id }}">{{ $customer->name_customer }}</div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                            <input type="hidden" id="id_customer" name="id_customer" required>
-                                            <div id="selected_customers_list"></div>
-                                        </div> --}}
+                                        
 
                                         <!-- Region (Searchable Dropdown) -->
                                         <div class="mb-3">
@@ -633,7 +621,7 @@
                                             <div class="position-relative">
                                                 <select class="form-select" id="id_region" name="region" required>
                                                     <option value="" disabled selected>Pilih Region</option>
-                                                    @php
+                                                    <?php
                                                         $user = Auth::user();
                                                         $allowedRegions = [];
 
@@ -650,13 +638,14 @@
                                                         if (in_array($user->name, ['ANDIK TOTOK SISWOYO', 'DANIA ISNAWATI','ADMINSTRATOR','JESSICA PAUNE'])) {
                                                             $allowedRegions[] = 4; // Region 4
                                                         }
-                                                    @endphp
-                                                    @foreach ($allowedRegions as $region)
-                                                        <option value="{{ $region }}"
-                                                            {{ old('region', $inquiry->region ?? '') == $region ? 'selected' : '' }}>
-                                                            Region {{ $region }}
+                                                    ?>
+                                                    <?php $__currentLoopData = $allowedRegions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $region): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                        <option value="<?php echo e($region); ?>"
+                                                            <?php echo e(old('region', $inquiry->region ?? '') == $region ? 'selected' : ''); ?>>
+                                                            Region <?php echo e($region); ?>
+
                                                         </option>
-                                                    @endforeach
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                                 </select>
                                             </div>
                                         </div>
@@ -687,10 +676,10 @@
                                 </div>
                                 <div class="modal-body">
                                     <form id="editInquiryForm"
-                                        action="{{ route('updateinquiry', ['id' => 0]) }}"
+                                        action="<?php echo e(route('updateinquiry', ['id' => 0])); ?>"
                                         method="POST" enctype="multipart/form-data">
-                                        @csrf
-                                        @method('PUT')
+                                        <?php echo csrf_field(); ?>
+                                        <?php echo method_field('PUT'); ?>
                                         <input type="hidden" id="editInquiryId" name="inquiry_id">
                                         <div class="mb-3">
                                             <label for="editjenis_inquiry" class="form-label">Jenis Inquiry</label>
@@ -713,10 +702,10 @@
                                                 placeholder="Search customer...">
                                             <div id="edit_customer_list" class="dropdown-menu show"
                                                 style="width: 100%; display: none; max-height: 200px; overflow-y: auto;">
-                                                @foreach ($customers as $customer)
-                                                    <div class="dropdown-item" data-value="{{ $customer->id }}">
-                                                        {{ $customer->name_customer }}</div>
-                                                @endforeach
+                                                <?php $__currentLoopData = $customers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $customer): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <div class="dropdown-item" data-value="<?php echo e($customer->id); ?>">
+                                                        <?php echo e($customer->name_customer); ?></div>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                             </div>
                                             <input type="hidden" id="edit_id_customer" name="id_customer">
                                         </div>
@@ -773,7 +762,7 @@
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
         <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-        {{-- excel --}}
+        
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
         <script>
@@ -787,37 +776,7 @@
             });
         </script>
 
-        {{-- <script>
-            function showDropdown(id) {
-                document.getElementById(id).style.display = "block";
-            }
-
-            function filterDropdown(inputId, listId) {
-                let input = document.getElementById(inputId).value.toLowerCase();
-                let items = document.querySelectorAll(`#${listId} .dropdown-item`);
-                items.forEach(item => {
-                    if (item.textContent.toLowerCase().includes(input)) {
-                        item.style.display = "block";
-                    } else {
-                        item.style.display = "none";
-                    }
-                });
-            }
-
-            function selectItem(element, hiddenInputId, displayInputId) {
-                let value = element.getAttribute("data-value");
-                let text = element.textContent;
-                document.getElementById(displayInputId).value = text;
-                document.getElementById(hiddenInputId).value = value;
-                document.getElementById(element.parentElement.id).style.display = "none";
-            }
-
-            document.addEventListener("click", function(event) {
-                if (!event.target.closest(".position-relative")) {
-                    document.querySelectorAll(".dropdown-menu").forEach(menu => menu.style.display = "none");
-                }
-            });
-        </script> --}}
+        
 
         <script>
             document.addEventListener('DOMContentLoaded', function() {
@@ -880,7 +839,7 @@
             function openEditInquiryImportModal(id) {
                 console.log('Opening modal for inquiry ID: ' + id);
                 $.ajax({
-                    url: '{{ route('editInquiry', ['id' => ':id']) }}'.replace(':id', id),
+                    url: '<?php echo e(route('editInquiry', ['id' => ':id'])); ?>'.replace(':id', id),
                     type: 'GET',
                     success: function(response) {
                         console.log('Response:', response);
@@ -923,12 +882,12 @@
                                 id_customer: $('#edit_id_customer').val(),
                                 loc_imp: $('#editloc_imp').val(),
                                 // supplier: $('#editsupplier').val(),
-                                _token: '{{ csrf_token() }}', // Sertakan token CSRF untuk keamanan
+                                _token: '<?php echo e(csrf_token()); ?>', // Sertakan token CSRF untuk keamanan
                                 _method: 'PUT', // Menggunakan metode PUT untuk update
                             };
 
                             $.ajax({
-                                url: '{{ route('updateinquiry', ['id' => ':id']) }}'
+                                url: '<?php echo e(route('updateinquiry', ['id' => ':id'])); ?>'
                                     .replace(':id',
                                         inquiryId),
                                 type: 'POST', // Gunakan POST karena kita menipu metode
@@ -959,7 +918,7 @@
             }
 
             jQuery(function($) {
-                const createImportUrl = @json(route('createinquiryImport'));
+                const createImportUrl = <?php echo json_encode(route('createinquiryImport'), 15, 512) ?>;
 
                 const escapeHtml = (value) => {
                     if (value === null || value === undefined) {
@@ -1057,10 +1016,10 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: '{{ route('deleteinquiry', '') }}/' + id,
+                            url: '<?php echo e(route('deleteinquiry', '')); ?>/' + id,
                             type: 'DELETE',
                             data: {
-                                '_token': '{{ csrf_token() }}'
+                                '_token': '<?php echo e(csrf_token()); ?>'
                             },
                             success: function(response) {
                                 Swal.fire(
@@ -1086,7 +1045,7 @@
 
                 // Ambil data progress untuk inquiry tersebut
                 $.ajax({
-                    url: '{{ route('progressHistory', '') }}/' + id, // Pastikan route-nya sesuai
+                    url: '<?php echo e(route('progressHistory', '')); ?>/' + id, // Pastikan route-nya sesuai
                     method: 'GET',
                     success: function(response) {
                         const historyBody = $('#historyBody');
@@ -1241,4 +1200,6 @@
 
 
     </main><!-- End #main -->
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layout', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\laragon\www\fastware_adsi_1\resources\views/inquiry/createImport.blade.php ENDPATH**/ ?>

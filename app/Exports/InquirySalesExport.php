@@ -51,7 +51,7 @@ class InquirySalesExport implements FromCollection, WithHeadings, WithMapping, W
             'No.', 'Customer Name', 'Inquiry Code', 'Order Type', 'Inquiry Type', 'Category', 
             'Est. Date', 'Supplier', 'Sales Person', 'Progress', 'Ref. PO', 'Files', 'Status', 
             'Created_at', 'Updated_at', 'Modified_by', 'Raw Material', 'Shapes', 'Thickness', 
-            'Inner Diameter', 'Outer Diameter', 'Weight', 'Length', 'Qty *Unit', 'Forecast Month 1', 
+            'Inner Diameter', 'Outer Diameter', 'Width', 'Length', 'Qty *Unit', 'Forecast Month 1', 
             'Forecast Month 2', 'Forecast Month 3', 'Ref. SO', 'Ship-To', 'Remark', 'File', 
             'Created_at (Detail)', 'Updated_at (Detail)'
         ];

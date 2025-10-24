@@ -564,6 +564,31 @@ class CustomRequestController extends Controller
         return redirect()->back()->with('success', 'Material berhasil ditambahkan.');
     }
 
+    public function rejectInputSales(Request $request, $id)
+    {
+        $request->validate([
+            'keterangan_reject' => 'required|string',
+        ]);
+
+        $pengajuan = MstPengajuanSubcont::findOrFail($id);
+        $pengajuan->status_1 = 2;
+        $pengajuan->status_2 = 2;
+        $pengajuan->confirm_prod = null;
+        $pengajuan->date_confirm_prod = null;
+        $pengajuan->save();
+
+        $userName = auth()->user()->name;
+
+        TrsPengajuanSubcont::create([
+            'id_subcont' => $id,
+            'keterangan' => 'Reject input sales: ' . $request->keterangan_reject,
+            'status' => '2',
+            'modified_at' => $userName,
+        ]);
+
+        return redirect()->back()->with('success', 'Pengajuan berhasil direject.');
+    }
+
 
     public function updateCstmReq(Request $request, $id)
     {

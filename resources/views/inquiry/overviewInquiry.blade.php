@@ -370,106 +370,7 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        @foreach ($draftInquiries as $index => $inquiry)
-                                            <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td class="text-center">{{ $inquiry->create_by }}</td>
-                                                <td class="text-center">{{ $inquiry->kode_inquiry }}</td>
-                                                <td class="text-center">{{ $inquiry->loc_imp }}</td>
-                                                <td class="text-center">{{ $inquiry->supplier }}</td>
-                                                <td class="text-center">
-                                                    {{ $inquiry->customer ? $inquiry->customer->name_customer : 'N/A' }}
-                                                </td>
-                                                @php
-                                                    $statusDescriptions = [
-                                                        1 => 'Draft',
-                                                        2 => 'Open',
-                                                        3 => 'Approve Ka.Dept',
-                                                        4 => 'Approve Ka.Sie',
-                                                        5 => 'On Progress',
-                                                        6 => 'Finished',
-                                                        7 => 'Rejected',
-                                                        8 => 'Approve Inventory',
-                                                        9 => 'Confirm Purchasing',
-                                                    ];
-
-                                                    // Mendefinisikan kelas tombol berdasarkan status
-                                                    $buttonClasses = [
-                                                        1 => 'btn-secondary', // Draft
-                                                        2 => 'btn-success', // Open
-                                                        3 => 'btn-danger', // Approve Ka.Dept
-                                                        4 => 'btn-info', // Approve Ka.Sie
-                                                        5 => 'btn-warning', // On Progress
-                                                        6 => 'btn-primary', // Finished
-                                                        7 => 'btn-danger', // Rejected
-                                                        8 => 'btn-danger', // Approve Inventory
-                                                        9 => 'btn-warning', // Confirm Purchasing
-                                                    ];
-                                                @endphp
-                                                <td>
-                                                    <button
-                                                        class="btn btn-sm 
-                                                        {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }} 
-                                                        {{ $inquiry->status == 1 ? 'btn-custom-draft' : '' }}
-                                                        {{ $inquiry->status == 2 ? 'btn-custom-open' : '' }}
-                                                        {{ $inquiry->status == 3 ? 'btn-custom-approve-dept' : '' }}
-                                                        {{ $inquiry->status == 4 ? 'btn-custom-approve-sie' : '' }}
-                                                        {{ $inquiry->status == 5 ? 'btn-custom-in-progress' : '' }}
-                                                        {{ $inquiry->status == 6 ? 'btn-custom-finished' : '' }}
-                                                        {{ $inquiry->status == 7 ? 'btn-custom-rejected' : '' }}
-                                                        {{ $inquiry->status == 8 ? 'btn-custom-inventory' : '' }}
-                                                        {{ $inquiry->status == 9 ? 'btn-custom-confirm-purchasing' : '' }}">
-                                                        {{ $statusDescriptions[$inquiry->status] ?? 'Unknown' }}
-                                                    </button>
-                                                </td>
-                                                <td>
-                                                    @if ($inquiry->details->isNotEmpty())
-                                                        @php
-                                                            // Ambil semua nilai ship dari detail
-                                                            $ships = $inquiry->details->pluck('ship')->unique(); // Mengambil nilai unik
-                                                        @endphp
-
-                                                        @if ($ships->count() === 1)
-                                                            <p>{{ $ships->first() }}</p>
-                                                        @else
-                                                            @foreach ($ships as $ship)
-                                                                <p>{{ $ship }}</p>
-                                                            @endforeach
-                                                        @endif
-                                                    @else
-                                                        --- No Shipping Options ---
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @php
-                                                        $progress = App\Models\TrxDboProgPurchase::where(
-                                                            'inquiry_id',
-                                                            $inquiry->id,
-                                                        )
-                                                            ->latest()
-                                                            ->first();
-                                                    @endphp
-                                                    {{ $progress ? $progress->description : 'No updates yet' }}
-                                                </td>
-                                                <td>{{ $inquiry->est_date }}</td>
-                                                <td>{{ $inquiry->source_pr }}</td>
-                                                <td>
-                                                    <a href="{{ route('showFormSS', ['id' => $inquiry->id]) }}"
-                                                        class="btn btn-warning btn-sm" title="View Form">
-                                                        <i class="bi bi-eye-fill"></i>
-                                                    </a>
-                                                    <a href="#" class="btn btn-primary btn-sm" 
-   onclick="showEditDataModal1({{ $inquiry->id }}, {{ json_encode($inquiry->source_pr) }}); return false;" 
-   title="Edit Inquiry">
-    <i class="bi bi-pencil"></i>
-</a>
-
-
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
@@ -576,10 +477,11 @@
         </section>
 
 
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-        <!-- SimpleDataTables JS -->
-        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
+        <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
         <script>
             $(document).ready(function() {
@@ -591,33 +493,86 @@
                 });
             });
 
-            $.noConflict();
-            jQuery(document).ready(function($) {
-                const dataTable = new simpleDatatables.DataTable("#overviewTable", {
-                    searchable: true, // Aktifkan fitur pencarian
-                    perPage: 10, // Jumlah entri data per halaman
-                    perPageSelect: [5, 10, 20, 150], // Opsi jumlah entri data per halaman
-                    dataProps: {
-                        // Fungsi untuk menghasilkan format yang diinginkan
-                        "Urutan": (value, data) => {
-                            // Mendapatkan indeks baris data saat ini
-                            const index = data.tableData.id;
-
-                            // Mendapatkan nilai dari kolom "RO" atau "SPOR"
-                            const spoOrRo = data[index][0].startsWith("RO") ? "RO" : "SPOR";
-
-                            // Mendapatkan nilai dari kolom "Bulan"
-                            const month = data[index][1];
-
-                            // Mendapatkan nilai dari kolom "Tahun"
-                            const year = data[index][2];
-
-                            // Menghasilkan urutan sesuai format yang diinginkan
-                            const order = (index + 1).toString().padStart(3, '0');
-                            return `${spoOrRo}/${month}/${year}/${order}`;
-                        }
+            jQuery(function($) {
+                const escapeHtml = (value) => {
+                    if (value === null || value === undefined) {
+                        return '';
                     }
+                    return String(value)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                };
+
+                const table = $('#overviewTable').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: '{{ route('overviewInquiry') }}',
+                        data: function(params) {
+                            params.format = 'json';
+                        }
+                    },
+                    columns: [
+                        {
+                            data: null,
+                            orderable: false,
+                            searchable: false,
+                            render: function(data, type, row, meta) {
+                                return meta.row + meta.settings._iDisplayStart + 1;
+                            }
+                        },
+                        { data: 'create_by', name: 'create_by', defaultContent: '-' },
+                        { data: 'kode_inquiry', name: 'kode_inquiry', defaultContent: '-' },
+                        { data: 'loc_imp', name: 'loc_imp', defaultContent: '-' },
+                        { data: 'supplier', name: 'supplier', defaultContent: '-' },
+                        { data: 'customer_name', name: 'customer.name_customer', defaultContent: 'N/A' },
+                        {
+                            data: null,
+                            orderable: false,
+                            searchable: false,
+                            render: function(data, type, row) {
+                                const css = row.status_class || 'btn-light';
+                                const label = row.status_label || 'Unknown';
+                                return '<span class="btn btn-sm ' + css + '">' + label + '</span>';
+                            }
+                        },
+                        {
+                            data: 'ship_to',
+                            name: 'ship_to',
+                            orderable: false,
+                            searchable: false,
+                            render: function(data, type) {
+                                if (type === 'display') {
+                                    return data || '--- No Shipping Options ---';
+                                }
+                                return data;
+                            }
+                        },
+                        { data: 'last_update', name: 'last_update', defaultContent: 'No updates yet' },
+                        { data: 'est_date', name: 'est_date', defaultContent: '-' },
+                        {
+                            data: 'source_pr',
+                            name: 'source_pr',
+                            render: function(data, type) {
+                                if (!data) {
+                                    return type === 'display' ? '-' : '';
+                                }
+                                if (type === 'display') {
+                                    return escapeHtml(data).replace(/\n/g, '<br>');
+                                }
+                                return data;
+                            }
+                        },
+                        { data: 'actions', orderable: false, searchable: false, defaultContent: '' }
+                    ],
+                    order: [[2, 'desc']],
+                    lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]]
                 });
+
+                window.overviewTable = table;
             });
         </script>
 
@@ -664,9 +619,6 @@
                 const form = document.getElementById('editInquiryForm');
                 const formData = new FormData(form);
 
-                // Ambil nilai source_pr yang dimasukkan user
-                const sourcePrInput = document.getElementById('source_pr').value;
-
                 // Pastikan 'inquiryId' diganti menjadi 'id' saat dikirim
                 formData.set('id', document.getElementById('inquiryId').value); // Menggunakan 'id' sesuai backend
 
@@ -677,8 +629,20 @@
                     processData: false,
                     contentType: false,
                     success: function(response) {
+                        const modalEl = document.getElementById('editDataModal1');
+                        if (modalEl) {
+                            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                            if (modalInstance) {
+                                modalInstance.hide();
+                            }
+                        }
+
                         Swal.fire('Success!', response.message, 'success').then(() => {
-                            location.reload(); // Reload halaman
+                            if (window.overviewTable) {
+                                window.overviewTable.ajax.reload(null, false);
+                            } else {
+                                location.reload();
+                            }
                         });
                     },
                     error: function(xhr) {

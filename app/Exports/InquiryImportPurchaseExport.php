@@ -83,7 +83,7 @@ class InquiryImportPurchaseExport implements FromCollection, WithHeadings, WithM
         return [
             'No', 'Bulan', 'Region', 'Klasifikasi', 'Customer Name', 'Inquiry Code', 'Order Type', 'Inquiry Type', 'Category',
             'Est. Date', 'Sales Person', 'Raw Material', 'Shapes', 'Thickness',
-            'Inner Diameter', 'Outer Diameter', 'Weight', 'Length', 'Qty *Unit', 'Forecast Month 1',
+            'Inner Diameter', 'Outer Diameter', 'Width', 'Length', 'Qty *Unit', 'Forecast Month 1',
             'Forecast Month 2', 'Forecast Month 3', 'Ref. SO', 'Ship-To', 'Remark', 'Partner',
             'Sec ID', 'Sec Detail ID', 'Progress', 'NO PO', 'Supplier'
         ];
