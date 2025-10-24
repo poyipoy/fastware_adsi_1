@@ -337,6 +337,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/editimport/{id}', [InquirySalesController::class, 'editimport'])->name('editimport');
     Route::put('/updateimport/{id}', [InquirySalesController::class, 'updateImport'])->name('inquiry.update');
     Route::get('/inquiry/overview-purchase-import', [InquirySalesController::class, 'showApprovalPurchaseImport'])->name('overviewPurchaseImport');
+    Route::post('/inquiry/export-purchasing-import', [InquirySalesController::class, 'exportOverviewPurchasecustom'])->name('exportpurchaseimportcustom');
     Route::get('/export-excel', [InquirySalesController::class, 'exportexceloverviewimportpurchase'])->name('exportExcelimportpurchase');
     Route::post('/import-excel-purchase', [InquirySalesController::class, 'importexceloverviewimportpurchase'])->name('importExcelimportpurchase');
     Route::get('/inquiry/overview-inquiry-import', [InquirySalesController::class, 'overviewInquiryImport'])->name('overviewInquiryImport');

@@ -353,7 +353,34 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="card">
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <form action="{{ route('exportpurchaseimportcustom') }}" method="POST" class="d-flex justify-content-end align-items-end gap-2">
+                                            @csrf
+                                            <div>
+                                                <label for="from_date" class="form-label">From Date</label>
+                                                <input type="date" class="form-control form-control-sm" id="from_date" name="from_date" required>
+                                            </div>
+                                            <div>
+                                                <label for="to_date" class="form-label">To Date</label>
+                                                <input type="date" class="form-control form-control-sm" id="to_date" name="to_date" required>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                <i class="bi bi-download"></i> Export
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                                 <div class="card-body">
+                                    @php
+                                        // Ensure we have the full collection of import inquiries available in the view
+                                        // The controller returned grouped collections ($Daido / $NonDaido) but some
+                                        // parts of this view expect the full set for per-month filtering.
+                                        $allImportInquiries = \App\Models\InquirySales::whereIn('status', [5, 6, 8, 9])
+                                            ->where('loc_imp', 'Import')
+                                            ->where('is_active', 1)
+                                            ->get();
+                                    @endphp
                                     <h5 class="card-title fo fw-bold">DAIDO</h5>
                                         @if ($Daido->isEmpty())
                                             <div class="eempty">
@@ -472,7 +499,8 @@
                                                                     @php
                                                                         $monthKey = $inquiry->created_at->format('Y-m');
 
-                                                                        $inquiriesForMonth = $inquiries->filter(function ($item) use ($monthKey) {
+                                                                        // Use the full import inquiries collection to get all inquiries in the same month
+                                                                        $inquiriesForMonth = $allImportInquiries->filter(function ($item) use ($monthKey) {
                                                                             return $item->created_at->format('Y-m') === $monthKey;
                                                                         });
 
@@ -642,7 +670,8 @@
                                                                             @php
                                                                                 $monthKey = $inquiry->created_at->format('Y-m');
 
-                                                                                $inquiriesForMonth = $inquiries->filter(function ($item) use ($monthKey) {
+                                                                                // Use the full import inquiries collection to get all inquiries in the same month
+                                                                                $inquiriesForMonth = $allImportInquiries->filter(function ($item) use ($monthKey) {
                                                                                     return $item->created_at->format('Y-m') === $monthKey;
                                                                                 });
 
@@ -731,6 +760,7 @@
         <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
 
         <script>
+        (function($) {
             $(document).ready(function() {
                 // Hover function for dropdowns
                 $('.nav-item.dropdown').hover(function() {
@@ -738,73 +768,47 @@
                 }, function() {
                     $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
                 });
-            });
 
-            $.noConflict();
-            jQuery(document).ready(function($) {
-                const dataTable = new simpleDatatables.DataTable("#overviewTable", {
-                    searchable: true, // Aktifkan fitur pencarian
-                    perPage: 10, // Jumlah entri data per halaman
-                    perPageSelect: [5, 10, 20, 150], // Opsi jumlah entri data per halaman
-                    dataProps: {
-                        // Fungsi untuk menghasilkan format yang diinginkan
-                        "Urutan": (value, data) => {
-                            // Mendapatkan indeks baris data saat ini
-                            const index = data.tableData.id;
-
-                            // Mendapatkan nilai dari kolom "RO" atau "SPOR"
-                            const spoOrRo = data[index][0].startsWith("RO") ? "RO" : "SPOR";
-
-                            // Mendapatkan nilai dari kolom "Bulan"
-                            const month = data[index][1];
-
-                            // Mendapatkan nilai dari kolom "Tahun"
-                            const year = data[index][2];
-
-                            // Menghasilkan urutan sesuai format yang diinginkan
-                            const order = (index + 1).toString().padStart(3, '0');
-                            return `${spoOrRo}/${month}/${year}/${order}`;
-                        }
-                    }
+                // Initialize SimpleDataTables for every table with the .datatable class
+                document.querySelectorAll('.datatable').forEach(function(tableEl) {
+                    new simpleDatatables.DataTable(tableEl, {
+                        searchable: true,
+                        perPage: 10,
+                        perPageSelect: [5, 10, 20, 150]
+                    });
                 });
             });
-        </script>
 
-<script>
-    function uploadexcel() {
-    let fileInput = document.getElementById('excelFile');
-    
-    if (fileInput.files.length === 0) {
-        alert("Pilih file terlebih dahulu!");
-        return;
-    }
-    
-    let formData = new FormData();
-    formData.append("file", fileInput.files[0]);
-    
-    $.ajax({
-        url: "{{ route('importExcelimportpurchase') }}",
-        type: "POST",
-        data: formData,
-        processData: false,
-        contentType: false,
-        headers: {
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        success: function(response) {
-            alert(response.message);
-        },
-        error: function(xhr) {
-            alert("Terjadi kesalahan: " + xhr.responseText);
-        }
-    });
-}
+            window.uploadexcel = function() {
+                let fileInput = document.getElementById('excelFile');
+                
+                if (fileInput.files.length === 0) {
+                    alert("Pilih file terlebih dahulu!");
+                    return;
+                }
+                
+                let formData = new FormData();
+                formData.append("file", fileInput.files[0]);
+                
+                $.ajax({
+                    url: "{{ route('importExcelimportpurchase') }}",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                    },
+                    success: function(response) {
+                        alert(response.message);
+                    },
+                    error: function(xhr) {
+                        alert("Terjadi kesalahan: " + xhr.responseText);
+                    }
+                });
+            }
 
-    </script>
-    
-
-        <script>
-            function confirmPurchasing(ids, klasifikasi) {
+            window.confirmPurchasing = function(ids, klasifikasi) {
                 if (!Array.isArray(ids)) {
                     console.error('Invalid IDs format:', ids);
                     Swal.fire('Error!', 'Invalid inquiry IDs format.', 'error');
@@ -847,15 +851,13 @@
                 });
             }
 
-
-            function showEditDataModal(ids, klasifikasi) {
+            window.showEditDataModal = function(ids, klasifikasi) {
                 document.getElementById('inquiryIds').value = JSON.stringify(ids);
                 document.getElementById('inquiryKlasifikasi').value = klasifikasi;
                 new bootstrap.Modal(document.getElementById('editDataModal')).show();
             }
 
-
-            function submitEditDataForm() {
+            window.submitEditDataForm = function() {
                 const form = document.getElementById('editDataForm');
                 const formData = new FormData(form);
                 
@@ -888,8 +890,7 @@
                 });
             }
 
-
-            function finishInquiry(ids, klasifikasi) {
+            window.finishInquiry = function(ids, klasifikasi) {
                 if (!Array.isArray(ids)) {
                     console.error('Invalid IDs format:', ids);
                     Swal.fire('Error!', 'Invalid inquiry IDs format.', 'error');
@@ -932,11 +933,11 @@
                 });
             }
 
-
-            function showInquiry(id) {
+            window.showInquiry = function(id) {
                 // Tampilkan detail inquiry dan tambahkan parameter query
                 window.location.href = '{{ route('showFormSSimport', '') }}/' + id + '?source=approval';
             }
+        })(jQuery);
         </script>
 
     </main>

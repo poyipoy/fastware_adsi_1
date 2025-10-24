@@ -17,6 +17,7 @@ use PDF;
 use App\Exports\InquirySalesExport;
 use App\Exports\DraftInquiryExport;
 use App\Exports\InquiryImportInventoryExport;
+use App\Exports\InquiryImportInventoryExportcustom;
 use App\Exports\InquiryImportPurchaseExport;
 use App\Exports\OverviewPurchaseExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -1018,6 +1019,39 @@ class InquirySalesController extends Controller
         $fileName = 'InquiryImport_' . $startDate->format('Ymd') . '_' . $endDate->format('Ymd') . '.xlsx';
 
         return Excel::download(new InquiryImportInventoryExport($ids), $fileName);
+    }
+
+    public function exportOverviewPurchasecustom(Request $request)
+    {
+        $validated = $request->validate([
+            'from_date' => ['required', 'date'], // Diubah
+            'to_date' => ['required', 'date', 'after_or_equal:from_date'], // Diubah
+        ]);
+
+        $startDate = Carbon::parse($validated['from_date'])->startOfDay(); // Diubah
+        $endDate = Carbon::parse($validated['to_date'])->endOfDay(); // Diubah
+
+        $ids = DetailInquiryImport::query()
+            ->join('inquiry_sales', 'detail_inquiry_import.id_inquiry', '=', 'inquiry_sales.id')
+            ->whereNull('detail_inquiry_import.deleted_at')
+            ->whereBetween('detail_inquiry_import.created_at', [$startDate, $endDate])
+            ->where('inquiry_sales.is_active', 1)
+            ->where('inquiry_sales.loc_imp', 'Import')
+            ->whereIn('inquiry_sales.status', [5, 6, 8, 9])
+            ->pluck('detail_inquiry_import.id_inquiry')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return back()->withInput()->withErrors([
+                'from_date' => 'Data tidak ditemukan pada rentang tanggal tersebut.',
+            ]);
+        }
+
+        $fileName = 'InquiryImport_' . $startDate->format('Ymd') . '_' . $endDate->format('Ymd') . '.xlsx';
+
+        return Excel::download(new InquiryImportInventoryExportcustom($ids), $fileName);
     }
 
     public function overviewPurchaseImport()
@@ -2601,6 +2635,7 @@ class InquirySalesController extends Controller
                 });
             });
         })->filter(); // Buang null values jika tidak ada inquiry NonDaido di bulan tersebut
+        
 
         return view('inquiry.overviewPurchaseImport', [
             'inquiries' => $inquiries,
