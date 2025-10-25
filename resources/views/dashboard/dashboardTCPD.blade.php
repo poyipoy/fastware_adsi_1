@@ -149,13 +149,6 @@
                     $detailCompetencyUrl = route('dsDetailCompetency');
                 @endphp
                 <div id="tcpdCarousel" class="carousel slide dashboard-carousel" data-bs-ride="carousel" data-bs-interval="10000">
-                    <div class="carousel-indicators">
-                        <button type="button" data-bs-target="#tcpdCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Company"></button>
-                        <button type="button" data-bs-target="#tcpdCarousel" data-bs-slide-to="1" aria-label="Logistik &amp; Sales"></button>
-                        <button type="button" data-bs-target="#tcpdCarousel" data-bs-slide-to="2" aria-label="Procurement &amp; Finance"></button>
-                        <button type="button" data-bs-target="#tcpdCarousel" data-bs-slide-to="3" aria-label="Produksi"></button>
-                        <button type="button" data-bs-target="#tcpdCarousel" data-bs-slide-to="4" aria-label="Job Position &amp; Area Development"></button>
-                    </div>
                     <div class="carousel-inner">
                         <div class="carousel-item active" data-slide-key="company">
                             <div class="carousel-stage">
