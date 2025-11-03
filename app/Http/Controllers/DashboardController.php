@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use App\Models\MstPoPengajuan;
 use App\Models\TrsPoPengajuan;
 use App\Models\InquirySales;
@@ -19,6 +20,8 @@ use App\Models\MstAdditionals;
 use App\Models\TrsPenilaianTc;
 use App\Models\User;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TcpdCompetencyExport;
 
 class DashboardController extends Controller
 {
@@ -428,12 +431,28 @@ class DashboardController extends Controller
         }
 
         if (!$companyStartDate && !$companyEndDate) {
-            $defaultYear = !empty($yearOptions) ? (int) end($yearOptions) : Carbon::now()->year;
-            if (!empty($yearOptions)) {
-                reset($yearOptions);
+            $currentYear = Carbon::now()->year;
+            $targetStartYear = $currentYear - 2;
+
+            $yearCollection = collect($yearOptions)
+                ->map(fn ($year) => (int) $year)
+                ->sort()
+                ->values();
+
+            if ($yearCollection->isNotEmpty()) {
+                $defaultStartYear = max($targetStartYear, $yearCollection->first());
+                $defaultEndYear = min($currentYear, $yearCollection->last());
+
+                if ($defaultStartYear > $defaultEndYear) {
+                    $defaultStartYear = $defaultEndYear;
+                }
+            } else {
+                $defaultStartYear = $targetStartYear;
+                $defaultEndYear = $currentYear;
             }
-            $companyYearFromInput = $defaultYear;
-            $companyYearToInput = $defaultYear;
+
+            $companyYearFromInput = $defaultStartYear;
+            $companyYearToInput = $defaultEndYear;
         }
 
         $jobDateFromInput = $request->input('job_date_from');
@@ -453,11 +472,17 @@ class DashboardController extends Controller
             $jobDateToInput = $jobEndDate->format('Y-m-d');
         }
 
-        $jobPositions = TcJobPosition::query()
+        $normalizeName = static fn ($value) => strtolower(trim((string) $value));
+
+        $rawJobPositions = TcJobPosition::query()
             ->select(DB::raw('MIN(id) as id'), 'job_position')
             ->groupBy('job_position')
             ->orderBy('job_position')
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $row->job_position = trim((string) $row->job_position);
+                return $row;
+            });
 
         $initialOverview = [
             'chartRows' => [],
@@ -468,9 +493,9 @@ class DashboardController extends Controller
             'mode' => 'aggregate',
         ];
 
-        if ($jobPositions->isEmpty()) {
+        if ($rawJobPositions->isEmpty()) {
             return view('dashboard.dashboardTCPD', [
-                'jobPositions' => $jobPositions,
+                'jobPositions' => collect(),
                 'selectedJobPositionId' => null,
                 'selectedJobPositionName' => null,
                 'competencyRows' => [],
@@ -484,15 +509,166 @@ class DashboardController extends Controller
                 'companyYearTo' => $companyYearToInput,
                 'jobDateFrom' => $jobDateFromInput,
                 'jobDateTo' => $jobDateToInput,
+                'selectedDepartment' => null,
+                'jobDepartmentOptions' => [],
                 'shouldPrefetchCompany' => true,
                 'shouldPrefetchDepartments' => true,
                 'shouldPrefetchJob' => false,
             ]);
         }
 
-        $selectedJobPositionId = (int) $request->input('job_position_id', $jobPositions->first()->id);
-        $selectedJobPosition = $jobPositions->firstWhere('id', $selectedJobPositionId) ?? $jobPositions->first();
-        $selectedJobPositionName = $selectedJobPosition->job_position;
+        $departmentDefinitions = $this->departmentDefinitions();
+        $jobPositionsByName = $rawJobPositions->keyBy(fn ($row) => $normalizeName($row->job_position));
+
+        $jobDepartments = collect();
+        $matchedNormalizedNames = [];
+        foreach ($departmentDefinitions as $departmentName => $jobNames) {
+            $options = collect($jobNames)
+                ->map(function ($jobName) use ($jobPositionsByName, $normalizeName, &$matchedNormalizedNames) {
+                    $normalized = $normalizeName($jobName);
+                    $matched = $jobPositionsByName->get($normalized);
+                    if (!$matched) {
+                        return null;
+                    }
+
+                    $matchedNormalizedNames[$normalized] = true;
+
+                    return [
+                        'id' => (int) $matched->id,
+                        'name' => $matched->job_position,
+                    ];
+                })
+                ->filter()
+                ->values();
+
+            if ($options->isNotEmpty()) {
+                $jobDepartments->push([
+                    'department' => $departmentName,
+                    'job_positions' => $options->all(),
+                ]);
+            }
+        }
+
+        $unmatchedJobPositions = $rawJobPositions->filter(function ($row) use (&$matchedNormalizedNames, $normalizeName) {
+            $normalized = $normalizeName($row->job_position);
+            return !isset($matchedNormalizedNames[$normalized]);
+        });
+
+        if ($unmatchedJobPositions->isNotEmpty()) {
+            $jobDepartments->push([
+                'department' => 'Lainnya',
+                'job_positions' => $unmatchedJobPositions
+                    ->map(fn ($row) => [
+                        'id' => (int) $row->id,
+                        'name' => $row->job_position,
+                    ])
+                    ->values()
+                    ->all(),
+                'is_additional' => true,
+            ]);
+        }
+
+        if ($jobDepartments->isEmpty() && $rawJobPositions->isNotEmpty()) {
+            $jobDepartments->push([
+                'department' => 'All',
+                'job_positions' => $rawJobPositions
+                    ->map(fn ($row) => [
+                        'id' => (int) $row->id,
+                        'name' => $row->job_position,
+                    ])
+                    ->values()
+                    ->all(),
+                'is_fallback' => true,
+            ]);
+        }
+
+        if ($jobDepartments->isEmpty()) {
+            return view('dashboard.dashboardTCPD', [
+                'jobPositions' => collect(),
+                'selectedJobPositionId' => null,
+                'selectedJobPositionName' => null,
+                'competencyRows' => [],
+                'userCountByJobPosition' => 0,
+                'userSummaries' => [],
+                'totalPercentage' => null,
+                'departmentSummaries' => collect(),
+                'companyOverview' => $initialOverview,
+                'yearOptions' => $yearOptions,
+                'companyYearFrom' => $companyYearFromInput,
+                'companyYearTo' => $companyYearToInput,
+                'jobDateFrom' => $jobDateFromInput,
+                'jobDateTo' => $jobDateToInput,
+                'selectedDepartment' => null,
+                'jobDepartmentOptions' => [],
+                'shouldPrefetchCompany' => true,
+                'shouldPrefetchDepartments' => true,
+                'shouldPrefetchJob' => false,
+            ]);
+        }
+
+        $requestedDepartment = $request->input('department');
+        $selectedDepartmentGroup = $jobDepartments->first(function ($group) use ($requestedDepartment) {
+            return $requestedDepartment !== null && $group['department'] === $requestedDepartment;
+        }) ?? $jobDepartments->first();
+
+        $selectedDepartment = $selectedDepartmentGroup['department'] ?? null;
+        $jobPositionsForDepartment = collect($selectedDepartmentGroup['job_positions'] ?? []);
+
+        $requestedJobPositionId = $request->input('job_position_id');
+        $selectedJobEntry = null;
+
+        if ($requestedJobPositionId !== null && $requestedJobPositionId !== '') {
+            $selectedJobEntry = $jobPositionsForDepartment->firstWhere('id', (int) $requestedJobPositionId);
+
+            if (!$selectedJobEntry) {
+                foreach ($jobDepartments as $group) {
+                    $match = collect($group['job_positions'] ?? [])->firstWhere('id', (int) $requestedJobPositionId);
+                    if ($match) {
+                        $selectedDepartment = $group['department'];
+                        $jobPositionsForDepartment = collect($group['job_positions'] ?? []);
+                        $selectedJobEntry = $match;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!$selectedJobEntry) {
+            $selectedJobEntry = $jobPositionsForDepartment->first();
+        }
+
+        if (!$selectedJobEntry) {
+            return view('dashboard.dashboardTCPD', [
+                'jobPositions' => collect(),
+                'selectedJobPositionId' => null,
+                'selectedJobPositionName' => null,
+                'competencyRows' => [],
+                'userCountByJobPosition' => 0,
+                'userSummaries' => [],
+                'totalPercentage' => null,
+                'departmentSummaries' => collect(),
+                'companyOverview' => $initialOverview,
+                'yearOptions' => $yearOptions,
+                'companyYearFrom' => $companyYearFromInput,
+                'companyYearTo' => $companyYearToInput,
+                'jobDateFrom' => $jobDateFromInput,
+                'jobDateTo' => $jobDateToInput,
+                'selectedDepartment' => $selectedDepartment,
+                'jobDepartmentOptions' => $jobDepartments->values()->all(),
+                'shouldPrefetchCompany' => true,
+                'shouldPrefetchDepartments' => true,
+                'shouldPrefetchJob' => false,
+            ]);
+        }
+
+        $selectedJobPositionId = (int) ($selectedJobEntry['id'] ?? null);
+        $selectedJobPositionName = $selectedJobEntry['name'] ?? null;
+
+        $jobPositions = $jobPositionsForDepartment
+            ->map(fn ($job) => (object) [
+                'id' => (int) $job['id'],
+                'job_position' => $job['name'],
+            ]);
 
         return view('dashboard.dashboardTCPD', [
             'jobPositions' => $jobPositions,
@@ -509,14 +685,66 @@ class DashboardController extends Controller
             'companyYearTo' => $companyYearToInput,
             'jobDateFrom' => $jobDateFromInput,
             'jobDateTo' => $jobDateToInput,
-            'shouldPrefetchCompany' => true,
-            'shouldPrefetchDepartments' => true,
-            'shouldPrefetchJob' => true,
+             'selectedDepartment' => $selectedDepartment,
+             'jobDepartmentOptions' => $jobDepartments->values()->all(),
+             'shouldPrefetchCompany' => true,
+             'shouldPrefetchDepartments' => true,
+            'shouldPrefetchJob' => $selectedJobPositionId !== null,
             'jobDateRange' => [
                 'from' => $jobDateFromInput,
                 'to' => $jobDateToInput,
             ],
         ]);
+    }
+
+    public function exportTcpdCompetencyData(Request $request)
+    {
+        $jobPositionId = (int) $request->input('job_position_id');
+        if ($jobPositionId <= 0) {
+            abort(422, 'Parameter job_position_id wajib diisi.');
+        }
+
+        $jobPosition = TcJobPosition::select('job_position')->find($jobPositionId);
+        if (!$jobPosition) {
+            abort(404, 'Job position tidak ditemukan.');
+        }
+
+        $departmentFilter = $request->input('department');
+        if ($departmentFilter) {
+            $departmentDefinitions = $this->departmentDefinitions();
+            if (array_key_exists($departmentFilter, $departmentDefinitions)) {
+                $normalize = static fn ($value) => strtolower(trim((string) $value));
+                $allowedJobs = collect($departmentDefinitions[$departmentFilter] ?? [])
+                    ->map($normalize)
+                    ->filter()
+                    ->values();
+                if ($allowedJobs->isNotEmpty() && !$allowedJobs->contains($normalize($jobPosition->job_position))) {
+                    abort(422, 'Job position tidak sesuai dengan departemen yang dipilih.');
+                }
+            }
+        }
+
+        [$startDate, $endDate] = $this->resolveDateRange(
+            $request->input('date_from'),
+            $request->input('date_to')
+        );
+
+        $exportPayload = $this->buildTcpdDetailedRows($jobPosition->job_position, $startDate, $endDate, [$jobPositionId]);
+        $rows = $exportPayload['rows'] ?? [];
+        $departmentName = $exportPayload['department'] ?? null;
+
+        $fileLabelParts = array_filter([
+            'tcpd',
+            $departmentName ? Str::slug($departmentName, '_') : null,
+            Str::slug($jobPosition->job_position, '_'),
+        ]);
+        $fileName = implode('-', $fileLabelParts);
+        if ($fileName === '') {
+            $fileName = 'tcpd-export';
+        }
+        $fileName .= '-' . now()->format('Ymd_His') . '.xlsx';
+
+        return Excel::download(new TcpdCompetencyExport($rows), $fileName);
     }
 
     public function getTcpdCompetencyData(Request $request)
@@ -529,6 +757,24 @@ class DashboardController extends Controller
                 'success' => false,
                 'message' => 'Job position not found.',
             ], 404);
+        }
+
+        $departmentFilter = $request->input('department');
+        if ($departmentFilter) {
+            $departmentDefinitions = $this->departmentDefinitions();
+            if (array_key_exists($departmentFilter, $departmentDefinitions)) {
+                $normalize = static fn ($value) => strtolower(trim((string) $value));
+                $allowedJobs = collect($departmentDefinitions[$departmentFilter] ?? [])
+                    ->map($normalize)
+                    ->filter()
+                    ->values();
+                if ($allowedJobs->isNotEmpty() && !$allowedJobs->contains($normalize($jobPosition->job_position))) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Job position tidak sesuai dengan departemen yang dipilih.',
+                    ], 422);
+                }
+            }
         }
 
         [$startDate, $endDate] = $this->resolveDateRange(
@@ -560,9 +806,28 @@ class DashboardController extends Controller
         );
 
         if (!$startDate && !$endDate) {
-            $defaultYear = !empty($yearOptions) ? (int) end($yearOptions) : Carbon::now()->year;
-            $startDate = Carbon::create($defaultYear, 1, 1, 0, 0, 0)->startOfDay();
-            $endDate = Carbon::create($defaultYear, 12, 31, 23, 59, 59)->endOfDay();
+            $currentYear = Carbon::now()->year;
+            $targetStartYear = $currentYear - 2;
+
+            $yearCollection = collect($yearOptions)
+                ->map(fn ($year) => (int) $year)
+                ->sort()
+                ->values();
+
+            if ($yearCollection->isNotEmpty()) {
+                $defaultStartYear = max($targetStartYear, $yearCollection->first());
+                $defaultEndYear = min($currentYear, $yearCollection->last());
+
+                if ($defaultStartYear > $defaultEndYear) {
+                    $defaultStartYear = $defaultEndYear;
+                }
+            } else {
+                $defaultStartYear = $targetStartYear;
+                $defaultEndYear = $currentYear;
+            }
+
+            $startDate = Carbon::create($defaultStartYear, 1, 1, 0, 0, 0)->startOfDay();
+            $endDate = Carbon::create($defaultEndYear, 12, 31, 23, 59, 59)->endOfDay();
         }
 
         $departmentDefinitions = $this->departmentDefinitions();
@@ -741,6 +1006,17 @@ class DashboardController extends Controller
             ->sort()
             ->values();
 
+        $currentYear = Carbon::now()->year;
+        $minimumYear = $currentYear - 2;
+
+        $recentYears = $cleanYears
+            ->filter(fn ($year) => $year >= $minimumYear)
+            ->values();
+
+        if ($recentYears->isNotEmpty()) {
+            $cleanYears = $recentYears->sort()->values();
+        }
+
         if ($cleanYears->isEmpty()) {
             $cleanYears = collect([Carbon::now()->year]);
         }
@@ -868,15 +1144,7 @@ class DashboardController extends Controller
         $departmentCount = count(array_filter($rows, fn ($row) => !$row['is_company'] && $row['has_data']));
 
         return [
-            'chartRows' => array_map(function (array $row) {
-                return [
-                    'label' => $row['label'],
-                    'percentage' => $row['percentage'],
-                    'has_data' => $row['has_data'],
-                    'values' => $row['values'],
-                    'is_company' => $row['is_company'],
-                ];
-            }, $rows),
+            'chartRows' => $rows,
             'average' => $companyAverage ?? 0.0,
             'hasData' => $companyAverage !== null,
             'departmentCount' => $departmentCount,
@@ -1063,6 +1331,187 @@ class DashboardController extends Controller
             'userSummaries' => $userSummaries,
             'totalPercentage' => $totalPercentage,
             'hasTotalPercentage' => true,
+        ];
+    }
+
+    protected function buildTcpdDetailedRows(string $jobPositionName, ?Carbon $startDate = null, ?Carbon $endDate = null, ?array $jobPositionIds = null): array
+    {
+        $departmentName = $this->resolveDepartmentForJobPosition($jobPositionName);
+        $jobPositionIds = collect($jobPositionIds ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($jobPositionIds->isEmpty()) {
+            $jobPositionIds = TcJobPosition::where('job_position', $jobPositionName)->pluck('id');
+        }
+
+        if ($jobPositionIds->isEmpty()) {
+            return [
+                'department' => $departmentName,
+                'job_position' => $jobPositionName,
+                'rows' => [],
+            ];
+        }
+
+        $assignments = TcJobPosition::query()
+            ->whereIn('id', $jobPositionIds)
+            ->whereNotNull('id_user')
+            ->get(['id', 'id_user']);
+
+        $userIds = $assignments->pluck('id_user')->filter()->unique()->values();
+
+        if ($userIds->isEmpty()) {
+            $userIds = TrsPenilaianTc::query()
+                ->whereIn('id_job_position', $jobPositionIds)
+                ->pluck('id_user')
+                ->filter()
+                ->unique()
+                ->values();
+        }
+
+        $users = $userIds->isNotEmpty()
+            ? User::whereIn('id', $userIds)->get(['id', 'name', 'section'])->keyBy('id')
+            : collect();
+
+        $collectCompetencies = function (string $modelClass, string $nameColumn, string $valueColumn, string $type) use ($jobPositionIds) {
+            return app($modelClass)->newQuery()
+                ->whereIn('id_job_position', $jobPositionIds)
+                ->select('id', DB::raw("$nameColumn as name"), DB::raw("$valueColumn as standard"))
+                ->get()
+                ->map(function ($row) use ($type) {
+                    $name = trim((string) $row->name);
+                    return [
+                        'id' => (int) $row->id,
+                        'name' => $name,
+                        'standard' => is_numeric($row->standard) ? (float) $row->standard : null,
+                        'type' => $type,
+                    ];
+                })
+                ->filter(fn ($row) => $row['name'] !== '')
+                ->values();
+        };
+
+        $technical = $collectCompetencies(MstTc::class, 'keterangan_tc', 'nilai', 'technical');
+        $softSkills = $collectCompetencies(MstSoftSkill::class, 'keterangan_sk', 'nilai', 'soft_skill');
+        $additionals = $collectCompetencies(MstAdditionals::class, 'keterangan_ad', 'nilai', 'additional');
+
+        $competencies = collect()
+            ->concat($technical)
+            ->concat($softSkills)
+            ->concat($additionals);
+
+        if ($competencies->isEmpty() || $userIds->isEmpty()) {
+            return [
+                'department' => $departmentName,
+                'job_position' => $jobPositionName,
+                'rows' => [],
+            ];
+        }
+
+        $technicalSet = $technical->pluck('id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
+        $softSkillSet = $softSkills->pluck('id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
+        $additionalSet = $additionals->pluck('id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
+
+        $userIdSet = array_flip($userIds->map(fn ($id) => (int) $id)->all());
+
+        $scoreRowsQuery = TrsPenilaianTc::query()
+            ->whereIn('id_user', $userIds)
+            ->select('id', 'id_user', 'id_tc', 'id_sk', 'id_ad', 'nilai_tc', 'nilai_sk', 'nilai_ad');
+
+        $this->applyDateConstraint($scoreRowsQuery, $startDate, $endDate);
+
+        $scoreRows = $scoreRowsQuery
+            ->orderByDesc('id')
+            ->get();
+
+        $scoreLookup = [];
+        foreach ($scoreRows as $scoreRow) {
+            $userId = (int) $scoreRow->id_user;
+            if (!isset($userIdSet[$userId])) {
+                continue;
+            }
+
+            $appendScore = static function (array &$lookup, int $userIdAcc, string $type, int $competencyId, float $value): void {
+                if (!isset($lookup[$userIdAcc][$type][$competencyId])) {
+                    $lookup[$userIdAcc][$type][$competencyId] = [
+                        'sum' => 0.0,
+                        'count' => 0,
+                    ];
+                }
+
+                $lookup[$userIdAcc][$type][$competencyId]['sum'] += $value;
+                $lookup[$userIdAcc][$type][$competencyId]['count'] += 1;
+            };
+
+            if ($scoreRow->id_tc !== null && isset($technicalSet[(int) $scoreRow->id_tc]) && is_numeric($scoreRow->nilai_tc)) {
+                $compId = (int) $scoreRow->id_tc;
+                $appendScore($scoreLookup, $userId, 'technical', $compId, (float) $scoreRow->nilai_tc);
+            }
+
+            if ($scoreRow->id_sk !== null && isset($softSkillSet[(int) $scoreRow->id_sk]) && is_numeric($scoreRow->nilai_sk)) {
+                $compId = (int) $scoreRow->id_sk;
+                $appendScore($scoreLookup, $userId, 'soft_skill', $compId, (float) $scoreRow->nilai_sk);
+            }
+
+            if ($scoreRow->id_ad !== null && isset($additionalSet[(int) $scoreRow->id_ad]) && is_numeric($scoreRow->nilai_ad)) {
+                $compId = (int) $scoreRow->id_ad;
+                $appendScore($scoreLookup, $userId, 'additional', $compId, (float) $scoreRow->nilai_ad);
+            }
+        }
+
+        $typeOrder = ['technical' => 0, 'soft_skill' => 1, 'additional' => 2];
+        $sortedCompetencies = $competencies
+            ->sort(function (array $a, array $b) use ($typeOrder) {
+                $typeComparison = ($typeOrder[$a['type']] ?? 99) <=> ($typeOrder[$b['type']] ?? 99);
+                if ($typeComparison !== 0) {
+                    return $typeComparison;
+                }
+                return strcasecmp($a['name'], $b['name']);
+            })
+            ->values();
+
+        $sortedUsers = $userIds
+            ->map(function ($id) use ($users) {
+                $userRecord = $users->get($id);
+                return [
+                    'id' => (int) $id,
+                    'name' => optional($userRecord)->name ?? ('User ' . $id),
+                    'section' => optional($userRecord)->section,
+                ];
+            })
+            ->sort(function (array $a, array $b) {
+                return strcasecmp($a['name'], $b['name']);
+            })
+            ->values();
+
+        $rows = [];
+        foreach ($sortedUsers as $user) {
+            foreach ($sortedCompetencies as $competency) {
+                $type = $competency['type'];
+                $compId = $competency['id'];
+                $bucket = $scoreLookup[$user['id']][$type][$compId] ?? null;
+                $actual = ($bucket && ($bucket['count'] ?? 0) > 0)
+                    ? round($bucket['sum'] / $bucket['count'], 2)
+                    : null;
+
+                $rows[] = [
+                    'department' => $departmentName,
+                    'job_position' => $jobPositionName,
+                    'user' => $user['name'],
+                    'section' => $user['section'] ?? '',
+                    'competency' => $competency['name'],
+                    'actual' => $actual,
+                    'standard' => $competency['standard'],
+                ];
+            }
+        }
+
+        return [
+            'department' => $departmentName,
+            'job_position' => $jobPositionName,
+            'rows' => $rows,
         ];
     }
 
@@ -1269,6 +1718,24 @@ class DashboardController extends Controller
         }
 
         return $summaries;
+    }
+    
+    protected function resolveDepartmentForJobPosition(string $jobPositionName): ?string
+    {
+        $normalized = strtolower(trim($jobPositionName));
+        if ($normalized === '') {
+            return null;
+        }
+
+        foreach ($this->departmentDefinitions() as $departmentName => $jobNames) {
+            foreach ($jobNames as $jobName) {
+                if (strtolower(trim((string) $jobName)) === $normalized) {
+                    return $departmentName;
+                }
+            }
+        }
+
+        return null;
     }
 
     protected function departmentDefinitions(): array
