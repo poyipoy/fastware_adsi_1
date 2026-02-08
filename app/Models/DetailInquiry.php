@@ -32,6 +32,7 @@ class DetailInquiry extends Model
         'note',
         'file',
         'status',
+        'nopo_item',
     ];
 
     public function inquirySales()

@@ -27,11 +27,17 @@ use App\Http\Controllers\CustomRequestController;
 use App\Http\Controllers\ImportAdministrationController;
 use App\Http\Controllers\LayoutMenuController;
 use App\Http\Controllers\LayoutEditorController;
+use App\Http\Controllers\EntertainController;
+use App\Http\Controllers\BopmController;
+use App\Http\Controllers\FeedbackController;
 use App\Models\InquirySales;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SupplierFormController;
 use App\Models\SupplierFormToken;
+use App\Http\Controllers\magang\JumlahKaryawanController;
+use App\Http\Controllers\magang\StrukturOrganisasiController;
+use App\Http\Controllers\magang\ConvertController;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,6 +68,20 @@ Route::get('/download/template-rek', [SupplierFormController::class, 'downloadTe
 
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
 
+// Public debug route (no auth) - temporary
+Route::get('debug-visits-public', function () {
+    $rows = App\Models\LogbookVisits::with('user')->limit(10)->get()->map(function($v){
+        return [
+            'id' => $v->id,
+            'id_user' => $v->id_user,
+            'user_name' => $v->user ? $v->user->name : null,
+            'customer' => $v->customer_name,
+            'visit_date' => (string)$v->visit_date,
+        ];
+    });
+    return response()->json(['data' => $rows]);
+});
+
 Route::post('/login', [AuthController::class, 'login'])->name('login_post');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -90,7 +110,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Admin
     Route::get('dashboardusers', [UserController::class, 'index'])->name('dashboardusers');
     Route::get('dashboardcustomers', [CustomerController::class, 'index'])->name('dashboardcustomers');
-    Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
 
     // Preventive
     Route::get('dashpreventive', [PreventiveController::class, 'maintenanceDashPreventive'])
@@ -156,6 +175,11 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('lihatfppsales/{formperbaikan}', [FormFPPController::class, 'LihatFPPSales'])
         ->name('sales.lihat');
 
+    // CRM Report (Sales submenu)
+    Route::get('sales/crm-report', [\App\Http\Controllers\SalesVisitController::class, 'crmReport'])->name('sales.crm_report');
+    Route::post('sales/crm-report/data', [\App\Http\Controllers\SalesVisitController::class, 'getDetailData'])->name('sales.crm.data');
+    Route::get('sales/crm-report/export', [\App\Http\Controllers\SalesVisitController::class, 'exportExcel'])->name('sales.crm.export');
+
     // CRP
     Route::get('/crp', [CrpController::class, 'index'])->name('crp');
     Route::get('/crp/create', [CrpController::class, 'create'])->name('crp.create');
@@ -172,6 +196,25 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Download File
     Route::get('download-excel/{tindaklanjut}', [FormFPPController::class, 'downloadAttachment'])->name('download.attachment');
     // DashboardforALL
+    // Debug route to inspect current authenticated user
+    Route::get('debug-auth', function () {
+        return response()->json([ 'user' => auth()->user() ]);
+    })->name('debug.auth');
+
+    // Debug: sample visits with related user
+    Route::get('debug-visits', function () {
+        $rows = App\Models\LogbookVisits::with('user')->limit(10)->get()->map(function($v){
+            return [
+                'id' => $v->id,
+                'id_user' => $v->id_user,
+                'user_name' => $v->user ? $v->user->name : null,
+                'customer' => $v->customer_name,
+                'visit_date' => (string)$v->visit_date,
+            ];
+        });
+        return response()->json(['data' => $rows]);
+    })->name('debug.visits');
+
     Route::get('/dashboardHandling', 'App\Http\Controllers\DsController@dashboardHandling')->name('dashboardHandling');
     Route::get('/dashboardMaintenance', 'App\Http\Controllers\DsController@dashboardMaintenance')->name('dashboardMaintenance');
     Route::get('/dshandling', 'App\Http\Controllers\DsController@dshandling')->name('dshandling');
@@ -220,6 +263,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // SS
     Route::get('/showSS', 'App\Http\Controllers\SumbangSaranController@showSS')->name('showSS');
+    Route::get('/showSS/data', 'App\Http\Controllers\SumbangSaranController@showSSData')->name('showSS.data');
     Route::get('/dashboardSS', 'App\Http\Controllers\SumbangSaranController@dashboardSS')->name('dashboardSS');
     Route::get('/forumSS', 'App\Http\Controllers\SumbangSaranController@forumSS')->name('forumSS');
 
@@ -303,6 +347,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/inquiry/overview-purchase/export/date-range', [InquirySalesController::class, 'exportOverviewPurchaseByDate'])->name('overviewPurchase.exportByDate');
     Route::post('/inquiry/confirm-purchase/{id}', [InquirySalesController::class, 'confirmPurchase'])->name('confirmPurchase');
     Route::post('/inquiry/detail-status', [InquirySalesController::class, 'updateDetailStatuses'])->name('inquiry.detail-status');
+    Route::post('/inquiry/detail-po', [InquirySalesController::class, 'updateDetailPo'])->name('inquiry.detail-po');
     Route::post('/inquiry/update', [InquirySalesController::class, 'updateInquiry'])->name('updateInquiry');
     Route::post('/inquiry/upload-file', [InquirySalesController::class, 'uploadFile'])->name('uploadFile');
     Route::post('/save-inquiry', [InquirySalesController::class, 'saveInquiry'])->name('saveInquiry');
@@ -623,7 +668,19 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/dashboard-tcpd', [DashboardController::class, 'dashboardTCPD'])->name('dashboardTCPD');
     Route::get('/dashboard-tcpd/data', [DashboardController::class, 'getTcpdCompetencyData'])->name('dashboardTCPD.data');
     Route::get('/dashboard-tcpd/company-data', [DashboardController::class, 'getTcpdCompanyData'])->name('dashboardTCPD.companyData');
+    Route::get('/dashboard-tcpd/export', [DashboardController::class, 'exportTcpdCompetencyData'])->name('dashboardTCPD.export');
     
+    // BOPM Dashboard
+    Route::get('/dashboard-bopm', [BOPMController::class, 'index'])->name('bopm.dashboard.index');
+    Route::get('/dashboard-bopm/chart', [BOPMController::class, 'getChartData'])->name('bopm.dashboard.chart');
+    Route::get('/dashboard-bopm/table', [BOPMController::class, 'getTableData'])->name('bopm.dashboard.table');
+    Route::post('/dashboard-bopm/currency/save', [BOPMController::class, 'saveCurrency'])->name('bopm.dashboard.currency.save');
+    Route::get('/dashboard-bopm/currency/list', [BOPMController::class, 'getCurrencyList'])->name('bopm.dashboard.currency.list');
+    Route::get('/dashboard-bopm/export-template', [BOPMController::class, 'exportTemplate'])->name('bopm.dashboard.export-template');
+    Route::post('/dashboard-bopm/import', [BOPMController::class, 'importData'])->name('bopm.dashboard.import');
+    Route::post('/dashboard-bopm/material/store', [BOPMController::class, 'storeMaterial'])->name('bopm.dashboard.material.store');
+    Route::get('/dashboard-bopm/export-table', [BOPMController::class, 'exportTableData'])->name('bopm.dashboard.export-table');
+
     // Grup Rute API untuk dipanggil oleh JavaScript
     Route::prefix('api/dashboard')->name('api.dashboard.')->group(function () {
         Route::get('/fpb', [DashboardController::class, 'getFpbData'])->name('fpb');
@@ -664,7 +721,31 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/supplier-form/trial-approval/{id}', [SupplierFormController::class, 'trialApproval'])->name('supplier.trial.approval');
     Route::get('/supplier-form/trial-file/{id}', [SupplierFormController::class, 'downloadTrial'])->name('supplierform.download.trial');
 
+    // Entertainment Routes
+    Route::get('/entertain', [EntertainController::class, 'index'])->name('entertain.index');
+    Route::get('/entertain/data', [EntertainController::class, 'getData'])->name('entertain.getData');
+    Route::post('/entertain/store', [EntertainController::class, 'store'])->name('entertain.store');
+    Route::get('/entertain/download/{id}', [EntertainController::class, 'download'])->name('entertain.download');
+    Route::get('/entertain/export', [EntertainController::class, 'export'])->name('entertain.export');
+    route::get('/dashboard/entertain', [EntertainController::class, 'dashboard'])->name('dashboard.entertainment');
 
+    //jumlah karyawan
+    Route::get('/jumlah-karyawan', [StrukturOrganisasiController::class, 'index'])->name('jumlahKaryawan.index');
 
+    // Convert Word to PDF
+    Route::get('/convert/word-to-pdf', [ConvertController::class, 'index'])->name('convert.wordtopdf');
+    Route::post('/convert/word-to-pdf', [ConvertController::class, 'convert'])->name('convert.wordtopdf.post');
+
+    // Feedback System
+    Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback.index');
+    Route::post('/api/fastware/survey/submit', [FeedbackController::class, 'submit'])->name('feedback.submit');
+    Route::get('/feedback/list', [FeedbackController::class, 'list'])->name('feedback.list');
+    Route::get('/feedback/detail/{id}', [FeedbackController::class, 'detail'])->name('feedback.detail');
+    Route::get('/feedback/dashboard', [FeedbackController::class, 'dashboard'])->name('feedback.dashboard');
+    
+    // Sales Visit Dashboard
+    Route::get('/sales-visit/dashboard', [\App\Http\Controllers\SalesVisitController::class, 'index'])->name('salesvisit.dashboard');
+    Route::get('/sales-visit/dashboard/data', [\App\Http\Controllers\SalesVisitController::class, 'getDashboardData'])->name('salesvisit.dashboard.data');
+    Route::get('/sales-visit/dashboard/detail-data', [\App\Http\Controllers\SalesVisitController::class, 'getDetailData'])->name('salesvisit.dashboard.detail-data');
+    Route::get('/sales-visit/dashboard/export', [\App\Http\Controllers\SalesVisitController::class, 'exportExcel'])->name('salesvisit.dashboard.export');
 });
-

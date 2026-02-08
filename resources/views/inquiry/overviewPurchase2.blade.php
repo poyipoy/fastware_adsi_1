@@ -463,10 +463,10 @@
                                                 required>
                                         </div>
 
+                                        <!-- Field PO Number -->
                                         <div class="mb-3">
-                                            <label for="refnopo" class="form-label">Ref PO Number</label>
-                                            <input type="text" class="form-control" id="refnopo" name="refnopo"
-                                                required>
+                                            <label for="refnopo" class="form-label">PO Number</label>
+                                            <input type="text" class="form-control" id="refnopo" name="refnopo">
                                         </div>
 
                                         <!-- Field Est. Date (Date Picker) -->
@@ -522,10 +522,38 @@
                                         data-bs-dismiss="modal">Close</button>
                                     <button type="button" class="btn btn-primary btn-sm"
                                         id="detailStatusSubmit">Update</button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal for Editing Detail PO -->
+        <div class="modal fade" id="editDetailPoModal" tabindex="-1" aria-labelledby="editDetailPoModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title testfont" id="editDetailPoModalLabel">Edit PO Number</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editDetailPoForm">
+                            @csrf
+                            <input type="hidden" name="detail_id" id="detailPoId">
+                            <div class="mb-3">
+                                <label for="detailPoInput" class="form-label">PO Number</label>
+                                <input type="text" class="form-control" name="po_number" id="detailPoInput"
+                                    placeholder="Enter PO number">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="detailPoSubmit">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -555,6 +583,17 @@
                 const detailStatusInquiryId = $('#detailStatusInquiryId');
                 const detailStatusSubmit = $('#detailStatusSubmit');
                 const detailStatusSubmitText = detailStatusSubmit.text();
+                const editDetailPoModalEl = document.getElementById('editDetailPoModal');
+                const editDetailPoModal = editDetailPoModalEl ? new bootstrap.Modal(editDetailPoModalEl) : null;
+                const editDetailPoForm = $('#editDetailPoForm');
+                const detailPoId = $('#detailPoId');
+                const detailPoInput = $('#detailPoInput');
+                const detailPoSubmit = $('#detailPoSubmit');
+                const detailPoSubmitText = detailPoSubmit.length ? detailPoSubmit.text() : 'Save';
+                let activePoDetailRow = null;
+                let activePoButton = null;
+                let activePoRowData = null;
+                let activePoDetailData = null;
 
                 const ensureArray = (value) => Array.isArray(value) ? value : [];
                 const escapeHtml = (value) => {
@@ -567,6 +606,17 @@
                         .replace(/>/g, '&gt;')
                         .replace(/"/g, '&quot;')
                         .replace(/'/g, '&#039;');
+                };
+                const escapeAttr = (value) => {
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+                    return String(value)
+                        .replace(/&/g, '&amp;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
                 };
 
                 const syncSelectedInputs = () => {
@@ -611,10 +661,15 @@
                     const rowsHtml = details.map((detail) => {
                         const statusClass = detail.status_class || 'badge bg-secondary';
                         const statusLabel = detail.status_label || 'Pending';
+                        const poDisplay = detail.no_po ?? '-';
+                        const poValue = detail.po_value ?? '';
                         return `
                             <tr data-detail-id="${detail.id}">
                                 <td class="text-center">
                                     <input type="checkbox" class="form-check-input detail-checkbox" value="${detail.id}">
+                                </td>
+                                <td>
+                                    <span class="detail-po-value">${escapeHtml(poDisplay)}</span>
                                 </td>
                                 <td>${escapeHtml(detail.material ?? '-')}</td>
                                 <td>${escapeHtml(detail.jenis ?? '-')}</td>
@@ -633,6 +688,13 @@
                                 <td class="text-center">
                                     <span class="detail-status ${statusClass}">${escapeHtml(statusLabel)}</span>
                                 </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-outline-primary btn-sm edit-po-btn"
+                                        data-detail-id="${detail.id}"
+                                        data-po="${escapeAttr(poValue)}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
                             </tr>
                         `;
                     }).join('');
@@ -648,6 +710,7 @@
                                     <thead>
                                         <tr class="table-light">
                                             <th class="text-center" style="width: 55px;">Pilih</th>
+                                            <th>PO Number</th>
                                             <th>Material</th>
                                             <th>Jenis</th>
                                             <th class="text-center" style="width: 70px;">Thickness</th>
@@ -663,6 +726,7 @@
                                             <th>Note</th>
                                             <th>Ship-to</th>
                                             <th class="text-center" style="width: 140px;">Status</th>
+                                            <th class="text-center" style="width: 90px;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -698,6 +762,33 @@
                                 selectedDetails.set(inquiryId, selection);
                             }
                         }
+                    });
+
+                    childRow.find('.edit-po-btn').on('click', function () {
+                        if (!editDetailPoModal) {
+                            return;
+                        }
+
+                        const button = $(this);
+                        const detailId = parseInt(button.data('detail-id'), 10);
+                        if (!detailId) {
+                            Swal.fire('Error', 'Detail tidak valid.', 'error');
+                            return;
+                        }
+
+                        const currentPo = button.data('po') ?? '';
+                        activePoDetailRow = button.closest('tr');
+                        activePoButton = button;
+                        activePoRowData = rowData;
+                        const detailList = ensureArray(rowData.detail_rows);
+                        activePoDetailData = detailList.find((item) => parseInt(item.id, 10) === detailId) || null;
+
+                        detailPoId.val(detailId);
+                        detailPoInput.val(currentPo);
+                        detailPoSubmit.prop('disabled', false).text(detailPoSubmitText);
+
+                        editDetailPoModal.show();
+                        setTimeout(() => detailPoInput.trigger('focus'), 150);
                     });
                 };
 
@@ -828,6 +919,25 @@
                 syncSelectedInputs();
                 updateSelectAllState();
 
+                const resetEditPoModal = () => {
+                    if (!editDetailPoModalEl) {
+                        return;
+                    }
+                    if (editDetailPoForm.length) {
+                        const formElement = editDetailPoForm.get(0);
+                        if (formElement) {
+                            formElement.reset();
+                        }
+                    }
+                    detailPoId.val('');
+                    detailPoInput.val('');
+                    detailPoSubmit.prop('disabled', false).text(detailPoSubmitText);
+                    activePoDetailRow = null;
+                    activePoButton = null;
+                    activePoRowData = null;
+                    activePoDetailData = null;
+                };
+
                 const resetDetailModal = () => {
                     if (!detailStatusModalEl) {
                         return;
@@ -841,8 +951,106 @@
                     detailStatusSelected.empty();
                 };
 
+                if (editDetailPoModalEl) {
+                    editDetailPoModalEl.addEventListener('hidden.bs.modal', resetEditPoModal);
+                }
+
                 if (detailStatusModalEl) {
                     detailStatusModalEl.addEventListener('hidden.bs.modal', resetDetailModal);
+                }
+
+                if (editDetailPoForm.length) {
+                    editDetailPoForm.on('submit', function (event) {
+                        event.preventDefault();
+                        if (detailPoSubmit.length) {
+                            detailPoSubmit.trigger('click');
+                        }
+                    });
+                }
+
+                if (detailPoSubmit.length) {
+                    detailPoSubmit.on('click', function () {
+                        if (!editDetailPoModal) {
+                            return;
+                        }
+
+                        const detailId = parseInt(detailPoId.val(), 10);
+                        if (!detailId) {
+                            Swal.fire('Error', 'Detail tidak valid.', 'error');
+                            return;
+                        }
+
+                        const payload = editDetailPoForm.serialize();
+                        detailPoSubmit.prop('disabled', true).text('Memproses...');
+
+                        $.ajax({
+                            url: '{{ route('inquiry.detail-po') }}',
+                            method: 'POST',
+                            data: payload,
+                            success: function (response) {
+                                detailPoSubmit.prop('disabled', false).text(detailPoSubmitText);
+                                editDetailPoModal.hide();
+
+                                const displayPo = response && response.no_po !== undefined && response.no_po !== null && response.no_po !== ''
+                                    ? response.no_po
+                                    : '-';
+                                const rawValue = response && response.po_value !== undefined && response.po_value !== null
+                                    ? response.po_value
+                                    : '';
+
+                                if (activePoDetailRow) {
+                                    activePoDetailRow.find('.detail-po-value').text(displayPo);
+                                }
+
+                                if (activePoButton) {
+                                    activePoButton.attr('data-po', rawValue);
+                                    activePoButton.data('po', rawValue);
+                                }
+
+                                if (activePoDetailData) {
+                                    activePoDetailData.no_po = displayPo;
+                                    activePoDetailData.po_value = rawValue;
+                                }
+
+                                if (activePoRowData) {
+                                    const detailList = ensureArray(activePoRowData.detail_rows);
+                                    const targetId = detailId;
+                                    activePoRowData.detail_rows = detailList.map((item) => {
+                                        if (parseInt(item.id, 10) === targetId) {
+                                            item.no_po = displayPo;
+                                            item.po_value = rawValue;
+                                        }
+                                        return item;
+                                    });
+
+                                    const rowApi = findRowByInquiryId(parseInt(activePoRowData.id, 10));
+                                    if (rowApi) {
+                                        rowApi.data(activePoRowData);
+                                    }
+                                }
+
+                                const message = response && response.message
+                                    ? response.message
+                                    : 'PO detail berhasil diperbarui.';
+                                Swal.fire('Success!', message, 'success');
+                            },
+                            error: function (xhr) {
+                                detailPoSubmit.prop('disabled', false).text(detailPoSubmitText);
+                                let message = 'Terjadi kesalahan saat memperbarui PO.';
+                                if (xhr.responseJSON) {
+                                    if (xhr.responseJSON.message) {
+                                        message = xhr.responseJSON.message;
+                                    } else if (xhr.responseJSON.errors) {
+                                        const firstError = Object.values(xhr.responseJSON.errors)[0];
+                                        if (Array.isArray(firstError) && firstError.length) {
+                                            message = firstError[0];
+                                        }
+                                    }
+                                }
+                                Swal.fire('Error', message, 'error');
+                            }
+                        });
+                    });
                 }
 
                 window.openDetailStatusModal = function (inquiryId) {
@@ -991,7 +1199,10 @@
                 document.getElementById('inquiryId').value = id;
                 document.getElementById('supplier').value = supplier;
                 document.getElementById('progress').value = progress;
-                document.getElementById('refnopo').value = refnopo;
+                const refnopoInput = document.getElementById('refnopo');
+                if (refnopoInput) {
+                    refnopoInput.value = refnopo || '';
+                }
                 document.getElementById('estDate').value = estDate;
 
                 const modal = new bootstrap.Modal(document.getElementById('editDataModal'), {});

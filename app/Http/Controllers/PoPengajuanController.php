@@ -600,36 +600,38 @@ class PoPengajuanController extends Controller
         $startDateInquiry = $request->input('start_date_inquiry') ?: '2025-01-01';
         $endDateInquiry = $request->input('end_date_inquiry') ?: '2025-12-31';
 
-        // Query untuk kategori list (FPB) - Efficient
+        // Query untuk kategori list (FPB)
         $kategoriList = MstPoPengajuan::distinct()->pluck('kategori_po');
 
-        // --- Optimized FPB Chart Data (Open/Finish) ---
-        // Get relevant FPB IDs based on filters and date range
-        $fpbQuery = MstPoPengajuan::query();
+        // Query untuk chart FPB (Open/Finish)
+        $queryMst = MstPoPengajuan::query();
         if ($kategori) {
-            $fpbQuery->where('kategori_po', $kategori);
+            $queryMst->where('kategori_po', $kategori);
         }
-        // Join with TrsPoPengajuan to filter by created_at date range on transactions
-        $fpbQuery->join('trs_po_pengajuans', 'mst_po_pengajuans.id', '=', 'trs_po_pengajuans.id_fpb')
-                 ->whereBetween('trs_po_pengajuans.created_at', [$startDate1, $endDate1])
-                 ->select('mst_po_pengajuans.id', 'mst_po_pengajuans.no_fpb', 'mst_po_pengajuans.kategori_po', 'mst_po_pengajuans.created_at as fpb_created_at'); // Select only needed fields
 
-        $relevantFpbData = $fpbQuery->get(); // Get filtered FPB data with IDs and creation dates
+        $noFpbList = $queryMst->pluck('no_fpb');
+        $queryTrs = TrsPoPengajuan::whereIn('id_fpb', function ($query) use ($noFpbList) {
+            $query->select('id')->from('mst_po_pengajuans')->whereIn('no_fpb', $noFpbList);
+        });
+        if ($startDate1 && $endDate1) {
+            $queryTrs->whereBetween('created_at', [$startDate1, $endDate1]);
+        }
 
-        // Group by FPB ID to get unique FPBs within the date range
-        $uniqueFpbData = $relevantFpbData->unique('id');
-        $fpbIds = $uniqueFpbData->pluck('id');
+        $trsPoPengajuan = $queryTrs->get()->groupBy('id_fpb');
 
-        // Get latest transaction status for each relevant FPB
-        $latestTrsStatuses = TrsPoPengajuan::whereIn('id_fpb', $fpbIds)
-            ->select('id_fpb', DB::raw('MAX(status) as latest_status'), DB::raw('MAX(updated_at) as latest_updated_at'))
-            ->groupBy('id_fpb')
-            ->get()
-            ->keyBy('id_fpb'); // Key by FPB ID for quick lookup
+        // Query untuk chart Lead Time
+        $query2 = MstPoPengajuan::query();
+        if ($startDate2 && $endDate2) {
+            $query2->whereBetween('created_at', [$startDate2, $endDate2]);
+        }
+        $mstPoPengajuans2 = $query2->get();
+        $uniqueFPB2 = $mstPoPengajuans2->unique('no_fpb');
+        $filteredMst2 = $uniqueFPB2;
+        $categoryTotal2 = $filteredMst2->count();
 
-        // Calculate monthly data and counts
         $fpbOpenUnique = 0;
         $fpbFinishUnique = 0;
+        $processedFPB = [];
         $monthlyData = [
             'open_by_year' => [],
             'finish_by_year' => []
@@ -638,66 +640,61 @@ class PoPengajuanController extends Controller
             'Consumable' => ['open' => 0, 'finish' => 0]
         ];
 
-        $currentDate = Carbon::now();
-        $currentYear = $currentDate->year;
-        $currentMonth = $currentDate->month - 1; // 0-based index
+        $currentYear = Carbon::now()->year;
+        $currentMonth = Carbon::now()->month - 1;
 
-        foreach ($uniqueFpbData as $fpb) {
-            $fpbId = $fpb->id;
-            $categoryId = $fpb->kategori_po; // Assuming 'kategori_po' exists in $fpb data
-            $fpbCreatedDate = Carbon::parse($fpb->fpb_created_at); // Use FPB creation date
-            $fpbCreatedYear = $fpbCreatedDate->year;
-            $fpbCreatedMonth = $fpbCreatedDate->month - 1; // 0-based index
+        foreach ($trsPoPengajuan as $id_fpb => $trsEntries) {
+            $fpbEntry = $trsEntries->first();
+            $no_fpb = MstPoPengajuan::where('id', $id_fpb)->value('no_fpb');
+            $kategori = MstPoPengajuan::where('id', $id_fpb)->value('kategori_po');
 
-            $latestStatus = $latestTrsStatuses->get($fpbId)?->latest_status;
-            $latestUpdatedDate = $latestTrsStatuses->get($fpbId)?->latest_updated_at ? Carbon::parse($latestTrsStatuses->get($fpbId)->latest_updated_at) : null;
+            if (!isset($processedFPB[$no_fpb])) {
+                $processedFPB[$no_fpb] = true;
 
-            if ($latestStatus == 9 && $latestUpdatedDate) {
-                // Finished
-                $finishYear = $latestUpdatedDate->year;
-                $finishMonth = $latestUpdatedDate->month - 1; // 0-based index
+                $lastRecord = $trsEntries->sortByDesc('updated_at')->first();
+                $createdDate = Carbon::parse($fpbEntry->created_at);
+                $createdYear = $createdDate->year;
+                $createdMonth = $createdDate->month - 1;
 
-                // Increment open count for months from creation to finish
-                for ($year = $fpbCreatedYear; $year <= $finishYear; $year++) {
-                    $startMonth = ($year == $fpbCreatedYear) ? $fpbCreatedMonth : 0;
-                    $endMonth = ($year == $finishYear) ? $finishMonth : 11;
-                    for ($m = $startMonth; $m <= $endMonth; $m++) {
-                        if (!isset($monthlyData['open_by_year'][$year][$m])) {
-                            $monthlyData['open_by_year'][$year][$m] = 0;
+                if ($lastRecord && $lastRecord->status == 9) {
+                    // Selesai
+                    $finishDate = Carbon::parse($lastRecord->updated_at);
+                    $finishYear = $finishDate->year;
+                    $finishMonth = $finishDate->month - 1;
+
+                    for ($year = $createdYear; $year <= $finishYear; $year++) {
+                        $startMonth = ($year == $createdYear) ? $createdMonth : 0;
+                        $endMonth = ($year == $finishYear) ? $finishMonth : 11;
+                        for ($m = $startMonth; $m <= $endMonth; $m++) {
+                            $monthlyData['open_by_year'][$year][$m] = 
+                                ($monthlyData['open_by_year'][$year][$m] ?? 0) + 1;
                         }
-                        $monthlyData['open_by_year'][$year][$m]++;
                     }
-                }
 
-                // Increment finish count for the finish month
-                if (!isset($monthlyData['finish_by_year'][$finishYear][$finishMonth])) {
-                    $monthlyData['finish_by_year'][$finishYear][$finishMonth] = 0;
-                }
-                $monthlyData['finish_by_year'][$finishYear][$finishMonth]++;
+                    $monthlyData['finish_by_year'][$finishYear][$finishMonth] = 
+                        ($monthlyData['finish_by_year'][$finishYear][$finishMonth] ?? 0) + 1;
 
-                $fpbFinishUnique++;
+                    $fpbFinishUnique++;
 
-                if ($categoryId === 'Consumable') {
-                    $fpbCategoryBreakdown['Consumable']['finish']++;
-                }
-            } else {
-                // Open (status != 9 or no finish date)
-                // Increment open count for months from creation to current date
-                for ($year = $fpbCreatedYear; $year <= $currentYear; $year++) {
-                    $startMonth = ($year == $fpbCreatedYear) ? $fpbCreatedMonth : 0;
-                    $endMonth = ($year == $currentYear) ? $currentMonth : 11;
-                    for ($m = $startMonth; $m <= $endMonth; $m++) {
-                        if (!isset($monthlyData['open_by_year'][$year][$m])) {
-                            $monthlyData['open_by_year'][$year][$m] = 0;
+                    if ($kategori === 'Consumable') {
+                        $fpbCategoryBreakdown['Consumable']['finish']++;
+                    }
+                } else {
+                    // Masih open
+                    for ($year = $createdYear; $year <= $currentYear; $year++) {
+                        $startMonth = ($year == $createdYear) ? $createdMonth : 0;
+                        $endMonth = ($year == $currentYear) ? $currentMonth : 11;
+                        for ($m = $startMonth; $m <= $endMonth; $m++) {
+                            $monthlyData['open_by_year'][$year][$m] = 
+                                ($monthlyData['open_by_year'][$year][$m] ?? 0) + 1;
                         }
-                        $monthlyData['open_by_year'][$year][$m]++;
                     }
-                }
 
-                $fpbOpenUnique++;
+                    $fpbOpenUnique++;
 
-                if ($categoryId === 'Consumable') {
-                    $fpbCategoryBreakdown['Consumable']['open']++;
+                    if ($kategori === 'Consumable') {
+                        $fpbCategoryBreakdown['Consumable']['open']++;
+                    }
                 }
             }
         }
@@ -706,97 +703,76 @@ class PoPengajuanController extends Controller
         $fpbOpenPercentage = $totalFPB > 0 ? round(($fpbOpenUnique / $totalFPB) * 100) : 0;
         $fpbFinishPercentage = $totalFPB > 0 ? round(($fpbFinishUnique / $totalFPB) * 100) : 0;
 
-        // --- Optimized Inquiry Status Breakdown (FPB Status) ---
-        // Count FPBs by status groups directly in the database
+       // Inisialisasi variabel breakdown status FPB
         $inquiryStatusBreakdown = [
             'open' => 0,
             'onprogress' => 0,
             'finish' => 0,
         ];
 
-        // Use a raw query or query builder for efficient grouping and counting
-        $statusCounts = MstPoPengajuan::selectRaw("
-            SUM(CASE WHEN status_1 IN (1, 2, 3, 4) THEN 1 ELSE 0 END) as open_count,
-            SUM(CASE WHEN status_1 IN (5, 7, 8, 9) THEN 1 ELSE 0 END) as onprogress_count,
-            SUM(CASE WHEN status_1 = 6 THEN 1 ELSE 0 END) as finish_count
-        ")->first();
+        // Ambil seluruh data dari mst_po_pengajuans2
+        $mstbreakdown = MstPoPengajuan::all(); // pastikan modelnya benar
 
-        $inquiryStatusBreakdown['open'] = $statusCounts->open_count ?? 0;
-        $inquiryStatusBreakdown['onprogress'] = $statusCounts->onprogress_count ?? 0;
-        $inquiryStatusBreakdown['finish'] = $statusCounts->finish_count ?? 0;
+        // Hitung breakdown status berdasarkan kategori status
+        foreach ($mstbreakdown as $fpb) {
+            $status = $fpb->status_1;
+
+            if (in_array($status, [1, 2, 3, 4])) {
+                $inquiryStatusBreakdown['open']++;
+            } elseif (in_array($status, [5, 7, 8, 9])) {
+                $inquiryStatusBreakdown['onprogress']++;
+            } elseif ($status == 6) {
+                $inquiryStatusBreakdown['finish']++;
+            }
+        }
+
+        // Debug hasil jika diperlukan (hapus di produksi)
+        
 
 
-        // --- Optimized Lead Time Data ---
-        $leadTimeData = [];
+
         $categories = ['IT', 'Spareparts', 'Consumable', 'GA', 'Subcont'];
+        $leadTimeData = [];
+        $totalPercentage = 0;
         $totalSubmitConfirm = 0;
         $totalConfirmFinish = 0;
 
-        // Get all unique FPBs for lead time calculation, filtered by date if provided
-        $leadTimeFpbQuery = MstPoPengajuan::query();
-        if ($startDate2 && $endDate2) {
-            $leadTimeFpbQuery->whereBetween('created_at', [$startDate2, $endDate2]);
-        }
-        $leadTimeFpbQuery->select('id', 'kategori_po', 'created_at'); // Select only needed fields
-        $leadTimeFpBs = $leadTimeFpbQuery->get();
-        $leadTimeFpbIds = $leadTimeFpBs->pluck('id');
-        $uniqueLeadTimeFpBs = $leadTimeFpBs->unique('id'); // Ensure uniqueness
-
-        // Get relevant transaction records for lead time calculation
-        $relevantTrsForLeadTime = TrsPoPengajuan::whereIn('id_fpb', $leadTimeFpbIds)
-            ->whereIn('status', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) // Only statuses relevant to lead time
-            ->select('id_fpb', 'status', 'updated_at')
-            ->orderBy('updated_at')
-            ->get()
-            ->groupBy('id_fpb');
-
         foreach ($categories as $category) {
-            $filteredFpBs = $uniqueLeadTimeFpBs->where('kategori_po', $category);
-            $categoryTotal = $filteredFpBs->count();
+            $filteredMst = $uniqueFPB2->where('kategori_po', $category);
+            $categoryTotal = $filteredMst->count();
 
             $categoryLeadDaysFirstJob = [];
             $categoryLeadDaysSecondJob = [];
             $categorySubmitConfirm = 0;
             $categoryConfirmFinish = 0;
 
-            foreach ($filteredFpBs as $fpb) {
-                $fpbId = $fpb->id;
-                $fpbStartDate = Carbon::parse($fpb->created_at);
+            foreach ($filteredMst as $fpb) {
+                $fpbStartDate = $fpb->created_at;
 
-                $trsRecords = $relevantTrsForLeadTime->get($fpbId, collect());
+                $trsPoFirstJob = TrsPoPengajuan::where('id_fpb', $fpb->id)
+                    ->whereBetween('status', [2, 6])
+                    ->orderBy('updated_at', 'desc')
+                    ->first();
 
-                // Find the first relevant status transition (e.g., Submit to Confirm)
-                $firstJobRecord = $trsRecords->firstWhere('status', '>=', 6); // Status 6 or higher indicates confirmed/finished
-                if ($firstJobRecord) {
-                    $leadDaysFirstJob = $firstJobRecord->updated_at->diffInDays($fpbStartDate);
+                $trsPoSecondJob = TrsPoPengajuan::where('id_fpb', $fpb->id)
+                    ->whereBetween('status', [7, 9])
+                    ->orderBy('updated_at', 'desc')
+                    ->first();
+
+                if ($trsPoFirstJob && $trsPoFirstJob->status >= 6) {
+                    $leadDaysFirstJob = $trsPoFirstJob->updated_at->diffInDays($fpbStartDate);
                     $categoryLeadDaysFirstJob[] = $leadDaysFirstJob;
                 }
 
-                // Find the second relevant status transition (e.g., Confirm to Finish)
-                $secondJobRecord = null;
-                if ($firstJobRecord) {
-                    $secondJobRecord = $trsRecords->first(function ($record) use ($firstJobRecord) {
-                        return $record->status >= 9 && Carbon::parse($record->updated_at)->gt(Carbon::parse($firstJobRecord->updated_at));
-                    });
-                }
-                if ($secondJobRecord) {
-                    $leadDaysSecondJob = Carbon::parse($secondJobRecord->updated_at)->diffInDays(Carbon::parse($firstJobRecord->updated_at));
-                     $categoryLeadDaysSecondJob[] = $leadDaysSecondJob;
+                if ($trsPoSecondJob && $trsPoSecondJob->status >= 6) {
+                    $leadDaysSecondJob = $trsPoSecondJob->updated_at->diffInDays($trsPoFirstJob ? $trsPoFirstJob->updated_at : $fpbStartDate);
+                    $categoryLeadDaysSecondJob[] = $leadDaysSecondJob;
                 }
 
-                // Count specific status transitions for submit_confirm/confirm_finish
-                $lastRecord = $trsRecords->last();
-                if ($lastRecord) {
-                    if (in_array($lastRecord->status, [9, 10])) { // Finished
-                        $categoryConfirmFinish++;
-                    } elseif (in_array($lastRecord->status, [6, 7, 8])) { // Confirmed/On Progress
-                         // Check if there was a transition to 6,7,8 but not yet 9,10
-                         $hasConfirmStatus = $trsRecords->contains(function($item) { return in_array($item->status, [6,7,8]); });
-                         $hasFinishStatus = $trsRecords->contains(function($item) { return in_array($item->status, [9,10]); });
-                         if ($hasConfirmStatus && !$hasFinishStatus) {
-                              $categorySubmitConfirm++;
-                         }
-                    }
+                if ($trsPoSecondJob && in_array($trsPoSecondJob->status, [10, 9])) {
+                    $categoryConfirmFinish++;
+                } elseif ($trsPoFirstJob && in_array($trsPoFirstJob->status, [6, 7, 8])) {
+                    $categorySubmitConfirm++;
                 }
             }
 
@@ -804,7 +780,9 @@ class PoPengajuanController extends Controller
             $averageLeadDaysSecondJob = count($categoryLeadDaysSecondJob) > 0 ? round(array_sum($categoryLeadDaysSecondJob) / count($categoryLeadDaysSecondJob)) : 0;
 
             $categoryPercentage = $totalFPB > 0 ? round(($categoryTotal / $totalFPB) * 100) : 0;
+            $totalPercentage += $categoryPercentage;
 
+            // Tambahkan ke total global
             $totalSubmitConfirm += $categorySubmitConfirm;
             $totalConfirmFinish += $categoryConfirmFinish;
 
@@ -818,95 +796,127 @@ class PoPengajuanController extends Controller
             ];
         }
 
-        // Calculate Total row for Lead Time
+        // Hitung total keseluruhan
         $leadTimeData['Total'] = [
             'average_lead_days_first' => count($categories) > 0 ? round(array_sum(array_column($leadTimeData, 'average_lead_days_first')) / count($categories)) : 0,
             'average_lead_days_second' => count($categories) > 0 ? round(array_sum(array_column($leadTimeData, 'average_lead_days_second')) / count($categories)) : 0,
-            'total' => $totalFPB, // Use total FPB count calculated earlier
+            'total' => $totalFPB,
             'percentage' => 100,
             'submit_confirm' => $totalSubmitConfirm,
             'confirm_finish' => $totalConfirmFinish
         ];
 
 
-        // --- Inquiry Calculation ---
-        $startDate = $request->input('start_date_inquiry') ?: '2025-01-01';
-        $endDate = $request->input('end_date_inquiry') ?: '2025-12-31';
 
-        // Get unique inquiry IDs within the date range
+        // Inquiry Calculation
+        $startDate = $request->input('start_date_inquiry')  ?: '2025-01-01';
+        $endDate = $request->input('end_date_inquiry')  ?: '2025-12-31';
+
         $query = InquirySales::query();
         if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }
-        $uniqueInquiryIds = $query->distinct()->pluck('id'); // Get only IDs
 
-        // Get latest status for each inquiry
-        $latestInquiryStatuses = InquirySales::whereIn('id', $uniqueInquiryIds)
-            ->select('id', DB::raw('MAX(status) as latest_status'), DB::raw('MAX(updated_at) as latest_updated_at'), 'created_at')
-            ->groupBy('id')
-            ->get()
-            ->keyBy('id');
+        $inquirysales = $query->get();
+        $uniqueinquiry = $inquirysales->unique('id');
 
-        // Calculate monthly data and counts for Inquiry
+        // Tentukan rentang bulan dari data
+        $minDate = $inquirysales->min('created_at');
+        $maxDate = $inquirysales->max('updated_at') ?? now();
+
+        $period = CarbonPeriod::create(
+            $startDate ?: $minDate->startOfMonth(),
+            '1 month',
+            $endDate ?: $maxDate->endOfMonth()
+        );
+
+        $monthsIndex = []; // Map untuk bulan ke index
+        $monthLabels = [];
+        $idx = 0;
+        foreach ($period as $month) {
+            $label = $month->format('M Y');
+            $monthLabels[] = $label;
+            $monthsIndex[$label] = $idx++;
+        }
+
+        // Inisialisasi array hasil
         $monthlyData1 = [
-            'open' => array_fill(0, 12, 0),
-            'onprogress' => array_fill(0, 12, 0),
-            'finish' => array_fill(0, 12, 0)
+            'open' => array_fill(0, count($monthLabels), 0),
+            'onprogress' => array_fill(0, count($monthLabels), 0),
+            'finish' => array_fill(0, count($monthLabels), 0)
         ];
 
-        $currentMonth1 = Carbon::now()->month - 1; // 0-based index
+        $currentMonth1 = Carbon::now()->month - 1;
+        $processedinquiry = [];
+
+        foreach ($uniqueinquiry as $inquiry) {
+            $createdMonth1 = Carbon::parse($inquiry->created_at)->month - 1;
+            $lastRecord1 = InquirySales::where('id', $inquiry->id)
+                ->orderBy('updated_at', 'desc')
+                ->first();
+
+            if (!isset($processedinquiry[$inquiry->id])) {
+                $processedinquiry[$inquiry->id] = true;
+
+                if ($lastRecord1) {
+                    if ($lastRecord1->status == 6) {
+                        $finishMonth1 = Carbon::parse($lastRecord1->updated_at)->month - 1;
+                        for ($m = $createdMonth1; $m <= $finishMonth1; $m++) {
+                            $monthlyData1['open'][$m]++;
+                        }
+                        $monthlyData1['finish'][$finishMonth1]++;
+                    } elseif (in_array($lastRecord1->status, [5, 8, 9, 7])) {
+                        for ($m = $createdMonth1; $m <= $currentMonth1; $m++) {
+                            $monthlyData1['open'][$m]++;
+                        }
+                        $monthlyData1['onprogress'][$currentMonth1]++;
+                    } elseif (in_array($lastRecord1->status, [1, 2, 3, 4])) {
+                        for ($m = $createdMonth1; $m <= $currentMonth1; $m++) {
+                            $monthlyData1['open'][$m]++;
+                        }
+                    }
+                }
+            }
+        }
 
         $inquiryOpenUnique = 0;
         $inquiryOnprogressUnique = 0;
         $inquiryFinishUnique = 0;
+        $processedinquiry = [];
 
-        foreach ($latestInquiryStatuses as $inquiry) {
-             $inquiryId = $inquiry->id;
-             $latestStatus = $inquiry->latest_status;
-             $createdDate = Carbon::parse($inquiry->created_at);
-             $createdMonth = $createdDate->month - 1; // 0-based index
-             $latestUpdatedDate = $inquiry->latest_updated_at ? Carbon::parse($inquiry->latest_updated_at) : null;
-             $finishMonth = $latestUpdatedDate ? $latestUpdatedDate->month - 1 : null; // 0-based index
+        $inquiryOpenCount = 0;
+        $inquiryOnprogressCount = 0;
+        $inquiryFinishCount = 0;
 
-            if ($latestStatus == 6 && $finishMonth !== null) {
-                // Finished
-                for ($m = $createdMonth; $m <= $finishMonth; $m++) {
-                    if ($m >= 0 && $m < 12) { // Ensure month index is valid
-                         $monthlyData1['open'][$m]++;
+        foreach ($uniqueinquiry as $inquiry) {
+            $lastRecord1 = InquirySales::where('id', $inquiry->id)
+                ->orderBy('updated_at', 'desc')
+                ->first();
+
+            if (!isset($processedinquiry[$inquiry->id])) {
+                if ($lastRecord1) {
+                    if ($lastRecord1->status == 6) {
+                        $inquiryFinishUnique++;
+                        $inquiryFinishCount++;
+                        $processedinquiry[$inquiry->id] = 'finish';
+                    } elseif (in_array($lastRecord1->status, [5, 8, 9, 7])) {
+                        $inquiryOnprogressUnique++;
+                        $inquiryOnprogressCount++;
+                        $processedinquiry[$inquiry->id] = 'onprogress';
+                    } elseif (in_array($lastRecord1->status, [1, 2, 3, 4])) {
+                        $inquiryOpenUnique++;
+                        $inquiryOpenCount++;
+                        $processedinquiry[$inquiry->id] = 'open';
                     }
                 }
-                if ($finishMonth >= 0 && $finishMonth < 12) {
-                    $monthlyData1['finish'][$finishMonth]++;
-                }
-                $inquiryFinishUnique++;
-            } elseif (in_array($latestStatus, [5, 7, 8, 9])) {
-                // On Progress
-                for ($m = $createdMonth; $m <= $currentMonth1; $m++) {
-                     if ($m >= 0 && $m < 12) { // Ensure month index is valid
-                          $monthlyData1['open'][$m]++;
-                     }
-                }
-                if ($currentMonth1 >= 0 && $currentMonth1 < 12) {
-                     $monthlyData1['onprogress'][$currentMonth1]++;
-                }
-                $inquiryOnprogressUnique++;
-            } elseif (in_array($latestStatus, [1, 2, 3, 4])) {
-                // Open
-                for ($m = $createdMonth; $m <= $currentMonth1; $m++) {
-                     if ($m >= 0 && $m < 12) { // Ensure month index is valid
-                          $monthlyData1['open'][$m]++;
-                     }
-                }
-                $inquiryOpenUnique++;
             }
-            // Handle cases where status might be unexpected or updated_at is missing if needed
         }
-
 
         $totalinquiry = $inquiryOpenUnique + $inquiryOnprogressUnique + $inquiryFinishUnique;
         $inquiryOpenPercentage = $totalinquiry > 0 ? round(($inquiryOpenUnique / $totalinquiry) * 100) : 0;
         $inquiryOnprogressPercentage = $totalinquiry > 0 ? round(($inquiryOnprogressUnique / $totalinquiry) * 100) : 0;
         $inquiryFinishPercentage = $totalinquiry > 0 ? round(($inquiryFinishUnique / $totalinquiry) * 100) : 0;
+
 
 
         // --- Bagian dashboardcrp ---
@@ -918,21 +928,21 @@ class PoPengajuanController extends Controller
         ];
         $categoriesCRP = array_merge(['Total'], $allCategories);
 
-        // Load only necessary CRP data
         $mstDboCrps = MstDboCrp::where('partner_user', $user->id)
             ->orderBy('created_at', 'desc')
-            ->select('id', 'nm_category', 'plan_actual', 'grand_tot', 'month_1', 'month_2', 'month_3', 'month_4', 'month_5', 'month_6', 'month_7', 'month_8', 'month_9', 'month_10', 'month_11', 'month_12') // Select only needed fields
             ->get();
-
-        $actuals = $mstDboCrps->where('plan_actual', 'Actual');
-        $plans = $mstDboCrps->where('plan_actual', 'Plan');
-
+        $actuals = MstDboCrp::where('partner_user', $user->id)
+            ->where('plan_actual', 'Actual')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $plans = MstDboCrp::where('partner_user', $user->id)
+            ->where('plan_actual', 'Plan')
+            ->orderBy('created_at', 'desc')
+            ->get();
         $mstIds = $mstDboCrps->pluck('id')->toArray();
-        // Consider if you really need TrsDboCrp data, or just specific fields
-        // $trsDboCrps = TrsDboCrp::whereIn('mst_id', $mstIds)
-        //     ->orderBy('created_at', 'desc')
-        //     ->select('mst_id', 'field1', 'field2') // Select only needed fields
-        //     ->get();
+        $trsDboCrps = TrsDboCrp::whereIn('mst_id', $mstIds)
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         $monthlyActuals = [];
         $monthlyPlans = [];
@@ -998,8 +1008,10 @@ class PoPengajuanController extends Controller
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
         ];
 
-        // Return the view with compacted data
-                // Return the view with compacted data
+        // // Debugging data Total untuk CRP
+        // Log::info('monthlyActuals[Total]:', $monthlyActuals['Total']);
+        // Log::info('monthlyPlans[Total]:', $monthlyPlans['Total']);
+
         return view('dashboard.dashboardFPB', compact(
             // FPB
             'fpbOpenUnique',
@@ -1012,15 +1024,13 @@ class PoPengajuanController extends Controller
             'kategoriList',
             'startDate1',
             'endDate1',
-            'startDate2', // Make sure this is needed, it's for lead time
-            'endDate2',   // Make sure this is needed, it's for lead time
+            'startDate2',
+            'endDate2',
             'startDateInquiry',
             'endDateInquiry',
-            // Remove the undefined count variables:
-            // 'inquiryOpenCount', // <-- Removed
-            // 'inquiryOnprogressCount', // <-- Removed
-            // 'inquiryFinishCount', // <-- Removed
-            // Keep the unique counts you calculated:
+            'inquiryOpenCount',
+            'inquiryOnprogressCount',
+            'inquiryFinishCount',
             'inquiryOpenUnique',
             'inquiryOnprogressUnique',
             'inquiryFinishUnique',
@@ -1030,13 +1040,13 @@ class PoPengajuanController extends Controller
             'monthlyData1',
             'totalinquiry',
             'fpbCategoryBreakdown',
-            'inquiryStatusBreakdown', // This is now correctly calculated
+            'inquiryStatusBreakdown',
             // CRP
-            'mstDboCrps', // Consider if needed
-            // 'trsDboCrps', // Consider if needed
+            'mstDboCrps',
+            'trsDboCrps',
             'userName',
-            'actuals', // Consider if needed, or pass processed data
-            'plans',   // Consider if needed, or pass processed data
+            'actuals',
+            'plans',
             'monthlyActuals',
             'monthlyPlans',
             'allCategories',

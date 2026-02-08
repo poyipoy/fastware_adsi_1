@@ -153,7 +153,7 @@
                                 </tr>
                             </thead>
                             <tbody id="table-body">
-                                
+
                             </tbody>
                         </table>
                     </div>
@@ -284,7 +284,8 @@
                                         <option value="Deltamas">Deltamas</option>
                                         <option value="DS8">DS8</option>
                                     </select>`;
-                cell15.innerHTML = '<input type="text" name="so" size="20" pattern="SO/[0-9]{4}/[0-9]{4}" title="Format harus SO/Tahun/4DigitAngka (contoh: SO/2024/1234)" required>';
+                cell15.innerHTML =
+                    '<input type="text" name="so" size="20" pattern="SO/[0-9]{4}/[0-9]{4}" title="Format harus SO/Tahun/4DigitAngka (contoh: SO/2024/1234)" required>';
                 // cell16.innerHTML = '<input type="text" name="nopo" size="10" required>';
                 cell16.innerHTML = '<input type="text" name="note" size="10" required>';
 
@@ -448,16 +449,16 @@
                     var soElement = row.querySelector('input[name="so"]');
                     var noteElement = row.querySelector('input[name="note"]');
 
-                    // Ambil input SO (tidak ada pembatasan digit)
+                    // Ambil input SO (hanya 4 digit angka)
                     var soNumber = soElement ? soElement.value.trim() : '';
 
-                    // Pastikan SO diinput dengan angka
-                    if (!/^\d+$/.test(soNumber)) {
-                        alert('SO harus berisi angka saja!');
+                    // Pastikan input SO hanya berupa 4 digit angka
+                    if (!/^\d{5}$/.test(soNumber)) {
+                        alert('SO harus berisi 4 digit angka saja!');
                         return;
                     }
 
-                    // Format SO otomatis: "SO/Tahun/[Angka yang diinput]"
+                    // Format SO otomatis: "SO/Tahun/4DigitAngka"
                     var formattedSO = `SO/${currentYear}/${soNumber}`;
 
                     if (idTypeElement && jenisElement.value !== "" && idTypeElement.value !== "") {

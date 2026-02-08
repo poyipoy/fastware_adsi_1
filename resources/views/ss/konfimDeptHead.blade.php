@@ -78,7 +78,7 @@
                                                 </td>
                                                 <td class="text-center">
                                                     @if ($data->status != 4 && $data->status != 5 && $data->status != 6 && $data->status != 7)
-                                                        @if (Auth::user()->role_id != 14 && Auth::user()->role_id != 20)
+                                                        @if (Auth::user()->role_id = 14 && Auth::user()->role_id != 20)
                                                             <button class="btn btn-primary btn-sm"
                                                                 onclick="openFormPenilaian({{ $data->id }})"
                                                                 data-id="{{ $data->id }}" title="Kirim">

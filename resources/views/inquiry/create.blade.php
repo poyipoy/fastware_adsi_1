@@ -441,178 +441,80 @@
                     </div>
 
                     <!-- Table with stripped rows -->
-                    @if ($inquiries->isEmpty())
-                        <div class="eempty">
-                            <p class="ps-3 mt-3">--- Not Found Inquiry Sales ---</p>
-                        </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-1" id="inquiryTable">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">No</th>
-                                        <th scope="col">Create By</th>
-                                        <th scope="col">Reference</th>
-                                        <th scope="col">Category</th>
-                                        <th scope="col">Supplier</th>
-                                        <th scope="col">Customer</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Ship to</th>
-                                        <th scope="col">Last Update</th>
-                                        <th scope="col">Est. Date</th>
-                                        <th scope="col">Actions</th>
-                                        {{-- <th scope="col">is Active</th> --}}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($inquiries as $inquiry)
-                                        <tr>
-                                            <th scope="row">{{ $loop->iteration }}</th>
+                    <div class="table-responsive">
+                        <table class="table table-1" id="inquiryTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">No</th>
+                                    <th scope="col">Create By</th>
+                                    <th scope="col">Reference</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">Supplier</th>
+                                    <th scope="col">Customer</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Ship to</th>
+                                    <th scope="col">Last Update</th>
+                                    <th scope="col">Est. Date</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!empty($initialFallbackLimit))
+                                    <p class="text-muted" style="font-size: 0.75rem;">
+                                        Showing up to {{ $initialFallbackLimit }} recent inquiries while the table
+                                        loads.
+                                    </p>
+                                @endif
+
+                                @if (isset($initialInquiries) && $initialInquiries->isNotEmpty())
+                                    @foreach ($initialInquiries as $index => $inquiry)
+                                        @php
+                                            $ships = $inquiry->details->pluck('ship')->filter()->unique();
+                                            $latestProgress = $inquiry->latestPurchaseProgress;
+                                            $estimatedDate = $inquiry->est_date
+                                                ? \Illuminate\Support\Carbon::parse($inquiry->est_date)->format('d-m-Y')
+                                                : '-';
+                                        @endphp
+                                        <tr data-fallback-row="true">
+                                            <th scope="row">{{ $index + 1 }}</th>
                                             <td>{{ $inquiry->create_by }}</td>
                                             <td>{{ $inquiry->kode_inquiry }}</td>
                                             <td>{{ $inquiry->loc_imp }}</td>
-                                            <td>{{ $inquiry->supplier }}</td>
-                                            <td>{{ $inquiry->customer ? $inquiry->customer->name_customer : 'N/A' }}</td>
-                                            {{-- <td>{{ $inquiry->note }}</td> --}}
-                                            @php
-                                                $statusDescriptions = [
-                                                    1 => 'Draft',
-                                                    2 => 'Open',
-                                                    3 => 'Approve Ka.Dept',
-                                                    4 => 'Approve Ka.Sie',
-                                                    5 => 'On Progress',
-                                                    6 => 'Finished',
-                                                    7 => 'Rejected',
-                                                    8 => 'Approve Inventory',
-                                                    9 => 'Confirm Purchasing',
-                                                ];
-
-                                                // Mendefinisikan kelas tombol berdasarkan status
-                                                $buttonClasses = [
-                                                    1 => 'btn-secondary', // Draft
-                                                    2 => 'btn-success', // Open
-                                                    3 => 'btn-danger', // Approve Ka.Dept
-                                                    4 => 'btn-info', // Approve Ka.Sie
-                                                    5 => 'btn-warning', // On Progress
-                                                    6 => 'btn-primary', // Finished
-                                                    7 => 'btn-danger', // Rejected
-                                                    8 => 'btn-danger', // Approve Inventory
-                                                    9 => 'btn-warning', // Confirm Purchasing
-                                                ];
-                                            @endphp
-
+                                            <td>{{ $inquiry->supplier ?? '-' }}</td>
+                                            <td>{{ optional($inquiry->customer)->name_customer ?? 'N/A' }}</td>
                                             <td class="btn-stts">
-                                                <button
-                                                    class="btn btn-sm 
-                                                        {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }} 
-                                                        {{ $inquiry->status == 1 ? 'btn-custom-draft' : '' }}
-                                                        {{ $inquiry->status == 2 ? 'btn-custom-open' : '' }}
-                                                        {{ $inquiry->status == 3 ? 'btn-custom-approve-dept' : '' }}
-                                                        {{ $inquiry->status == 4 ? 'btn-custom-approve-sie' : '' }}
-                                                        {{ $inquiry->status == 5 ? 'btn-custom-in-progress' : '' }}
-                                                        {{ $inquiry->status == 6 ? 'btn-custom-finished' : '' }}
-                                                        {{ $inquiry->status == 7 ? 'btn-custom-rejected' : '' }}
-                                                        {{ $inquiry->status == 8 ? 'btn-custom-inventory' : '' }}
-                                                        {{ $inquiry->status == 9 ? 'btn-custom-confirm-purchasing' : '' }}">
-                                                    {{ $statusDescriptions[$inquiry->status] ?? 'Unknown' }}
-                                                </button>
+                                                <x-inquiry.status-badge :status="$inquiry->status" />
                                             </td>
                                             <td>
-                                                @if ($inquiry->details->isNotEmpty())
-                                                    @php
-                                                        // Ambil semua nilai ship dari detail
-                                                        $ships = $inquiry->details->pluck('ship')->unique(); // Mengambil nilai unik
-                                                    @endphp
-
-                                                    @if ($ships->count() === 1)
-                                                        <p>{{ $ships->first() }}</p>
-                                                    @else
-                                                        @foreach ($ships as $ship)
-                                                            <p>{{ $ship }}</p>
-                                                        @endforeach
-                                                    @endif
-                                                @else
+                                                @if ($ships->isEmpty())
                                                     --- No Shipping Options ---
-                                                @endif
-                                            </td>
-
-                                            {{-- <td>
-                                                @if ($inquiry->attach_file)
-                                                    <a href="{{ asset('assets/files/' . $inquiry->attach_file) }}"
-                                                        target="_blank">
-                                                        <i class="fas fa-file-alt"></i>
-                                                    </a>
                                                 @else
-                                                    <i class="fas fa-times"></i> No File
+                                                    @foreach ($ships as $ship)
+                                                        <div>{{ $ship }}</div>
+                                                    @endforeach
                                                 @endif
-                                            </td> --}}
-
-                                            <td>
-                                                @php
-                                                    // Ambil update progress terbaru
-                                                    $progress = App\Models\TrxDboProgPurchase::where(
-                                                        'inquiry_id',
-                                                        $inquiry->id,
-                                                    )
-                                                        ->latest()
-                                                        ->first();
-
-                                                    // Jika inquiry belum pernah memiliki progress, tampilkan "No updates yet"
-                                                    $lastUpdateMessage =
-                                                        $progress && $progress->description !== 'No updates yet'
-                                                            ? $progress->description
-                                                            : 'No updates yet';
-                                                @endphp
-                                                {{ $lastUpdateMessage }}
                                             </td>
-
-                                            <td>{{ $inquiry->est_date }}</td>
-
-                                            {{-- <td>
-                                    @if ($inquiry->status == 0)
-                                    <button type="button" class="btn btn-danger" title="Data tidak aktif">
-                                        <i class="bi bi-exclamation-octagon"></i>
-                                    </button>
-                                    @endif
-                                </td> --}}
-
+                                            <td>{{ $latestProgress ? $latestProgress->description : 'No updates yet' }}
+                                            </td>
+                                            <td>{{ $estimatedDate }}</td>
                                             <td>
-                                                @if ($inquiry->status == 1)
-                                                    <a class="btn btn-custom-edit m-1 btn-sm" title="Edit">
-                                                        <i class="bi bi-pencil-fill"
-                                                            onclick="openEditInquiryModal({{ $inquiry->id }})"></i>
-                                                    </a>
-                                                @endif
-                                                @if ($inquiry->status == 1)
-                                                    <a class="btn btn-custom-form m-1 btn-sm"
-                                                        href="{{ route('formulirInquiry', ['id' => $inquiry->id]) }}"
-                                                        title="Formulir Inquiry">
-                                                        <i class="bi bi-file-earmark-arrow-up-fill"></i>
-                                                    </a>
-                                                @endif
-
-                                                <a class="btn btn-custom-view m-1 btn-sm" title="View Form"
-                                                    href="{{ route('showFormSS', $inquiry->id) }}">
-                                                    <i class="bi bi-eye-fill"></i>
-                                                </a>
-                                                {{-- <a href="#" class="btn btn-info m-1 btn-sm"
-                                                    onclick="showProgressModal1({{ $inquiry->id }}); return false;"
-                                                    title="Show Detail Inquiry">
-                                                    <i class="bi bi-info-square-fill"></i>
-                                                </a> --}}
-                                                @if ($inquiry->status == 1)
-                                                    <a class="btn btn-custom-delete m-1 btn-sm" title="Delete">
-                                                        <i class="bi bi-trash-fill"
-                                                            onclick="deleteInquiry({{ $inquiry->id }})"></i>
-                                                    </a>
-                                                @endif
+                                                <x-inquiry.action-buttons 
+                                                    :inquiry="$inquiry" 
+                                                    :showEdit="true"
+                                                    :showForm="true"
+                                                    :showDelete="true"
+                                                    :showView="true" />
                                             </td>
                                         </tr>
                                     @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
+                                @else
+                                    <tr data-fallback-row="true">
+                                        <td colspan="11" class="text-center text-muted">--- No Inquiry Data Available ---</td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <!-- End Table with stripped rows -->
 
@@ -658,7 +560,7 @@
                                     </div> --}}
 
                                     <div class="mb-3">
-                                        <label for="id_customer" class="form-label fw-bold">Order from</label>
+                                        <label for="search_customer" class="form-label fw-bold">Order from</label>
                                         <div class="searchable-dropdown">
                                             <input type="text" id="search_customer">
                                             <div class="dropdown-items" id="customer_list" style="display: none;">
@@ -701,9 +603,7 @@
                                     aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
-                                <form id="editInquiryForm"
-                                    action="{{ route('updateinquiry', ['id' => $inquiries->first()->id ?? 0]) }}"
-                                    method="POST" enctype="multipart/form-data">
+                                <form id="editInquiryForm" action="#" method="POST" enctype="multipart/form-data">
                                     @csrf
                                     @method('PUT')
                                     <input type="hidden" id="editInquiryId" name="inquiry_id">
@@ -721,7 +621,7 @@
                                         </select>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="id_customer" class="form-label fw-bold">Order from</label>
+                                        <label for="search_edit_customer" class="form-label fw-bold">Order from</label>
                                         <div class="searchable-dropdown">
                                             <input type="text" id="search_edit_customer" class="form-control"
                                                 placeholder="Search customer...">
@@ -786,8 +686,6 @@
         {{-- excel --}}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
-        <!-- SimpleDataTables JS -->
-        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
 
         <script>
             $(document).ready(function() {
@@ -799,6 +697,12 @@
                 });
             });
         </script>
+
+        @if (session('success'))
+            <script>
+                window.pendingInquiryRefresh = true;
+            </script>
+        @endif
 
 
         <script>
@@ -1028,34 +932,151 @@
                 });
             }
 
-            $.noConflict();
-            jQuery(document).ready(function($) {
-                const dataTable = new simpleDatatables.DataTable("#inquiryTable", {
-                    searchable: true, // Aktifkan fitur pencarian
-                    perPage: 10, // Jumlah entri data per halaman
-                    perPageSelect: [5, 10, 20, 150], // Opsi jumlah entri data per halaman
-                    dataProps: {
-                        // Fungsi untuk menghasilkan format yang diinginkan
-                        "Urutan": (value, data) => {
-                            // Mendapatkan indeks baris data saat ini
-                            const index = data.tableData.id;
+            (function($) {
+                $(function() {
+                    console.debug('[CreateInquiry] bootstrap script loaded');
 
-                            // Mendapatkan nilai dari kolom "RO" atau "SPOR"
-                            const spoOrRo = data[index][0].startsWith("RO") ? "RO" : "SPOR";
-
-                            // Mendapatkan nilai dari kolom "Bulan"
-                            const month = data[index][1];
-
-                            // Mendapatkan nilai dari kolom "Tahun"
-                            const year = data[index][2];
-
-                            // Menghasilkan urutan sesuai format yang diinginkan
-                            const order = (index + 1).toString().padStart(3, '0');
-                            return `${spoOrRo}/${month}/${year}/${order}`;
+                    const ensureDataTablesPlugin = () => {
+                        if (!$.fn.DataTable && window.jQuery && window.jQuery.fn && window.jQuery.fn.DataTable) {
+                            $.fn.DataTable = window.jQuery.fn.DataTable;
+                            $.fn.dataTable = window.jQuery.fn.dataTable;
                         }
-                    }
+
+                        return !!$.fn.DataTable;
+                    };
+
+                    const initialiseDataTable = () => {
+                        const hasPlugin = ensureDataTablesPlugin();
+                        console.debug('[CreateInquiry] initialiseDataTable invoked. DataTables available:', hasPlugin);
+
+                        if (!hasPlugin) {
+                            return null;
+                        }
+
+                        if (window.inquiryTableInstance) {
+                            console.debug('[CreateInquiry] Reusing existing DataTable instance');
+                            return window.inquiryTableInstance;
+                        }
+
+                        const table = $('#inquiryTable').DataTable({
+                            processing: true,
+                            serverSide: true,
+                            ajax: {
+                                url: '{{ route('createinquiry') }}',
+                                data: function(params) {
+                                    params.format = 'json';
+                                }
+                            },
+                            columns: [
+                                {
+                                    data: null,
+                                    orderable: false,
+                                    searchable: false,
+                                    render: function(data, type, row, meta) {
+                                        return meta.row + meta.settings._iDisplayStart + 1;
+                                    }
+                                },
+                                { data: 'create_by', name: 'create_by' },
+                                { data: 'kode_inquiry', name: 'kode_inquiry' },
+                                { data: 'loc_imp', name: 'loc_imp' },
+                                { data: 'supplier', name: 'supplier', defaultContent: '-' },
+                                { data: 'customer_name', name: 'customer.name_customer', defaultContent: 'N/A' },
+                                {
+                                    data: null,
+                                    orderable: false,
+                                    searchable: false,
+                                    render: function(data, type, row) {
+                                        if (type !== 'display') {
+                                            return row.status_label || 'Unknown';
+                                        }
+                                        const cssClass = row.status_class || 'btn-light';
+                                        const label = row.status_label || 'Unknown';
+                                        return '<button class="btn btn-sm ' + cssClass + '">' + label + '</button>';
+                                    }
+                                },
+                                {
+                                    data: 'ship_to',
+                                    name: 'ship_to',
+                                    orderable: false,
+                                    searchable: false,
+                                    defaultContent: '--- No Shipping Options ---',
+                                    render: function(data, type, row) {
+                                        const content = row.ship_to || data || '--- No Shipping Options ---';
+                                        return type === 'display' ? content : content.replace(/<br>/g, ' ');
+                                    }
+                                },
+                                { data: 'last_update', name: 'last_update', defaultContent: 'No updates yet' },
+                                { data: 'est_date', name: 'est_date', defaultContent: '-' },
+                                {
+                                    data: 'actions',
+                                    orderable: false,
+                                    searchable: false,
+                                    defaultContent: '',
+                                    render: function(data) {
+                                        return data || '';
+                                    }
+                                }
+                            ],
+                            order: [[2, 'desc']],
+                            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                            initComplete: function() {
+                                const api = this.api();
+                                $('#inquiryTable tbody [data-fallback-row]').remove();
+                                console.debug('[CreateInquiry] DataTable init complete. Pending refresh:',
+                                    !!window.pendingInquiryRefresh);
+
+                                if (window.pendingInquiryRefresh) {
+                                    api.ajax.reload(null, false);
+                                    window.pendingInquiryRefresh = false;
+                                }
+                            }
+                        });
+
+                        console.debug('[CreateInquiry] DataTable instance created', table);
+                        window.inquiryTableInstance = table;
+                        return table;
+                    };
+
+                    const loadDataTable = () => {
+                        console.debug('[CreateInquiry] loadDataTable called (plugin present:', !!$.fn.DataTable, ')');
+
+                        if (ensureDataTablesPlugin()) {
+                            initialiseDataTable();
+                            return;
+                        }
+
+                        console.debug('[CreateInquiry] DataTables plugin missing, loading from CDN');
+                        $.getScript('https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js')
+                            .done(function() {
+                                console.debug('[CreateInquiry] DataTables core loaded');
+                                $.getScript('https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js')
+                                    .done(function() {
+                                        console.debug('[CreateInquiry] DataTables Bootstrap integration loaded');
+                                        ensureDataTablesPlugin();
+                                        initialiseDataTable();
+                                    })
+                                    .fail(function() {
+                                        console.error('Failed to load DataTables Bootstrap integration.');
+                                    });
+                            })
+                            .fail(function() {
+                                console.error('Failed to load DataTables core library.');
+                            });
+                    };
+
+                    loadDataTable();
+
+                    window.refreshInquiryTable = function() {
+                        console.debug('[CreateInquiry] refreshInquiryTable invoked');
+
+                        if (window.inquiryTableInstance) {
+                            window.inquiryTableInstance.ajax.reload(null, false);
+                        } else {
+                            window.pendingInquiryRefresh = true;
+                        }
+                    };
                 });
-            });
+            })(jQuery);
 
             //delete
             function deleteInquiry(id) {
@@ -1126,9 +1147,11 @@
             }
 
             // report
-            document.getElementById('exportReportBtn').addEventListener('click', function() {
-                // Get the table element
-                var table = document.getElementById('inquiryTable');
+            const exportBtn = document.getElementById('exportReportBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    // Get the table element
+                    var table = document.getElementById('inquiryTable');
 
                 // Create a workbook and add a worksheet
                 var wb = XLSX.utils.table_to_book(table, {
@@ -1199,9 +1222,10 @@
                 // Replace the old worksheet with the new one
                 wb.Sheets["Inquiry Report"] = newWs;
 
-                // Write the workbook to a file
-                XLSX.writeFile(wb, 'Inquiry_Report.xlsx');
-            });
+                    // Write the workbook to a file
+                    XLSX.writeFile(wb, 'Inquiry_Report.xlsx');
+                });
+            }
         </script>
 
         <script>
@@ -1209,13 +1233,15 @@
 
             function addInput() {
                 inputCount++;
+                const typeId = `dynamic_type_${inputCount}`;
+                const sizeId = `dynamic_size_${inputCount}`;
                 var html = `<div class="mb-3">
-                         <label for="supplier" class="form-label">Type</label>
-                        <input type="text" class="form-control type-input" name="type[]" required>
+                         <label class="form-label" for="${typeId}">Type</label>
+                        <input type="text" id="${typeId}" class="form-control type-input" name="type[]" required>
                     </div>
                     <div class="mb-3">
-                          <label for="supplier" class="form-label">Size</label>
-                        <input type="text" class="form-control size-input" name="size[]" required>
+                          <label class="form-label" for="${sizeId}">Size</label>
+                        <input type="text" id="${sizeId}" class="form-control size-input" name="size[]" required>
                     </div>`;
                 $('#inputContainer').append(html);
             }

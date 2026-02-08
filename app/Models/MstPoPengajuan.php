@@ -48,11 +48,4 @@ class MstPoPengajuan extends Model
      {
          return $this->hasMany(TrsPoPengajuan::class, 'id_fpb');
      }
-     
-     public function trsPoPengajuans()
-    {
-        // 'id_fpb' adalah foreign key di tabel 'trs_po_pengajuans'
-        // 'id' adalah primary key di tabel ini ('mst_po_pengajuans')
-        return $this->hasMany(TrsPoPengajuan::class, 'id_fpb', 'id');
-    }
 }

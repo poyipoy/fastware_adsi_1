@@ -34,12 +34,13 @@ class MstPengajuanSubcont extends Model
         'approval_2',
         'date_app_2',
         'confirm_prod',
-        'date_confirm_prod',
+         'date_confirm_prod',
         'sec_line',
         'is_active',
         'so',
         'note_sales',
         'no_ref',
+        'harpen',
         'modified_at'
     ];
 

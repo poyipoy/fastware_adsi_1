@@ -99,7 +99,7 @@ class OverviewPurchaseExport implements FromCollection, WithHeadings, WithMappin
             $outerValue,                                   // Outer
             $panjang,                                      // Panjang
             $this->stringValue($detail->inquiry_supplier), // Supplier
-            '',                                            // PR (isi sesuai kebutuhan)
+            $this->stringValue($detail->refnopo), // PR (isi sesuai kebutuhan)
             $this->stringValue($detail->so),               // SO
             $updatedAt,                                    // Last Update
             $this->stringValue($detail->note),             // Notes

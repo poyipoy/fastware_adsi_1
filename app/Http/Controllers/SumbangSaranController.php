@@ -18,81 +18,322 @@ class SumbangSaranController extends Controller
     // showpage
     public function showSS()
     {
-        // Ambil ID pengguna yang sedang login
-        $userLogin = Auth::id();
+        // Ambil semua role dari database dan urutkan berdasarkan nama
+        $roles = Role::orderBy('role', 'asc')->pluck('role')->toArray();
 
-        // Ambil role dari pengguna yang sedang login
-        $userRole = Auth::user()->role_id;
-
-        // Tentukan apakah pengguna memiliki role 1 atau 14
-        $isAdmin = in_array($userRole, [1, 14, 20]);
-
-        // Query MySQL untuk menggabungkan data dari SumbangSaran, Penilaians, dan Users
-        $dataQuery = '
-        SELECT 
-            sumbang_sarans.id,
-            sumbang_sarans.id_user,
-            sumbang_sarans.tgl_pengajuan_ide,
-            sumbang_sarans.lokasi_ide,
-            sumbang_sarans.tgl_diterapkan,
-            sumbang_sarans.plant,
-            sumbang_sarans.judul,
-            sumbang_sarans.keadaan_sebelumnya,
-            sumbang_sarans.image,
-            sumbang_sarans.usulan_ide,
-            sumbang_sarans.image_2,
-            sumbang_sarans.keuntungan_ide,
-            sumbang_sarans.tgl_verifikasi,
-            sumbang_sarans.status,
-            sumbang_sarans.updated_at,
-            penilaians.id_users,
-            penilaians.ss_id,
-            penilaians.nilai,
-            penilaians.tambahan_nilai,
-            ((penilaians.nilai + COALESCE(penilaians.tambahan_nilai, 0))) AS total_nilai,
-        CASE 
-            WHEN penilaians.belum_diterapkan = "1" THEN (1 * 2.5 * 2000)
-            ELSE (((penilaians.nilai + COALESCE(penilaians.tambahan_nilai, 0))) * 2000)
-        END AS hasil_akhir,
-            users.name,
-            users.npk
-        FROM 
-            sumbang_sarans
-        LEFT JOIN 
-            penilaians ON sumbang_sarans.id = penilaians.ss_id
-        LEFT JOIN 
-            users ON sumbang_sarans.id_user = users.id
-        WHERE 
-            sumbang_sarans.status IN (1, 2, 3, 4, 5, 6, 7) ';
-
-        if (!$isAdmin) {
-            // Tambahkan filter ID pengguna jika bukan admin
-            $dataQuery .= 'AND sumbang_sarans.id_user = ? ';
-        }
-
-        $dataQuery .= '
-        ORDER BY 
-            FIELD(sumbang_sarans.status, 1, 2, 3, 4, 5, 6, 7),
-            sumbang_sarans.updated_at DESC
-    ';
-
-        // Eksekusi query dengan parameter
-        $data = !$isAdmin ? DB::select($dataQuery, [$userLogin]) : DB::select($dataQuery);
-
-        // Ambil hanya id user untuk menghindari "N + 1" query
-        $userIds = collect($data)->pluck('id_user')->unique()->toArray();
-
-        // Ambil data peran (role) berdasarkan user ids
-        $usersRoles = User::whereIn('users.id', $userIds)
-            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
-            ->pluck('roles.role', 'users.id');
-
-        return view('ss.createSS', compact('data', 'usersRoles'));
+        return view('ss.createSS', compact('roles'));
     }
 
-    public function dashboardSS()
+    protected function departmentDefinitions(): array
     {
-        return view('ss.dashboardSS');
+        return [
+            'Logistik' => [
+                'Logistic Admin',
+                'Admin Cutting Sheet (ACS)',
+                'Delivery Staff',
+                'Feeder',
+                'Logistic Foreman',
+                'PPIC Staff',
+            ],
+            'Sales' => [
+                'Sales Admin',
+                'SOH Region 1',
+                'Sales Engineer Reg 1',
+                'SOH Region 2',
+                'Sales Engineer Reg 2',
+                'SOH Region 3',
+                'Sales Engineer Reg 3',
+                'SOH Region 4',
+                'Sales Engineer Reg 4',
+            ],
+            'Procurement' => [
+                'PDCA, Inventory, Procurement & IT Sec. Head',
+                'PDCA & Procurement Non Material Staff',
+                'Procurement Material Staff',
+                'Procurement Administration',
+                'Inventory Staff',
+                'IT Staff',
+            ],
+            'Finance, AR, HRGA' => [
+                'HR & GA Section Head',
+                'HR & Legal Staff',
+                'HRGA & CSR Staff',
+                'Finance & Accounting Sec. Head',
+                'Finance Admin',
+                'Finance & Treasury Sec. Head',
+                'Invoicing Staff',
+                'AR Staff',
+                'Accounting Staff & Kasir',
+            ],
+            'Produksi' => [
+                'Produksi HT Sec. Head',
+                'Foreman CT',
+                'Foreman QC',
+                'Leader HT',
+                'Operator CT',
+                'Admin HT & PPC',
+                'Operator MTN',
+                'Operator HT',
+                'Leader Cutting',
+                'Machining Custom Sec. Head',
+                'Leader MC',
+                'Operator Bubut',
+                'Operator Mc. Custom',
+                'MC Custom Staff',
+                'Operator Machining',
+                'Foreman Machining Custom',
+                'Foreman MC',
+            ],
+        ];
+    }
+
+    protected function roleDepartmentMap(): array
+    {
+        $map = [];
+
+        foreach ($this->departmentDefinitions() as $department => $roles) {
+            foreach ($roles as $role) {
+                $map[$role] = $department;
+            }
+        }
+
+        return $map;
+    }
+
+    protected function statusPresentation(?int $status): array
+    {
+        $meta = [
+            'title' => '',
+            'badge' => '<span class="badge bg-secondary align-items-center" style="font-size: 18px;">-</span>',
+        ];
+
+        switch ($status) {
+            case 1:
+                $meta['title'] = 'Draf';
+                $meta['badge'] = '<span class="badge bg-secondary align-items-center" style="font-size: 18px;">Draf</span>';
+                break;
+            case 2:
+                $meta['title'] = 'Menunggu Approve Foreman';
+                $meta['badge'] = '<span class="badge bg-warning align-items-center" style="font-size: 18px;">Menunggu<br>Konfirmasi Sec. Head</span>';
+                break;
+            case 3:
+                $meta['title'] = 'Menunggu Approve Dept. Head';
+                $meta['badge'] = '<span class="badge bg-warning align-items-center" style="font-size: 18px;">Menunggu<br>Konfirmasi Dept. Head</span>';
+                break;
+            case 4:
+                $meta['title'] = 'Direksi';
+                $meta['badge'] = '<span class="badge bg-warning align-items-center" style="font-size: 18px;">Menunggu<br>Konfirmasi Komite</span>';
+                break;
+            case 5:
+                $meta['title'] = 'SS sudah dinilai';
+                $meta['badge'] = '<span class="badge bg-info align-items-center" style="font-size: 18px;">SS sudah dinilai</span>';
+                break;
+            case 6:
+                $meta['title'] = 'SS sudah Verivikasi';
+                $meta['badge'] = '<span class="badge bg-info align-items-center" style="font-size: 18px;">SS sudah Verivikasi</span>';
+                break;
+            case 7:
+                $meta['title'] = 'SS Terbayar';
+                $meta['badge'] = '<span class="badge bg-success align-items-center" style="font-size: 18px;">SS Terbayar</span>';
+                break;
+        }
+
+        return $meta;
+    }
+
+    protected function buildActionButtons(object $row, int $userRoleId): string
+    {
+        $buttons = [];
+
+        if (!in_array((int) $row->status, [2, 3, 4, 5, 6, 7], true) && $userRoleId !== 20) {
+            $buttons[] = '<button class="btn btn-primary btn-sm" onclick="openEditModal('.$row->id.')" title="Edit"><i class="fa-solid fa-edit fa-1x"></i></button>';
+            $buttons[] = '<button class="btn btn-danger btn-sm" onclick="confirmDelete('.$row->id.')" title="Hapus"><i class="fas fa-trash fa-1x"></i></button>';
+            $buttons[] = '<button class="btn btn-primary btn-sm" onclick="confirmKirim('.$row->id.')" data-id="'.$row->id.'" title="Kirim"><i class="fa-solid fa fa-paper-plane fa-1x"></i></button>';
+        }
+
+        $buttons[] = '<button class="btn btn-success btn-sm" onclick="viewFormSS('.$row->id.')" title="lihat"><i class="fa-solid fa-eye fa-1x"></i></button>';
+
+        return implode(' ', $buttons);
+    }
+
+    protected function applyDataTableFilters($query, Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        if ($startDate && $endDate && $startDate > $endDate) {
+            [$startDate, $endDate] = [$endDate, $startDate];
+        }
+
+        if ($startDate) {
+            $query->whereDate('ss.tgl_pengajuan_ide', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('ss.tgl_pengajuan_ide', '<=', $endDate);
+        }
+
+        $role = $request->input('role');
+
+        if ($role) {
+            $query->where('r.role', $role);
+        }
+
+        $search = $request->input('search.value');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('u.name', 'like', '%'.$search.'%')
+                    ->orWhere('u.npk', 'like', '%'.$search.'%')
+                    ->orWhere('ss.judul', 'like', '%'.$search.'%')
+                    ->orWhere('r.role', 'like', '%'.$search.'%');
+            });
+        }
+
+        return $query;
+    }
+
+    public function showSSData(Request $request)
+    {
+        $user = Auth::user();
+        $userId = $user->id;
+        $userRoleId = $user->role_id;
+        $isAdmin = in_array($userRoleId, [1, 14, 20], true);
+
+        $baseQuery = DB::table('sumbang_sarans as ss')
+            ->leftJoin('penilaians as p', 'ss.id', '=', 'p.ss_id')
+            ->leftJoin('users as u', 'ss.id_user', '=', 'u.id')
+            ->leftJoin('roles as r', 'u.role_id', '=', 'r.id')
+            ->whereIn('ss.status', [1, 2, 3, 4, 5, 6, 7]);
+
+        if (!$isAdmin) {
+            $baseQuery->where('ss.id_user', $userId);
+        }
+
+        $recordsTotal = (clone $baseQuery)->count();
+
+        $filteredQuery = $this->applyDataTableFilters(clone $baseQuery, $request);
+
+        $recordsFiltered = (clone $filteredQuery)->count();
+
+        $orderColumnIndex = (int) $request->input('order.0.column', 14);
+        $orderDirection = strtolower($request->input('order.0.dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $requestedColumn = $request->input('columns.'.$orderColumnIndex.'.data', 'updated_at');
+
+        $dataQuery = clone $filteredQuery;
+
+        $dataQuery->select([
+            'ss.id',
+            'ss.id_user',
+            'ss.tgl_pengajuan_ide',
+            'ss.lokasi_ide',
+            'ss.tgl_diterapkan',
+            'ss.updated_at',
+            'ss.plant',
+            'ss.judul',
+            'ss.status',
+            'p.nilai',
+            'p.tambahan_nilai',
+            'p.belum_diterapkan',
+            'u.name',
+            'u.npk',
+            DB::raw('r.role as bagian'),
+            DB::raw('(p.nilai + COALESCE(p.tambahan_nilai, 0)) as total_nilai'),
+            DB::raw('CASE WHEN p.belum_diterapkan = 1 THEN (1 * 2.5 * 2000) ELSE ((p.nilai + COALESCE(p.tambahan_nilai, 0)) * 2000) END as hasil_akhir'),
+        ]);
+
+        switch ($requestedColumn) {
+            case 'name':
+                $dataQuery->orderBy('u.name', $orderDirection);
+                break;
+            case 'npk':
+                $dataQuery->orderBy('u.npk', $orderDirection);
+                break;
+            case 'bagian':
+                $dataQuery->orderBy('r.role', $orderDirection);
+                break;
+            case 'plant':
+                $dataQuery->orderBy('ss.plant', $orderDirection);
+                break;
+            case 'judul':
+                $dataQuery->orderBy('ss.judul', $orderDirection);
+                break;
+            case 'nilai':
+                $dataQuery->orderBy('p.nilai', $orderDirection);
+                break;
+            case 'tambahan_nilai':
+                $dataQuery->orderBy('p.tambahan_nilai', $orderDirection);
+                break;
+            case 'tgl_pengajuan_ide':
+                $dataQuery->orderBy('ss.tgl_pengajuan_ide', $orderDirection);
+                break;
+            case 'lokasi_ide':
+                $dataQuery->orderBy('ss.lokasi_ide', $orderDirection);
+                break;
+            case 'tgl_diterapkan':
+                $dataQuery->orderBy('ss.tgl_diterapkan', $orderDirection);
+                break;
+            case 'updated_at':
+                $dataQuery->orderBy('ss.updated_at', $orderDirection);
+                break;
+            default:
+                $dataQuery->orderBy('ss.updated_at', 'desc');
+                break;
+        }
+
+        $length = (int) $request->input('length', 10);
+        $start = (int) $request->input('start', 0);
+
+        if ($length !== -1) {
+            $dataQuery->skip($start)->take($length);
+        }
+
+        $rows = $dataQuery->get();
+
+        $roleDepartmentMap = $this->roleDepartmentMap();
+
+        $data = $rows->map(function ($row) use ($roleDepartmentMap, $userRoleId) {
+            $department = $roleDepartmentMap[$row->bagian] ?? '';
+            $statusMeta = $this->statusPresentation((int) $row->status);
+
+            return [
+                'id' => $row->id,
+                'name' => $row->name ?? '',
+                'npk' => $row->npk ?? '',
+                'bagian' => $row->bagian ?? '',
+                'department' => $department,
+                'plant' => $row->plant ?? '',
+                'judul' => $row->judul ?? '',
+                'nilai' => $row->nilai,
+                'tambahan_nilai' => $row->tambahan_nilai,
+                'total_nilai' => $row->total_nilai,
+                'hasil_akhir' => $row->hasil_akhir !== null ? (float) $row->hasil_akhir : null,
+                'hasil_akhir_formatted' => $row->hasil_akhir !== null ? 'Rp '.number_format((float) $row->hasil_akhir, 0, ',', '.') : '-',
+                'tgl_pengajuan_ide' => $row->tgl_pengajuan_ide,
+                'lokasi_ide' => $row->lokasi_ide,
+                'tgl_diterapkan' => $row->tgl_diterapkan,
+                'updated_at' => $row->updated_at,
+                'status_badge' => $statusMeta['badge'],
+                'status_title' => $statusMeta['title'],
+                'actions' => $this->buildActionButtons($row, $userRoleId),
+                'status' => $row->status,
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'draw' => (int) $request->input('draw'),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function dashboardSS(
+        \App\Services\Dashboard\SumbangSaranDashboardService $service
+    ) {
+        $data = $service->getDashboardData();
+
+        return view('ss.dashboardSS', $data);
     }
 
     public function forumSS(Request $request)
@@ -263,6 +504,8 @@ class SumbangSaranController extends Controller
             case 11:
             case 12:
             case 14:
+                 $rolesToView = [20];
+                break;
             case 15:
             case 32:
                 $rolesToView = [11, 12, 13, 14, 15, 16, 20, 32, 39, 40, 41];

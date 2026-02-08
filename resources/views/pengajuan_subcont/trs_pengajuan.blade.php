@@ -79,64 +79,67 @@
                             <br>
                             <!-- File -->
                             @if (in_array($pengajuan->status_1, [3, 4, 5]))
-    @if (is_null($pengajuan->sec_line) || $pengajuan->sec_line === '')
-        <div class="mb-4 p-3 border rounded shadow-sm bg-light">
-            <label for="quotation_file" class="form-label fw-bold text-primary">
-                <i class="fas fa-upload"></i> Upload Quotation
-            </label>
+                                @if (is_null($pengajuan->sec_line) || $pengajuan->sec_line === '')
+                                    <div class="mb-4 p-3 border rounded shadow-sm bg-light">
+                                        <label for="quotation_file" class="form-label fw-bold text-primary">
+                                            <i class="fas fa-upload"></i> Upload Quotation
+                                        </label>
 
-            @if (!$pengajuan->quotation_file)
-                <input type="file" class="form-control" id="quotation_file" name="quotation_file">
-            @endif
+                                        @if (!$pengajuan->quotation_file)
+                                            <input type="file" class="form-control" id="quotation_file"
+                                                name="quotation_file">
+                                        @endif
 
-            @if ($pengajuan->quotation_file)
-                <div class="mt-3">
-                    <p class="mb-1 fw-bold text-secondary">Download Quotation</p>
-                    <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
-                        class="btn btn-outline-secondary" data-bs-toggle="tooltip"
-                        title="Click to download the quotation file">
-                        <i class="fas fa-file-pdf fa-lg me-2"></i> View Quotation
-                    </a>
-                </div>
-            @else
-                <div class="mt-3">
-                    <span class="text-muted fst-italic">Quotation belum tersedia</span>
-                </div>
-            @endif
-        </div>
+                                        @if ($pengajuan->quotation_file)
+                                            <div class="mt-3">
+                                                <p class="mb-1 fw-bold text-secondary">Download Quotation</p>
+                                                <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
+                                                    class="btn btn-outline-secondary" data-bs-toggle="tooltip"
+                                                    title="Click to download the quotation file">
+                                                    <i class="fas fa-file-pdf fa-lg me-2"></i> View Quotation
+                                                </a>
+                                            </div>
+                                        @else
+                                            <div class="mt-3">
+                                                <span class="text-muted fst-italic">Quotation belum tersedia</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @elseif ($pengajuan->sec_line == 2 && empty($pengajuan->quotation_file))
+                                    <div class="mb-4 p-3 border rounded shadow-sm bg-light">
+                                        <label for="quotation_file" class="form-label fw-bold text-primary">
+                                            <i class="fas fa-upload"></i> Upload Quotation
+                                        </label>
 
-    @elseif ($pengajuan->sec_line == 2 && empty($pengajuan->quotation_file))
-        <div class="mb-4 p-3 border rounded shadow-sm bg-light">
-            <label for="quotation_file" class="form-label fw-bold text-primary">
-                <i class="fas fa-upload"></i> Upload Quotation
-            </label>
+                                        <input type="file" class="form-control" id="quotation_file"
+                                            name="quotation_file">
 
-            <input type="file" class="form-control" id="quotation_file" name="quotation_file">
+                                        <div class="mt-3">
+                                            <span class="text-muted fst-italic">Quotation belum tersedia</span>
+                                        </div>
+                                    </div>
+                                @elseif ($pengajuan->sec_line == 2 && !empty($pengajuan->quotation_file))
+                                    <div class="mb-4 p-3 border rounded shadow-sm bg-light">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-file-upload"></i> Quotation File
+                                        </label>
 
-            <div class="mt-3">
-                <span class="text-muted fst-italic">Quotation belum tersedia</span>
-            </div>
-        </div>
-
-    @elseif ($pengajuan->sec_line == 2 && !empty($pengajuan->quotation_file))
-        <div class="mb-4 p-3 border rounded shadow-sm bg-light">
-            <label class="form-label fw-bold text-primary">
-                <i class="fas fa-file-upload"></i> Quotation File
-            </label>
-
-            <div class="mt-3">
-                <p class="mb-1 fw-bold text-secondary">Download Quotation</p>
-                <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
-                    class="btn btn-outline-secondary" data-bs-toggle="tooltip"
-                    title="Click to download the quotation file">
-                    <i class="fas fa-file-pdf fa-lg me-2"></i> View Quotation
-                </a>
-            </div>
-        </div>
-    @endif
-@endif
-
-
+                                        <div class="mt-3">
+                                            <p class="mb-1 fw-bold text-secondary">Download Quotation</p>
+                                            <a href="{{ asset($pengajuan->quotation_file) }}" target="_blank"
+                                                class="btn btn-outline-secondary" data-bs-toggle="tooltip"
+                                                title="Click to download the quotation file">
+                                                <i class="fas fa-file-pdf fa-lg me-2"></i> View Quotation
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
+                            
+                            <div class="mb-3">
+                                <label for="harpen" class="form-label">Harga Penawaran</label>
+                                <textarea class="form-control" id="harpen" name="harpen" rows="4" placeholder="Masukkan Harga Penawaran">{{ $pengajuan->harpen }}</textarea>
+                            </div>
 
                             <!-- Tombol Submit -->
                             <div class="d-flex justify-content-between" style="margin-top: 3%">
@@ -175,7 +178,6 @@
                                             onclick="kirimData2('{{ route('FinishProc', $pengajuan->id) }}')">
                                             <i class="fas fa-flag-checkered"></i> Finish
                                         </button>
-
                                     @elseif ($pengajuan->sec_line == 2 && in_array($pengajuan->status_1, [3, 4]) && empty($pengajuan->quotation_file))
                                         <button id="saveButton" type="button" class="btn btn-primary mb-4 me-3"
                                             onclick="submitData('{{ route('submit.data', $pengajuan->id) }}', {{ $pengajuan->id }})">
@@ -236,19 +238,19 @@
 
             </div>
         </section>
-                        <!-- jQuery -->
-                        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-                        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-                        <script>
-                            $(document).ready(function() {
-                                // Hover function for dropdowns
-                                $('.nav-item.dropdown').hover(function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
-                                }, function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
-                                });
-                            });
-                            </script>
+        <!-- jQuery -->
+        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
+        <script>
+            $(document).ready(function() {
+                // Hover function for dropdowns
+                $('.nav-item.dropdown').hover(function() {
+                    $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
+                }, function() {
+                    $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
+                });
+            });
+        </script>
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
         <script>

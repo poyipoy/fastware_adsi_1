@@ -9,6 +9,8 @@ use App\Models\DetailInquiryImport;
 use App\Models\InquirySales;
 use App\Models\TypeMaterial;
 use App\Models\TrxDboProgPurchase;
+use App\Services\InquirySalesService;
+use App\Enums\InquiryStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,19 +33,80 @@ use Illuminate\Validation\Rule;
 
 class InquirySalesController extends Controller
 {
-    public function createInquirySales()
+    protected InquirySalesService $inquiryService;
+
+    public function __construct(InquirySalesService $inquiryService)
     {
-        $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        $inquiries = InquirySales::with('customer')
-                ->whereIn('status', $statuses)
-                ->where('is_active', 1)
-                ->where('loc_imp', 'Local')
-            ->orderByRaw('FIELD(status, 0, 1, 2, 3, 4, 5, 6, 7,8,9)')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->unique('kode_inquiry');
-        $customers = Customer::all();
-        return view('inquiry.create', compact('inquiries', 'customers'));
+        $this->inquiryService = $inquiryService;
+    }
+
+    public function createInquirySales(Request $request)
+    {
+        $baseQuery = $this->inquiryService->getLocalInquiriesBaseQuery();
+
+        if ($this->isDataTableRequest($request)) {
+            $queryForDatatable = clone $baseQuery;
+
+            $searchCallback = function (Builder $query, string $search): void {
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('create_by', 'like', "%{$search}%")
+                        ->orWhere('kode_inquiry', 'like', "%{$search}%")
+                        ->orWhere('loc_imp', 'like', "%{$search}%")
+                        ->orWhere('supplier', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function (Builder $customer) use ($search) {
+                            $customer->where('name_customer', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('details', function (Builder $details) use ($search) {
+                            $details->where('ship', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
+                            $progress->where('description', 'like', "%{$search}%");
+                        });
+                });
+            };
+
+            Log::info('createInquirySales datatable base query', [
+                'user_id' => optional($request->user())->id,
+                'user_name' => optional($request->user())->name,
+                'sql' => $queryForDatatable->toSql(),
+                'bindings' => $queryForDatatable->getBindings(),
+                'filters' => [
+                    'is_active' => 1,
+                    'loc_imp' => 'Local',
+                ],
+            ]);
+
+            return $this->dataTableResponse(
+                $request,
+                $queryForDatatable,
+                function (InquirySales $inquiry): array {
+                    $data = $this->inquiryService->formatInquiryForDataTable($inquiry);
+                    $data['actions'] = $this->renderCreateInquiryActions($inquiry);
+                    return $data;
+                },
+                $searchCallback,
+                [
+                    1 => 'create_by',
+                    2 => 'kode_inquiry',
+                    3 => 'loc_imp',
+                    4 => 'supplier',
+                    9 => 'est_date',
+                ],
+                fn (Builder $query) => $query
+                    ->orderByRaw('FIELD(status, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)')
+                    ->orderBy('created_at', 'desc')
+            );
+        }
+
+        $customers = $this->inquiryService->getAllCustomers();
+        $initialFallbackLimit = 10;
+        $initialInquiries = $this->inquiryService->getLocalInquiriesForCreate($initialFallbackLimit);
+
+        return view('inquiry.create', [
+            'customers' => $customers,
+            'initialInquiries' => $initialInquiries,
+            'initialFallbackLimit' => $initialFallbackLimit,
+        ]);
     }
 
     public function createInquirySalesImport1(Request $request, $id)
@@ -95,49 +158,13 @@ class InquirySalesController extends Controller
         $request->validate([
             'jenis_inquiry' => 'required',
             'id_customer' => 'required',
-            // 'supplier' => 'required',
+        ]);
 
+        $this->inquiryService->storeLocalInquiry([
+            'jenis_inquiry' => $request->jenis_inquiry,
+            'id_customer' => $request->id_customer,
         ]);
-        // Generate inquiry code
-        $jenisInquiry = $request->jenis_inquiry;
-        $currentMonth = Carbon::now()->format('m');
-        $currentYear = Carbon::now()->format('Y');
-        // Ambil nomor urut
-        $lastKodeInquiry = InquirySales::where('jenis_inquiry', $jenisInquiry)
-            ->whereYear('created_at', $currentYear)
-            ->whereMonth('created_at', $currentMonth)
-            ->orderBy('kode_inquiry', 'desc')
-            ->first();
-        $nextNumber = 1;
-        if ($lastKodeInquiry) {
-            $lastKodeParts = explode('/', $lastKodeInquiry->kode_inquiry);
-            $nextNumber = intval(end($lastKodeParts)) + 1;
-        }
-        $kodeInquiry = sprintf('%s/%02d/%04d/%03d', $jenisInquiry, $currentMonth, $currentYear, $nextNumber);
-        // Simpan data inquiry baru
-        $inquiry = new InquirySales();
-        $inquiry->kode_inquiry = $kodeInquiry;
-        $inquiry->jenis_inquiry = $jenisInquiry;
-        $inquiry->id_customer = $request->id_customer;
-        $inquiry->loc_imp = 'Local';
-        // $inquiry->supplier = $request->supplier;
-        // $inquiry->to_approve = 'Waiting';
-        // $inquiry->to_validate = 'Waiting';
-        $inquiry->status = 1;
-        $inquiry->is_active = 1;
-        $inquiry->create_by = Auth::user()->name;
-        $inquiry->save();
-        // Simpan progres awal sebagai "No updates yet"
-        $progress = new TrxDboProgPurchase();
-        $progress->inquiry_id = $inquiry->id;
-        $progress->description = '---- No updates yet ----'; // Set default
-        $progress->save();
-        // Ketika membuat Inquiry
-        TrxDboProgPurchase::create([
-            'inquiry_id' => $inquiry->id,
-            'user_id' => auth()->id(),
-            'description' => 'Inquiry created.'
-        ]);
+
         return redirect()->route('createinquiry')->with('success', 'Inquiry successfully saved.');
     }
 
@@ -253,21 +280,14 @@ class InquirySalesController extends Controller
 
     public function formulirInquiry($id)
     {
-        $inquiry = InquirySales::with('details.type_materials')->findOrFail($id);
-        $materials = DetailInquiry::where('id_inquiry', $inquiry->id)->with('type_materials')->get();
-        $typeMaterials = TypeMaterial::all();
-
-        return view('inquiry.formulirInquiry', compact('inquiry', 'materials', 'typeMaterials'));
+        $data = $this->inquiryService->getInquiryForFormulir($id);
+        return view('inquiry.formulirInquiry', $data);
     }
 
     public function formulirInquiryImport($id)
     {
-        $inquiry = InquirySales::with('details.type_materials')->findOrFail($id);
-        $materials = DetailInquiryImport::where('id_inquiry', $inquiry->id)->with('type_materials')->get();
-        $typeMaterials = TypeMaterial::all();
-        $customers = Customer::all();
-
-        return view('inquiry.formulirInquiryimport', compact('inquiry', 'materials', 'typeMaterials', 'customers'));
+        $data = $this->inquiryService->getInquiryForFormulirImport($id);
+        return view('inquiry.formulirInquiryimport', $data);
     }
 
     public function previewSS(Request $request)
@@ -848,12 +868,12 @@ class InquirySalesController extends Controller
 
     public function overviewPurchase2(Request $request)
     {
-        $statuses = [5, 6, 8, 9];
+        $statuses = [1,2,3,4,5, 6, 8, 9];
 
         if ($this->isDataTableRequest($request)) {
             $baseQuery = InquirySales::with([
                 'customer:id,name_customer',
-                'details:id,id_inquiry,id_type,jenis,qty,ship,status,thickness,weight,inner_diameter,outer_diameter,length,m1,m2,m3,so,note',
+                'details:id,id_inquiry,id_type,jenis,qty,ship,status,thickness,weight,inner_diameter,outer_diameter,length,m1,m2,m3,so,nopo,nopo_item,note',
                 'details.type_materials:id,type_name',
                 'latestPurchaseProgress',
             ])
@@ -916,12 +936,14 @@ class InquirySalesController extends Controller
                         'actions' => $this->renderOverviewPurchaseActions($inquiry),
                         'checkbox' => '<input type="checkbox" name="selected_inquiries[]" value="' . e($inquiry->id) . '" class="form-check-input inquiry-checkbox">',
                         'detail_rows' => $inquiry->details
-                            ->map(function (DetailInquiry $detail): array {
-                                $meta = $this->detailStatusMeta((int) ($detail->status ?? 0));
-                                $materialName = optional($detail->type_materials)->type_name ?? '-';
+                              ->map(function (DetailInquiry $detail): array {
+                                  $meta = $this->detailStatusMeta((int) ($detail->status ?? 0));
+                                  $materialName = optional($detail->type_materials)->type_name ?? '-';
 
-                                return [
-                                    'id' => $detail->id,
+                                  return [
+                                      'id' => $detail->id,
+                                      'no_po' => $detail->nopo_item ?? ($detail->nopo ?? '-'),
+                                      'po_value' => $detail->nopo_item ?? '',
                                     'material' => $materialName,
                                     'jenis' => $detail->jenis ?? '-',
                                     'thickness' => $detail->thickness ?? '-',
@@ -1078,7 +1100,7 @@ class InquirySalesController extends Controller
             'inquiry_id' => ['required', 'integer', 'exists:inquiry_sales,id'],
             'detail_ids' => ['required', 'array', 'min:1'],
             'detail_ids.*' => ['integer', 'exists:detail_inquiry,id'],
-            'status' => ['required', 'integer', Rule::in([6, 8, 9])],
+            'status' => ['required', 'integer', Rule::in([2, 5, 6, 8, 9])],
         ]);
 
         $inquiryId = (int) $validated['inquiry_id'];
@@ -1119,9 +1141,89 @@ class InquirySalesController extends Controller
             ];
         }, $detailIds);
 
+        $detailStatuses = DetailInquiry::where('id_inquiry', $inquiryId)
+            ->pluck('status')
+            ->map(static fn ($value) => (int) $value);
+
+        $newInquiryStatus = null;
+
+        if ($detailStatuses->isNotEmpty()) {
+            if ($detailStatuses->every(static fn (int $value): bool => $value === 6)) {
+                $newInquiryStatus = 6;
+            } elseif ($detailStatuses->contains(9)) {
+                $newInquiryStatus = 9;
+            } elseif ($detailStatuses->contains(8)) {
+                $newInquiryStatus = 8;
+            } elseif ($detailStatuses->contains(5)) {
+                $newInquiryStatus = 5;
+            } elseif ($detailStatuses->contains(2)) {
+                $newInquiryStatus = 2;
+            }
+        }
+
+        $inquiry = InquirySales::find($inquiryId);
+
+        if ($inquiry && $newInquiryStatus !== null && (int) $inquiry->status !== $newInquiryStatus) {
+            $inquiry->status = $newInquiryStatus;
+            $inquiry->save();
+        }
+
+        if ($inquiry) {
+            $resolvedStatus = (int) $inquiry->status;
+        } elseif ($newInquiryStatus !== null) {
+            $resolvedStatus = $newInquiryStatus;
+        } else {
+            $resolvedStatus = 2;
+        }
+
+        $inquiryStatusMeta = $this->statusMeta($resolvedStatus);
+
         return response()->json([
             'message' => 'Status detail berhasil diperbarui.',
             'details' => $detailPayload,
+            'inquiry_status' => [
+                'status' => $resolvedStatus,
+                'status_label' => $inquiryStatusMeta['label'],
+                'status_class' => $inquiryStatusMeta['class'],
+            ],
+        ]);
+    }
+
+
+    public function updateDetailPo(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'detail_id' => ['required', 'integer', 'exists:detail_inquiry,id'],
+            'po_number' => ['nullable', 'string', 'max:191'],
+        ]);
+
+        $detailId = (int) $validated['detail_id'];
+        $poNumber = $validated['po_number'] ?? null;
+        if (is_string($poNumber)) {
+            $poNumber = trim($poNumber);
+        }
+        if ($poNumber === '') {
+            $poNumber = null;
+        }
+
+        $detail = DetailInquiry::find($detailId);
+
+        if (!$detail) {
+            return response()->json([
+                'message' => 'Detail inquiry tidak ditemukan.',
+            ], 404);
+        }
+
+        $detail->nopo_item = $poNumber;
+        $detail->save();
+
+        $displayValue = $detail->nopo_item ?? ($detail->nopo ?? '-');
+
+        return response()->json([
+            'message' => 'PO detail berhasil diperbarui.',
+            'detail_id' => $detail->id,
+            'no_po' => $displayValue,
+            'po_value' => $detail->nopo_item ?? '',
         ]);
     }
 
@@ -2727,7 +2829,128 @@ class InquirySalesController extends Controller
     public function createInquirySalesImport(Request $request)
     {
         $statuses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        $visibleUsers = $this->resolveVisibleUsers();
+
+        $authUser = $request->user();
+        $authNameRaw = $authUser ? (string) $authUser->name : '';
+        $authNameNormalized = strtoupper(trim($authNameRaw));
+
+        $userHierarchy = [
+            'YULMAI RIDO WINANDA' => [
+                'YULMAI RIDO WINANDA',
+                'ILHAM CHOLID',
+                'SONY STIAWAN',
+                'SARAH EGA BUDI ASTUTI',
+                'HERY HERMAWAN',
+                'HEXAPA DARMADI',
+                'DIMAS ADITYA PRIANDANA',
+                'JUN JOHAMIN PD',
+                'WULYO EKO PRASETYO',
+                'YAN WELEM MANGINSELA',
+                'SENDY PRABOWO',
+            ],
+            'ILHAM CHOLID' => [
+                'ILHAM CHOLID',
+                'SONY STIAWAN',
+                'SARAH EGA BUDI ASTUTI',
+                'HERY HERMAWAN',
+                'HEXAPA DARMADI',
+                'DIMAS ADITYA PRIANDANA',
+                'RIFQI RAHMAT DZATNIKA',
+            ],
+            'JUN JOHAMIN PD' => [
+                'WULYO EKO PRASETYO',
+                'YAN WELEM MANGINSELA',
+                'SENDY PRABOWO',
+            ],
+            'ANDIK TOTOK SISWOYO' => [
+                'DANIA ISNAWATI',
+                'FISKA CHRISMAS YUDHA',
+                'DWI KUNTORO',
+                'YUNASIS PALGUNADI',
+                'HEXAPA DARMADI',
+            ],
+            'ADMINSTRATOR' => [
+                'ADMINSTRATOR',
+                'JESSICA PAUNE',
+                'ANDIK TOTOK SISWOYO',
+                'RISFAN FAISAL',
+                'DWI KUNTORO',
+                'YUNASIS PALGUNADI',
+                'DANIA ISNAWATI',
+                'FISKA CHRISMAS YUDHA',
+                'YULMAI RIDO WINANDA',
+                'ILHAM CHOLID',
+                'SONY STIAWAN',
+                'SARAH EGA BUDI ASTUTI',
+                'HERY HERMAWAN',
+                'HEXAPA DARMADI',
+                'DIMAS ADITYA PRIANDANA',
+                'JUN JOHAMIN PD',
+                'WULYO EKO PRASETYO',
+                'YAN WELEM MANGINSELA',
+                'SENDY PRABOWO',
+            ],
+            'JESSICA PAUNE' => [
+                'ADMINSTRATOR',
+                'JESSICA PAUNE',
+                'ANDIK TOTOK SISWOYO',
+                'RISFAN FAISAL',
+                'DWI KUNTORO',
+                'YUNASIS PALGUNADI',
+                'DANIA ISNAWATI',
+                'FISKA CHRISMAS YUDHA',
+                'YULMAI RIDO WINANDA',
+                'ILHAM CHOLID',
+                'SONY STIAWAN',
+                'SARAH EGA BUDI ASTUTI',
+                'HERY HERMAWAN',
+                'HEXAPA DARMADI',
+                'DIMAS ADITYA PRIANDANA',
+                'JUN JOHAMIN PD',
+                'WULYO EKO PRASETYO',
+                'YAN WELEM MANGINSELA',
+                'SENDY PRABOWO',
+            ],
+        ];
+
+        $normalizedHierarchy = [];
+        foreach ($userHierarchy as $superior => $subordinates) {
+            $normalizedHierarchy[strtoupper(trim($superior))] = array_map(
+                static fn ($name) => strtoupper(trim((string) $name)),
+                $subordinates
+            );
+        }
+
+        $visibleUpperNames = collect([$authNameNormalized])->filter(fn ($name) => $name !== '');
+
+        if ($authNameNormalized !== '' && isset($normalizedHierarchy[$authNameNormalized])) {
+            $visibleUpperNames = $visibleUpperNames->merge($normalizedHierarchy[$authNameNormalized]);
+        }
+
+        foreach ($normalizedHierarchy as $superior => $subordinates) {
+            if ($authNameNormalized !== '' && in_array($authNameNormalized, $subordinates, true)) {
+                $visibleUpperNames->push($superior);
+            }
+        }
+
+        $visibleUpperNames = $visibleUpperNames
+            ->filter(fn ($name) => $name !== '')
+            ->unique()
+            ->values();
+
+        if (!in_array($authNameNormalized, ['ADMINSTRATOR', 'JESSICA PAUNE'], true)) {
+            $visibleUpperNames = $visibleUpperNames
+                ->reject(function ($name) {
+                    return in_array($name, ['ADMINSTRATOR', 'JESSICA PAUNE'], true);
+                })
+                ->values();
+        }
+
+        $visibleUsers = $this->resolveActualUserNames($visibleUpperNames->all());
+
+        if (empty($visibleUsers) && $authUser && $authUser->name) {
+            $visibleUsers = [$authUser->name];
+        }
 
         if ($this->isDataTableRequest($request)) {
             $region = (int) $request->input('region', 0);
@@ -2981,20 +3204,7 @@ class InquirySalesController extends Controller
      */
     private function statusMeta(int $status): array
     {
-        $map = [
-            0 => ['label' => 'Draft', 'class' => 'btn-secondary btn-custom-draft'],
-            1 => ['label' => 'Draft', 'class' => 'btn-secondary btn-custom-draft'],
-            2 => ['label' => 'Open', 'class' => 'btn-success btn-custom-open'],
-            3 => ['label' => 'Approve Ka.Dept', 'class' => 'btn-danger btn-custom-approve-dept'],
-            4 => ['label' => 'Approve Ka.Sie', 'class' => 'btn-info btn-custom-approve-sie'],
-            5 => ['label' => 'On Progress', 'class' => 'btn-warning btn-custom-in-progress'],
-            6 => ['label' => 'Finished', 'class' => 'btn-primary btn-custom-finished'],
-            7 => ['label' => 'Rejected', 'class' => 'btn-danger btn-custom-rejected'],
-            8 => ['label' => 'Approve Inventory', 'class' => 'btn-danger btn-custom-inventory'],
-            9 => ['label' => 'Confirm Purchasing', 'class' => 'btn-warning btn-custom-confirm-purchasing'],
-        ];
-
-        return $map[$status] ?? ['label' => 'Unknown', 'class' => 'btn-light'];
+        return $this->inquiryService->getStatusMeta($status);
     }
 
     /**
@@ -3004,13 +3214,7 @@ class InquirySalesController extends Controller
      */
     private function detailStatusMeta(int $status): array
     {
-        $map = [
-            8 => ['label' => 'Approve Inventory', 'class' => 'badge bg-info text-dark'],
-            9 => ['label' => 'Confirm', 'class' => 'badge bg-warning text-dark'],
-            6 => ['label' => 'Finish', 'class' => 'badge bg-primary'],
-        ];
-
-        return $map[$status] ?? ['label' => 'Pending', 'class' => 'badge bg-secondary'];
+        return $this->inquiryService->getDetailStatusMeta($status);
     }
 
     /**
@@ -3020,42 +3224,32 @@ class InquirySalesController extends Controller
      */
     private function resolveVisibleUsers(): array
     {
-        $user = Auth::user();
+        return $this->inquiryService->resolveVisibleUsers();
+    }
 
-        if (!$user) {
-            return [];
+    /**
+     * Render action buttons for the create inquiry table row.
+     */
+    private function renderCreateInquiryActions(InquirySales $inquiry): string
+    {
+        $id = (int) $inquiry->id;
+        $buttons = [];
+
+        if ((int) $inquiry->status === 1) {
+            $buttons[] = '<a class="btn btn-custom-edit m-1 btn-sm" title="Edit"><i class="bi bi-pencil-fill" onclick="openEditInquiryModal(' . $id . ')"></i></a>';
+
+            $formUrl = e(route('formulirInquiry', ['id' => $inquiry->id]));
+            $buttons[] = '<a class="btn btn-custom-form m-1 btn-sm" href="' . $formUrl . '" title="Formulir Inquiry"><i class="bi bi-file-earmark-arrow-up-fill"></i></a>';
         }
 
-        $roleId = (int) ($user->role_id ?? 0);
-        $rolesWithFullAccess = [1, 14, 15];
-        $namesWithFullAccess = [
-            'ADMINSTRATOR',
-            'JESSICA PAUNE',
-            'JUN JOHAMIN PD',
-            'YULMAI RIDO WINANDA',
-            'ILHAM CHOLID',
-            'SONY STIAWAN',
-            'SARAH EGA BUDI ASTUTI',
-            'HERY HERMAWAN',
-            'HEXAPA DARMADI',
-            'DIMAS ADITYA PRIANDANA',
-            'WULYO EKO PRASETYO',
-            'YAN WELEM MANGINSELA',
-            'SENDY PRABOWO',
-            'ANDIK TOTOK SISWOYO',
-            'DANIA ISNAWATI',
-        ];
+        $viewUrl = e(route('showFormSS', ['id' => $inquiry->id]));
+        $buttons[] = '<a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="' . $viewUrl . '"><i class="bi bi-eye-fill"></i></a>';
 
-        $normalizedName = strtoupper(trim((string) ($user->name ?? '')));
-
-        if (
-            in_array($roleId, $rolesWithFullAccess, true)
-            || ($normalizedName !== '' && in_array($normalizedName, $namesWithFullAccess, true))
-        ) {
-            return [];
+        if ((int) $inquiry->status === 1) {
+            $buttons[] = '<a class="btn btn-custom-delete m-1 btn-sm" title="Delete"><i class="bi bi-trash-fill" onclick="deleteInquiry(' . $id . ')"></i></a>';
         }
 
-        return [$user->name];
+        return implode(' ', $buttons);
     }
 
     /**
@@ -3115,6 +3309,39 @@ class InquirySalesController extends Controller
         $viewUrl = e(route('showFormSSimport', ['id' => $inquiry->id]));
 
         return '<a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="' . $viewUrl . '"><i class="bi bi-eye-fill"></i></a>';
+    }
+
+    /**
+     * Convert an array of normalized (upper-case) user names into their actual stored variants.
+     *
+     * @param  array<int, string> $normalizedNames
+     * @return array<int, string>
+     */
+    private function resolveActualUserNames(array $normalizedNames): array
+    {
+        $normalizedNames = array_values(array_filter(array_unique(array_map('trim', $normalizedNames))));
+
+        if (empty($normalizedNames)) {
+            return [];
+        }
+
+        $users = User::query()
+            ->select('name')
+            ->whereIn(DB::raw('UPPER(name)'), $normalizedNames)
+            ->get();
+
+        $lookup = $users->mapWithKeys(function ($user) {
+            $key = strtoupper(trim((string) $user->name));
+            return [$key => $user->name];
+        })->all();
+
+        $results = [];
+        foreach ($normalizedNames as $name) {
+            $upper = strtoupper($name);
+            $results[] = $lookup[$upper] ?? $upper;
+        }
+
+        return array_values(array_unique(array_filter($results)));
     }
 
     /**

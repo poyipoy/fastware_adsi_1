@@ -446,10 +446,10 @@
 
                             {{-- Region 1 --}}
                             @if ($user && in_array($user->name, [
-                                'YULMAI RIDO WINANDA', 
-                                'JUN JOHAMIN PD',
                                 'ADMINSTRATOR',
                                 'JESSICA PAUNE',
+                                'YULMAI RIDO WINANDA', 
+                                'JUN JOHAMIN PD',
                                 'WULYO EKO PRASETYO',
                                 'YAN WELEM MANGINSELA',
                                 'SENDY PRABOWO'
@@ -487,10 +487,11 @@
                                 'YULMAI RIDO WINANDA', 
                                 'ILHAM CHOLID',
                                 'SONY STIAWAN',
+                                'RIFQI RAHMAT DZATNIKA',
                                 'SARAH EGA BUDI ASTUTI',
                                 'HERY HERMAWAN',
-                                'HEXAPA DARMADI',
-                                'DIMAS ADITYA PRIANDANA'
+                                'DIMAS ADITYA PRIANDANA',
+                                'RIFQI RAHMAT DZATNIKA'
                                 ]))
                                 <div class="card">
                                     <div class="card-body">
@@ -520,12 +521,11 @@
 
                             {{-- Region 3 --}}
                             @if ($user && in_array($user->name, [
-                                'ANDIK TOTOK SISWOYO',
                                 'ADMINSTRATOR',
                                 'JESSICA PAUNE',
-                                'RISFAN FAISAL',
-                                'DWI KUNTORO',
-                                'YUNASIS PALGUNADI'
+                                'ANDIK TOTOK SISWOYO', 
+                                'DANIA ISNAWATI',
+                                'FISKA CHRISMAS YUDHA'
                                 ]))  {{-- Pengguna yang diizinkan untuk region 3 --}}
                                 <div class="card">
                                     <div class="card-body">
@@ -554,7 +554,15 @@
                             @endif
 
                             {{-- Region 4 --}}
-                            @if ($user && in_array($user->name, ['ANDIK TOTOK SISWOYO', 'DANIA ISNAWATI','ADMINSTRATOR','JESSICA PAUNE']))  {{-- Pengguna yang diizinkan untuk region 4 --}}
+                            @if ($user && in_array($user->name, [
+                                'ADMINSTRATOR',
+                                'JESSICA PAUNE',
+                                'ANDIK TOTOK SISWOYO',
+                                // 'RISFAN FAISAL',
+                                'HEXAPA DARMADI',
+                                'DWI KUNTORO',
+                                'YUNASIS PALGUNADI'
+                            ]))  {{-- Pengguna yang diizinkan untuk region 4 --}}
                                 <div class="card">
                                     <div class="card-body">
                                         <h5 class="card-title fo fw-bold">Inquiry Region 4</h5>
@@ -637,7 +645,7 @@
                                                         $user = Auth::user();
                                                         $allowedRegions = [];
 
-                                                        // Menentukan region yang bisa diakses berdasarkan nama pengguna
+                                                         // Menentukan region yang bisa diakses berdasarkan nama pengguna
                                                         if (in_array($user->name, ['JUN JOHAMIN PD' ,'ADMINSTRATOR','JESSICA PAUNE'])) {
                                                             $allowedRegions[] = 1; // Region 1
                                                         }

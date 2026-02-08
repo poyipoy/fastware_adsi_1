@@ -24,6 +24,14 @@
     <!-- Vendor CSS Files -->
     <link href="<?php echo e(asset('assets/vendor/bootstrap/css/bootstrap.min.css')); ?>" rel="stylesheet">
     <link href="<?php echo e(asset('assets/vendor/bootstrap-icons/bootstrap-icons.css')); ?>" rel="stylesheet">
+                        <?php if(Auth::check() && Auth::user()->role_id === 1): ?>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo e(route('sales.crm_report')); ?>">
+                                <i class="bi bi-file-earmark-text me-2"></i>
+                                <span>CRM Report</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
     <link href="<?php echo e(asset('assets/vendor/boxicons/css/boxicons.min.css')); ?>" rel="stylesheet">
     <link href="<?php echo e(asset('assets/vendor/quill/quill.snow.css')); ?>" rel="stylesheet">
     <link href="<?php echo e(asset('assets/vendor/quill/quill.bubble.css')); ?>" rel="stylesheet">
@@ -35,6 +43,8 @@
 
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet" />
+
+    <?php echo $__env->yieldPushContent('styles'); ?>
 
     <style>
         .logo-img {
@@ -51,7 +61,7 @@
                 box-shadow: 1px 2px 2px rgba(247, 247, 247, 0.767);
             }
 
-            .nav-nav .nav-link.active,
+            .navbar-nav .nav-link.active,
             .navbar-nav .nav-link.show {
                 color: #fffb00;
             }
@@ -151,197 +161,259 @@
                                     Kelola Data
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="navbarDropdown1">
-                                    <li><a class="dropdown-item" href="<?php echo e(route('dashboardusers')); ?>">Akun Users</a></li>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('dashboardcustomers')); ?>">Customers</a></li>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('layout-editor.edit')); ?>">Layout</a></li>
+
+                                   <li><a class="dropdown-item" href="<?php echo e(route('dashboardusers')); ?>">Akun Users</a>
+                                   </li>
+                                    <li><a class="dropdown-item" href="<?php echo e(route('dashboardcustomers')); ?>">Customers</a>
+                                    </li>
+                                    <li><a class="dropdown-item" href="<?php echo e(route('layout-editor.edit')); ?>">Akses Layout</a>
+                                    </li>
                                     
                                 </ul>
                             </li>
                         <?php endif; ?>
+
                         <!-- Dropdown Dashboard -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown2"
-                                role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Dashboard
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown2">
-                                <?php
-                                    $allowedUsers = [
-                                        'ADMINSTRATOR',
-                                        'ANDI SIMPONI',
-                                        'MUGI PRAMONO',
-                                        'RANGGA FADILLAH',
-                                        'VITRI HANDAYANI',
-                                        'ADHI PRASETIYO',
-                                        'AHMAD RIDWAN',
-                                        'ANDIK TOTOK SISWOYO',
-                                        'ARY RODJO PRASETYO',
-                                        'DANIA ISNAWATI',
-                                        'DINA NIMAS AYU NAWAWULAN PRIHANTINI',
-                                        'DWI KUNTORO',
-                                        'HARDI SAPUTRA',
-                                        'HUSEIN ABDULLAH',
-                                        'ILHAM CHOLID',
-                                        'JESSICA PAUNE',
-                                        'JUN JOHAMIN PD',
-                                        'KUSTIONO',
-                                        'LINA UNIARSIH',
-                                        'M. RIDWAN GUNAWAN',
-                                        'MARTINUS CAHYO RAHASTO',
-                                        'MUHAMMAD MAHBUB',
-                                        'NUR DWITA SURA WIJAYA',
-                                        'PUTRI ANINDIA',
-                                        'RAGIL ISHA RAHMANTO',
-                                        'RICHARDUS',
-                                        'RISFAN FAISAL',
-                                        'SENDY PRABOWO',
-                                        'SITI MARIA ULFA',
-                                        'WULYO EKO PRASETYO',
-                                        'YAN WELEM MANGINSELA',
-                                        'YULMAI RIDO WINANDA',
-                                        'YUNASIS PALGUNADI',
-                                        'ABDUR RAHMAN AL FAAIZ',
-                                        'SONY STIAWAN',
-                                        'HERLIANA',
-                                    ];
-                                ?>
+                        <?php if(in_array(auth()->user()->name, [
+                                'ADMINSTRATOR',
+                                'ANDI SIMPONI',
+                                'MUGI PRAMONO',                                
+                                'ADHI PRASETIYO',
+                                'AHMAD RIDWAN',
+                                'ANDIK TOTOK SISWOYO',
+                                'ARY RODJO PRASETYO',
+                                'DANIA ISNAWATI',
+                                'DINA NIMAS AYU NAWAWULAN PRIHANTINI',
+                                'DWI KUNTORO',
+                                'HARDI SAPUTRA',
+                                'HUSEIN ABDULLAH',
+                                'ILHAM CHOLID',
+                                'JESSICA PAUNE',
+                                'JUN JOHAMIN PD',
+                                'KUSTIONO',
+                                'LINA UNIARSIH',
+                                'M. RIDWAN GUNAWAN',
+                                'MARTINUS CAHYO RAHASTO',
+                                'MUHAMMAD MAHBUB',
+                                'NUR DWITA SURA WIJAYA',
+                                'PUTRI ANINDIA',
+                                'RAGIL ISHA RAHMANTO',
+                                'RICHARDUS',                                
+                                'SENDY PRABOWO',
+                                'SITI MARIA ULFA',
+                                'WULYO EKO PRASETYO',
+                                'YAN WELEM MANGINSELA',
+                                'YULMAI RIDO WINANDA',
+                                'YUNASIS PALGUNADI',
+                                'ABDUR RAHMAN AL FAAIZ',
+                                'SONY STIAWAN',
+                                'HERLIANA',
+                            ])): ?>
 
-                                <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
-                                    <li><a class="dropdown-item"
-                                            href="<?php echo e(route('dashboardMaintenance')); ?>">Maintenance</a></li>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('dshandling')); ?>">Handling Klaim dan
-                                            Komplain</a></li>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('dsCompetency')); ?>">People
-                                            Development</a></li>
-                                <?php endif; ?>
-                                <?php
-                                    $allowedUsers = [
-                                        'ADMINSTRATOR',
-                                        'AFILIANDI',
-                                        'AGUNG PANGESTU YUSUF',
-                                        'AGUS PRIYANTO',
-                                        'AGUS ROSIDIN',
-                                        'ANDI SANTOSO',
-                                        'ANDI SIMPONI',
-                                        'ARRY SOEBHEKTI',
-                                        'AWING',
-                                        'DASUKI',
-                                        'DEDY SETIAWAN',
-                                        'DIAMAN DARMAWINATA',
-                                        'ELI HANDOYO',
-                                        'FAIZAL AFDAU',
-                                        'FATUL MUKMIN',
-                                        'HAERUL IKHSAN',
-                                        'HENDRIO',
-                                        'JAKA RARA SUKMA',
-                                        'JAKARIA',
-                                        'KARYA WIJAYA',
-                                        'LUKMAN AHMAD',
-                                        'MAMIK ABIDIN',
-                                        'MEDI KRISNANTO',
-                                        'MIFTAKHUROHMAN',
-                                        'MUGI PRAMONO',
-                                        'NUR SUPRIYANTO',
-                                        'NURSAID',
-                                        'NURSALIM',
-                                        'R.WAWAN HIMAWAN',
-                                        'RAHMAT NUGROHO',
-                                        'RANGGA FADILLAH',
-                                        'RIZKY ANDREA RAHMAWAN',
-                                        'RUKMAN',
-                                        'RUSITO',
-                                        'SABAR WASIRAN',
-                                        'SEPTIADI PRATOMO',
-                                        'SUDIYATNO',
-                                        'UMAR HADI',
-                                        'VITRI HANDAYANI',
-                                        'YANUARDIN SALEH SIREGAR',
-                                        'YUSUF SYAFAAT',
-                                        'ADHI PRASETIYO',
-                                        'AHMAD RIDWAN',
-                                        'ANDIK TOTOK SISWOYO',
-                                        'ARY RODJO PRASETYO',
-                                        'AVI SHENNA',
-                                        'BANGUN SUTOPO',
-                                        'CECEP ISKANDAR',
-                                        'DANIA ISNAWATI',
-                                        'DINA NIMAS AYU NAWAWULAN PRIHANTINI',
-                                        'DWI KUNTORO',
-                                        'FIKRI SYAHBANA',
-                                        'FRISILIA CLAUDIA HUTAMA',
-                                        'GUNAWAN',
-                                        'HARDI SAPUTRA',
-                                        'HARRY SUPRIYADI',
-                                        'HERLIANA',
-                                        'HERY HERMAWAN',
-                                        'HUSEIN ABDULLAH',
-                                        'ILHAM CHOLID',
-                                        'ILHAM SETIA DARMA',
-                                        'IMAM PRASETYO',
-                                        'IMAM SOPYAN',
-                                        'JEFRY WASTON E',
-                                        'JESSICA PAUNE',
-                                        'JONI SETIAWAN',
-                                        'JUN JOHAMIN PD',
-                                        'KUSTIONO',
-                                        'LINA UNIARSIH',
-                                        'M. RIDWAN GUNAWAN',
-                                        'MARTINUS CAHYO RAHASTO',
-                                        'MOCHAMMAD ANDRIANSYAH',
-                                        'MOHAMMAD FATKHURROHMAN',
-                                        'MUHAMMAD DINAR FARISI',
-                                        'MUHAMMAD MAHBUB',
-                                        'NUR DWITA SURA WIJAYA',
-                                        'PUTRI ANINDIA',
-                                        'RAGIL ISHA RAHMANTO',
-                                        'RIADUS SOLIHIN',
-                                        'RICHARDUS',
-                                        'RISFAN FAISAL',
-                                        'RUSLAN M.ALI',
-                                        'SENDY PRABOWO',
-                                        'SETIYAWAN',
-                                        'SITI MARIA ULFA',
-                                        'SUKIMIN',
-                                        'WULYO EKO PRASETYO',
-                                        'YAN WELEM MANGINSELA',
-                                        'YUDHI PRASETYO RAHMAWANTO',
-                                        'YULMAI RIDO WINANDA',
-                                        'YUNASIS PALGUNADI',
-                                        'ZAENAL ARIFIN',
-                                        'ABDUR RAHMAN AL FAAIZ',
-                                        'YAN WALEM MANGINSELA',
-                                        'VIVIAN ANGELIKA',
-                                        'SONY STIAWAN',
-                                        'FAJAR BAGASKARA',
-                                    ];
-                                ?>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown2"
+                                    role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Dashboard
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdown2">
+                                    <?php
+                                        $allowedUsers = [
+                                            'ADMINSTRATOR',
+                                            'ANDI SIMPONI',
+                                            'MUGI PRAMONO',
+                                            'ADHI PRASETIYO',
+                                            'AHMAD RIDWAN',
+                                            'ANDIK TOTOK SISWOYO',
+                                            'ARY RODJO PRASETYO',
+                                            'DANIA ISNAWATI',
+                                            'DINA NIMAS AYU NAWAWULAN PRIHANTINI',
+                                            'DWI KUNTORO',
+                                            'HARDI SAPUTRA',
+                                            'HUSEIN ABDULLAH',
+                                            'ILHAM CHOLID',
+                                            'JESSICA PAUNE',
+                                            'JUN JOHAMIN PD',
+                                            'KUSTIONO',
+                                            'LINA UNIARSIH',
+                                            'M. RIDWAN GUNAWAN',
+                                            'MARTINUS CAHYO RAHASTO',
+                                            'MUHAMMAD MAHBUB',
+                                            'NUR DWITA SURA WIJAYA',
+                                            'PUTRI ANINDIA',
+                                            'RAGIL ISHA RAHMANTO',
+                                            'RICHARDUS',
+                                            'SENDY PRABOWO',
+                                            'SITI MARIA ULFA',
+                                            'WULYO EKO PRASETYO',
+                                            'YAN WELEM MANGINSELA',
+                                            'YULMAI RIDO WINANDA',
+                                            'YUNASIS PALGUNADI',
+                                            'ABDUR RAHMAN AL FAAIZ',
+                                            'SONY STIAWAN',
+                                            'HERLIANA',
+                                            'DIMAS ADITYA PRIANDANA',
+                                        ];
+                                    ?>
 
-                                <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('dashboardSS')); ?>">Sumbang Saran</a>
+                                    <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
+                                        <li><a class="dropdown-item"
+                                                href="<?php echo e(route('dashboardMaintenance')); ?>">Maintenance</a></li>
+                                        <li><a class="dropdown-item" href="<?php echo e(route('dshandling')); ?>">Handling Klaim
+                                                dan
+                                                Komplain</a></li>
+                                        <li><a class="dropdown-item" href="<?php echo e(route('dsCompetency')); ?>">People
+                                                Development</a></li>
+                                    <?php endif; ?>
+                                    <?php
+                                        $allowedUsers = [
+                                            'ADMINSTRATOR',
+                                            'AFILIANDI',
+                                            'AGUNG PANGESTU YUSUF',
+                                            'AGUS PRIYANTO',
+                                            'AGUS ROSIDIN',
+                                            'ANDI SANTOSO',
+                                            'ANDI SIMPONI',
+                                            'ARRY SOEBHEKTI',
+                                            'AWING',
+                                            'DASUKI',
+                                            'DEDY SETIAWAN',
+                                            'DIAMAN DARMAWINATA',
+                                            'ELI HANDOYO',
+                                            'FAIZAL AFDAU',
+                                            'FATUL MUKMIN',
+                                            'HAERUL IKHSAN',
+                                            'HENDRIO',
+                                            'JAKA RARA SUKMA',
+                                            'JAKARIA',
+                                            'KARYA WIJAYA',
+                                            'LUKMAN AHMAD',
+                                            'MAMIK ABIDIN',
+                                            'MEDI KRISNANTO',
+                                            'MIFTAKHUROHMAN',
+                                            'MUGI PRAMONO',
+                                            'NUR SUPRIYANTO',
+                                            'NURSAID',
+                                            'NURSALIM',
+                                            'R.WAWAN HIMAWAN',
+                                            'RAHMAT NUGROHO',
+                                            
+                                            'RIZKY ANDREA RAHMAWAN',
+                                            'RUKMAN',
+                                            'RUSITO',
+                                            'SABAR WASIRAN',
+                                            'SEPTIADI PRATOMO',
+                                            'SUDIYATNO',
+                                            'UMAR HADI',
+                                            'YANUARDIN SALEH SIREGAR',
+                                            'YUSUF SYAFAAT',
+                                            'ADHI PRASETIYO',
+                                            'AHMAD RIDWAN',
+                                            'ANDIK TOTOK SISWOYO',
+                                            'ARY RODJO PRASETYO',
+                                            'AVI SHENNA',
+                                            'BANGUN SUTOPO',
+                                            'CECEP ISKANDAR',
+                                            'DANIA ISNAWATI',
+                                            'DINA NIMAS AYU NAWAWULAN PRIHANTINI',
+                                            'DWI KUNTORO',
+                                            'FIKRI SYAHBANA',
+                                            'FRISILIA CLAUDIA HUTAMA',
+                                            'GUNAWAN',
+                                            'HARDI SAPUTRA',
+                                            'HARRY SUPRIYADI',
+                                            'HERLIANA',
+                                            'HERY HERMAWAN',
+                                            'HUSEIN ABDULLAH',
+                                            'ILHAM CHOLID',
+                                            'ILHAM SETIA DARMA',
+                                            'IMAM PRASETYO',
+                                            'IMAM SOPYAN',
+                                            'JEFRY WASTON E',
+                                            'JESSICA PAUNE',
+                                            'JONI SETIAWAN',
+                                            'JUN JOHAMIN PD',
+                                            'KUSTIONO',
+                                            'LINA UNIARSIH',
+                                            'M. RIDWAN GUNAWAN',
+                                            'MARTINUS CAHYO RAHASTO',
+                                            'MOCHAMMAD ANDRIANSYAH',
+                                            'MOHAMMAD FATKHURROHMAN',
+                                            'MUHAMMAD DINAR FARISI',
+                                            'MUHAMMAD MAHBUB',
+                                            'NUR DWITA SURA WIJAYA',
+                                            'PUTRI ANINDIA',
+                                            'RAGIL ISHA RAHMANTO',
+                                            'RIADUS SOLIHIN',
+                                            'RICHARDUS',
+                                            'RUSLAN M.ALI',
+                                            'SENDY PRABOWO',
+                                            'SETIYAWAN',
+                                            'SITI MARIA ULFA',
+                                            
+                                            'WULYO EKO PRASETYO',
+                                            'YAN WELEM MANGINSELA',
+                                            'YUDHI PRASETYO RAHMAWANTO',
+                                            'YULMAI RIDO WINANDA',
+                                            'YUNASIS PALGUNADI',
+                                            'ZAENAL ARIFIN',
+                                            'ABDUR RAHMAN AL FAAIZ',
+                                            'YAN WALEM MANGINSELA',
+                                            'VIVIAN ANGELIKA',
+                                            'SONY STIAWAN',
+                                            'FAJAR BAGASKARA',
+                                        ];
+                                    ?>
+
+                                    <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
+                                        <li><a class="dropdown-item" href="<?php echo e(route('dashboardSS')); ?>">Sumbang
+                                                Saran</a>
+                                        </li>
+                                        <li><a class="dropdown-item" href="<?php echo e(route('dsKnowlege')); ?>">Knowledge
+                                                Management</a></li>
+                                    <?php endif; ?>
+
+                                    <?php
+                                        $allowedUsers = [
+                                            'ADMINSTRATOR',
+                                            'MEDI KRISNANTO',
+                                            'JESSICA PAUNE',
+                                            'MARTINUS CAHYO RAHASTO',
+                                            'VIVIAN ANGELIKA',
+                                        ];
+                                    ?>
+                                    <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
+                                        <li><a class="dropdown-item" href="<?php echo e(route('dashboardFPB')); ?>">Pengajuan
+                                                Barang</a></li>
+                                    <?php endif; ?>
+
+                                    <li>
+                                        <a class="dropdown-item" href="<?php echo e(route('dashboardTCPD')); ?>">Dashboard TCPD</a>
                                     </li>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('dsKnowlege')); ?>">Knowledge
-                                            Management</a></li>
-                                <?php endif; ?>
 
-                                <?php
-                                    $allowedUsers = [
-                                        'ADMINSTRATOR',
-                                        'MEDI KRISNANTO',
-                                        'JESSICA PAUNE',
-                                        'MARTINUS CAHYO RAHASTO',
-                                        'VIVIAN ANGELIKA',
-                                    ];
-                                ?>
-                                <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('dashboardFPB')); ?>">Pengajuan
-                                            Barang</a></li>
-                                <?php endif; ?>
-                                <li><a class="dropdown-item" href="<?php echo e(route('dashboardTCPD')); ?>">Dashboard
-                                            TCPD</a></li>
+                                    <li>
+                                        <a class="dropdown-item" href="<?php echo e(route('feedback.dashboard')); ?>">Dashboard Feedback</a>
+                                    </li>
 
-                                
-                            </ul>
-                        </li>
+                                    <li>
+                                        <a class="dropdown-item dropdown-toggle" href="#" id="bopmDropdown"
+                                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Dashboard Price Material
+                                        </a>
+                                        <ul class="dropdown-menu" aria-labelledby="bopmDropdown">
+                                            <li>
+                                                <a class="dropdown-item" href="<?php echo e(route('bopm.dashboard.index')); ?>">
+                                                    Price Material DAIDO
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </li>
+
+                                    <li><a class="dropdown-item" href="<?php echo e(route('salesvisit.dashboard')); ?>">Dashboard Sales Visit</a></li>
+
+                                    
+                                </ul>
+                            </li>
+                        <?php endif; ?>
                         <!-- Dropdown Sales -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown"
@@ -360,7 +432,7 @@
                                                 'ADMINSTRATOR',
                                                 'MAMIK ABIDIN',
                                                 'MUGI PRAMONO',
-                                                'RANGGA FADILLAH',
+                                                
                                                 'RUSITO',
                                                 'SUDIYATNO',
                                                 'ARY RODJO PRASETYO',
@@ -382,8 +454,7 @@
                                             $allowedUsers = [
                                                 'ADMINSTRATOR',
                                                 'MAMIK ABIDIN',
-                                                'MUGI PRAMONO',
-                                                'RANGGA FADILLAH',
+                                                'MUGI PRAMONO',                                                
                                                 'RUSITO',
                                                 'SUDIYATNO',
                                                 'ARY RODJO PRASETYO',
@@ -411,8 +482,7 @@
                                         <?php
                                             $allowedUsers = [
                                                 'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'RANGGA FADILLAH',
+                                                'MUGI PRAMONO',                                                
                                                 'ADHI PRASETIYO',
                                                 'AHMAD RIDWAN',
                                                 'ANDIK TOTOK SISWOYO',
@@ -436,17 +506,17 @@
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
                                                 'RIADUS SOLIHIN',
-                                                'RICHARDUS',
-                                                'RISFAN FAISAL',
+                                                'RICHARDUS',                                                
                                                 'RUSLAN M.ALI',
                                                 'SENDY PRABOWO',
-                                                'SUKIMIN',
+                                                
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
                                                 'YUDHI PRASETYO RAHMAWANTO',
                                                 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'SONY STIAWAN',
+                                                'DIMAS ADITYA PRIANDANA',
                                             ];
                                         ?>
 
@@ -474,8 +544,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
-                                                'RICHARDUS',
-                                                'RISFAN FAISAL',
+                                                'RICHARDUS',                                                
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
@@ -511,8 +580,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
-                                                'RICHARDUS',
-                                                'RISFAN FAISAL',
+                                                'RICHARDUS',                                                
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
@@ -549,8 +617,7 @@
                                         'MARTINUS CAHYO RAHASTO',
                                         'NUR DWITA SURA WIJAYA',
                                         'PUTRI ANINDIA',
-                                        'RICHARDUS',
-                                        'RISFAN FAISAL',
+                                        'RICHARDUS',                                        
                                         'SENDY PRABOWO',
                                         'WULYO EKO PRASETYO',
                                         'YAN WELEM MANGINSELA',
@@ -578,17 +645,158 @@
                                         role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Custom Request
                                     </a>
+
                                     <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                        <li><a class="dropdown-item" href="<?php echo e(route('showCustomRequest')); ?>">Custom
-                                                Request</a></li>
-                                        <li><a class="dropdown-item"
-                                                href="<?php echo e(route('showApproveMarketing')); ?>">Persetujuan Marketing</a>
-                                        </li>
-                                        <li><a class="dropdown-item"
-                                                href="<?php echo e(route('showApproveFinance')); ?>">Persetujuan Finance</a></li>
+                                        <?php
+                                            $allowedUsers = [
+                                                'ADMINSTRATOR',
+                                                'ANDIK TOTOK SISWOYO',
+                                                'DANIA ISNAWATI',
+                                                'DIMAS ADITYA PRIANDANA',
+                                                'DWI KUNTORO',
+                                                'FISKA CHRISMAS YUDHA',
+                                                'FRISILIA CLAUDIA HUTAMA',
+                                                'HARDI SAPUTRA',
+                                                'HERLIANA',
+                                                'HERY HERMAWAN',
+                                                'HEXAPA DARMADI',
+                                                'ILHAM CHOLID',
+                                                'JESSICA PAUNE',
+                                                'JUN JOHAMIN PD',
+                                                'LINA UNIARSIH',
+                                                'PUTRI ANINDIA',
+                                                'SARAH EGA BUDI ASTUTI',
+                                                'SENDY PRABOWO',
+                                                'SONY STIAWAN',
+                                                'WULYO EKO PRASETYO',
+                                                'YAN WELEM MANGINSELA',
+                                                'YULMAI RIDO WINANDA',
+                                                'YUNASIS PALGUNADI',
+                                                'RAGIL ISHA RAHMANTO',
+                                                'AIS DUTA PRAMANDA',
+                                                'ARY RODJO PRASETYO',
+                                                'RIFQI RAHMAT DZATNIKA',
+                                                'SARAH EGA BUDI ASTUTI',
+                                            ];
+                                        ?>
+                                        <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
+                                            <li><a class="dropdown-item"
+                                                    href="<?php echo e(route('showCustomRequest')); ?>">Custom
+                                                    Request</a>
+                                            </li>
+                                        <?php endif; ?>
+
+                                        <?php
+                                            $allowedUsers = [
+                                                'ADMINSTRATOR',
+                                                'ANDIK TOTOK SISWOYO',
+                                                'YULMAI RIDO WINANDA',
+                                            ];
+                                        ?>
+                                        <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
+                                            <li><a class="dropdown-item"
+                                                    href="<?php echo e(route('showApproveMarketing')); ?>">Persetujuan
+                                                    Marketing</a>
+                                            </li>
+                                        <?php endif; ?>
+
+                                        <?php
+                                            $allowedUsers = ['ADMINSTRATOR', 'MARTINUS CAHYO RAHASTO', ''];
+                                        ?>
+                                        <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
+                                            <li><a class="dropdown-item"
+                                                    href="<?php echo e(route('showApproveFinance')); ?>">Persetujuan Finance</a>
+                                            </li>
+                                        <?php endif; ?>
                                     </ul>
                                 </li>
 
+                                <li>
+                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Entertainment
+                                    </a>
+
+                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                        <?php
+                                            $allowedUsers = [
+                                                'ADMINSTRATOR',
+                                                'ANDIK TOTOK SISWOYO',
+                                                'DANIA ISNAWATI',
+                                                'DIMAS ADITYA PRIANDANA',
+                                                'DWI KUNTORO',
+                                                'FISKA CHRISMAS YUDHA',
+                                                'FRISILIA CLAUDIA HUTAMA',
+                                                'HARDI SAPUTRA',
+                                                'HERLIANA',
+                                                'HERY HERMAWAN',
+                                                'HEXAPA DARMADI',
+                                                'ILHAM CHOLID',
+                                                'JESSICA PAUNE',
+                                                'JUN JOHAMIN PD',
+                                                'LINA UNIARSIH',
+                                                'PUTRI ANINDIA',
+                                                'SARAH EGA BUDI ASTUTI',
+                                                'SENDY PRABOWO',
+                                                'SONY STIAWAN',
+                                                'WULYO EKO PRASETYO',
+                                                'YAN WELEM MANGINSELA',
+                                                'YULMAI RIDO WINANDA',
+                                                'YUNASIS PALGUNADI',
+                                                'RAGIL ISHA RAHMANTO',
+                                                'AIS DUTA PRAMANDA',
+                                                'ARY RODJO PRASETYO',
+                                                'RIFQI RAHMAT DZATNIKA',
+                                                '',
+                                            ];
+                                        ?>
+                                        <?php if(in_array(auth()->user()->name, $allowedUsers)): ?>
+                                            <li><a class="dropdown-item"
+                                                    href="<?php echo e(route('entertain.index')); ?>">Index</a>
+                                            </li>
+                                        <?php endif; ?>
+                                    </ul>
+                                </li>
+                             <?php
+                                    $crmUsers = [
+                                        'ADMINSTRATOR',
+                                        'ANDIK TOTOK SISWOYO',
+                                        'DANIA ISNAWATI',
+                                        'DWI KUNTORO',
+                                        'FISKA CHRISMAS YUDHA',
+                                        'JUN JOHAMIN PD',
+                                        'YAN WELEM MANGINSELA',
+                                        'WULYO EKO PRASETYO',
+                                        'SENDY PRABOWO',
+                                        'YULMAI RIDO WINANDA',
+                                        'YUNASIS PALGUNADI',
+                                        'SONY STIAWAN',
+                                        'FRISILIA CLAUDIA HUTAMA',
+                                        'HARDI SAPUTRA',
+                                        'HARRY SUPRIYADI',
+                                        'HERLIANA',
+                                        'HERRY HERMAWAN',
+                                        'HEXAPA DARMADI',
+                                        'ILHAM CHOLID',
+                                        'LINA UNIARSIH',
+                                        'PUTRI ANINDIA',
+                                        'RISFAN FAISAL',
+                                    ];
+                                    $currentUser = auth()->user();
+                                    $isAdminName = $currentUser && in_array(strtoupper($currentUser->name ?? ''), ['ADMINISTRATOR','ADMINSTRATOR']);
+                                ?>
+                                <?php
+                                    $salesRoleIds = [2,3,4,44];
+                                    $userSection = $currentUser->section ?? '';
+                                ?>
+                                <?php if(
+                                              ($currentUser && in_array($currentUser->role_id, $salesRoleIds)) ||
+                                        (is_string($userSection) && strcasecmp(trim($userSection), 'Sales') === 0) ||
+                                        $isAdminName || in_array($currentUser->name ?? '', $crmUsers)
+                                    ): ?>
+                                
+                                    <li><a class="dropdown-item" href="<?php echo e(route('sales.crm_report')); ?>">CRM Report</a></li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                         <!-- Dropdown Productions -->
@@ -602,8 +810,7 @@
                                     $allowedUsers = [
                                         'ADMINSTRATOR',
                                         'MAMIK ABIDIN',
-                                        'MUGI PRAMONO',
-                                        'RANGGA FADILLAH',
+                                        'MUGI PRAMONO',                                        
                                         'RUSITO',
                                         'SUDIYATNO',
                                         'ARY RODJO PRASETYO',
@@ -625,8 +832,7 @@
                                     $allowedUsers = [
                                         'ADMINSTRATOR',
                                         'MAMIK ABIDIN',
-                                        'MUGI PRAMONO',
-                                        'RANGGA FADILLAH',
+                                        'MUGI PRAMONO',                                        
                                         'RUSITO',
                                         'SUDIYATNO',
                                         'ARY RODJO PRASETYO',
@@ -651,8 +857,7 @@
                                         <?php
                                             $allowedUsers = [
                                                 'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'VITRI HANDAYANI',
+                                                'MUGI PRAMONO',                                                
                                                 'ANDIK TOTOK SISWOYO',
                                                 'ARY RODJO PRASETYO',
                                                 'HARDI SAPUTRA',
@@ -673,8 +878,7 @@
                                             $fppsHistoryUsers = [
                                                 'ADMINSTRATOR',
                                                 'ANDI SIMPONI',
-                                                'MUGI PRAMONO',
-                                                'RANGGA FADILLAH',
+                                                'MUGI PRAMONO',                                                
                                                 'ADHI PRASETIYO',
                                                 'ARY RODJO PRASETYO',
                                                 'ILHAM CHOLID',
@@ -690,8 +894,7 @@
                                             $preventiveTableUsers = [
                                                 'ADMINSTRATOR',
                                                 'ANDI SIMPONI',
-                                                'MUGI PRAMONO',
-                                                'RANGGA FADILLAH',
+                                                'MUGI PRAMONO',                                                
                                                 'ADHI PRASETIYO',
                                                 'ARY RODJO PRASETYO',
                                                 'ILHAM CHOLID',
@@ -768,14 +971,12 @@
                                     <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
                                         role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Maintenance Korektif
-                                    </a>
+                                    </a>    
                                     <?php
                                         $terimaFormPerbaikanUsers = [
                                             'ADMINSTRATOR',
                                             'ANDI SIMPONI',
                                             'MUGI PRAMONO',
-                                            'RANGGA FADILLAH',
-                                            'VITRI HANDAYANI',
                                             'ADHI PRASETIYO',
                                             'ANDIK TOTOK SISWOYO',
                                             'ARY RODJO PRASETYO',
@@ -795,8 +996,7 @@
                                         $riwayatFormPerbaikanUsers = [
                                             'ADMINSTRATOR',
                                             'ANDI SIMPONI',
-                                            'MUGI PRAMONO',
-                                            'RANGGA FADILLAH',
+                                            'MUGI PRAMONO',                                            
                                             'ADHI PRASETIYO',
                                             'ARY RODJO PRASETYO',
                                             'ILHAM CHOLID',
@@ -829,7 +1029,7 @@
                                         'ADMINSTRATOR',
                                         'ANDI SIMPONI',
                                         'MUGI PRAMONO',
-                                        'RANGGA FADILLAH',
+                                        
                                         'ADHI PRASETIYO',
                                         'ARY RODJO PRASETYO',
                                         'ILHAM CHOLID',
@@ -869,43 +1069,44 @@
                                 <li><a class="dropdown-item" href="<?php echo e(route('overviewfpb')); ?>">Overview FPB</a></li>
                                 <?php if(in_array(Auth::user()->name, [
                                         'ADMINSTRATOR',
-                                        'DIAMAN DARMAWINATA',
-                                        'FAIZAL AFDAU',
                                         'MEDI KRISNANTO',
-                                        'MUGI PRAMONO',
+                                        // 'DIAMAN DARMAWINATA',
+                                        // 'FAIZAL AFDAU',
+                                        // 'MUGI PRAMONO',
                                         'NURSALIM',
-                                        'RANGGA FADILLAH',
-                                        'ADHI PRASETIYO',
-                                        'DANIA ISNAWATI',
-                                        'DWI KUNTORO',
-                                        'FRISILIA CLAUDIA HUTAMA',
-                                        'HARRY SUPRIYADI',
-                                        'HERLIANA',
-                                        'HERY HERMAWAN',
-                                        'HUSEIN ABDULLAH',
-                                        'ILHAM CHOLID',
-                                        'JESSICA PAUNE',
-                                        'JUN JOHAMIN PD',
-                                        'LINA UNIARSIH',
-                                        'MARTINUS CAHYO RAHASTO',
-                                        'MUHAMMAD DINAR FARISI',
-                                        'PUTRI ANINDIA',
-                                        'RAGIL ISHA RAHMANTO',
-                                        'RICHARDUS',
-                                        'RISFAN FAISAL',
-                                        'SENDY PRABOWO',
-                                        'SITI MARIA ULFA',
-                                        'WULYO EKO PRASETYO',
-                                        'YAN WELEM MANGINSELA',
-                                        'YUNASIS PALGUNADI',
-                                        'ABDUR RAHMAN AL FAAIZ',
-                                        'VIVIAN ANGELIKA',
-                                        'Sony Stiawan',
-                                        'FAJAR BAGASKARA',
-                                        'M. IQBAL',
-                                        'SARAH EGA BUDI ASTUTI',
-                                        'YULMAI RIDO WINANDA',
-                                        'HARDI SAPUTRA',
+                                        // 
+                                        // 'ADHI PRASETIYO',
+                                        // 'DANIA ISNAWATI',
+                                        // 'DWI KUNTORO',
+                                        // 'FRISILIA CLAUDIA HUTAMA',
+                                        // 'HARRY SUPRIYADI',
+                                        // 'HERLIANA',
+                                        // 'HERY HERMAWAN',
+                                        // 'HUSEIN ABDULLAH',
+                                        // 'ILHAM CHOLID',
+                                        // 'JESSICA PAUNE',
+                                        // 'JUN JOHAMIN PD',
+                                        // 'LINA UNIARSIH',
+                                        // 'MARTINUS CAHYO RAHASTO',
+                                        // 'MUHAMMAD DINAR FARISI',
+                                        // 'PUTRI ANINDIA',
+                                        // 'RAGIL ISHA RAHMANTO',
+                                        // 'RICHARDUS',
+                                        // 
+                                        // 'SENDY PRABOWO',
+                                        // 'SITI MARIA ULFA',
+                                        // 'WULYO EKO PRASETYO',
+                                        // 'YAN WELEM MANGINSELA',
+                                        // 'YUNASIS PALGUNADI',
+                                        // 'ABDUR RAHMAN AL FAAIZ',
+                                        // 'VIVIAN ANGELIKA',
+                                        // 'Sony Stiawan',
+                                        // 'FAJAR BAGASKARA',
+                                        // 'ILYAS NOOR FIRDAUS',,
+                                        // 'SARAH EGA BUDI ASTUTI',
+                                        // 'YULMAI RIDO WINANDA',
+                                        // 'HARDI SAPUTRA',
+                                        // 'RIFQI RAHMAT DZATNIKA'
                                     ])): ?>
                                     <li><a class="dropdown-item" href="<?php echo e(route('index.PO')); ?>">Form Pengajuan
                                             Barang/Jasa</a></li>
@@ -974,7 +1175,13 @@
                                         Panawaran Subcont Project Sales
                                     </a>
                                     <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'RAGIL ISHA RAHMANTO', 'SARAH EGA BUDI ASTUTI'])): ?>
+                                        <?php if(in_array(Auth::user()->name, [
+                                                'ADMINSTRATOR',
+                                                'JESSICA PAUNE',
+                                                'RAGIL ISHA RAHMANTO',
+                                                'SARAH EGA BUDI ASTUTI',
+                                                'AIS DUTA PRAMANDA',
+                                            ])): ?>
                                             <li><a class="dropdown-item" href="<?php echo e(route('indexSales')); ?>">Form
                                                     Penawaran Subcont</a></li>
                                         <?php endif; ?>
@@ -1001,7 +1208,7 @@
                                                 'JUN JOHAMIN PD',
                                                 'LINA UNIARSIH',
                                                 'MARTINUS CAHYO RAHASTO',
-                                                'RISFAN FAISAL',
+                                                
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
@@ -1014,6 +1221,8 @@
                                                 'WULYO EKO PRASETYO',
                                                 'SONY STIAWAN',
                                                 'FISKA CHRISMAS YUDHA',
+                                                'RIFQI RAHMAT DZATNIKA',
+                                                'ILYAS NOOR FIRDAUS'
                                             ])): ?>
                                             <li><a class="dropdown-item" href="<?php echo e(route('createinquiry')); ?>">
                                                     Form Inquiry Local</a></li>
@@ -1035,21 +1244,23 @@
                                                     href="<?php echo e(route('showApprovalKaDept')); ?>">Persetujuan Ka. Dept</a>
                                             </li>
                                         <?php endif; ?>
-                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'M. IQBAL'])): ?>
+                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'ILYAS NOOR FIRDAUS'])): ?>
                                             <li><a class="dropdown-item"
                                                     href="<?php echo e(route('showApprovalInventory')); ?>">Persetujuan
                                                     Inventory</a></li>
                                         <?php endif; ?>
-                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'M. IQBAL'])): ?>
+                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'ILYAS NOOR FIRDAUS',])): ?>
                                             <li><a class="dropdown-item"
                                                     href="<?php echo e(route('overviewPurchase')); ?>">Overview Purchase</a></li>
                                         <?php endif; ?>
-                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'M. IQBAL'])): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('overviewPurchase2')); ?>">Overview Purchase 2</a></li>
-                                        <?php endif; ?>
                                         <li><a class="dropdown-item" href="<?php echo e(route('overviewInquiry')); ?>">Overview
                                                 Inquiry Order Local</a></li>
+                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'ILYAS NOOR FIRDAUS',])): ?>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                    href="<?php echo e(route('overviewPurchase2')); ?>">Overview Purchase 2</a>
+                                            </li>
+                                        <?php endif; ?>
                                     </ul>
                                 </li>
 
@@ -1059,17 +1270,45 @@
                                         Inquiry Order Import
                                     </a>
                                     <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                        <li><a class="dropdown-item" href="<?php echo e(route('createinquiryImport')); ?>">Form
-                                                Inquiry Import</a></li>
-                                        <li><a class="dropdown-item"
-                                                href="<?php echo e(route('showApprovalInventoryImport')); ?>">Persetujuan
-                                                Inventory</a></li>
-                                        <li><a class="dropdown-item"
-                                                href="<?php echo e(route('overviewPurchaseImport')); ?>">Overview Purchasing
-                                                Import</a></li>
-                                        <li><a class="dropdown-item"
-                                                href="<?php echo e(route('overviewInquiryImport')); ?>">Overview Inquiry
-                                                Import</a></li>
+                                        <?php if(in_array(Auth::user()->name, [
+                                                'ADMINSTRATOR',
+                                                'JESSICA PAUNE',
+                                                'MARTINUS CAHYO RAHASTO',
+                                                'ANDIK TOTOK SISWOYO',
+                                                'DANIA ISNAWATI',
+                                                'DWI KUNTORO',
+                                                'ILHAM CHOLID',
+                                                'JUN JOHAMIN PD',
+                                                'LINA UNIARSIH',
+                                                
+                                                'SENDY PRABOWO',
+                                                'WULYO EKO PRASETYO',
+                                                'YAN WELEM MANGINSELA',
+                                                'YULMAI RIDO WINANDA',
+                                                'YUNASIS PALGUNADI',
+                                                'SARAH EGA BUDI ASTUTI',
+                                                'DIMAS ADITYA PRIANDANA',
+                                                'HEXAPA DARMADI',
+                                                'HERY HERMAWAN',
+                                                'WULYO EKO PRASETYO',
+                                                'SONY STIAWAN',
+                                                'FISKA CHRISMAS YUDHA',
+                                                'RIFQI RAHMAT DZATNIKA',
+                                                'ILYAS NOOR FIRDAUS',
+                                            ])): ?>
+                                            <li><a class="dropdown-item"
+                                                    href="<?php echo e(route('createinquiryImport')); ?>">Form
+                                                    Inquiry Import</a></li>
+                                        <?php endif; ?>
+                                        <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'ILYAS NOOR FIRDAUS'])): ?>
+                                            <li><a class="dropdown-item"
+                                                    href="<?php echo e(route('showApprovalInventoryImport')); ?>">Persetujuan
+                                                    Inventory</a></li>
+                                            <li><a class="dropdown-item"
+                                                    href="<?php echo e(route('overviewPurchaseImport')); ?>">Overview Purchasing
+                                                    Import</a></li>
+                                        <?php endif; ?>
+                                        
                                     </ul>
                                 </li>
                                 <li>
@@ -1081,9 +1320,10 @@
                                         <li><a class="dropdown-item" href="<?php echo e(route('createadministration')); ?>">Form
                                                 Administration Purchasing</a></li>
                                         <li><a class="dropdown-item" href="<?php echo e(route('createadministration')); ?>">Form
-                                                   Administration Admin</a></li>
+                                                Administration Admin</a></li>
                                     </ul>
                                 </li>
+                                <?php if(in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'FAJAR BAGASKARA'])): ?>
                                 <li>
                                     <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
                                         role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -1093,295 +1333,365 @@
                                         <li><a class="dropdown-item" href="<?php echo e(route('supplierform.index')); ?>">Index Supplier</a></li>
                                     </ul>
                                 </li>
+                                <?php endif; ?>
 
                             </ul>
 
                         </li>
+
                         <!-- Dropdown Human Resource -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown"
-                                role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Human Resource
-                            </a>
+                        <?php if(in_array(auth()->user()->name, [
+                                'ADMINSTRATOR',
+                                'JESSICA PAUNE',
+                                'HARDI SAPUTRA',
+                                'MARTINUS CAHYO RAHASTO',
+                                'YULMAI RIDO WINANDA',
+                                'ANDIK TOTOK SISWOYO',
+                                'ARY RODJO PRASETYO',
+                                'MUGI PRAMONO',
+                                'ADHI PRASETIYO',
+                                'ILHAM CHOLID',
+                                'JUN JOHAMIN PD',
+                                'SITI MARIA ULFA',
+                                'RAGIL ISHA RAHMANTO',
+                                'RICHARDUS',
+                                'ABDUR RAHMAN AL FAAIZ',
+                                'DANIA ISNAWATI'
+                            ])): ?>
 
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <li>
-                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
-                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Pengajuan Form Knowledge Management
-                                    </a>
-                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'YULMAI RIDO WINANDA',
-                                                'SITI MARIA ULFA',
-                                                'JESSICA PAUNE',
-                                                'ADHI PRASETIYO',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'RICHARDUS',
-                                            ])): ?>
-                                            <li><a class="dropdown-item" href="<?php echo e(route('pengajuanKM')); ?>">Form
-                                                    Knowledge Management</a></li>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('persetujuanKM')); ?>">Persetujuan Knowledge
-                                                    Management</a></li>
-                                        <?php endif; ?>
-                                    </ul>
-                                </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown"
+                                    role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Human Resource
+                                </a>
 
-                                <li>
-                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
-                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Base Competency
-                                    </a>
-                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                        <?php if(in_array(auth()->user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'SITI MARIA ULFA'])): ?>
-                                            <li><a class="dropdown-item" href="<?php echo e(route('jobShow')); ?>">Form Job
-                                                    Position</a></li>
-                                        <?php endif; ?>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                    <li>
+                                        <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Pengajuan Form Knowledge Management
+                                        </a>
+                                        <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'MUGI PRAMONO',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'JESSICA PAUNE',
+                                                    'ADHI PRASETIYO',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'RICHARDUS',
+                                                ])): ?>
+                                                <li><a class="dropdown-item" href="<?php echo e(route('pengajuanKM')); ?>">Form
+                                                        Knowledge Management</a></li>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('persetujuanKM')); ?>">Persetujuan Knowledge
+                                                        Management</a></li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </li>
 
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'YULMAI RIDO WINANDA',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'HARDI SAPUTRA',
-                                                'JESSICA PAUNE',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'SITI MARIA ULFA',
-                                                'RICHARDUS',
-                                                'MUGI PRAMONO',
-                                                'ABDUR RAHMAN AL FAAIZ',
-                                                'RAGIL ISHA RAHMANTO',
-                                            ])): ?>
-                                            <li><a class="dropdown-item" href="<?php echo e(route('tcShow')); ?>">Form Pengajuan
-                                                    Competency</a></li>
-                                        <?php endif; ?>
+                                    <li>
+                                        <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Base Competency
+                                        </a>
+                                        <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                            <?php if(in_array(auth()->user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'SITI MARIA ULFA'])): ?>
+                                                <li><a class="dropdown-item" href="<?php echo e(route('jobShow')); ?>">Form Job
+                                                        Position</a></li>
+                                            <?php endif; ?>
 
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'YULMAI RIDO WINANDA',
-                                                'MUGI PRAMONO',
-                                                'ADHI PRASETIYO',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'HARDI SAPUTRA',
-                                                'ILHAM CHOLID',
-                                                'JESSICA PAUNE',
-                                                'JUN JOHAMIN PD',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
-                                                'SITI MARIA ULFA',
-                                                'ABDUR RAHMAN AL FAAIZ',
-                                            ])): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('penilaian.index')); ?>">Penilaian Technical
-                                                    Competency Ka. Sie</a></li>
-                                        <?php endif; ?>
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                    'HARDI SAPUTRA',
+                                                    'JESSICA PAUNE',
+                                                    'ILHAM CHOLID',
+                                                    'JUN JOHAMIN PD',
+                                                    'DANIA ISNAWATI',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'RICHARDUS',
+                                                    'MUGI PRAMONO',
+                                                    'ABDUR RAHMAN AL FAAIZ',
+                                                    'RAGIL ISHA RAHMANTO',
+                                                ])): ?>
+                                                <li><a class="dropdown-item" href="<?php echo e(route('tcShow')); ?>">Form
+                                                        Pengajuan
+                                                        Competency</a></li>
+                                            <?php endif; ?>
 
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'YULMAI RIDO WINANDA',
-                                                'ADHI PRASETIYO',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'HARDI SAPUTRA',
-                                                'ILHAM CHOLID',
-                                                'JESSICA PAUNE',
-                                                'JUN JOHAMIN PD',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
-                                                'SITI MARIA ULFA',
-                                                'ABDUR RAHMAN AL FAAIZ',
-                                            ])): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('penilaian.index2')); ?>">Penilaian Technical
-                                                    Competency Ka. Dept</a></li>
-                                        <?php endif; ?>
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'MUGI PRAMONO',
+                                                    'ADHI PRASETIYO',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                    'HARDI SAPUTRA',
+                                                    'ILHAM CHOLID',
+                                                    'JESSICA PAUNE',
+                                                    'DANIA ISNAWATI',
+                                                    'JUN JOHAMIN PD',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'RAGIL ISHA RAHMANTO',
+                                                    'RICHARDUS',
+                                                    'ABDUR RAHMAN AL FAAIZ',
+                                                ])): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('penilaian.index')); ?>">Penilaian Technical
+                                                        Competency Ka. Sie</a></li>
+                                            <?php endif; ?>
 
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'YULMAI RIDO WINANDA',
-                                                'ADHI PRASETIYO',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'HARDI SAPUTRA',
-                                                'ILHAM CHOLID',
-                                                'JESSICA PAUNE',
-                                                'JUN JOHAMIN PD',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
-                                                'SITI MARIA ULFA',
-                                                'ABDUR RAHMAN AL FAAIZ',
-                                            ])): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('penilaian.index3')); ?>">Penilaian Technical
-                                                    Competency HR</a></li>
-                                        <?php endif; ?>
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'MUGI PRAMONO',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'ADHI PRASETIYO',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                    'HARDI SAPUTRA',
+                                                    'ILHAM CHOLID',
+                                                    'JESSICA PAUNE',
+                                                    'JUN JOHAMIN PD',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'RAGIL ISHA RAHMANTO',
+                                                    'RICHARDUS',
+                                                    'ABDUR RAHMAN AL FAAIZ',
+                                                ])): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('penilaian.index')); ?>">Penilaian Technical
+                                                        Competency Ka. Dept</a></li>
+                                            <?php endif; ?>
 
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'AFILIANDI',
-                                                'AGUNG PANGESTU YUSUF',
-                                                'AGUS PRIYANTO',
-                                                'AGUS ROSIDIN',
-                                                'ANDI SANTOSO',
-                                                'ANDI SIMPONI',
-                                                'ARRY SOEBHEKTI',
-                                                'AWING',
-                                                'DASUKI',
-                                                'DEDY SETIAWAN',
-                                                'DIAMAN DARMAWINATA',
-                                                'ELI HANDOYO',
-                                                'FAIZAL AFDAU',
-                                                'FATUL MUKMIN',
-                                                'HAERUL IKHSAN',
-                                                'HENDRIO',
-                                                'JAKA RARA SUKMA',
-                                                'JAKARIA',
-                                                'KARYA WIJAYA',
-                                                'LUKMAN AHMAD',
-                                                'MAMIK ABIDIN',
-                                                'MEDI KRISNANTO',
-                                                'MIFTAKHUROHMAN',
-                                                'MUGI PRAMONO',
-                                                'NUR SUPRIYANTO',
-                                                'NURSAID',
-                                                'NURSALIM',
-                                                'R.WAWAN HIMAWAN',
-                                                'RAHMAT NUGROHO',
-                                                'RANGGA FADILLAH',
-                                                'RIZKY ANDREA RAHMAWAN',
-                                                'RUKMAN',
-                                                'RUSITO',
-                                                'SABAR WASIRAN',
-                                                'SEPTIADI PRATOMO',
-                                                'SUDIYATNO',
-                                                'UMAR HADI',
-                                                'VITRI HANDAYANI',
-                                                'YANUARDIN SALEH SIREGAR',
-                                                'YUSUF SYAFAAT',
-                                                'ADHI PRASETIYO',
-                                                'AHMAD RIDWAN',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'AVI SHENNA',
-                                                'BANGUN SUTOPO',
-                                                'CECEP ISKANDAR',
-                                                'DANIA ISNAWATI',
-                                                'DINA NIMAS AYU NAWAWULAN PRIHANTINI',
-                                                'DWI KUNTORO',
-                                                'FIKRI SYAHBANA',
-                                                'FRISILIA CLAUDIA HUTAMA',
-                                                'GUNAWAN',
-                                                'HARDI SAPUTRA',
-                                                'HARRY SUPRIYADI',
-                                                'HERLIANA',
-                                                'HERY HERMAWAN',
-                                                'HUSEIN ABDULLAH',
-                                                'ILHAM CHOLID',
-                                                'ILHAM SETIA DARMA',
-                                                'IMAM PRASETYO',
-                                                'IMAM SOPYAN',
-                                                'JEFRY WASTON E',
-                                                'JESSICA PAUNE',
-                                                'JONI SETIAWAN',
-                                                'JUN JOHAMIN PD',
-                                                'KUSTIONO',
-                                                'LINA UNIARSIH',
-                                                'M. RIDWAN GUNAWAN',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'MOCHAMMAD ANDRIANSYAH',
-                                                'MOHAMMAD FATKHURROHMAN',
-                                                'MUHAMMAD DINAR FARISI',
-                                                'MUHAMMAD MAHBUB',
-                                                'NUR DWITA SURA WIJAYA',
-                                                'PUTRI ANINDIA',
-                                                'RAGIL ISHA RAHMANTO',
-                                                'RIADUS SOLIHIN',
-                                                'RICHARDUS',
-                                                'RISFAN FAISAL',
-                                                'RUSLAN M.ALI',
-                                                'SENDY PRABOWO',
-                                                'SETIYAWAN',
-                                                'SITI MARIA ULFA',
-                                            ])): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('job.positions.index')); ?>">Summary Competency</a>
-                                            </li>
-                                        <?php endif; ?>
-                                    </ul>
-                                </li>
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'MUGI PRAMONO',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'ADHI PRASETIYO',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                    'HARDI SAPUTRA',
+                                                    'ILHAM CHOLID',
+                                                    'JESSICA PAUNE',
+                                                    'JUN JOHAMIN PD',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'RAGIL ISHA RAHMANTO',
+                                                    'RICHARDUS',
+                                                    'ABDUR RAHMAN AL FAAIZ',
+                                                ])): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('penilaian.index')); ?>">Penilaian Technical
+                                                        Competency HR</a></li>
+                                            <?php endif; ?>
 
-                                <li>
-                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
-                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Training Development
-                                    </a>
-                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'YULMAI RIDO WINANDA',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'HARDI SAPUTRA',
-                                                'JESSICA PAUNE',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'SITI MARIA ULFA',
-                                                'RICHARDUS',
-                                                'ADHI PRASETYO',
-                                            ])): ?>
-                                            <li><a class="dropdown-item" href="<?php echo e(route('indexPD')); ?>">Form Pengajuan
-                                                    Training</a></li>
-                                        <?php endif; ?>
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'MUGI PRAMONO',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'ADHI PRASETIYO',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                    'HARDI SAPUTRA',
+                                                    'ILHAM CHOLID',
+                                                    'JESSICA PAUNE',
+                                                    'JUN JOHAMIN PD',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'RAGIL ISHA RAHMANTO',
+                                                    'RICHARDUS',
+                                                    'ABDUR RAHMAN AL FAAIZ',
+                                                ])): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('job.positions.index')); ?>">Summary
+                                                        Competency</a>
+                                                </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </li>
 
-                                        <?php if(in_array(auth()->user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'SITI MARIA ULFA'])): ?>
-                                            <li><a class="dropdown-item" href="<?php echo e(route('indexPD2')); ?>">Persetujuan
-                                                    Development</a></li>
-                                        <?php endif; ?>
+                                    <!--List User-->
+                                    <!--'ADMINSTRATOR',-->
+                                    <!--'AFILIANDI',-->
+                                    <!--'AGUNG PANGESTU YUSUF',-->
+                                    <!--'AGUS PRIYANTO',-->
+                                    <!--'AGUS ROSIDIN',-->
+                                    <!--'ANDI SANTOSO',-->
+                                    <!--'ANDI SIMPONI',-->
+                                    <!--'ARRY SOEBHEKTI',-->
+                                    <!--'AWING',-->
+                                    <!--'DASUKI',-->
+                                    <!--'DEDY SETIAWAN',-->
+                                    <!--'DIAMAN DARMAWINATA',-->
+                                    <!--'ELI HANDOYO',-->
+                                    <!--'FAIZAL AFDAU',-->
+                                    <!--'FATUL MUKMIN',-->
+                                    <!--'HAERUL IKHSAN',-->
+                                    <!--'HENDRIO',-->
+                                    <!--'JAKA RARA SUKMA',-->
+                                    <!--'JAKARIA',-->
+                                    <!--'KARYA WIJAYA',-->
+                                    <!--'LUKMAN AHMAD',-->
+                                    <!--'MAMIK ABIDIN',-->
+                                    <!--'MEDI KRISNANTO',-->
+                                    <!--'MIFTAKHUROHMAN',-->
+                                    <!--'MUGI PRAMONO',-->
+                                    <!--'NUR SUPRIYANTO',-->
+                                    <!--'NURSAID',-->
+                                    <!--'NURSALIM',-->
+                                    <!--'R.WAWAN HIMAWAN',-->
+                                    <!--'RAHMAT NUGROHO',-->
+                                    <!---->
+                                    <!--'RIZKY ANDREA RAHMAWAN',-->
+                                    <!--'RUKMAN',-->
+                                    <!--'RUSITO',-->
+                                    <!--'SABAR WASIRAN',-->
+                                    <!--'SEPTIADI PRATOMO',-->
+                                    <!--'SUDIYATNO',-->
+                                    <!--'UMAR HADI',-->
+                                    <!---->
+                                    <!--'YANUARDIN SALEH SIREGAR',-->
+                                    <!--'YUSUF SYAFAAT',-->
+                                    <!--'ADHI PRASETIYO',-->
+                                    <!--'AHMAD RIDWAN',-->
+                                    <!--'ANDIK TOTOK SISWOYO',-->
+                                    <!--'ARY RODJO PRASETYO',-->
+                                    <!--'AVI SHENNA',-->
+                                    <!--'BANGUN SUTOPO',-->
+                                    <!--'CECEP ISKANDAR',-->
+                                    <!--'DANIA ISNAWATI',-->
+                                    <!--'DINA NIMAS AYU NAWAWULAN PRIHANTINI',-->
+                                    <!--'DWI KUNTORO',-->
+                                    <!--'FIKRI SYAHBANA',-->
+                                    <!--'FRISILIA CLAUDIA HUTAMA',-->
+                                    <!--'GUNAWAN',-->
+                                    <!--'HARDI SAPUTRA',-->
+                                    <!--'HARRY SUPRIYADI',-->
+                                    <!--'HERLIANA',-->
+                                    <!--'HERY HERMAWAN',-->
+                                    <!--'HUSEIN ABDULLAH',-->
+                                    <!--'ILHAM CHOLID',-->
+                                    <!--'ILHAM SETIA DARMA',-->
+                                    <!--'IMAM PRASETYO',-->
+                                    <!--'IMAM SOPYAN',-->
+                                    <!--'JEFRY WASTON E',-->
+                                    <!--'JESSICA PAUNE',-->
+                                    <!--'JONI SETIAWAN',-->
+                                    <!--'JUN JOHAMIN PD',-->
+                                    <!--'KUSTIONO',-->
+                                    <!--'LINA UNIARSIH',-->
+                                    <!--'M. RIDWAN GUNAWAN',-->
+                                    <!--'MARTINUS CAHYO RAHASTO',-->
+                                    <!--'MOCHAMMAD ANDRIANSYAH',-->
+                                    <!--'MOHAMMAD FATKHURROHMAN',-->
+                                    <!--'MUHAMMAD DINAR FARISI',-->
+                                    <!--'MUHAMMAD MAHBUB',-->
+                                    <!--'NUR DWITA SURA WIJAYA',-->
+                                    <!--'PUTRI ANINDIA',-->
+                                    <!--'RAGIL ISHA RAHMANTO',-->
+                                    <!--'RIADUS SOLIHIN',-->
+                                    <!--'RICHARDUS',-->
+                                    <!---->
+                                    <!--'RUSLAN M.ALI',-->
+                                    <!--'SENDY PRABOWO',-->
+                                    <!--'SETIYAWAN',-->
+                                    <!--'SITI MARIA ULFA',-->
 
-                                        <?php if(in_array(auth()->user()->name, [
-                                                'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'YULMAI RIDO WINANDA',
-                                                'ADHI PRASETIYO',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'HARDI SAPUTRA',
-                                                'ILHAM CHOLID',
-                                                'JESSICA PAUNE',
-                                                'JUN JOHAMIN PD',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
-                                                'SITI MARIA ULFA',
-                                                'ABDUR RAHMAN AL FAAIZ',
-                                            ])): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('penilaian.index2')); ?>">History Development</a>
-                                            </li>
-                                        <?php endif; ?>
-                                    </ul>
-                                </li>
-                            </ul>
-                        </li>
+
+
+
+                                    <li>
+                                        <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Training Development
+                                        </a>
+                                        <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                    'HARDI SAPUTRA',
+                                                    'JESSICA PAUNE',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'RICHARDUS',
+                                                    'ADHI PRASETYO',
+                                                ])): ?>
+                                                <li><a class="dropdown-item" href="<?php echo e(route('indexPD')); ?>">Form
+                                                        Pengajuan
+                                                        Training</a></li>
+                                            <?php endif; ?>
+
+                                            <?php if(in_array(auth()->user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'SITI MARIA ULFA'])): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('indexPD2')); ?>">Persetujuan
+                                                        Development</a></li>
+                                            <?php endif; ?>
+
+                                            <?php if(in_array(auth()->user()->name, [
+                                                    'ADMINSTRATOR',
+                                                    'MUGI PRAMONO',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'ADHI PRASETIYO',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                    'HARDI SAPUTRA',
+                                                    'ILHAM CHOLID',
+                                                    'JESSICA PAUNE',
+                                                    'JUN JOHAMIN PD',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'SITI MARIA ULFA',
+                                                    'RAGIL ISHA RAHMANTO',
+                                                    'RICHARDUS',
+                                                    'ABDUR RAHMAN AL FAAIZ',
+                                                ])): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('penilaian.index2')); ?>">History Development</a>
+                                                </li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </li>
+                        <?php endif; ?>
 
                         
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown"
-                                role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                CRP System
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <li><a class="dropdown-item" href="<?php echo e(route('crp')); ?>">Form CRP</a></li>
-                            </ul>
-                        </li>
+                        <?php if(in_array(auth()->user()->name, [
+                                'ADMINSTRATOR',
+                                'JESSICA PAUNE',
+                                'HARDI SAPUTRA',
+                                'MARTINUS CAHYO RAHASTO',
+                                'YULMAI RIDO WINANDA',
+                                'ANDIK TOTOK SISWOYO',
+                                'ARY RODJO PRASETYO',
+                                'ADHI PRASETIYO',
+                                'MUGI PRAMONO',
+                                'ILHAM CHOLID',
+                                'JUN JOHAMIN PD',
+                                'RAGIL ISHA RAHMANTO',
+                                'RICHARDUS',
+                                'VIVIAN ANGELIKA',
+                                'ABDUR RAHMAN AL FAAIZ',
+                                'FAJAR BAGASKARA'
+                            ])): ?>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown"
+                                    role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    CRP System
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                    <li><a class="dropdown-item" href="<?php echo e(route('crp')); ?>">Form CRP</a></li>
+                                </ul>
+                            </li>
+                        <?php endif; ?>
 
                         <!-- Dropdown Sumbang Saran -->
                         <li class="nav-item dropdown">
@@ -1422,7 +1732,7 @@
                                         'NURSALIM',
                                         'R.WAWAN HIMAWAN',
                                         'RAHMAT NUGROHO',
-                                        'RANGGA FADILLAH',
+                                        
                                         'RIZKY ANDREA RAHMAWAN',
                                         'RUKMAN',
                                         'RUSITO',
@@ -1430,7 +1740,7 @@
                                         'SEPTIADI PRATOMO',
                                         'SUDIYATNO',
                                         'UMAR HADI',
-                                        'VITRI HANDAYANI',
+                                        
                                         'YANUARDIN SALEH SIREGAR',
                                         'YUSUF SYAFAAT',
                                         'ADHI PRASETIYO',
@@ -1471,13 +1781,11 @@
                                         'PUTRI ANINDIA',
                                         'RAGIL ISHA RAHMANTO',
                                         'RIADUS SOLIHIN',
-                                        'RICHARDUS',
-                                        'RISFAN FAISAL',
+                                        'RICHARDUS',                                        
                                         'RUSLAN M.ALI',
                                         'SENDY PRABOWO',
                                         'SETIYAWAN',
-                                        'SITI MARIA ULFA',
-                                        'SUKIMIN',
+                                        'SITI MARIA ULFA',                                        
                                         'WULYO EKO PRASETYO',
                                         'YAN WELEM MANGINSELA',
                                         'YUDHI PRASETYO RAHMAWANTO',
@@ -1489,12 +1797,10 @@
                                         'VIVIAN ANGELIKA',
                                         'Sony Stiawan',
                                         'FAJAR BAGASKARA',
+                                        'AIS DUTA PRAMANDA',
                                     ];
                                 ?>
                                 <?php if(in_array(Auth::user()->name, $allowedUsers)): ?>
-                                    <li><a class="dropdown-item" href="<?php echo e(route('upload.json')); ?>">Upload JSON to
-                                            CSV</a>
-                                    </li>
                                     <li><a class="dropdown-item" href="<?php echo e(route('showSS')); ?>">Form Sumbang Saran</a>
                                     </li>
                                     <li><a class="dropdown-item" href="<?php echo e(route('forumSS')); ?>">Overview Sumbang
@@ -1502,67 +1808,72 @@
                                 <?php else: ?>
                                     <li><a class="dropdown-item" href="#">Access Denied</a></li>
                                 <?php endif; ?>
+                                <?php if(in_array(auth()->user()->name, ['ADMINSTRATOR'])): ?>
+                                    <li><a class="dropdown-item" href="<?php echo e(route('upload.json')); ?>">Upload JSON to
+                                            CSV</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if(in_array(auth()->user()->name, [
+                                        'ADMINSTRATOR',
+                                        'JESSICA PAUNE',
+                                        'MARTINUS CAHYO RAHASTO',
+                                        'YULMAI RIDO WINANDA',
+                                        'ANDIK TOTOK SISWOYO',
+                                        'ARY RODJO PRASETYO',
+                                        'MUGI PRAMONO',
+                                        'ADHI PRASETIYO',
+                                        'ANDIK TOTOK SISWOYO',
+                                        'ILHAM CHOLID',
+                                        'JUN JOHAMIN PD',
+                                        'RAGIL ISHA RAHMANTO',
+                                        'RICHARDUS',
+                                        'SITI MARIA ULFA',
+                                        'ABDUR RAHMAN AL FAAIZ',
+                                    ])): ?>
 
-                                <li>
-                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
-                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Persetujuan Atasan
-                                    </a>
-                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                        <?php
-                                            $kaSieUsers = [
-                                                'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'RANGGA FADILLAH',
-                                                'VITRI HANDAYANI',
-                                                'ADHI PRASETIYO',
-                                                'ANDIK TOTOK SISWOYO',
-                                                'ARY RODJO PRASETYO',
-                                                'HARDI SAPUTRA',
-                                                'ILHAM CHOLID',
-                                                'JESSICA PAUNE',
-                                                'JUN JOHAMIN PD',
-                                                'MARTINUS CAHYO RAHASTO',
-                                                'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
-                                                'SITI MARIA ULFA',
-                                                'YUDHI PRASETYO RAHMAWANTO',
-                                                'ABDUR RAHMAN AL FAAIZ',
-                                            ];
+                                    <li>
+                                        <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Persetujuan Atasan
+                                        </a>
+                                        <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                            <?php
+                                                $kaSieUsers = [
+                                                    'ADMINSTRATOR',
+                                                    'JESSICA PAUNE',
+                                                    'MUGI PRAMONO',
+                                                    'ADHI PRASETIYO',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ILHAM CHOLID',
+                                                    'JUN JOHAMIN PD',
+                                                    'RAGIL ISHA RAHMANTO',
+                                                    'RICHARDUS',
+                                                    'SITI MARIA ULFA',
+                                                    'ABDUR RAHMAN AL FAAIZ',
+                                                ];
 
-                                            $kaDeptUsers = [
-                                                'ADMINSTRATOR',
-                                                'MUGI PRAMONO',
-                                                'RANGGA FADILLAH',
-                                                'ADHI PRASETIYO',
-                                                'ARY RODJO PRASETYO',
-                                                'ILHAM CHOLID',
-                                                'JESSICA PAUNE',
-                                                'JUN JOHAMIN PD',
-                                                'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
-                                                'SITI MARIA ULFA',
-                                                'ABDUR RAHMAN AL FAAIZ',
-                                            ];
-                                        ?>
+                                                $kaDeptUsers = [
+                                                    'ADMINSTRATOR',
+                                                    'JESSICA PAUNE',
+                                                    'MARTINUS CAHYO RAHASTO',
+                                                    'YULMAI RIDO WINANDA',
+                                                    'ANDIK TOTOK SISWOYO',
+                                                    'ARY RODJO PRASETYO',
+                                                ];
+                                            ?>
 
-                                        <?php if(in_array(Auth::user()->name, $kaSieUsers)): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('showKonfirmasiForeman')); ?>">Ka. Sie</a></li>
-                                        <?php endif; ?>
+                                            <?php if(in_array(Auth::user()->name, $kaSieUsers)): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('showKonfirmasiForeman')); ?>">Ka. Sie</a></li>
+                                            <?php endif; ?>
 
-                                        <?php if(in_array(Auth::user()->name, $kaDeptUsers)): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('showKonfirmasiDeptHead')); ?>">Ka. Dept</a></li>
-                                        <?php endif; ?>
-                                    </ul>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
-                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Penilaian
-                                    </a>
-                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                            <?php if(in_array(Auth::user()->name, $kaDeptUsers)): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('showKonfirmasiDeptHead')); ?>">Ka. Dept</a></li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </li>
+                                    <li>
                                         <?php
                                             $penilaianKomiteUsers = [
                                                 'ADMINSTRATOR',
@@ -1578,19 +1889,40 @@
                                                 'SITI MARIA ULFA',
                                             ];
                                         ?>
+                                        <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Penilaian
+                                        </a>
+                                        <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                            <?php if(in_array(Auth::user()->name, $penilaianKomiteUsers)): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('showKonfirmasiKomite')); ?>">Penilaian
+                                                        Komite</a>
+                                                </li>
+                                            <?php endif; ?>
 
-                                        <?php if(in_array(Auth::user()->name, $penilaianKomiteUsers)): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('showKonfirmasiKomite')); ?>">Penilaian Komite</a>
-                                            </li>
-                                        <?php endif; ?>
+                                            <?php if(in_array(Auth::user()->name, $penilaianHRGAUsers)): ?>
+                                                <li><a class="dropdown-item"
+                                                        href="<?php echo e(route('showKonfirmasiHRGA')); ?>">Penilaian HRGA</a>
+                                                </li>
+                                            <?php endif; ?>
 
-                                        <?php if(in_array(Auth::user()->name, $penilaianHRGAUsers)): ?>
-                                            <li><a class="dropdown-item"
-                                                    href="<?php echo e(route('showKonfirmasiHRGA')); ?>">Penilaian HRGA</a></li>
-                                        <?php endif; ?>
+                                        </ul>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
 
-                                    </ul>
+                        <!-- Dropdown FeedBack -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown"
+                                role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Feedback
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="<?php echo e(route('feedback.index')); ?>">Form Kepuasan</a>
+                                </li>
+                                <li><a class="dropdown-item" href="<?php echo e(route('feedback.list')); ?>">Data Feedback</a>
                                 </li>
                             </ul>
                         </li>
@@ -1654,16 +1986,6 @@
         });
     </script>
 
-    <script>
-        $(document).ready(function() {
-            // Hover function for dropdowns
-            $('.nav-item.dropdown').hover(function() {
-                $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
-            }, function() {
-                $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
-            });
-        });
-    </script>
 
 
     
@@ -1695,7 +2017,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     
-    <script src="js/datatables-simple-demo.js"></script>
+    <script src="<?php echo e(asset('js/datatables-simple-demo.js')); ?>"></script>
 
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -1710,6 +2032,17 @@
 
     <!-- Menghubungkan ke jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Hover function for dropdowns
+            $('.nav-item.dropdown').hover(function() {
+                $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
+            }, function() {
+                $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
+            });
+        });
+    </script>
 
     <?php if(View::hasSection('scripts')): ?>
         <?php echo $__env->yieldContent('scripts'); ?>
@@ -2128,6 +2461,8 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <?php echo $__env->yieldPushContent('scripts'); ?>
 
 </body>
 

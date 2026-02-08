@@ -328,9 +328,6 @@
                                                     <p>Sudah dihapus</p>
                                                 @endif
                                             </td>
-
-
-
                                         </tr>
                                     @empty
                                         <tr>
@@ -338,8 +335,6 @@
                                         </tr>
                                     @endforelse
                                 </tbody>
-
-
                             </table>
                         </div>
 
@@ -349,7 +344,7 @@
                     @else
                         <a href="{{ url()->previous() }}" class="btn btn-secondary btn-sm m-1">Kembali</a>
                         @if ($inquiry->status == 1)
-                            @if (in_array(Auth::id(), [1, 2, 3, 4]))
+                            @if (in_array(Auth::id(), [1, 45, 65, 70, 72, 99]))
                                 <form onsubmit="event.preventDefault(); approveKaDept({{ $inquiry->id }});"
                                     class="d-inline">
                                     <button type="submit" class="btn btn-primary btn-sm m-1">Submit</button>
@@ -360,7 +355,6 @@
                             title="Formulir Inquiry">
                             <i class="bi bi-file-earmark-arrow-up-fill"></i> Tambah
                             </a>
-
                         @endif
                     @endif
 

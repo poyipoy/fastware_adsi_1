@@ -77,6 +77,12 @@
                                 @endif
                             </div>
 
+                             <div class="mb-3">
+                                <label for="harpen" class="form-label">Harga Penawaran</label>
+                                <textarea class="form-control" id="harpen" name="harpen" rows="4" disabled
+                                    placeholder="Masukkan Harga Penawaran">{{ $pengajuan->harpen }}</textarea>
+                            </div>
+
                             <!-- Tombol Submit -->
                             <div class="d-flex justify-content-end">
                                 <!-- Div untuk tombol di sebelah kiri (Lihat Histori) -->

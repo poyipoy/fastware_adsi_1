@@ -240,44 +240,12 @@ class KmPengajuanController extends Controller
         return redirect()->back()->with('success', 'Data KM berhasil diperbarui.');
     }
 
-    public function dsKnowlege()
-    {
-        $user = auth()->user();
-        $roleId = $user->role_id;
+    public function dsKnowlege(
+        \App\Services\Dashboard\KnowledgeManagementDashboardService $service
+    ) {
+        $data = $service->getDashboardData();
 
-        // Base query
-        $query = KmPengajuan::with(['kmKategori', 'insights.user', 'kmLihatBukus'])
-            ->with(['kmTransaksi' => function ($query) use ($user) {
-                $query->where('id_user', $user->id);
-            }])
-            ->withCount(['kmTransaksi' => function ($query) use ($user) {
-                $query->where('id_user', $user->id);
-            }])
-            ->withCount('kmSukas');
-
-        // Modify query based on role_id
-        if (in_array($roleId, [2, 5, 10, 11])) {
-            $pengajuans = $query->whereIn('posisi', ['Dept. Head', 'Sec. Head', 'All Employee'])
-                ->where('status', 3)
-                ->get();
-        } elseif (in_array($roleId, [3, 9, 12, 14, 22, 30, 31, 32])) {
-            $pengajuans = $query->whereIn('posisi', ['Sec. Head', 'All Employee'])
-                ->where('status', 3)
-                ->get();
-        } elseif (in_array($roleId, [1, 14, 15])) {
-            $pengajuans = $query->where('status', 3)
-                ->get();
-        } else {
-            $pengajuans = $query->whereIn('posisi', ['All Employee'])
-                ->where('status', 3)
-                ->get();
-        }
-
-        $leaderboard = User::select('name', 'km_total_poin')
-            ->orderBy('km_total_poin', 'desc')
-            ->get();
-
-        return view('dashboard.dsKnowlege', compact('pengajuans', 'leaderboard'));
+        return view('dashboard.dsKnowlege', $data);
     }
 
     public function downloadPdf($id)

@@ -9,10 +9,15 @@ use Illuminate\Http\Request;
 class CustomerController extends Controller
 {
     // Menampilkan daftar Pengguna
-    public function index()
+     public function index()
     {
-        $customers = Customer::where('status', 0)->latest()->get();
-
+        $customers = Customer::whereBetween('created_at', [
+            now()->startOfMonth(),   // awal bulan ini
+            now()->endOfMonth()      // akhir bulan ini
+        ])
+        ->latest()
+        ->get();
+        
         return view('customer.index', compact('customers'))->with('i', (request()->input('page', 1) - 1) * 5);
     }
 
@@ -57,7 +62,7 @@ class CustomerController extends Controller
             'area' => $request->area,
             'email' => $request->email,
             'no_telp' => $request->no_telp,
-            'status' => $request->status
+            'status' => 1
         ]);
 
         return redirect()->route('customers.index')->with('success', 'Customer berhasil dibuat');

@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use App\Models\MstPoPengajuan;
 use App\Models\TrsPoPengajuan;
 use App\Models\InquirySales;
@@ -20,734 +19,107 @@ use App\Models\MstAdditionals;
 use App\Models\TrsPenilaianTc;
 use App\Models\User;
 use Carbon\Carbon;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\TcpdCompetencyExport;
+use App\Services\Dashboard\FpbDashboardService;
+use App\Services\Dashboard\LeadTimeDashboardService;
+use App\Services\Dashboard\InquiryDashboardService;
+use App\Services\Dashboard\CrpDashboardService;
+use App\Services\Dashboard\TcpdDashboardService;
+use InvalidArgumentException;
 
 class DashboardController extends Controller
 {
-    /**
-     * Menampilkan view utama dashboard dengan data ringan untuk filter.
-     */
+    public function __construct(
+        private FpbDashboardService $fpbDashboardService,
+        private LeadTimeDashboardService $leadTimeDashboardService,
+        private InquiryDashboardService $inquiryDashboardService,
+        private CrpDashboardService $crpDashboardService,
+        private TcpdDashboardService $tcpdDashboardService,
+    ) {
+    }
+
     public function dashboardFPB()
     {
-        $kategoriList = MstPoPengajuan::distinct()->pluck('kategori_po');
-        $allCategories = [
-            'IT', 'Subcont', 'Consumable', 'Repair Maintenance', 'Utility',
-            'HRGA', 'Material Cost', 'Indirect Material', 'Others',
-        ];
-
-        return view('dashboard.dashboardFPB', [
-            'kategoriList' => $kategoriList,
-            'allCategories' => $allCategories,
-        ]);
+        return view('dashboard.dashboardFPB', $this->fpbDashboardService->getFilterData());
     }
 
     // --- ENDPOINT API BARU YANG CEPAT DAN TERPISAH ---
 
-    /**
-     * Endpoint #1: Data untuk semua chart di Slide 1 (FPB).
-     */
     public function getFpbData(Request $request)
     {
         try {
-            $startDateInput = $request->input('start_date', now()->subYear()->startOfYear()->format('Y-m-d'));
-            $endDateInput = $request->input('end_date', now()->format('Y-m-d'));
-            $kategoriPo = $request->input('kategori_po');
-
-            $startDate = Carbon::parse($startDateInput)->startOfDay();
-            $endDate = Carbon::parse($endDateInput)->endOfDay();
-
-            if ($startDate->gt($endDate)) {
-                return response()->json(['success' => false, 'message' => 'Rentang tanggal tidak valid.'], 422);
-            }
-
-            $cacheKey = sprintf(
-                'dashboard:fpb:%s:%s:%s',
-                $startDate->format('YmdHis'),
-                $endDate->format('YmdHis'),
-                $kategoriPo ?: 'all'
+            $data = $this->fpbDashboardService->getChartData(
+                $request->input('start_date', now()->subYear()->startOfYear()->format('Y-m-d')),
+                $request->input('end_date', now()->format('Y-m-d')),
+                $request->input('kategori_po')
             );
 
-            $data = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($startDate, $endDate, $kategoriPo) {
-                $table = (new MstPoPengajuan())->getTable();
-
-                $baseQuery = fn () => MstPoPengajuan::query()
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->when($kategoriPo, fn ($query) => $query->where('kategori_po', $kategoriPo));
-
-                $fpbCreatedMonthly = $baseQuery()
-                    ->selectRaw('MONTH(created_at) as month, COUNT(id) as total')
-                    ->groupBy('month')
-                    ->pluck('total', 'month')
-                    ->all();
-
-                $fpbFinishedMonthly = TrsPoPengajuan::query()
-                    ->where('status', 9)
-                    ->whereBetween('updated_at', [$startDate, $endDate])
-                    ->whereIn('id_fpb', function ($query) use ($startDate, $endDate, $kategoriPo, $table) {
-                        $query->select('id')
-                            ->from($table)
-                            ->whereBetween('created_at', [$startDate, $endDate])
-                            ->when($kategoriPo, fn ($subQuery) => $subQuery->where('kategori_po', $kategoriPo));
-                    })
-                    ->selectRaw('MONTH(updated_at) as month, COUNT(DISTINCT id_fpb) as total')
-                    ->groupBy('month')
-                    ->pluck('total', 'month')
-                    ->all();
-
-                $monthlyData = ['open' => [], 'finish' => []];
-                for ($month = 1; $month <= 12; $month++) {
-                    $monthlyData['open'][] = (int) ($fpbCreatedMonthly[$month] ?? 0);
-                    $monthlyData['finish'][] = (int) ($fpbFinishedMonthly[$month] ?? 0);
-                }
-
-                $totalOpen = $baseQuery()->count();
-
-                $totalFinish = TrsPoPengajuan::query()
-                    ->where('status', 9)
-                    ->whereIn('id_fpb', function ($query) use ($startDate, $endDate, $kategoriPo, $table) {
-                        $query->select('id')
-                            ->from($table)
-                            ->whereBetween('created_at', [$startDate, $endDate])
-                            ->when($kategoriPo, fn ($subQuery) => $subQuery->where('kategori_po', $kategoriPo));
-                    })
-                    ->distinct('id_fpb')
-                    ->count('id_fpb');
-
-                $categoryBreakdown = $baseQuery()
-                    ->selectRaw('kategori_po, COUNT(*) as total')
-                    ->groupBy('kategori_po')
-                    ->pluck('total', 'kategori_po')
-                    ->toArray();
-
-                return [
-                    'monthlyData' => $monthlyData,
-                    'totalFPB' => $totalOpen,
-                    'pieStatus' => [
-                        'open' => $totalOpen,
-                        'finish' => (int) $totalFinish,
-                    ],
-                    'pieCategory' => $categoryBreakdown,
-                ];
-            });
-
             return response()->json(['success' => true, 'data' => $data]);
-        } catch (\Throwable $e) {
-            Log::error('Error in getFpbData: ' . $e->getMessage() . ' line ' . $e->getLine());
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        } catch (\Throwable $exception) {
+            Log::error('Error in getFpbData: ' . $exception->getMessage() . ' line ' . $exception->getLine());
             return response()->json(['success' => false, 'message' => 'Gagal memuat data FPB.'], 500);
         }
     }
 
-    /**
-     * Endpoint #2: Data untuk chart Lead Time (Slide 2).
-     */
     public function getLeadTimeData(Request $request)
     {
         try {
-            $startDateInput = $request->input('start_date', now()->subYear()->startOfYear()->format('Y-m-d'));
-            $endDateInput = $request->input('end_date', now()->format('Y-m-d'));
-
-            $startDate = Carbon::parse($startDateInput)->startOfDay();
-            $endDate = Carbon::parse($endDateInput)->endOfDay();
-
-            if ($startDate->gt($endDate)) {
-                return response()->json(['success' => false, 'message' => 'Rentang tanggal tidak valid.'], 422);
-            }
-
-            $cacheKey = sprintf(
-                'dashboard:leadtime:%s:%s',
-                $startDate->format('YmdHis'),
-                $endDate->format('YmdHis')
+            $data = $this->leadTimeDashboardService->getChartData(
+                $request->input('start_date', now()->subYear()->startOfYear()->format('Y-m-d')),
+                $request->input('end_date', now()->format('Y-m-d'))
             );
 
-            $leadTimeData = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($startDate, $endDate) {
-                $table = (new MstPoPengajuan())->getTable();
-
-                $confirmSub = TrsPoPengajuan::query()
-                    ->select('id_fpb', DB::raw('MIN(updated_at) as confirmed_at'))
-                    ->where('status', 6)
-                    ->groupBy('id_fpb');
-
-                $finishSub = TrsPoPengajuan::query()
-                    ->select('id_fpb', DB::raw('MIN(updated_at) as finished_at'))
-                    ->where('status', 9)
-                    ->groupBy('id_fpb');
-
-                $categoryRows = MstPoPengajuan::query()
-                    ->select(
-                        "{$table}.kategori_po",
-                        DB::raw("AVG(CASE WHEN confirm.confirmed_at IS NOT NULL THEN DATEDIFF(confirm.confirmed_at, {$table}.created_at) END) as avg_first"),
-                        DB::raw("AVG(CASE WHEN confirm.confirmed_at IS NOT NULL AND finish.finished_at IS NOT NULL THEN DATEDIFF(finish.finished_at, confirm.confirmed_at) END) as avg_second")
-                    )
-                    ->leftJoinSub($confirmSub, 'confirm', function ($join) use ($table) {
-                        $join->on('confirm.id_fpb', '=', "{$table}.id");
-                    })
-                    ->leftJoinSub($finishSub, 'finish', function ($join) use ($table) {
-                        $join->on('finish.id_fpb', '=', "{$table}.id");
-                    })
-                    ->whereBetween("{$table}.created_at", [$startDate, $endDate])
-                    ->groupBy("{$table}.kategori_po")
-                    ->get()
-                    ->keyBy('kategori_po');
-
-                $overall = MstPoPengajuan::query()
-                    ->select(
-                        DB::raw("AVG(CASE WHEN confirm.confirmed_at IS NOT NULL THEN DATEDIFF(confirm.confirmed_at, {$table}.created_at) END) as avg_first"),
-                        DB::raw("AVG(CASE WHEN confirm.confirmed_at IS NOT NULL AND finish.finished_at IS NOT NULL THEN DATEDIFF(finish.finished_at, confirm.confirmed_at) END) as avg_second")
-                    )
-                    ->leftJoinSub($confirmSub, 'confirm', function ($join) use ($table) {
-                        $join->on('confirm.id_fpb', '=', "{$table}.id");
-                    })
-                    ->leftJoinSub($finishSub, 'finish', function ($join) use ($table) {
-                        $join->on('finish.id_fpb', '=', "{$table}.id");
-                    })
-                    ->whereBetween("{$table}.created_at", [$startDate, $endDate])
-                    ->first();
-
-                $categories = ['Total', 'IT', 'Spareparts', 'Consumable', 'GA', 'Subcont'];
-                $result = [];
-
-                foreach ($categories as $category) {
-                    if ($category === 'Total') {
-                        $result[$category] = [
-                            'average_lead_days_first' => $overall ? (int) round($overall->avg_first ?? 0) : 0,
-                            'average_lead_days_second' => $overall ? (int) round($overall->avg_second ?? 0) : 0,
-                        ];
-                        continue;
-                    }
-
-                    $row = $categoryRows->get($category);
-                    $result[$category] = [
-                        'average_lead_days_first' => $row ? (int) round($row->avg_first ?? 0) : 0,
-                        'average_lead_days_second' => $row ? (int) round($row->avg_second ?? 0) : 0,
-                    ];
-                }
-
-                return $result;
-            });
-
-            return response()->json(['success' => true, 'data' => ['leadTimeData' => $leadTimeData]]);
-        } catch (\Throwable $e) {
-            Log::error('Error in getLeadTimeData: ' . $e->getMessage());
+            return response()->json(['success' => true, 'data' => $data]);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        } catch (\Throwable $exception) {
+            Log::error('Error in getLeadTimeData: ' . $exception->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal memuat data Lead Time.'], 500);
         }
     }
 
-    /**
-     * Endpoint #3: Data untuk chart Inquiry (Slide 2).
-     */
     public function getInquiryData(Request $request)
     {
         try {
-            $startDateInput = $request->input('start_date', now()->subYear()->startOfYear()->format('Y-m-d'));
-            $endDateInput = $request->input('end_date', now()->format('Y-m-d'));
-
-            $startDate = Carbon::parse($startDateInput)->startOfDay();
-            $endDate = Carbon::parse($endDateInput)->endOfDay();
-
-            if ($startDate->gt($endDate)) {
-                return response()->json(['success' => false, 'message' => 'Rentang tanggal tidak valid.'], 422);
-            }
-
-            $cacheKey = sprintf(
-                'dashboard:inquiry:%s:%s',
-                $startDate->format('YmdHis'),
-                $endDate->format('YmdHis')
+            $payload = $this->inquiryDashboardService->getChartData(
+                $request->input('start_date', now()->subYear()->startOfYear()->format('Y-m-d')),
+                $request->input('end_date', now()->format('Y-m-d'))
             );
 
-            $payload = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($startDate, $endDate) {
-                $baseQuery = fn () => InquirySales::query()
-                    ->whereBetween('created_at', [$startDate, $endDate]);
-
-                $openCounts = $baseQuery()
-                    ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')
-                    ->groupBy('month')
-                    ->pluck('total', 'month')
-                    ->all();
-
-                $finishCounts = $baseQuery()
-                    ->where('status', 6)
-                    ->selectRaw('MONTH(updated_at) as month, COUNT(*) as total')
-                    ->groupBy('month')
-                    ->pluck('total', 'month')
-                    ->all();
-
-                $onProgressCounts = $baseQuery()
-                    ->whereIn('status', [5, 7, 8, 9])
-                    ->selectRaw('MONTH(updated_at) as month, COUNT(*) as total')
-                    ->groupBy('month')
-                    ->pluck('total', 'month')
-                    ->all();
-
-                $monthlyData = [
-                    'open' => [],
-                    'onprogress' => [],
-                    'finish' => [],
-                ];
-
-                for ($month = 1; $month <= 12; $month++) {
-                    $monthlyData['open'][] = (int) ($openCounts[$month] ?? 0);
-                    $monthlyData['onprogress'][] = (int) ($onProgressCounts[$month] ?? 0);
-                    $monthlyData['finish'][] = (int) ($finishCounts[$month] ?? 0);
-                }
-
-                $totalInquiries = $baseQuery()->count();
-
-                return [
-                    'monthlyData1' => $monthlyData,
-                    'totalinquiry' => $totalInquiries,
-                ];
-            });
-
             return response()->json(['success' => true, 'data' => $payload]);
-        } catch (\Throwable $e) {
-            Log::error('Error in getInquiryData: ' . $e->getMessage());
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        } catch (\Throwable $exception) {
+            Log::error('Error in getInquiryData: ' . $exception->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal memuat data Inquiry.'], 500);
         }
     }
     
-    /**
-     * Endpoint #4: Data untuk chart CRP (Slide 3 & 4).
-     */
     public function getCrpData(Request $request)
     {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
         try {
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-            }
-
-            $allCategories = ['IT', 'Subcont', 'Consumable', 'Repair Maintenance', 'Utility', 'HRGA', 'Material Cost', 'Indirect Material', 'Others'];
-            $categories = array_merge(['Total'], $allCategories);
-
-            $cacheKey = sprintf('dashboard:crp:%s', $user->id);
-
-            $payload = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user, $categories, $allCategories) {
-                $aggregated = MstDboCrp::query()
-                    ->where('partner_user', $user->id)
-                    ->select(
-                        'nm_category',
-                        'plan_actual',
-                        DB::raw('SUM(month_1) as month_1'),
-                        DB::raw('SUM(month_2) as month_2'),
-                        DB::raw('SUM(month_3) as month_3'),
-                        DB::raw('SUM(month_4) as month_4'),
-                        DB::raw('SUM(month_5) as month_5'),
-                        DB::raw('SUM(month_6) as month_6'),
-                        DB::raw('SUM(month_7) as month_7'),
-                        DB::raw('SUM(month_8) as month_8'),
-                        DB::raw('SUM(month_9) as month_9'),
-                        DB::raw('SUM(month_10) as month_10'),
-                        DB::raw('SUM(month_11) as month_11'),
-                        DB::raw('SUM(month_12) as month_12'),
-                        DB::raw('SUM(grand_tot) as grand_total')
-                    )
-                    ->groupBy('nm_category', 'plan_actual')
-                    ->get();
-
-                $monthlyActuals = [];
-                $monthlyPlans = [];
-                $grandTotalComparison = [];
-
-                foreach ($categories as $category) {
-                    $monthlyActuals[$category] = array_fill(0, 12, 0);
-                    $monthlyPlans[$category] = array_fill(0, 12, 0);
-                    $grandTotalComparison[$category] = ['Plan' => 0, 'Actual' => 0];
-                }
-
-                foreach ($aggregated as $row) {
-                    $category = $row->nm_category;
-                    if (!in_array($category, $allCategories, true)) {
-                        continue;
-                    }
-
-                    for ($month = 1; $month <= 12; $month++) {
-                        $value = (float) ($row->{'month_' . $month} ?? 0);
-                        if ($row->plan_actual === 'Plan') {
-                            $monthlyPlans[$category][$month - 1] += $value;
-                            $monthlyPlans['Total'][$month - 1] += $value;
-                        } else {
-                            $monthlyActuals[$category][$month - 1] += $value;
-                            $monthlyActuals['Total'][$month - 1] += $value;
-                        }
-                    }
-
-                    if ($row->plan_actual === 'Plan') {
-                        $grandTotalComparison[$category]['Plan'] += (float) $row->grand_total;
-                        $grandTotalComparison['Total']['Plan'] += (float) $row->grand_total;
-                    } else {
-                        $grandTotalComparison[$category]['Actual'] += (float) $row->grand_total;
-                        $grandTotalComparison['Total']['Actual'] += (float) $row->grand_total;
-                    }
-                }
-
-                $allMonthlyData = [];
-                foreach ($categories as $category) {
-                    $cumulativePlan = 0;
-                    $cumulativeActual = 0;
-                    $monthlyPlanCumulative = [];
-                    $monthlyActualCumulative = [];
-                    for ($month = 0; $month < 12; $month++) {
-                        $cumulativePlan += $monthlyPlans[$category][$month];
-                        $cumulativeActual += $monthlyActuals[$category][$month];
-                        $monthlyPlanCumulative[] = $cumulativePlan;
-                        $monthlyActualCumulative[] = $cumulativeActual;
-                    }
-                    $allMonthlyData[$category] = [
-                        'plan' => $monthlyPlanCumulative,
-                        'actual' => $monthlyActualCumulative,
-                    ];
-                }
-
-                return [
-                    'bulanList' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'],
-                    'monthlyActuals' => $monthlyActuals,
-                    'monthlyPlans' => $monthlyPlans,
-                    'grandTotalComparison' => $grandTotalComparison,
-                    'allMonthlyData' => $allMonthlyData,
-                ];
-            });
-
+            $payload = $this->crpDashboardService->getChartData($user);
             return response()->json(['success' => true, 'data' => $payload]);
-        } catch (\Throwable $e) {
-            Log::error('Error in getCrpData: ' . $e->getMessage());
+        } catch (\Throwable $exception) {
+            Log::error('Error in getCrpData: ' . $exception->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal memuat data CRP.'], 500);
         }
     }
 
     public function dashboardTCPD(Request $request)
     {
-        $yearOptions = $this->availableCompanyYears();
+        $payload = $this->tcpdDashboardService->buildDashboardData($request, Auth::user());
 
-        $companyYearFromInput = $request->input('company_year_from');
-        $companyYearToInput = $request->input('company_year_to');
-        [$companyStartDate, $companyEndDate] = $this->resolveYearRange($companyYearFromInput, $companyYearToInput);
-
-        if ($companyStartDate) {
-            $companyYearFromInput = $companyStartDate->year;
-        }
-        if ($companyEndDate) {
-            $companyYearToInput = $companyEndDate->year;
-        }
-
-        if (!$companyStartDate && !$companyEndDate) {
-            $currentYear = Carbon::now()->year;
-            $targetStartYear = $currentYear - 2;
-
-            $yearCollection = collect($yearOptions)
-                ->map(fn ($year) => (int) $year)
-                ->sort()
-                ->values();
-
-            if ($yearCollection->isNotEmpty()) {
-                $defaultStartYear = max($targetStartYear, $yearCollection->first());
-                $defaultEndYear = min($currentYear, $yearCollection->last());
-
-                if ($defaultStartYear > $defaultEndYear) {
-                    $defaultStartYear = $defaultEndYear;
-                }
-            } else {
-                $defaultStartYear = $targetStartYear;
-                $defaultEndYear = $currentYear;
-            }
-
-            $companyYearFromInput = $defaultStartYear;
-            $companyYearToInput = $defaultEndYear;
-        }
-
-        $jobDateFromInput = $request->input('job_date_from');
-        $jobDateToInput = $request->input('job_date_to');
-
-        if (empty($jobDateFromInput) && empty($jobDateToInput)) {
-            $now = Carbon::now();
-            $jobDateFromInput = $now->copy()->startOfYear()->format('Y-m-d');
-            $jobDateToInput = $now->copy()->endOfYear()->format('Y-m-d');
-        }
-
-        [$jobStartDate, $jobEndDate] = $this->resolveDateRange($jobDateFromInput, $jobDateToInput);
-        if ($jobStartDate) {
-            $jobDateFromInput = $jobStartDate->format('Y-m-d');
-        }
-        if ($jobEndDate) {
-            $jobDateToInput = $jobEndDate->format('Y-m-d');
-        }
-
-        $normalizeName = static fn ($value) => strtolower(trim((string) $value));
-
-        $rawJobPositions = TcJobPosition::query()
-            ->select(DB::raw('MIN(id) as id'), 'job_position')
-            ->groupBy('job_position')
-            ->orderBy('job_position')
-            ->get()
-            ->map(function ($row) {
-                $row->job_position = trim((string) $row->job_position);
-                return $row;
-            });
-
-        $initialOverview = [
-            'chartRows' => [],
-            'average' => null,
-            'hasData' => false,
-            'departmentCount' => 0,
-            'years' => [],
-            'mode' => 'aggregate',
-        ];
-
-        if ($rawJobPositions->isEmpty()) {
-            return view('dashboard.dashboardTCPD', [
-                'jobPositions' => collect(),
-                'selectedJobPositionId' => null,
-                'selectedJobPositionName' => null,
-                'competencyRows' => [],
-                'userCountByJobPosition' => 0,
-                'userSummaries' => [],
-                'totalPercentage' => null,
-                'departmentSummaries' => collect(),
-                'companyOverview' => $initialOverview,
-                'yearOptions' => $yearOptions,
-                'companyYearFrom' => $companyYearFromInput,
-                'companyYearTo' => $companyYearToInput,
-                'jobDateFrom' => $jobDateFromInput,
-                'jobDateTo' => $jobDateToInput,
-                'selectedDepartment' => null,
-                'jobDepartmentOptions' => [],
-                'shouldPrefetchCompany' => true,
-                'shouldPrefetchDepartments' => true,
-                'shouldPrefetchJob' => false,
-            ]);
-        }
-
-        $departmentDefinitions = $this->departmentDefinitions();
-        $jobPositionsByName = $rawJobPositions->keyBy(fn ($row) => $normalizeName($row->job_position));
-
-        $jobDepartments = collect();
-        $matchedNormalizedNames = [];
-        foreach ($departmentDefinitions as $departmentName => $jobNames) {
-            $options = collect($jobNames)
-                ->map(function ($jobName) use ($jobPositionsByName, $normalizeName, &$matchedNormalizedNames) {
-                    $normalized = $normalizeName($jobName);
-                    $matched = $jobPositionsByName->get($normalized);
-                    if (!$matched) {
-                        return null;
-                    }
-
-                    $matchedNormalizedNames[$normalized] = true;
-
-                    return [
-                        'id' => (int) $matched->id,
-                        'name' => $matched->job_position,
-                    ];
-                })
-                ->filter()
-                ->values();
-
-            if ($options->isNotEmpty()) {
-                $jobDepartments->push([
-                    'department' => $departmentName,
-                    'job_positions' => $options->all(),
-                ]);
-            }
-        }
-
-        $unmatchedJobPositions = $rawJobPositions->filter(function ($row) use (&$matchedNormalizedNames, $normalizeName) {
-            $normalized = $normalizeName($row->job_position);
-            return !isset($matchedNormalizedNames[$normalized]);
-        });
-
-        if ($unmatchedJobPositions->isNotEmpty()) {
-            $jobDepartments->push([
-                'department' => 'Lainnya',
-                'job_positions' => $unmatchedJobPositions
-                    ->map(fn ($row) => [
-                        'id' => (int) $row->id,
-                        'name' => $row->job_position,
-                    ])
-                    ->values()
-                    ->all(),
-                'is_additional' => true,
-            ]);
-        }
-
-        if ($jobDepartments->isEmpty() && $rawJobPositions->isNotEmpty()) {
-            $jobDepartments->push([
-                'department' => 'All',
-                'job_positions' => $rawJobPositions
-                    ->map(fn ($row) => [
-                        'id' => (int) $row->id,
-                        'name' => $row->job_position,
-                    ])
-                    ->values()
-                    ->all(),
-                'is_fallback' => true,
-            ]);
-        }
-
-        if ($jobDepartments->isEmpty()) {
-            return view('dashboard.dashboardTCPD', [
-                'jobPositions' => collect(),
-                'selectedJobPositionId' => null,
-                'selectedJobPositionName' => null,
-                'competencyRows' => [],
-                'userCountByJobPosition' => 0,
-                'userSummaries' => [],
-                'totalPercentage' => null,
-                'departmentSummaries' => collect(),
-                'companyOverview' => $initialOverview,
-                'yearOptions' => $yearOptions,
-                'companyYearFrom' => $companyYearFromInput,
-                'companyYearTo' => $companyYearToInput,
-                'jobDateFrom' => $jobDateFromInput,
-                'jobDateTo' => $jobDateToInput,
-                'selectedDepartment' => null,
-                'jobDepartmentOptions' => [],
-                'shouldPrefetchCompany' => true,
-                'shouldPrefetchDepartments' => true,
-                'shouldPrefetchJob' => false,
-            ]);
-        }
-
-        $requestedDepartment = $request->input('department');
-        $selectedDepartmentGroup = $jobDepartments->first(function ($group) use ($requestedDepartment) {
-            return $requestedDepartment !== null && $group['department'] === $requestedDepartment;
-        }) ?? $jobDepartments->first();
-
-        $selectedDepartment = $selectedDepartmentGroup['department'] ?? null;
-        $jobPositionsForDepartment = collect($selectedDepartmentGroup['job_positions'] ?? []);
-
-        $requestedJobPositionId = $request->input('job_position_id');
-        $selectedJobEntry = null;
-
-        if ($requestedJobPositionId !== null && $requestedJobPositionId !== '') {
-            $selectedJobEntry = $jobPositionsForDepartment->firstWhere('id', (int) $requestedJobPositionId);
-
-            if (!$selectedJobEntry) {
-                foreach ($jobDepartments as $group) {
-                    $match = collect($group['job_positions'] ?? [])->firstWhere('id', (int) $requestedJobPositionId);
-                    if ($match) {
-                        $selectedDepartment = $group['department'];
-                        $jobPositionsForDepartment = collect($group['job_positions'] ?? []);
-                        $selectedJobEntry = $match;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!$selectedJobEntry) {
-            $selectedJobEntry = $jobPositionsForDepartment->first();
-        }
-
-        if (!$selectedJobEntry) {
-            return view('dashboard.dashboardTCPD', [
-                'jobPositions' => collect(),
-                'selectedJobPositionId' => null,
-                'selectedJobPositionName' => null,
-                'competencyRows' => [],
-                'userCountByJobPosition' => 0,
-                'userSummaries' => [],
-                'totalPercentage' => null,
-                'departmentSummaries' => collect(),
-                'companyOverview' => $initialOverview,
-                'yearOptions' => $yearOptions,
-                'companyYearFrom' => $companyYearFromInput,
-                'companyYearTo' => $companyYearToInput,
-                'jobDateFrom' => $jobDateFromInput,
-                'jobDateTo' => $jobDateToInput,
-                'selectedDepartment' => $selectedDepartment,
-                'jobDepartmentOptions' => $jobDepartments->values()->all(),
-                'shouldPrefetchCompany' => true,
-                'shouldPrefetchDepartments' => true,
-                'shouldPrefetchJob' => false,
-            ]);
-        }
-
-        $selectedJobPositionId = (int) ($selectedJobEntry['id'] ?? null);
-        $selectedJobPositionName = $selectedJobEntry['name'] ?? null;
-
-        $jobPositions = $jobPositionsForDepartment
-            ->map(fn ($job) => (object) [
-                'id' => (int) $job['id'],
-                'job_position' => $job['name'],
-            ]);
-
-        return view('dashboard.dashboardTCPD', [
-            'jobPositions' => $jobPositions,
-            'selectedJobPositionId' => $selectedJobPositionId,
-            'selectedJobPositionName' => $selectedJobPositionName,
-            'competencyRows' => [],
-            'userCountByJobPosition' => 0,
-            'userSummaries' => [],
-            'totalPercentage' => null,
-            'departmentSummaries' => collect(),
-            'companyOverview' => $initialOverview,
-            'yearOptions' => $yearOptions,
-            'companyYearFrom' => $companyYearFromInput,
-            'companyYearTo' => $companyYearToInput,
-            'jobDateFrom' => $jobDateFromInput,
-            'jobDateTo' => $jobDateToInput,
-             'selectedDepartment' => $selectedDepartment,
-             'jobDepartmentOptions' => $jobDepartments->values()->all(),
-             'shouldPrefetchCompany' => true,
-             'shouldPrefetchDepartments' => true,
-            'shouldPrefetchJob' => $selectedJobPositionId !== null,
-            'jobDateRange' => [
-                'from' => $jobDateFromInput,
-                'to' => $jobDateToInput,
-            ],
-        ]);
+        return view('dashboard.dashboardTCPD', $payload);
     }
 
-    public function exportTcpdCompetencyData(Request $request)
-    {
-        $jobPositionId = (int) $request->input('job_position_id');
-        if ($jobPositionId <= 0) {
-            abort(422, 'Parameter job_position_id wajib diisi.');
-        }
-
-        $jobPosition = TcJobPosition::select('job_position')->find($jobPositionId);
-        if (!$jobPosition) {
-            abort(404, 'Job position tidak ditemukan.');
-        }
-
-        $departmentFilter = $request->input('department');
-        if ($departmentFilter) {
-            $departmentDefinitions = $this->departmentDefinitions();
-            if (array_key_exists($departmentFilter, $departmentDefinitions)) {
-                $normalize = static fn ($value) => strtolower(trim((string) $value));
-                $allowedJobs = collect($departmentDefinitions[$departmentFilter] ?? [])
-                    ->map($normalize)
-                    ->filter()
-                    ->values();
-                if ($allowedJobs->isNotEmpty() && !$allowedJobs->contains($normalize($jobPosition->job_position))) {
-                    abort(422, 'Job position tidak sesuai dengan departemen yang dipilih.');
-                }
-            }
-        }
-
-        [$startDate, $endDate] = $this->resolveDateRange(
-            $request->input('date_from'),
-            $request->input('date_to')
-        );
-
-        $exportPayload = $this->buildTcpdDetailedRows($jobPosition->job_position, $startDate, $endDate, [$jobPositionId]);
-        $rows = $exportPayload['rows'] ?? [];
-        $departmentName = $exportPayload['department'] ?? null;
-
-        $fileLabelParts = array_filter([
-            'tcpd',
-            $departmentName ? Str::slug($departmentName, '_') : null,
-            Str::slug($jobPosition->job_position, '_'),
-        ]);
-        $fileName = implode('-', $fileLabelParts);
-        if ($fileName === '') {
-            $fileName = 'tcpd-export';
-        }
-        $fileName .= '-' . now()->format('Ymd_His') . '.xlsx';
-
-        return Excel::download(new TcpdCompetencyExport($rows), $fileName);
-    }
-
-    public function getTcpdCompetencyData(Request $request)
+public function getTcpdCompetencyData(Request $request)
     {
         $jobPositionId = (int) $request->input('job_position_id');
         $jobPosition = TcJobPosition::select('job_position')->find($jobPositionId);
@@ -806,32 +178,233 @@ class DashboardController extends Controller
         );
 
         if (!$startDate && !$endDate) {
-            $currentYear = Carbon::now()->year;
-            $targetStartYear = $currentYear - 2;
-
-            $yearCollection = collect($yearOptions)
-                ->map(fn ($year) => (int) $year)
-                ->sort()
-                ->values();
-
-            if ($yearCollection->isNotEmpty()) {
-                $defaultStartYear = max($targetStartYear, $yearCollection->first());
-                $defaultEndYear = min($currentYear, $yearCollection->last());
-
-                if ($defaultStartYear > $defaultEndYear) {
-                    $defaultStartYear = $defaultEndYear;
-                }
-            } else {
-                $defaultStartYear = $targetStartYear;
-                $defaultEndYear = $currentYear;
-            }
-
-            $startDate = Carbon::create($defaultStartYear, 1, 1, 0, 0, 0)->startOfDay();
-            $endDate = Carbon::create($defaultEndYear, 12, 31, 23, 59, 59)->endOfDay();
+            $defaultYear = !empty($yearOptions) ? (int) end($yearOptions) : Carbon::now()->year;
+            $startDate = Carbon::create($defaultYear, 1, 1, 0, 0, 0)->startOfDay();
+            $endDate = Carbon::create($defaultYear, 12, 31, 23, 59, 59)->endOfDay();
         }
 
         $departmentDefinitions = $this->departmentDefinitions();
-        $allJobNames = collect($departmentDefinitions)
+
+        // Filter job names based on user access, similar to dashboardTCPD
+        $user = Auth::user();
+        $normalizeName = static fn ($value) => strtolower(trim((string) $value));
+
+        $allowedJobNames = [];
+        if ($user) {
+            $userName = $user->name;
+            $roleId = $user->role_id;
+
+            if (!in_array($roleId, [1])) {
+                $allowed = [];
+                if ($userName == 'HARDI SAPUTRA') {
+                    $allowed = [
+                        'Warehouse Foreman',
+                        'Admin Cutting Sheet (ACS)',
+                        'Delivery Staff',
+                        'Feeder',
+                        'Warehouse Admin',
+                        'PPIC Staff'
+                    ];
+                } elseif ($userName == 'ABDUR RAHMAN AL FAAIZ') {
+                    $allowed = [
+                        'Warehouse Foreman',
+                        'Admin Cutting Sheet (ACS)',
+                        'Delivery Staff',
+                        'Feeder',
+                        'Warehouse Admin',
+                        'PPIC Staff'
+                    ];
+                } elseif ($userName == 'ARYA RODJO PRASETYO') {
+                    $allowed = [
+                        'Cutting Leader',
+                        'Cutting Operator',
+                        'Foreman QC',
+                        'Production HT Leader',
+                        'production HT Admin',
+                        'Admin HT & PPC',
+                        'Production HT Operator',
+                        'Maintenance Operator',
+                        'MC Custom & Bubut Leader',
+                        'MC Custom Staff',
+                        'Operator Mc. Custom',
+                        'Operator Machining',
+                        'Leader MC',
+                        'MC Operator',
+                        'Bubut Operator',
+                    ];
+                } elseif ($userName == 'MUGI PRAMONO') {
+                    $allowed = [
+                        'Leader HT',
+                        'Admin HT & PPC',
+                        'Operator HT',
+                        'Operator MTN',
+                        'Foreman CT',
+                        'Foreman QC',
+                        'Leader Cutting',
+                        'Operator CT',
+                    ];
+                } elseif ($userName == 'RAGIL ISHA RAHMANTO') {
+                    $allowed = [
+                        'Leader MC',
+                        'Operator Mc. Custom',
+                        'MC Custom Staff',
+                        'Operator Machining',
+                        'Operator Bubut',
+                        'Foreman Machining Custom',
+                    ];
+                } elseif ($userName == 'MARTINUS CAHYO RAHASTO') {
+                    $allowed = [
+                        'Accounting Staff & Kasir',
+                        'AR Staff',
+                        'Invoicing Staff',
+                        'HR & Legal Staff',
+                        'HRGA & CSR Staff',
+                        'Procurement Material Staff',
+                        'IT Staff',
+                        'PDCA, Inventory, Procurement & IT Sec. Head',
+                        'HR & GA Section Head',
+                        'PDCA & Procurement Non Material Staff',
+                        'Procurement Administration',
+                        'Inventory Staff',
+                    ];
+                } elseif ($userName == 'ADHI PRASETYO') {
+                    $allowed = [
+                        'Accounting Staff & Kasir',
+                        'AR Staff',
+                        'Invoicing Staff',
+                        'Accounting Staff',
+                    ];
+                } elseif ($userName == 'RICHARDUS') {
+                    $allowed = [
+                        'Accounting Staff & Kasir',
+                        'AR Staff',
+                        'Invoicing Staff',
+                        'Accounting Staff',
+                    ];
+                } elseif ($userName == 'JESSICA PAUNE') {
+                    $allowed = [
+                        'Feeder',
+                        'Admin Cutting Sheet (ACS)',
+                        'Logistic Admin',
+                        'Delivery Staff',
+                        'Logistic Foreman',
+                        'Finance & Accounting Sec. Head',
+                        'HR & Legal Staff',
+                        'Finance & Treasury Sec. Head',
+                        'HRGA & CSR Staff',
+                        'Accounting Staff & Kasir',
+                        'Invoicing Staff',
+                        'SOH Region 1',
+                        'Sales Admin',
+                        'Machining Custom Sec. Head',
+                        'Produksi HT Sec. Head',
+                        'Foreman CT & MC',
+                        'Foreman QC',
+                        'PPIC Staff',
+                        'Leader MC',
+                        'Leader HT',
+                        'Operator CT',
+                        'Operator Bubut',
+                        'Operator Mc. Custom',
+                        'MC Custom Staff',
+                        'Operator Machining',
+                        'Admin HT & PPC',
+                        'Operator MTN',
+                        'Operator HT',
+                        'Procurement Material Staff',
+                        'Sales Engineer Reg 3',
+                        'Sales Engineer Reg 4',
+                        'Foreman Machining Custom',
+                        'Sales Engineer Reg 1',
+                        'SOH Region 2',
+                        'AR Staff',
+                        'IT Staff',
+                        'Sales Engineer Reg 2',
+                        'SOH Region 3',
+                        'SOH Region 4',
+                        'HR, GA, Legal, PDCA, Procurement & IT Se. Head',
+                        'HR & GA Section Head',
+                        'Leader Cutting',
+                        'PDCA & Procurement Non Material Staff',
+                        'Procurement Administration',
+                        'Inventory Section Head',
+                    ];
+                } elseif ($userName == 'SITI MARIA ULFA') {
+                    $allowed = [
+                        'Feeder',
+                        'Admin Cutting Sheet (ACS)',
+                        'Logistic Admin',
+                        'Delivery Staff',
+                        'Logistic Foreman',
+                        'Finance & Accounting Sec. Head',
+                        'HR & Legal Staff',
+                        'Finance & Treasury Sec. Head',
+                        'HRGA & CSR Staff',
+                        'Accounting Staff & Kasir',
+                        'Invoicing Staff',
+                        'SOH Region 1',
+                        'Sales Admin',
+                        'Machining Custom Sec. Head',
+                        'Produksi HT Sec. Head',
+                        'Foreman CT & MC',
+                        'Foreman QC',
+                        'PPIC Staff',
+                        'Leader MC',
+                        'Leader HT',
+                        'Operator CT',
+                        'Operator Bubut',
+                        'Operator Mc. Custom',
+                        'MC Custom Staff',
+                        'Operator Machining',
+                        'Admin HT & PPC',
+                        'Operator MTN',
+                        'Operator HT',
+                        'Procurement Material Staff',
+                        'Sales Engineer Reg 3',
+                        'Sales Engineer Reg 4',
+                        'Foreman Machining Custom',
+                        'Sales Engineer Reg 1',
+                        'SOH Region 2',
+                        'AR Staff',
+                        'IT Staff',
+                        'Sales Engineer Reg 2',
+                        'SOH Region 3',
+                        'SOH Region 4',
+                        'HR, GA, Legal, PDCA, Procurement & IT Se. Head',
+                        'HR & GA Section Head',
+                        'Leader Cutting',
+                        'PDCA & Procurement Non Material Staff',
+                        'Procurement Administration',
+                        'Inventory Section Head',
+                    ];
+                }
+
+                if (!empty($allowed)) {
+                    $allowedNormalized = array_map($normalizeName, $allowed);
+                    $allowedJobNames = $allowed;
+                } else {
+                    $allowedJobNames = collect($departmentDefinitions)->flatten()->unique()->values()->all();
+                }
+            } else {
+                $allowedJobNames = collect($departmentDefinitions)->flatten()->unique()->values()->all();
+            }
+        } else {
+            $allowedJobNames = collect($departmentDefinitions)->flatten()->unique()->values()->all();
+        }
+
+        // Filter department definitions to only include allowed job names
+        $filteredDepartmentDefinitions = [];
+        foreach ($departmentDefinitions as $deptName => $jobNames) {
+            $filteredJobs = collect($jobNames)->filter(function ($jobName) use ($allowedJobNames, $normalizeName) {
+                return in_array($normalizeName($jobName), array_map($normalizeName, $allowedJobNames));
+            })->values()->all();
+
+            if (!empty($filteredJobs)) {
+                $filteredDepartmentDefinitions[$deptName] = $filteredJobs;
+            }
+        }
+
+        $allJobNames = collect($filteredDepartmentDefinitions)
             ->flatten()
             ->map(fn ($name) => trim((string) $name))
             ->filter()
@@ -840,7 +413,7 @@ class DashboardController extends Controller
             ->all();
 
         $jobSnapshotData = $this->buildTcpdJobData($allJobNames, $startDate, $endDate);
-        $departmentSummaries = $this->buildDepartmentSummaries($departmentDefinitions, $jobSnapshotData);
+        $departmentSummaries = $this->buildDepartmentSummaries($filteredDepartmentDefinitions, $jobSnapshotData);
         $companyOverview = $this->buildCompanyOverview($departmentSummaries, $jobSnapshotData['years'] ?? []);
 
         return response()->json([
@@ -1005,17 +578,6 @@ class DashboardController extends Controller
             ->unique()
             ->sort()
             ->values();
-
-        $currentYear = Carbon::now()->year;
-        $minimumYear = $currentYear - 2;
-
-        $recentYears = $cleanYears
-            ->filter(fn ($year) => $year >= $minimumYear)
-            ->values();
-
-        if ($recentYears->isNotEmpty()) {
-            $cleanYears = $recentYears->sort()->values();
-        }
 
         if ($cleanYears->isEmpty()) {
             $cleanYears = collect([Carbon::now()->year]);
@@ -1334,187 +896,6 @@ class DashboardController extends Controller
         ];
     }
 
-    protected function buildTcpdDetailedRows(string $jobPositionName, ?Carbon $startDate = null, ?Carbon $endDate = null, ?array $jobPositionIds = null): array
-    {
-        $departmentName = $this->resolveDepartmentForJobPosition($jobPositionName);
-        $jobPositionIds = collect($jobPositionIds ?? [])
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->unique()
-            ->values();
-
-        if ($jobPositionIds->isEmpty()) {
-            $jobPositionIds = TcJobPosition::where('job_position', $jobPositionName)->pluck('id');
-        }
-
-        if ($jobPositionIds->isEmpty()) {
-            return [
-                'department' => $departmentName,
-                'job_position' => $jobPositionName,
-                'rows' => [],
-            ];
-        }
-
-        $assignments = TcJobPosition::query()
-            ->whereIn('id', $jobPositionIds)
-            ->whereNotNull('id_user')
-            ->get(['id', 'id_user']);
-
-        $userIds = $assignments->pluck('id_user')->filter()->unique()->values();
-
-        if ($userIds->isEmpty()) {
-            $userIds = TrsPenilaianTc::query()
-                ->whereIn('id_job_position', $jobPositionIds)
-                ->pluck('id_user')
-                ->filter()
-                ->unique()
-                ->values();
-        }
-
-        $users = $userIds->isNotEmpty()
-            ? User::whereIn('id', $userIds)->get(['id', 'name', 'section'])->keyBy('id')
-            : collect();
-
-        $collectCompetencies = function (string $modelClass, string $nameColumn, string $valueColumn, string $type) use ($jobPositionIds) {
-            return app($modelClass)->newQuery()
-                ->whereIn('id_job_position', $jobPositionIds)
-                ->select('id', DB::raw("$nameColumn as name"), DB::raw("$valueColumn as standard"))
-                ->get()
-                ->map(function ($row) use ($type) {
-                    $name = trim((string) $row->name);
-                    return [
-                        'id' => (int) $row->id,
-                        'name' => $name,
-                        'standard' => is_numeric($row->standard) ? (float) $row->standard : null,
-                        'type' => $type,
-                    ];
-                })
-                ->filter(fn ($row) => $row['name'] !== '')
-                ->values();
-        };
-
-        $technical = $collectCompetencies(MstTc::class, 'keterangan_tc', 'nilai', 'technical');
-        $softSkills = $collectCompetencies(MstSoftSkill::class, 'keterangan_sk', 'nilai', 'soft_skill');
-        $additionals = $collectCompetencies(MstAdditionals::class, 'keterangan_ad', 'nilai', 'additional');
-
-        $competencies = collect()
-            ->concat($technical)
-            ->concat($softSkills)
-            ->concat($additionals);
-
-        if ($competencies->isEmpty() || $userIds->isEmpty()) {
-            return [
-                'department' => $departmentName,
-                'job_position' => $jobPositionName,
-                'rows' => [],
-            ];
-        }
-
-        $technicalSet = $technical->pluck('id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
-        $softSkillSet = $softSkills->pluck('id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
-        $additionalSet = $additionals->pluck('id')->mapWithKeys(fn ($id) => [(int) $id => true])->all();
-
-        $userIdSet = array_flip($userIds->map(fn ($id) => (int) $id)->all());
-
-        $scoreRowsQuery = TrsPenilaianTc::query()
-            ->whereIn('id_user', $userIds)
-            ->select('id', 'id_user', 'id_tc', 'id_sk', 'id_ad', 'nilai_tc', 'nilai_sk', 'nilai_ad');
-
-        $this->applyDateConstraint($scoreRowsQuery, $startDate, $endDate);
-
-        $scoreRows = $scoreRowsQuery
-            ->orderByDesc('id')
-            ->get();
-
-        $scoreLookup = [];
-        foreach ($scoreRows as $scoreRow) {
-            $userId = (int) $scoreRow->id_user;
-            if (!isset($userIdSet[$userId])) {
-                continue;
-            }
-
-            $appendScore = static function (array &$lookup, int $userIdAcc, string $type, int $competencyId, float $value): void {
-                if (!isset($lookup[$userIdAcc][$type][$competencyId])) {
-                    $lookup[$userIdAcc][$type][$competencyId] = [
-                        'sum' => 0.0,
-                        'count' => 0,
-                    ];
-                }
-
-                $lookup[$userIdAcc][$type][$competencyId]['sum'] += $value;
-                $lookup[$userIdAcc][$type][$competencyId]['count'] += 1;
-            };
-
-            if ($scoreRow->id_tc !== null && isset($technicalSet[(int) $scoreRow->id_tc]) && is_numeric($scoreRow->nilai_tc)) {
-                $compId = (int) $scoreRow->id_tc;
-                $appendScore($scoreLookup, $userId, 'technical', $compId, (float) $scoreRow->nilai_tc);
-            }
-
-            if ($scoreRow->id_sk !== null && isset($softSkillSet[(int) $scoreRow->id_sk]) && is_numeric($scoreRow->nilai_sk)) {
-                $compId = (int) $scoreRow->id_sk;
-                $appendScore($scoreLookup, $userId, 'soft_skill', $compId, (float) $scoreRow->nilai_sk);
-            }
-
-            if ($scoreRow->id_ad !== null && isset($additionalSet[(int) $scoreRow->id_ad]) && is_numeric($scoreRow->nilai_ad)) {
-                $compId = (int) $scoreRow->id_ad;
-                $appendScore($scoreLookup, $userId, 'additional', $compId, (float) $scoreRow->nilai_ad);
-            }
-        }
-
-        $typeOrder = ['technical' => 0, 'soft_skill' => 1, 'additional' => 2];
-        $sortedCompetencies = $competencies
-            ->sort(function (array $a, array $b) use ($typeOrder) {
-                $typeComparison = ($typeOrder[$a['type']] ?? 99) <=> ($typeOrder[$b['type']] ?? 99);
-                if ($typeComparison !== 0) {
-                    return $typeComparison;
-                }
-                return strcasecmp($a['name'], $b['name']);
-            })
-            ->values();
-
-        $sortedUsers = $userIds
-            ->map(function ($id) use ($users) {
-                $userRecord = $users->get($id);
-                return [
-                    'id' => (int) $id,
-                    'name' => optional($userRecord)->name ?? ('User ' . $id),
-                    'section' => optional($userRecord)->section,
-                ];
-            })
-            ->sort(function (array $a, array $b) {
-                return strcasecmp($a['name'], $b['name']);
-            })
-            ->values();
-
-        $rows = [];
-        foreach ($sortedUsers as $user) {
-            foreach ($sortedCompetencies as $competency) {
-                $type = $competency['type'];
-                $compId = $competency['id'];
-                $bucket = $scoreLookup[$user['id']][$type][$compId] ?? null;
-                $actual = ($bucket && ($bucket['count'] ?? 0) > 0)
-                    ? round($bucket['sum'] / $bucket['count'], 2)
-                    : null;
-
-                $rows[] = [
-                    'department' => $departmentName,
-                    'job_position' => $jobPositionName,
-                    'user' => $user['name'],
-                    'section' => $user['section'] ?? '',
-                    'competency' => $competency['name'],
-                    'actual' => $actual,
-                    'standard' => $competency['standard'],
-                ];
-            }
-        }
-
-        return [
-            'department' => $departmentName,
-            'job_position' => $jobPositionName,
-            'rows' => $rows,
-        ];
-    }
-
     protected function extractSnapshotPercentage(?array $snapshot): ?float
     {
         if (!$snapshot) {
@@ -1718,24 +1099,6 @@ class DashboardController extends Controller
         }
 
         return $summaries;
-    }
-    
-    protected function resolveDepartmentForJobPosition(string $jobPositionName): ?string
-    {
-        $normalized = strtolower(trim($jobPositionName));
-        if ($normalized === '') {
-            return null;
-        }
-
-        foreach ($this->departmentDefinitions() as $departmentName => $jobNames) {
-            foreach ($jobNames as $jobName) {
-                if (strtolower(trim((string) $jobName)) === $normalized) {
-                    return $departmentName;
-                }
-            }
-        }
-
-        return null;
     }
 
     protected function departmentDefinitions(): array

@@ -2,50 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\PengajuanSubcontSalesExport;
-use App\Http\Controllers\Controller;
 use App\Models\MstPengajuanSubcont;
 use App\Models\TrsPengajuanSubcont; // Pastikan model ini diimpor
-use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File; // Untuk menghapus file lama
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\File; // Untuk menghapus file lama
+use Illuminate\Http\Request;
 
 class PengajuanSubcontController extends Controller
 {
 
     // Method untuk menampilkan data ke view
-    public function indexSales(Request $request)
+    public function indexSales()
     {
+        // Dapatkan nama user yang sedang login
         $userName = Auth::user()->name;
 
-        $latestKeteranganSubquery = TrsPengajuanSubcont::select('created_at')
-            ->whereColumn('id_subcont', 'mst_pengajuan_subconts.id')
-            ->orderByDesc('created_at')
-            ->limit(1);
+        // Mengambil data dari tabel mst_pengajuan_subconts sesuai dengan nama user yang login
+        $pengajuanSubconts = MstPengajuanSubcont::where('modified_at', $userName)
+        ->where(function ($query) {
+            $query->whereNull('sec_line')
+                ->orWhere('sec_line', '');
+        })
+        ->orderByDesc('id')
+        ->get();
 
-        $baseQuery = MstPengajuanSubcont::query()
-            ->select('mst_pengajuan_subconts.*')
-            ->addSelect(['latest_keterangan' => $latestKeteranganSubquery])
-            ->where('modified_at', $userName)
-            ->where(function ($query) {
-                $query->whereNull('sec_line')
-                    ->orWhere('sec_line', '');
-            });
 
-        $pengajuanSubconts = (clone $baseQuery)
-            ->orderByRaw('CASE WHEN status_1 = 5 THEN 1 ELSE 0 END')
-            ->orderByDesc('created_at')
-            ->paginate($request->input('per_page', 10))
-            ->withQueryString();
+        // Sort so that status_1 = 5 is moved to the bottom
+        $pengajuanSubconts = $pengajuanSubconts->sortBy(function ($item) {
+            return $item->status_1 == 5 ? 1 : 0; // Move items with status_1 = 5 to the end
+        })->values();
 
-        $namaCustomerTerakhir = (clone $baseQuery)
-            ->whereNotNull('quotation_file')
-            ->where('status_1', 4)
-            ->orderByDesc('id')
-            ->value('nama_customer');
+        // Mencari pengajuan dengan quotation_file yang tidak null dan status_1 = 4
+        $pengajuanDenganFile = $pengajuanSubconts->firstWhere(function ($item) {
+            return $item->quotation_file !== null && $item->status_1 == 4;
+        });
 
+        $namaCustomerTerakhir = $pengajuanDenganFile ? $pengajuanDenganFile->nama_customer : null;
+
+        // Mengirim data ke view
         return view('pengajuan_subcont.index_pengajuan_sales', compact('pengajuanSubconts', 'namaCustomerTerakhir'));
     }
 
@@ -61,37 +57,6 @@ class PengajuanSubcontController extends Controller
 
     return view('pengajuan_subcont.index_pengajuan_proc', compact('pengajuanSubconts'));
 }
-
-
-    public function exportSales(Request $request)
-    {
-        $userName = Auth::user()->name;
-        $ids = array_filter((array) $request->input('ids', []));
-
-        if (empty($ids)) {
-            return redirect()->back()->with('error', 'Silakan pilih minimal satu data untuk diexport.');
-        }
-
-        $latestKeteranganSubquery = TrsPengajuanSubcont::select('created_at')
-            ->whereColumn('id_subcont', 'mst_pengajuan_subconts.id')
-            ->orderByDesc('created_at')
-            ->limit(1);
-
-        $query = MstPengajuanSubcont::query()
-            ->select('mst_pengajuan_subconts.*')
-            ->addSelect(['latest_keterangan' => $latestKeteranganSubquery])
-            ->where('modified_at', $userName)
-            ->where(function ($query) {
-                $query->whereNull('sec_line')
-                    ->orWhere('sec_line', '');
-            });
-
-        $query->whereIn('id', $ids);
-
-        $data = $query->orderBy('created_at', 'desc')->get();
-
-        return Excel::download(new PengajuanSubcontSalesExport($data), 'pengajuan_subcont_sales.xlsx');
-    }
 
 
     // Method untuk menampilkan view form tambah data
@@ -231,6 +196,7 @@ class PengajuanSubcontController extends Controller
             'qty' => $data['qty'],
             'keterangan' => $data['keterangan'],
             'jenis_proses_subcont' => $data['jenis_proses_subcont'],
+            'harpen' => $data['harpen'],
             'file' => $data['file'] ?? $pengajuan->file, // Jika tidak ada file baru, tetap gunakan file lama
             'file_name' => $data['file_name'] ?? $pengajuan->file_name, // Jika tidak ada file baru, tetap gunakan file_name lama
             'modified_at' => Auth::user()->name, // Mengambil nama user yang sedang login
@@ -311,19 +277,21 @@ class PengajuanSubcontController extends Controller
         if ($request->hasFile('quotation_file')) {
             $quotationFile = $request->file('quotation_file');
             $fileName = $quotationFile->getClientOriginalName();
-
+            
             // Simpan file ke folder public/assets/subcont
             $savePath = $quotationFile->move(public_path('assets/subcont'), $fileName);
-
+            
             // Simpan path file ke variabel
             $quotationFilePath = 'assets/subcont/' . $fileName;
         }
+        $harpen = $request->harpen;
 
         // Update status_1, status_2, dan quotation_file dalam model MstPengajuanSubcont
         $pengajuan->update([
             'status_1' => 4,
             'status_2' => 4,
-            'quotation_file' => $quotationFilePath // Update kolom quotation_file dengan path file
+            'quotation_file' => $quotationFilePath, // Update kolom quotation_file dengan path file
+            'harpen' => $harpen, // Update kolom quotation_file dengan path file
         ]);
 
         // Simpan data ke model TrsPengajuanSubcont, termasuk keterangan dari request
@@ -349,7 +317,7 @@ class PengajuanSubcontController extends Controller
             // Update status_1 dan status_2 menjadi 2
             $pengajuan->update([
                 'status_1' => 2,
-                'status_2' => 2
+                'status_2' => 2,
             ]);
         } else {
             // Jika tidak, tetap update status_1 dan status_2 menjadi 5
@@ -369,5 +337,4 @@ class PengajuanSubcontController extends Controller
         // Return response untuk AJAX
         return response()->json(['message' => 'Status berhasil diubah'], 200);
     }
-
 }

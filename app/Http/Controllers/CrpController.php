@@ -21,6 +21,27 @@ use Illuminate\Support\Facades\Log;
 class CrpController extends Controller
 {
 
+    // public function index()
+    // {
+    //     $userName = Auth::user()->name;
+
+    //     $mstDboCrps = MstDboCrp::where('partner_user', Auth::user()->id)
+    //         ->orderBy('created_at', 'desc')
+    //         ->get();
+
+    //     $mstIds = $mstDboCrps->pluck('id')->toArray();
+
+    //     $trsDboCrps = TrsDboCrp::with('partners')
+    //         ->whereIn('mst_id', $mstIds)
+    //         ->orderBy('created_at', 'desc')
+    //         ->get();
+
+    //     $users = User::all(); // Tambahkan baris ini
+
+    //     return view('crp.crp', compact('mstDboCrps', 'trsDboCrps', 'userName', 'users'));
+    // }
+
+
     public function index(Request $request)
     {
         $userName = Auth::user()->name;
@@ -44,8 +65,6 @@ class CrpController extends Controller
 
         return view('crp.crp', compact('mstDboCrps', 'trsDboCrps', 'userName', 'users', 'currentYear'));
     }
-
-
 
 
     public function create()
@@ -108,93 +127,175 @@ class CrpController extends Controller
 
 
 
+    //     public function store(Request $request)
+    // {
+    //     // Validasi input
+    //     $validated = $request->validate([
+    //         'summaryData' => 'required|array',
+    //     ]);
+
+    //     // Mengambil summaryData dari request
+    //     $summaryData = $request->input('summaryData');
+
+    //     // Loop untuk setiap kategori dalam summaryData
+    //     foreach ($summaryData as $nm_category => $entry) {
+    //         // Pastikan bahwa data plan_values dan actual_values ada
+    //         if (!isset($entry['plan_values']) || !isset($entry['actual_values']) || !is_array($entry['plan_values']) || !is_array($entry['actual_values'])) {
+    //             continue; // Lewati jika tidak valid
+    //         }
+
+    //         // Data yang akan disimpan untuk plan
+    //         $commonPlanData = [
+    //             'month_1'     => $entry['plan_values'][0] ?? 0,
+    //             'month_2'     => $entry['plan_values'][1] ?? 0,
+    //             'month_3'     => $entry['plan_values'][2] ?? 0,
+    //             'month_4'     => $entry['plan_values'][3] ?? 0,
+    //             'month_5'     => $entry['plan_values'][4] ?? 0,
+    //             'month_6'     => $entry['plan_values'][5] ?? 0,
+    //             'month_7'     => $entry['plan_values'][6] ?? 0,
+    //             'month_8'     => $entry['plan_values'][7] ?? 0,
+    //             'month_9'     => $entry['plan_values'][8] ?? 0,
+    //             'month_10'    => $entry['plan_values'][9] ?? 0,
+    //             'month_11'    => $entry['plan_values'][10] ?? 0,
+    //             'month_12'    => $entry['plan_values'][11] ?? 0,
+    //             'grand_tot'   => $entry['plan_ytd'] ?? 0,
+    //             'partner_user'=> Auth::id(),
+    //         ];
+
+    //         // Update or Create untuk Plan
+    //         MstDboCrp::updateOrCreate(
+    //             [
+    //                 'nm_category'  => $nm_category,
+    //                 'plan_actual'  => 'Plan',
+    //                 'partner_user' => Auth::id(),
+    //             ],
+    //             $commonPlanData
+    //         );
+
+    //         // Data yang akan disimpan untuk Actual
+    //         $commonActualData = [
+    //             'month_1'     => $entry['actual_values'][0] ?? 0,
+    //             'month_2'     => $entry['actual_values'][1] ?? 0,
+    //             'month_3'     => $entry['actual_values'][2] ?? 0,
+    //             'month_4'     => $entry['actual_values'][3] ?? 0,
+    //             'month_5'     => $entry['actual_values'][4] ?? 0,
+    //             'month_6'     => $entry['actual_values'][5] ?? 0,
+    //             'month_7'     => $entry['actual_values'][6] ?? 0,
+    //             'month_8'     => $entry['actual_values'][7] ?? 0,
+    //             'month_9'     => $entry['actual_values'][8] ?? 0,
+    //             'month_10'    => $entry['actual_values'][9] ?? 0,
+    //             'month_11'    => $entry['actual_values'][10] ?? 0,
+    //             'month_12'    => $entry['actual_values'][11] ?? 0,
+    //             'grand_tot'   => $entry['actual_ytd'] ?? 0,
+    //             'partner_user'=> Auth::id(),
+    //         ];
+
+    //         // Update or Create untuk Actual
+    //         MstDboCrp::updateOrCreate(
+    //             [
+    //                 'nm_category'  => $nm_category,
+    //                 'plan_actual'  => 'Actual',
+    //                 'partner_user' => Auth::id(),
+    //             ],
+    //             $commonActualData
+    //         );
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Data berhasil disimpan.'
+    //     ]);
+    // }
+
+
     public function store(Request $request)
-{
-    // Validasi input
-    $validated = $request->validate([
-        'summaryData' => 'required|array',
-    ]);
-    
-    $summaryData = $request->input('summaryData');
-    $year = Carbon::now()->year; // gunakan tahun berjalan
+    {
+        // Validasi input
+        $validated = $request->validate([
+            'summaryData' => 'required|array',
+        ]);
 
-    foreach ($summaryData as $nm_category => $entry) {
-        if (!isset($entry['plan_values']) || !isset($entry['actual_values']) 
-            || !is_array($entry['plan_values']) || !is_array($entry['actual_values'])) {
-            continue;
+        $summaryData = $request->input('summaryData');
+        $year = Carbon::now()->year; // gunakan tahun berjalan
+
+        foreach ($summaryData as $nm_category => $entry) {
+            if (
+                !isset($entry['plan_values']) || !isset($entry['actual_values'])
+                || !is_array($entry['plan_values']) || !is_array($entry['actual_values'])
+            ) {
+                continue;
+            }
+
+            // Data untuk Plan
+            $commonPlanData = [
+                'month_1'   => $entry['plan_values'][0] ?? 0,
+                'month_2'   => $entry['plan_values'][1] ?? 0,
+                'month_3'   => $entry['plan_values'][2] ?? 0,
+                'month_4'   => $entry['plan_values'][3] ?? 0,
+                'month_5'   => $entry['plan_values'][4] ?? 0,
+                'month_6'   => $entry['plan_values'][5] ?? 0,
+                'month_7'   => $entry['plan_values'][6] ?? 0,
+                'month_8'   => $entry['plan_values'][7] ?? 0,
+                'month_9'   => $entry['plan_values'][8] ?? 0,
+                'month_10'  => $entry['plan_values'][9] ?? 0,
+                'month_11'  => $entry['plan_values'][10] ?? 0,
+                'month_12'  => $entry['plan_values'][11] ?? 0,
+                'grand_tot' => $entry['plan_ytd'] ?? 0,
+            ];
+
+            // Cek apakah Plan sudah ada di tahun berjalan
+            $plan = MstDboCrp::where('nm_category', $nm_category)
+                ->where('plan_actual', 'Plan')
+                ->whereYear('created_at', $year)
+                ->first();
+
+            if ($plan) {
+                $plan->update($commonPlanData);
+            } else {
+                MstDboCrp::create(array_merge($commonPlanData, [
+                    'nm_category' => $nm_category,
+                    'plan_actual' => 'Plan',
+                ]));
+            }
+
+            // Data untuk Actual
+            $commonActualData = [
+                'month_1'   => $entry['actual_values'][0] ?? 0,
+                'month_2'   => $entry['actual_values'][1] ?? 0,
+                'month_3'   => $entry['actual_values'][2] ?? 0,
+                'month_4'   => $entry['actual_values'][3] ?? 0,
+                'month_5'   => $entry['actual_values'][4] ?? 0,
+                'month_6'   => $entry['actual_values'][5] ?? 0,
+                'month_7'   => $entry['actual_values'][6] ?? 0,
+                'month_8'   => $entry['actual_values'][7] ?? 0,
+                'month_9'   => $entry['actual_values'][8] ?? 0,
+                'month_10'  => $entry['actual_values'][9] ?? 0,
+                'month_11'  => $entry['actual_values'][10] ?? 0,
+                'month_12'  => $entry['actual_values'][11] ?? 0,
+                'grand_tot' => $entry['actual_ytd'] ?? 0,
+            ];
+
+            // Cek apakah Actual sudah ada di tahun berjalan
+            $actual = MstDboCrp::where('nm_category', $nm_category)
+                ->where('plan_actual', 'Actual')
+                ->whereYear('created_at', $year)
+                ->first();
+
+            if ($actual) {
+                $actual->update($commonActualData);
+            } else {
+                MstDboCrp::create(array_merge($commonActualData, [
+                    'nm_category' => $nm_category,
+                    'plan_actual' => 'Actual',
+                ]));
+            }
         }
 
-        // Data untuk Plan
-        $commonPlanData = [
-            'month_1'   => $entry['plan_values'][0] ?? 0,
-            'month_2'   => $entry['plan_values'][1] ?? 0,
-            'month_3'   => $entry['plan_values'][2] ?? 0,
-            'month_4'   => $entry['plan_values'][3] ?? 0,
-            'month_5'   => $entry['plan_values'][4] ?? 0,
-            'month_6'   => $entry['plan_values'][5] ?? 0,
-            'month_7'   => $entry['plan_values'][6] ?? 0,
-            'month_8'   => $entry['plan_values'][7] ?? 0,
-            'month_9'   => $entry['plan_values'][8] ?? 0,
-            'month_10'  => $entry['plan_values'][9] ?? 0,
-            'month_11'  => $entry['plan_values'][10] ?? 0,
-            'month_12'  => $entry['plan_values'][11] ?? 0,
-            'grand_tot' => $entry['plan_ytd'] ?? 0,
-        ];
-
-        // Cek apakah Plan sudah ada di tahun berjalan
-        $plan = MstDboCrp::where('nm_category', $nm_category)
-            ->where('plan_actual', 'Plan')
-            ->whereYear('created_at', $year)
-            ->first();
-
-        if ($plan) {
-            $plan->update($commonPlanData);
-        } else {
-            MstDboCrp::create(array_merge($commonPlanData, [
-                'nm_category' => $nm_category,
-                'plan_actual' => 'Plan',
-            ]));
-        }
-
-        // Data untuk Actual
-        $commonActualData = [
-            'month_1'   => $entry['actual_values'][0] ?? 0,
-            'month_2'   => $entry['actual_values'][1] ?? 0,
-            'month_3'   => $entry['actual_values'][2] ?? 0,
-            'month_4'   => $entry['actual_values'][3] ?? 0,
-            'month_5'   => $entry['actual_values'][4] ?? 0,
-            'month_6'   => $entry['actual_values'][5] ?? 0,
-            'month_7'   => $entry['actual_values'][6] ?? 0,
-            'month_8'   => $entry['actual_values'][7] ?? 0,
-            'month_9'   => $entry['actual_values'][8] ?? 0,
-            'month_10'  => $entry['actual_values'][9] ?? 0,
-            'month_11'  => $entry['actual_values'][10] ?? 0,
-            'month_12'  => $entry['actual_values'][11] ?? 0,
-            'grand_tot' => $entry['actual_ytd'] ?? 0,
-        ];
-
-        // Cek apakah Actual sudah ada di tahun berjalan
-        $actual = MstDboCrp::where('nm_category', $nm_category)
-            ->where('plan_actual', 'Actual')
-            ->whereYear('created_at', $year)
-            ->first();
-
-        if ($actual) {
-            $actual->update($commonActualData);
-        } else {
-            MstDboCrp::create(array_merge($commonActualData, [
-                'nm_category' => $nm_category,
-                'plan_actual' => 'Actual',
-            ]));
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Data berhasil disimpan.'
+        ]);
     }
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Data berhasil disimpan.'
-    ]);
-}
-
 
     public function exportMstActual()
     {
@@ -212,150 +313,294 @@ class CrpController extends Controller
 
 
     public function saveDetail(Request $request)
-{
-    try {
-        $rows = $request->input('rows');
-        $userId = Auth::id();
+    {
+        try {
+            $rows = $request->input('rows');
+            $userId = Auth::id();
 
-        if (empty($rows)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No data provided to save.'
-            ], 400);
-        }
-
-        DB::beginTransaction();
-
-        foreach ($rows as $index => $row) {
-            if (empty($row['actual_category'])) {
-                DB::rollBack();
+            if (empty($rows)) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Category is required for row " . ($index + 1)
+                    'message' => 'No data provided to save.'
                 ], 400);
             }
 
-            $mstDboCrp = null;
-            $oldTotalCostCrp = 0;
-            $oldMstId = null;
+            DB::beginTransaction();
 
-            // Ambil tahun dari detail row
-            $date = $row['date'] ?? null;
-            $month = $date ? Carbon::parse($date)->format('n') : null;
-            $year  = $date ? Carbon::parse($date)->format('Y') : null;
-
-            if (!$month || $month < 1 || $month > 12) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => "Invalid date/month for row " . ($index + 1)
-                ], 400);
-            }
-
-            // Handle existing TrsDboCrp updates
-            if (!empty($row['id'])) {
-                $existingTrs = TrsDboCrp::find($row['id']);
-                if (!$existingTrs) {
+            foreach ($rows as $index => $row) {
+                if (empty($row['actual_category'])) {
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => "TrsDboCrp record not found for row " . ($index + 1)
-                    ], 404);
+                        'message' => "Category is required for row " . ($index + 1)
+                    ], 400);
                 }
 
-                $oldTotalCostCrp = $existingTrs->total_cost_crp;
-                $oldMstId = $existingTrs->mst_id;
+                $mstDboCrp = null;
+                $oldTotalCostCrp = 0;
+                $oldMstId = null;
 
-                // Check if category changed
-                if ($existingTrs->nm_category != $row['actual_category']) {
-                    // Decrement old Mst
-                    $oldMst = MstDboCrp::find($oldMstId);
-                    if ($oldMst) {
-                        $oldDate = $existingTrs->date ? Carbon::parse($existingTrs->date) : null;
-                        if ($oldDate) {
-                            $oldMonth = $oldDate->format('n');
-                            $oldMonthColumn = 'month_' . $oldMonth;
-                            $oldMst->decrement($oldMonthColumn, $oldTotalCostCrp);
-                            $oldMst->decrement('grand_tot', $oldTotalCostCrp);
-                        }
+                // Ambil tahun dari detail row
+                $date = $row['date'] ?? null;
+                $month = $date ? Carbon::parse($date)->format('n') : null;
+                $year  = $date ? Carbon::parse($date)->format('Y') : null;
+
+                if (!$month || $month < 1 || $month > 12) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Invalid date/month for row " . ($index + 1)
+                    ], 400);
+                }
+
+                // Handle existing TrsDboCrp updates
+                if (!empty($row['id'])) {
+                    $existingTrs = TrsDboCrp::find($row['id']);
+                    if (!$existingTrs) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "TrsDboCrp record not found for row " . ($index + 1)
+                        ], 404);
                     }
 
-                    // Find new Mst based on category + year(created_at)
+                    $oldTotalCostCrp = $existingTrs->total_cost_crp;
+                    $oldMstId = $existingTrs->mst_id;
+
+                    // Check if category changed
+                    if ($existingTrs->nm_category != $row['actual_category']) {
+                        // Decrement old Mst
+                        $oldMst = MstDboCrp::find($oldMstId);
+                        if ($oldMst) {
+                            $oldDate = $existingTrs->date ? Carbon::parse($existingTrs->date) : null;
+                            if ($oldDate) {
+                                $oldMonth = $oldDate->format('n');
+                                $oldMonthColumn = 'month_' . $oldMonth;
+                                $oldMst->decrement($oldMonthColumn, $oldTotalCostCrp);
+                                $oldMst->decrement('grand_tot', $oldTotalCostCrp);
+                            }
+                        }
+
+                        // Find new Mst based on category + year(created_at)
+                        $mstDboCrp = MstDboCrp::where('nm_category', $row['actual_category'])
+                            ->where('plan_actual', 'Actual')
+                            ->whereYear('created_at', $year)
+                            ->first();
+                    } else {
+                        // Use existing Mst
+                        $mstDboCrp = MstDboCrp::find($oldMstId);
+                    }
+                } else {
+                    // New entry: find Mst by category + year(created_at)
                     $mstDboCrp = MstDboCrp::where('nm_category', $row['actual_category'])
                         ->where('plan_actual', 'Actual')
                         ->whereYear('created_at', $year)
                         ->first();
-                } else {
-                    // Use existing Mst
-                    $mstDboCrp = MstDboCrp::find($oldMstId);
                 }
-            } else {
-                // New entry: find Mst by category + year(created_at)
-                $mstDboCrp = MstDboCrp::where('nm_category', $row['actual_category'])
-                    ->where('plan_actual', 'Actual')
-                    ->whereYear('created_at', $year)
-                    ->first();
+
+                if (!$mstDboCrp) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Category not found for row " . ($index + 1) . " in year " . $year
+                    ], 400);
+                }
+
+                $monthColumn = 'month_' . $month;
+                $newTotalCostCrp = $row['total_cost_crp'] ?? 0;
+                $difference = $newTotalCostCrp - $oldTotalCostCrp;
+
+                // Update MstDboCrp
+                if (!empty($row['id']) && $mstDboCrp->id == $oldMstId) {
+                    // Adjust existing Mst by difference
+                    $mstDboCrp->increment($monthColumn, $difference);
+                    $mstDboCrp->increment('grand_tot', $difference);
+                } else {
+                    // New entry or changed category: increment new Mst
+                    $mstDboCrp->increment($monthColumn, $newTotalCostCrp);
+                    $mstDboCrp->increment('grand_tot', $newTotalCostCrp);
+                }
+
+                // Update or create TrsDboCrp
+                $trsData = [
+                    'mst_id' => $mstDboCrp->id,
+                    'nm_category' => $row['actual_category'],
+                    'detail_activity' => $row['detail_activity'] ?? null,
+                    'no_po' => $row['no_po'] ?? null,
+                    'date' => $date,
+                    'qty' => $row['qty'] ?? 0,
+                    'price_before' => $row['price_before'] ?? 0,
+                    'price_after' => $row['price_after'] ?? 0,
+                    'price_sell' => $row['selisih'] ?? 0,
+                    'total_cost_before' => $row['total_cost_before'] ?? 0,
+                    'total_cost_after' => $row['total_cost_after'] ?? 0,
+                    'total_cost_crp' => $newTotalCostCrp,
+                    'partner' => $userId,
+                ];
+
+                if (!empty($row['id'])) {
+                    $existingTrs->update($trsData);
+                } else {
+                    TrsDboCrp::create($trsData);
+                }
             }
 
-            if (!$mstDboCrp) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => "Category not found for row " . ($index + 1) . " in year " . $year
-                ], 400);
-            }
-
-            $monthColumn = 'month_' . $month;
-            $newTotalCostCrp = $row['total_cost_crp'] ?? 0;
-            $difference = $newTotalCostCrp - $oldTotalCostCrp;
-
-            // Update MstDboCrp
-            if (!empty($row['id']) && $mstDboCrp->id == $oldMstId) {
-                // Adjust existing Mst by difference
-                $mstDboCrp->increment($monthColumn, $difference);
-                $mstDboCrp->increment('grand_tot', $difference);
-            } else {
-                // New entry or changed category: increment new Mst
-                $mstDboCrp->increment($monthColumn, $newTotalCostCrp);
-                $mstDboCrp->increment('grand_tot', $newTotalCostCrp);
-            }
-
-            // Update or create TrsDboCrp
-            $trsData = [
-                'mst_id' => $mstDboCrp->id,
-                'nm_category' => $row['actual_category'],
-                'detail_activity' => $row['detail_activity'] ?? null,
-                'no_po' => $row['no_po'] ?? null,
-                'date' => $date,
-                'qty' => $row['qty'] ?? 0,
-                'price_before' => $row['price_before'] ?? 0,
-                'price_after' => $row['price_after'] ?? 0,
-                'price_sell' => $row['selisih'] ?? 0,
-                'total_cost_before' => $row['total_cost_before'] ?? 0,
-                'total_cost_after' => $row['total_cost_after'] ?? 0,
-                'total_cost_crp' => $newTotalCostCrp,
-                'partner' => $userId,
-            ];
-
-            if (!empty($row['id'])) {
-                $existingTrs->update($trsData);
-            } else {
-                TrsDboCrp::create($trsData);
-            }
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Data saved successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
-
-        DB::commit();
-        return response()->json(['success' => true, 'message' => 'Data saved successfully']);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Server error: ' . $e->getMessage()
-        ], 500);
     }
-}
 
+
+    // public function saveDetail(Request $request)
+    // {
+
+    //     try {
+    //         $rows = $request->input('rows');
+    //         $userId = Auth::id();
+
+    //         if (empty($rows)) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'No data provided to save.'
+    //             ], 400);
+    //         }
+
+    //         DB::beginTransaction();
+
+    //         foreach ($rows as $index => $row) {
+    //             if (empty($row['actual_category'])) {
+    //                 DB::rollBack();
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => "Category is required for row " . ($index + 1)
+    //                 ], 400);
+    //             }
+
+    //             $mstDboCrp = null;
+    //             $oldTotalCostCrp = 0;
+    //             $oldMstId = null;
+
+    //             // Handle existing TrsDboCrp updates
+    //             if (!empty($row['id'])) {
+    //                 $existingTrs = TrsDboCrp::find($row['id']);
+    //                 if (!$existingTrs) {
+    //                     DB::rollBack();
+    //                     return response()->json([
+    //                         'success' => false,
+    //                         'message' => "TrsDboCrp record not found for row " . ($index + 1)
+    //                     ], 404);
+    //                 }
+
+    //                 $oldTotalCostCrp = $existingTrs->total_cost_crp;
+    //                 $oldMstId = $existingTrs->mst_id;
+
+    //                 // Check if category changed
+    //                 if ($existingTrs->nm_category != $row['actual_category']) {
+    //                     // Decrement old Mst
+    //                     $oldMst = MstDboCrp::find($oldMstId);
+    //                     if ($oldMst) {
+    //                         $oldDate = $existingTrs->date ? Carbon::parse($existingTrs->date) : null;
+    //                         if ($oldDate) {
+    //                             $oldMonth = $oldDate->format('n');
+    //                             $oldMonthColumn = 'month_' . $oldMonth;
+    //                             $oldMst->decrement($oldMonthColumn, $oldTotalCostCrp);
+    //                             $oldMst->decrement('grand_tot', $oldTotalCostCrp);
+    //                         }
+    //                     }
+
+    //                     // Find new Mst based on new category
+    //                     $mstDboCrp = MstDboCrp::where('partner_user', $userId)
+    //                         ->where('nm_category', $row['actual_category'])
+    //                         ->where('plan_actual', 'Actual')
+    //                         ->first();
+    //                 } else {
+    //                     // Use existing Mst
+    //                     $mstDboCrp = MstDboCrp::find($oldMstId);
+    //                 }
+    //             } else {
+    //                 // New entry: find Mst by category and user
+    //                 $mstDboCrp = MstDboCrp::where('partner_user', $userId)
+    //                     ->where('nm_category', $row['actual_category'])
+    //                     ->where('plan_actual', 'Actual')
+    //                     ->first();
+    //             }
+
+    //             if (!$mstDboCrp) {
+    //                 DB::rollBack();
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => "Category not found for row " . ($index + 1)
+    //                 ], 400);
+    //             }
+
+    //             // Validate date and month
+    //             $date = $row['date'] ?? null;
+    //             $month = $date ? Carbon::parse($date)->format('n') : null;
+    //             if (!$month || $month < 1 || $month > 12) {
+    //                 DB::rollBack();
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => "Invalid date/month for row " . ($index + 1)
+    //                 ], 400);
+    //             }
+
+    //             $monthColumn = 'month_' . $month;
+    //             $newTotalCostCrp = $row['total_cost_crp'] ?? 0;
+    //             $difference = $newTotalCostCrp - $oldTotalCostCrp;
+
+    //             // Update MstDboCrp
+    //             if (!empty($row['id']) && $mstDboCrp->id == $oldMstId) {
+    //                 // Adjust existing Mst by difference
+    //                 $mstDboCrp->increment($monthColumn, $difference);
+    //                 $mstDboCrp->increment('grand_tot', $difference);
+    //             } else {
+    //                 // New entry or changed category: increment new Mst
+    //                 $mstDboCrp->increment($monthColumn, $newTotalCostCrp);
+    //                 $mstDboCrp->increment('grand_tot', $newTotalCostCrp);
+    //             }
+
+    //             // Update or create TrsDboCrp
+    //             $trsData = [
+    //                 'mst_id' => $mstDboCrp->id,
+    //                 'nm_category' => $row['actual_category'],
+    //                 'detail_activity' => $row['detail_activity'] ?? null,
+    //                 'no_po' => $row['no_po'] ?? null,
+    //                 'date' => $date,
+    //                 'qty' => $row['qty'] ?? 0,
+    //                 'price_before' => $row['price_before'] ?? 0,
+    //                 'price_after' => $row['price_after'] ?? 0,
+    //                 'price_sell' => $row['selisih'] ?? 0,
+    //                 'total_cost_before' => $row['total_cost_before'] ?? 0,
+    //                 'total_cost_after' => $row['total_cost_after'] ?? 0,
+    //                 'total_cost_crp' => $newTotalCostCrp,
+    //                 'partner' => $userId,
+    //             ];
+
+    //             if (!empty($row['id'])) {
+    //                 $existingTrs->update($trsData);
+    //             } else {
+    //                 TrsDboCrp::create($trsData);
+    //             }
+    //         }
+
+    //         DB::commit();
+    //         return response()->json(['success' => true, 'message' => 'Data saved successfully']);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Error: ' . $e->getMessage());
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Server error: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
 
 
@@ -415,10 +660,10 @@ class CrpController extends Controller
         if (!$ids || !is_array($ids)) {
             return response()->json(['success' => false, 'message' => 'ID tidak valid.']);
         }
-    
+
         // Soft delete
         MstDboCrp::whereIn('id', $ids)->update(['deleted_at' => now()]);
-    
+
         return response()->json(['success' => true]);
     }
 
@@ -463,7 +708,7 @@ class CrpController extends Controller
         }
     }
 
-     public function showDetailModal($crpId)
+    public function showDetailModal($crpId)
     {
         // Ambil semua detail berdasarkan crpId
         $details = DetailDboCrp::where('crp_id', $crpId)->get();
@@ -583,7 +828,4 @@ class CrpController extends Controller
 
         return view('crp.dashboardcrp', compact('mstDboCrps', 'trsDboCrps', 'userName'));
     }
-
-    
-
 }

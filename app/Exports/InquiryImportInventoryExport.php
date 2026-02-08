@@ -171,7 +171,7 @@ class InquiryImportInventoryExport implements FromCollection, WithHeadings, With
 
     // Mengaktifkan wrap text untuk semua sel agar isi tidak terpotong
     $contentRange = 'A1:' . $highestColumn . $highestRow;
-    $sheet->getStyle($contentRange)->getAlignment()->setWrapText(true);
+    $sheet->getStyle($contentRange)->getAlignment()->setWrapText(false);
 
     // Loop setiap kolom untuk mencari teks terpanjang dan menyesuaikan ukuran kolomnya
     foreach (range('A', $highestColumn) as $column) {
@@ -189,7 +189,7 @@ class InquiryImportInventoryExport implements FromCollection, WithHeadings, With
         }
 
         // Set ukuran kolom mengikuti teks terpanjang dengan padding tambahan
-        $columnWidth = min($maxLength + 2, 50); // Batas maksimal lebar kolom = 50
+        $columnWidth = min($maxLength + 2, 150); // Batas maksimal lebar kolom = 50
         $sheet->getColumnDimension($column)->setWidth($columnWidth);
     }
 }

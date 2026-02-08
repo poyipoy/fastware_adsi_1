@@ -9,7 +9,7 @@
     <h1>Convert JSON to CSV</h1>
     <form action="{{ route('convert.json') }}" method="POST">
         @csrf
-        <textarea name="json_text" rows="30" cols="220" placeholder="Paste your JSON here..." required></textarea><br>
+        <textarea name="json_text" rows="30" cols="100" placeholder="Paste your JSON here..." required></textarea><br>
         <button type="submit">Convert to CSV</button>
     </form>
 

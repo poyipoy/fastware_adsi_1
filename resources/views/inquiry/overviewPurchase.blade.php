@@ -349,39 +349,6 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title font-sii text-center">Overview Purchasing</h5>
-                    <form method="GET" action="{{ route('overviewPurchase.exportByDate') }}" class="row g-2 align-items-end justify-content-end mt-3">
-                        <div class="col-sm-6 col-md-3">
-                            <label for="start_date" class="form-label small fw-bold">From Date</label>
-                            <input type="date"
-                                   name="start_date"
-                                   id="start_date"
-                                   class="form-control form-control-sm @error('start_date') is-invalid @enderror"
-                                   value="{{ old('start_date') }}">
-                            @error('start_date')
-                                <div class="invalid-feedback">
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-                        <div class="col-sm-6 col-md-3">
-                            <label for="end_date" class="form-label small fw-bold">To Date</label>
-                            <input type="date"
-                                   name="end_date"
-                                   id="end_date"
-                                   class="form-control form-control-sm @error('end_date') is-invalid @enderror"
-                                   value="{{ old('end_date') }}">
-                            @error('end_date')
-                                <div class="invalid-feedback">
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-                        <div class="col-sm-12 col-md-auto">
-                            <button type="submit" class="btn btn-outline-success btn-sm w-100 mt-3 mt-md-0">
-                                <i class="bi bi-calendar3"></i> Export Date Range
-                            </button>
-                        </div>
-                    </form>
                 </div>
 
                 <section class="section">
@@ -600,44 +567,7 @@
                         { data: 'ship_to', name: 'ship_to', orderable: false, defaultContent: '--- No Shipping Options ---' },
                         { data: 'last_update', name: 'last_update', defaultContent: 'No updates yet' },
                         { data: 'est_date', name: 'est_date', defaultContent: '-' },
-                        {
-                            data: null,
-                            orderable: false,
-                            searchable: false,
-                            defaultContent: '',
-                            render: function (data, type, row) {
-                                if (type !== 'display') {
-                                    return row && row.actions ? row.actions : '';
-                                }
-
-                                if (row && typeof row.actions === 'string' && row.actions.includes('bi bi-pencil')) {
-                                    return row.actions;
-                                }
-
-                                const id = row && row.id ? Number(row.id) : null;
-                                if (!id) {
-                                    return row && row.actions ? row.actions : '';
-                                }
-
-                                const supplier = row && row.supplier ? JSON.stringify(String(row.supplier)) : '""';
-                                const progress = row && row.last_update ? JSON.stringify(String(row.last_update)) : '""';
-                                const refnopo = row && row.refnopo ? JSON.stringify(String(row.refnopo)) : '""';
-                                const estSource = row && row.est_date ? String(row.est_date) : '';
-                                let estNormalized = estSource;
-                                if (/^\d{2}-\d{2}-\d{4}$/.test(estSource)) {
-                                    const parts = estSource.split('-');
-                                    estNormalized = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : estSource;
-                                }
-                                const estDate = JSON.stringify(estNormalized);
-
-                                const editBtn = '<a href="#" class="btn btn-primary btn-sm" onclick=\'showEditDataModal('
-                                    + id + ', ' + supplier + ', ' + progress + ', ' + refnopo + ', ' + estDate
-                                    + '); return false;\' title="Edit Inquiry"><i class="bi bi-pencil"></i></a>';
-
-                                const baseActions = row && row.actions ? row.actions + ' ' : '';
-                                return baseActions + editBtn;
-                            }
-                        },
+                        { data: 'actions', orderable: false, searchable: false, defaultContent: '' },
                         { data: 'checkbox', orderable: false, searchable: false, defaultContent: '' }
                     ],
                     order: [[3, 'desc']],

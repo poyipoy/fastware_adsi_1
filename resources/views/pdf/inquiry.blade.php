@@ -7,7 +7,6 @@
     <title>Inquiry PDF</title>
     <style>
         @page {
-            size: A4 landscape;
             margin: 1cm;
 
             /* Margin 1cm di semua sisi */
@@ -15,8 +14,7 @@
 
         body {
             font-family: 'Cambria', serif;
-            padding: 0;
-            font-size: 10px;
+            padding-right: 2rem;
         }
 
         .container {
@@ -77,19 +75,18 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9px; /* Sesuaikan ukuran font agar tabel tidak terlalu besar */
-            table-layout: fixed; /* Pastikan tabel tidak melebihi batas halaman */
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            /* Memperkecil ukuran font tabel */
         }
 
         table th,
         table td {
             border: 1px solid #000;
-            padding: 2px; /* Kurangi padding agar lebih hemat ruang */
-            text-align: center; /* Buat rata tengah agar lebih rapi */
-            word-wrap: break-word; /* Memastikan teks panjang tidak keluar */
-            overflow: hidden;
+            padding: 2px;
+            /* Mengurangi padding untuk memperkecil tabel */
+            text-align: left;
         }
-        
 
         table th {
             background-color: #f2f2f2;
@@ -126,106 +123,35 @@
             <h1>Detail Inquiry</h1>
         </div>
 
-        @if($latestInquiry == null)
-            @if($inquiry) <!-- Check if $inquiry data exists -->
-                <table class="table-n">
-                    <thead class="table-n">
-                        <tr class="table-n">
-                            @if($inquiry->create_by) <th style="width: 20%;" class="table-n">Create By</th> @endif
-                            @if($inquiry->loc_imp) <th style="width: 20%;" class="table-n">Category</th> @endif
-                            @if($inquiry->kode_inquiry) <th style="width: 20%;" class="table-n">Reference</th> @endif
-                            @if($inquiry->customer) <th style="width: 20%;" class="table-n">Customer</th> @endif
-                            @if($inquiry->supplier) <th style="width: 20%;" class="table-n">Supplier</th> @endif
-                            @if($inquiry->created_at) <th style="width: 20%;" class="table-n">Date Create</th> @endif
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-n">
-                            @if($inquiry->create_by) <td class="table-n">{{ $inquiry->create_by }}</td> @endif
-                            @if($inquiry->loc_imp) <td class="table-n">{{ $inquiry->loc_imp }}</td> @endif
-                            @if($inquiry->kode_inquiry) <td class="table-n">{{ $inquiry->kode_inquiry }}</td> @endif
-                            @if($inquiry->customer) <td class="table-n">{{ $inquiry->customer->name_customer ?? '-' }}</td> @endif
-                            @if($inquiry->supplier) <td class="table-n">{{ $inquiry->supplier }}</td> @endif
-                            @if($inquiry->created_at) <td class="table-n">{{ $inquiry->created_at }}</td> @endif
-                        </tr>
-                    </tbody>
-                </table>
-            @endif
-        @elseif($latestInquiry) <!-- Check if $inquiry data exists -->
+        @if($inquiry) <!-- Check if $inquiry data exists -->
             <table class="table-n">
                 <thead class="table-n">
                     <tr class="table-n">
-                        {{-- @if($inquiry->create_by) <th style="width: 20%;" class="table-n">Create By</th> @endif --}}
-                        @if($latestInquiry->loc_imp) <th style="width: 20%;" class="table-n">Category</th> @endif
-                        {{-- @if($inquiry->kode_inquiry) <th style="width: 20%;" class="table-n">Reference</th> @endif
+                        @if($inquiry->create_by) <th style="width: 20%;" class="table-n">Create By</th> @endif
+                        @if($inquiry->loc_imp) <th style="width: 20%;" class="table-n">Category</th> @endif
+                        @if($inquiry->kode_inquiry) <th style="width: 20%;" class="table-n">Reference</th> @endif
                         @if($inquiry->customer) <th style="width: 20%;" class="table-n">Customer</th> @endif
                         @if($inquiry->supplier) <th style="width: 20%;" class="table-n">Supplier</th> @endif
-                        @if($inquiry->created_at) <th style="width: 20%;" class="table-n">Date Create</th> @endif --}}
+                        @if($inquiry->created_at) <th style="width: 20%;" class="table-n">Date Create</th> @endif
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="table-n">
-                        {{-- @if($inquiry->create_by) <td class="table-n">{{ $inquiry->create_by }}</td> @endif --}}
-                        @if($latestInquiry->loc_imp) <td class="table-n">{{ $latestInquiry->loc_imp }}</td> @endif
-                        {{-- @if($inquiry->kode_inquiry) <td class="table-n">{{ $inquiry->kode_inquiry }}</td> @endif
+                        @if($inquiry->create_by) <td class="table-n">{{ $inquiry->create_by }}</td> @endif
+                        @if($inquiry->loc_imp) <td class="table-n">{{ $inquiry->loc_imp }}</td> @endif
+                        @if($inquiry->kode_inquiry) <td class="table-n">{{ $inquiry->kode_inquiry }}</td> @endif
                         @if($inquiry->customer) <td class="table-n">{{ $inquiry->customer->name_customer ?? '-' }}</td> @endif
                         @if($inquiry->supplier) <td class="table-n">{{ $inquiry->supplier }}</td> @endif
-                        @if($inquiry->created_at) <td class="table-n">{{ $inquiry->created_at }}</td> @endif --}}
+                        @if($inquiry->created_at) <td class="table-n">{{ $inquiry->created_at }}</td> @endif
                     </tr>
                 </tbody>
             </table>
         @endif
 
-        @if ($latestInquiry == null)        
-            @if($materials->isNotEmpty()) <!-- Check if there are materials data -->
-                @if($inquiry->loc_imp == 'Local')
-                <table>
-                    <thead>
-                        <tr>
-                            @if($materials->first()->type_materials) <th style="width: 100px;">Raw Material</th> @endif
-                            @if($materials->first()->jenis) <th style="width: 50px;">Shapes</th> @endif
-                            @if($materials->first()->thickness) <th style="width: 40px;text-align:center;">Thickness</th> @endif
-                            @if($materials->first()->weight) <th style="width: 40px;text-align:center;">Width</th> @endif
-                            @if($materials->first()->inner_diameter) <th style="width: 40px; text-align:center;">Inner Dia</th> @endif
-                            @if($materials->first()->outer_diameter) <th style="width: 40px; text-align:center;">Outer Dia</th> @endif
-                            @if($materials->first()->length) <th style="width: 50px;text-align:center;">Length</th> @endif
-                            @if($materials->first()->qty) <th style="width: 50px; text-align:center;">Qty</th> @endif
-                            @if($materials->first()->m1) <th style="width: 50px; text-align:center;">Forecast Month 1</th> @endif
-                            @if($materials->first()->m2) <th style="width: 50px; text-align:center;">Forecast Month 2</th> @endif
-                            @if($materials->first()->m3) <th style="width: 50px; text-align:center;">Forecast Month 3</th> @endif
-                            @if($materials->first()->ship) <th style="width: 70px; text-align:center;">Ship-to</th> @endif
-                            @if($materials->first()->so) <th style="width: 50px; text-align:center;">Sales Order</th> @endif
-                            <th style="width: 50px;">Remark</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body">
-                        @foreach ($materials as $index => $material)
-                            <tr>
-                                @if($material->type_materials) <td>{{ $material->type_materials->type_name ?? 'N/A' }}</td> @endif
-                                @if($material['jenis']) <td>{{ $material['jenis'] }}</td> @endif
-                                @if($material['thickness']) <td style="text-align:center;">{{ $material['thickness'] }}</td> @endif
-                                @if($material['weight']) <td style="text-align:center;">{{ $material['weight'] }}</td> @endif
-                                @if($material['inner_diameter']) <td style="text-align:center;">{{ $material['inner_diameter'] }}</td> @endif
-                                @if($material['outer_diameter']) <td style="text-align:center;">{{ $material['outer_diameter'] }}</td> @endif
-                                @if($material['length']) <td style="text-align:center;">{{ $material['length'] }}</td> @endif
-                                @if($material['qty']) <td style="text-align:center;">{{ $material['qty'] }}</td> @endif
-                                @if($material['m1']) <td style="text-align:center;">{{ $material['m1'] }}</td> @endif
-                                @if($material['m2']) <td style="text-align:center;">{{ $material['m2'] }}</td> @endif
-                                @if($material['m3']) <td style="text-align:center;">{{ $material['m3'] }}</td> @endif
-                                @if($material['ship']) <td style="text-align:center;">{{ $material['ship'] }}</td> @endif
-                                @if($material['so']) <td>{{ $material['so'] }}</td> @endif
-                                <td>{{ $material['note'] }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                @endif
-        
-        {{-- @else
+        @if($materials->isNotEmpty()) <!-- Check if there are materials data -->
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 50px;">Klasifikasi</th>
                         @if($materials->first()->type_materials) <th style="width: 100px;">Raw Material</th> @endif
                         @if($materials->first()->jenis) <th style="width: 50px;">Shapes</th> @endif
                         @if($materials->first()->thickness) <th style="width: 40px;text-align:center;">Thickness</th> @endif
@@ -240,15 +166,11 @@
                         @if($materials->first()->ship) <th style="width: 70px; text-align:center;">Ship-to</th> @endif
                         @if($materials->first()->so) <th style="width: 50px; text-align:center;">Sales Order</th> @endif
                         <th style="width: 50px;">Remark</th>
-                        <th style="width: 50px;">Customer</th>
-                        <th style="width: 50px;">Partner</th>
-                        <th style="width: 50px;">No PO</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
                     @foreach ($materials as $index => $material)
                         <tr>
-                            <td>{{ $material['klasifikasi'] }}</td>
                             @if($material->type_materials) <td>{{ $material->type_materials->type_name ?? 'N/A' }}</td> @endif
                             @if($material['jenis']) <td>{{ $material['jenis'] }}</td> @endif
                             @if($material['thickness']) <td style="text-align:center;">{{ $material['thickness'] }}</td> @endif
@@ -263,179 +185,14 @@
                             @if($material['ship']) <td style="text-align:center;">{{ $material['ship'] }}</td> @endif
                             @if($material['so']) <td>{{ $material['so'] }}</td> @endif
                             <td>{{ $material['note'] }}</td>
-                            <td>
-                                @php
-                                    $customerName = '';
-                                    foreach ($customers as $customer) {
-                                        if ($customer->id == $material->customer) {
-                                            $customerName = $customer->name_customer;
-                                            break;
-                                        }
-                                    }
-                                @endphp
-                                <span>{{ $customerName }}</span>
-                            </td>
-                            <td>
-                                @php
-                                    $partnerName = '';
-                                    foreach ($users as $user) {
-                                        if ($user->id == $material->create_by) {
-                                            $partnerName = $user->name;
-                                            break;
-                                        }
-                                    }
-                                @endphp
-                                <span>{{ $partnerName }}</span>
-                            </td>
-                            <td>{{ $material['nopo'] }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-            @endif --}}
         @else
             <p>No materials data found.</p> <!-- Display message if no materials data -->
         @endif
 
-        @elseif ($latestInquiry)
-            @if($materials->isNotEmpty()) <!-- Check if there are materials data -->
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 50px;">Klasifikasi</th>
-                        <th style="width: 50px;">Region</th>
-                        <th style="width: 100px;">Raw Material</th>
-                        <th style="width: 50px;">Shapes</th>
-                        <th style="width: 40px;text-align:center;">Thickness</th>
-                        <th style="width: 40px;text-align:center;">Width</th>
-                        <th style="width: 40px; text-align:center;">Inner Dia</th>
-                        <th style="width: 40px; text-align:center;">Outer Dia</th>
-                        <th style="width: 50px;text-align:center;">Length</th>
-                        <th style="width: 50px; text-align:center;">Qty</th>
-                        <th style="width: 50px; text-align:center;">Forecast Month 1</th>
-                        <th style="width: 50px; text-align:center;">Forecast Month 2</th>
-                        <th style="width: 50px; text-align:center;">Forecast Month 3</th>
-                        <th style="width: 70px; text-align:center;">Ship-to</th>
-                        <th style="width: 50px; text-align:center;">Sales Order</th>
-                        <th style="width: 50px;">Remark</th>
-                        <th style="width: 50px;">Customer</th>
-                        <th style="width: 50px;">Partner</th>
-                        <th style="width: 50px;">No PO</th>
-                        <th style="width: 50px;">progress</th>
-                        <th style="width: 50px;">Supplier</th>
-                        <th style="width: 50px;">Submited By</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body">
-                    @foreach ($materials as $index => $material)
-                        <tr>
-                            <td>{{ $material['klasifikasi'] }}</td>
-                            <td>{{ $material->inquirySales1->region ?? 'N/A' }}</td>
-                            <td>{{ $material->type_materials->type_name ?? 'N/A' }}</td>
-                            <td>{{ $material['jenis'] }}</td>
-                            <td style="text-align:center;">{{ $material['thickness'] }}</td>
-                            <td style="text-align:center;">{{ $material['weight'] }}</td>
-                            <td style="text-align:center;">{{ $material['inner_diameter'] }}</td>
-                            <td style="text-align:center;">{{ $material['outer_diameter'] }}</td>
-                            <td style="text-align:center;">{{ $material['length'] }}</td>
-                            <td style="text-align:center;">{{ $material['qty'] }}</td>
-                            <td style="text-align:center;">{{ $material['m1'] }}</td> 
-                            <td style="text-align:center;">{{ $material['m2'] }}</td> 
-                            <td style="text-align:center;">{{ $material['m3'] }}</td> 
-                            <td style="text-align:center;">{{ $material['ship'] }}</td>
-                            <td>{{ $material['so'] }}</td>
-                            <td>{{ $material['note'] }}</td>
-                            <td>
-                                @php
-                                    $customerNames = [];
-                                    $decoded = json_decode($material->customer, true);
-                            
-                                    // Cek apakah hasil decode adalah array
-                                    if (is_array($decoded)) {
-                                        foreach ($decoded as $item) {
-                                            // Jika item berupa ID (angka dan cocok di daftar customer), ambil nama dari relasi
-                                            $found = false;
-                                            foreach ($customers as $customer) {
-                                                if ($customer->id == $item) {
-                                                    $customerNames[] = $customer->name_customer;
-                                                    $found = true;
-                                                    break;
-                                                }
-                                            }
-                            
-                                            // Jika tidak ditemukan sebagai ID, anggap itu adalah nama langsung
-                                            if (!$found) {
-                                                $customerNames[] = $item;
-                                            }
-                                        }
-                                    } else {
-                                        // Bukan array → bisa ID atau nama langsung
-                                        $found = false;
-                                        foreach ($customers as $customer) {
-                                            if ($customer->id == $material->customer) {
-                                                $customerNames[] = $customer->name_customer;
-                                                $found = true;
-                                                break;
-                                            }
-                                        }
-                            
-                                        // Jika tidak cocok ID, anggap nama langsung
-                                        if (!$found && !empty($material->customer)) {
-                                            $customerNames[] = $material->customer;
-                                        }
-                                    }
-                                @endphp
-                                <span>{{ implode(', ', $customerNames) }}</span>
-                            </td>
-                            <td>
-                                @php
-                                    $partnerName = '';
-                                    foreach ($users as $user) {
-                                        if ($user->id == $material->create_by) {
-                                            $partnerName = $user->name;
-                                            break;
-                                        }
-                                    }
-                                @endphp
-                                <span>{{ $partnerName }}</span>
-                            </td>
-                            <td>{{ $material['nopo'] }}</td>
-                            <td>{{ $material['progress'] }}</td>
-                            <td>{{ $material['supplier'] }}</td>
-                            <td>
-                                @if ($material->inquirySales1->kadept_id)
-                                    @php
-                                        $kadeptName = '';
-                                        foreach ($users as $user) {
-                                            if ($user->id == $material->inquirySales1->kadept_id) {
-                                                $kadeptName = $user->name;
-                                                break;
-                                            }
-                                        }
-                                    @endphp
-                                    <div style="font-size: 6pt; color: green;">
-                                        {{ $kadeptName }}<br>
-                                        <small>
-                                            {{ $material->inquirySales1->approved_kadept_at ? \Carbon\Carbon::parse($material->inquirySales1->approved_kadept_at)->format('d/m/Y H:i') : 'N/A' }}
-                                        </small>
-                                    </div>
-                                @else
-                                    <div style="font-size: 6pt; color: crimson;">
-                                        Waiting Approval<br>
-                                        <small>Date: N/A</small>
-                                    </div>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>     
-        @else
-            <p>No materials data found.</p> <!-- Display message if no materials data -->
-        @endif
-    @endif
-
-    @if ($latestInquiry == null)
         @if($signatures) <!-- Check if $signatures data exists -->
         <h4>Signature Details :</h4>
         <table class="table-n1">
@@ -487,49 +244,6 @@
             </tbody>
         </table>
         @endif
-    
-    @elseif ($signaturesList)
-        <div style="page-break-inside: avoid;">
-            <h4 style="margin-bottom: 6px;">Signature Details :</h4>
-
-            <table class="table-n1">
-                <thead>
-                    <tr>
-                        <th style="width: 20%;">Inventory</th>
-                        <th style="width: 20%;">Purchasing</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <p style="color: {{ $latestInquiry->inventory ? 'green' : 'crimson' }}; font-size: 9pt;">
-                                {{ $latestInquiry->inventory ? 'Approved' : 'Waiting Approval' }}
-                            </p>
-                            {{-- <p style="font-size: 8pt;">
-                                {{ $signaturesList[$latestInquiry->id]['approved_inventory'] }}
-                            </p> --}}
-                            <small>
-                                Date: {{ $latestInquiry->approved_inventory_at ? \Carbon\Carbon::parse($latestInquiry->approved_inventory_at)->format('d/m/Y H:i') : 'N/A' }}
-                            </small>
-                        </td>
-                        <td>
-                            <p style="color: {{ $latestInquiry->purchasing ? 'green' : 'crimson' }}; font-size: 9pt;">
-                                {{ $latestInquiry->purchasing ? 'Confirmed' : 'Waiting Confirmation' }}
-                            </p>
-                            <p style="font-size: 8pt;">
-                                {{ $signaturesList[$latestInquiry->id]['confirmed_purchasing'] }}
-                            </p>
-                            <small>
-                                Date: {{ $latestInquiry->confirmed_purchasing_at ? \Carbon\Carbon::parse($latestInquiry->confirmed_purchasing_at)->format('d/m/Y H:i') : 'N/A' }}
-                            </small>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    @endif
-
-        
     </div>
 </body>
 

@@ -382,6 +382,34 @@
                     </li>
                 </ul>
 
+                {{-- CRM Report link untuk Sales (terlihat untuk admin dam sales roles) --}}
+                @php
+                    $crmUsers = [
+                        'ADMINSTRATOR',
+                        'ANDIK TOTOK SISWOYO',
+                        'DANIA ISNAWATI',
+                        'DWI KUNTORO',
+                        'FISKA CHRISMAS YUDHA',
+                        'JUN JOHAMIN PD',
+                        'YAN WELEM MANGINSELA',
+                        'WULYO EKO PRASETYO',
+                        'SENDY PRABOWO',
+                        'YULMAI RIDO WINANDA',
+                        'YUNASIS PALGUNADI',
+                        'SONY STIAWAN',
+                    ];
+                    $currentUser = Auth::user();
+                    $isAdminName = $currentUser && in_array(strtoupper($currentUser->name ?? ''), ['ADMINISTRATOR','ADMINSTRATOR']);
+                @endphp
+                @if (($currentUser && $currentUser->role_id === 1) || $isAdminName || in_array($currentUser->name ?? '', $crmUsers))
+                    <li class="nav-item">
+                        <a class="nav-link collapsed" href="{{ route('sales.crm_report') }}">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>CRM Report</span>
+                        </a>
+                    </li>
+                @endif
+
             </li><!-- End Forms Nav -->
             @endif
             {{-- SS, Safety Patrol dan Trace WO --}}
@@ -866,6 +894,7 @@
         </ul>
         <!-- End Footer Sidebar -->
     </aside><!-- End Sidebar-->
+    
 
     @yield('content');
 
@@ -896,6 +925,7 @@
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     {{-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> --}}
     {{-- datatable --}}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
@@ -906,7 +936,7 @@
     {{-- JSSweetAlert --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     {{-- Datatble --}}
-    <script src="js/datatables-simple-demo.js"></script>
+    <script src="{{ asset('js/datatables-simple-demo.js') }}"></script>
 
     {{-- DateRangePicker --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

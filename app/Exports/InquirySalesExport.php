@@ -12,6 +12,24 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class InquirySalesExport implements FromCollection, WithHeadings, WithMapping, WithStyles
 {
     /**
+     * Status label lookup so Excel export matches UI text.
+     *
+     * @var array<int, string>
+     */
+    private const STATUS_LABELS = [
+        0 => 'Draft',
+        1 => 'Draft',
+        2 => 'Open',
+        3 => 'Approve Ka.Dept',
+        4 => 'Approve Ka.Sie',
+        5 => 'On Progress',
+        6 => 'Finished',
+        7 => 'Rejected',
+        8 => 'Approve Inventory',
+        9 => 'Confirm Purchasing',
+    ];
+
+    /**
      * Mengambil data dari database untuk diekspor ke Excel.
      *
      * @return \Illuminate\Support\Collection
@@ -118,12 +136,20 @@ public function styles(Worksheet $sheet)
             $inquiry->nomor_urut, $inquiry->name_customer, $inquiry->kode_inquiry, $inquiry->type_order, 
             $inquiry->jenis_inquiry, $inquiry->loc_imp, $inquiry->est_date, $inquiry->supplier, 
             $inquiry->sales_person, $inquiry->progress, $inquiry->ref_po, $inquiry->files, 
-            $inquiry->status, $inquiry->created_at, $inquiry->updated_at, $inquiry->modified_by,
+            $this->formatStatus($inquiry->status), $inquiry->created_at, $inquiry->updated_at, $inquiry->modified_by,
             $inquiry->raw_material, $inquiry->shapes, $inquiry->thickness, $inquiry->inner_diameter, 
             $inquiry->outer_diameter, $inquiry->weight, $inquiry->length, $inquiry->qty_unit, 
             $inquiry->forecast_month_1, $inquiry->forecast_month_2, $inquiry->forecast_month_3, 
             $inquiry->ref_so, $inquiry->ship_to, $inquiry->remark, $inquiry->file, 
             $inquiry->detail_created_at, $inquiry->detail_updated_at
         ];
+    }
+
+    /**
+     * Convert numeric status to export label.
+     */
+    private function formatStatus($status): string
+    {
+        return self::STATUS_LABELS[(int) $status] ?? 'Unknown';
     }
 }

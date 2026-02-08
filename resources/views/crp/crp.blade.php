@@ -206,7 +206,7 @@
                                         'Consumable',
                                         'Repair Maintenance',
                                         'Utility',
-                                        'General Affair',
+                                        'HRGA',
                                         'Material Cost',
                                         'Indirect Material',
                                         'Others',
@@ -409,7 +409,7 @@
                                         <td rowspan="2">
                                             <select class="form-control" name="category[]">
                                                 <option value="" disabled>Pilih Kategori</option>
-                                                @foreach (['Consumable', 'Subcont', 'Repair Maintenance', 'Utility', 'General Afffair', 'IT', 'Material Cost', 'Indirect Material', 'Others'] as $opt)
+                                                @foreach (['Consumable', 'Subcont', 'Repair Maintenance', 'Utility', 'HRGA', 'IT', 'Material Cost', 'Indirect Material', 'Others'] as $opt)
                                                     <option value="{{ $opt }}" {{ $category == $opt ? 'selected' : '' }}>{{ $opt }}</option>
                                                 @endforeach
                                             </select>
@@ -459,15 +459,22 @@
                         {{-- <a href="#" class="btn btn-danger font-weight-bold px-4" onclick="deleteRows1()">
                             Hapus Baris
                         </a> --}}
+                        @php
+                            $allowedUsers = ['ADMINSTRATOR', 'JESSICA PAUNE'];
+                        @endphp
+                        @if(in_array(Auth::user()->name, $allowedUsers))
                         <button class="btn btn-warning font-weight-bold px-4 text-white" onclick="resetInputs()">
                             Reset
                         </button>
+                        
                         <button class="btn btn-primary" onclick="saveData()">
                             Simpan
                         </button>
+                        
                         <button class="btn btn-primary" onclick="deletePermanen()">
                             Hapus
                         </button>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -1057,7 +1064,7 @@
                         <option value="Subcont">Subcont</option>
                         <option value="Repair Maintenance">Repair Maintenance</option>
                         <option value="Utility">Utility</option>
-                        <option value="General Afffair">General Afffair</option>
+                        <option value="HRGA">HRGA</option>
                         <option value="IT">IT</option>
                         <option value="Material Cost">Material Cost</option>
                         <option value="Indirect Material">Indirect Material</option>
@@ -1367,7 +1374,7 @@
                     let totalActualFY = 0;
                     let totalActualExisting = 0;
                     if (actualRow) {
-                        for (let col = 2; col <= 13 col++) { // Kolom bulan 1 hingga bulan 12
+                        for (let col = 2; col <= 13; col++) { // Kolom bulan 1 hingga bulan 12
                             const input = actualRow.cells[col]?.querySelector('input');
                             if (input) {
                                 totalActualFY += parseFloat(input.value) || 0; // Untuk menghitung FY

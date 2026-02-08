@@ -443,32 +443,32 @@
                         </div>
                     </div>
 
-                    <!-- Modal Edit Data -->
-<div class="modal fade" id="editDataModal1" tabindex="-1" aria-labelledby="editDataModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editDataModalLabel">Edit Inquiry</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="editInquiryForm">
-                    @csrf
-                    <input type="hidden" id="inquiryId" name="inquiryId"> <!-- ID untuk inquiry yang akan diedit -->
-                    <div class="mb-3">
-                        <label for="source_pr" class="form-label">Source PR</label>
-                        <textarea class="form-control" id="source_pr" name="source_pr" placeholder="Masukkan source pr" required></textarea>
-                        <div class="form-text"></div>
+                                        <!-- Modal Edit Data -->
+                    <div class="modal fade" id="editDataModal1" tabindex="-1" aria-labelledby="editDataModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editDataModalLabel">Edit Inquiry</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="editInquiryForm">
+                                        @csrf
+                                        <input type="hidden" id="inquiryId" name="inquiryId"> <!-- ID untuk inquiry yang akan diedit -->
+                                        <div class="mb-3">
+                                            <label for="source_pr" class="form-label">Source PR</label>
+                                            <textarea class="form-control" id="source_pr" name="source_pr" placeholder="Masukkan source pr" required></textarea>
+                                            <div class="form-text"></div>
+                                        </div>
+                                    </form>                                                                    
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="saveData()">Submit</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </form>                                                                    
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="saveData()">Submit</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 
 

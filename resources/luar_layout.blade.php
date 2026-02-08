@@ -501,7 +501,7 @@
     {{-- JSSweetAlert --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     {{-- Datatble --}}
-    <script src="js/datatables-simple-demo.js"></script>
+    <script src="{{ asset('js/datatables-simple-demo.js') }}"></script>
 
     {{-- DateRangePicker --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

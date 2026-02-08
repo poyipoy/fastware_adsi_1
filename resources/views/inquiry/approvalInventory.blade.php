@@ -323,7 +323,10 @@
                 <div class="card-body">
                     <h5 class="card-title font-sii text-center">Approval Inventory</h5>
                 </div>
-
+            <div class="d-flex align-items-center justify-content-start m-4">
+                <a href="{{ route('export.inquiry') }}" class="bx bx-download btn btn-success btn-sm me-2"> Export
+                            Inquiry</a>
+            </div>
                 <section class="section">
                     <div class="card">
                         <div class="card-body">
@@ -354,44 +357,8 @@
                                                 <td>{{ $inquiry->supplier }}</td>
                                                 <td>{{ $inquiry->customer ? $inquiry->customer->name_customer : 'N/A' }}
                                                 </td>
-                                                @php
-                                                    $statusDescriptions = [
-                                                        1 => 'Draft',
-                                                        2 => 'Open',
-                                                        3 => 'Approve Ka.Dept',
-                                                        4 => 'Approve Ka.Sie',
-                                                        5 => 'On Progress',
-                                                        6 => 'Finished',
-                                                        7 => 'Rejected',
-                                                        8 => 'Approve Inventory',
-                                                    ];
-
-                                                    // Mendefinisikan kelas tombol berdasarkan status
-                                                    $buttonClasses = [
-                                                        1 => 'btn-secondary', // Draft
-                                                        2 => 'btn-success', // Open
-                                                        3 => 'btn-danger', // Approve Ka.Dept
-                                                        4 => 'btn-info', // Approve Ka.Sie
-                                                        5 => 'btn-warning', // On Progress
-                                                        6 => 'btn-primary', // Finished
-                                                        7 => 'btn-danger', // Rejected
-                                                        8 => 'btn-danger', // Approve Inventory
-                                                    ];
-                                                @endphp
                                                 <td>
-                                                    <button
-                                                        class="btn btn-sm 
-                                                        {{ $buttonClasses[$inquiry->status] ?? 'btn-light' }} 
-                                                        {{ $inquiry->status == 1 ? 'btn-custom-draft' : '' }}
-                                                        {{ $inquiry->status == 2 ? 'btn-custom-open' : '' }}
-                                                        {{ $inquiry->status == 3 ? 'btn-custom-approve-dept' : '' }}
-                                                        {{ $inquiry->status == 4 ? 'btn-custom-approve-sie' : '' }}
-                                                        {{ $inquiry->status == 5 ? 'btn-custom-in-progress' : '' }}
-                                                        {{ $inquiry->status == 6 ? 'btn-custom-finished' : '' }}
-                                                        {{ $inquiry->status == 7 ? 'btn-custom-rejected' : '' }}
-                                                        {{ $inquiry->status == 8 ? 'btn-custom-rejected' : '' }}">
-                                                        {{ $statusDescriptions[$inquiry->status] ?? 'Unknown' }}
-                                                    </button>
+                                                    <x-inquiry.status-badge :status="$inquiry->status" />
                                                 </td>
                                                 <td>
                                                     @if ($inquiry->details->isNotEmpty())

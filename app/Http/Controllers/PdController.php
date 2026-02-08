@@ -408,6 +408,8 @@ class PdController extends Controller
                 'Fin, Acc, Proc, HRGA & IT',
                 'HR, GA & Legal',
                 'PDCA, Procurement, IT',
+                'IT Staff',
+                'Procurement, IT',
             ];
         }
 
@@ -424,11 +426,14 @@ class PdController extends Controller
         // Role 2: Sales-related sections
         if ($roleId == 2) {
             $sections = [
-                'Sales Region I, II, III, IV',
-                'Sales Region I, II',
-                'Sales Region III, IV',
-                'Sales Region II',
-                'Sales Region I'
+                'SOH Region 4',
+                'SOH Region 3',
+                'SOH Region 2',
+                'SOH Region 1',
+                'Sales Engineer Reg 4',
+                'Sales Engineer Reg 3',
+                'Sales Engineer Reg 2',
+                'Sales Engineer Reg 1'
             ];
         }
 
@@ -448,6 +453,8 @@ class PdController extends Controller
                     'Fin, Acc, Proc, HRGA & IT',
                     'HR, GA & Legal',
                     'PDCA, Procurement, IT',
+                    'IT Staff',
+                    'Procurement, IT',
                 ],
                 [
                     'PPC, Production CT',
@@ -456,11 +463,14 @@ class PdController extends Controller
                     'Technical Support QC & Maintenance',
                 ],
                 [
-                    'Sales Region I, II, III, IV',
-                    'Sales Region I, II',
-                    'Sales Region III, IV',
-                    'Sales Region II',
-                    'Sales Region I'
+                    'SOH Region 4',
+                    'SOH Region 3',
+                    'SOH Region 2',
+                    'SOH Region 1',
+                    'Sales Engineer Reg 4',
+                    'Sales Engineer Reg 3',
+                    'Sales Engineer Reg 2',
+                    'Sales Engineer Reg 1'
                 ],
                 [
                     'Logistics'
@@ -564,11 +574,14 @@ class PdController extends Controller
         // Role 2: Sales-related sections
         if ($roleId == 2) {
             $sections = [
-                'Sales Region I, II, III, IV',
-                'Sales Region I, II',
-                'Sales Region III, IV',
-                'Sales Region II',
-                'Sales Region I'
+                'SOH Region 4',
+                'SOH Region 3',
+                'SOH Region 2',
+                'SOH Region 1',
+                'Sales Engineer Reg 4',
+                'Sales Engineer Reg 3',
+                'Sales Engineer Reg 2',
+                'Sales Engineer Reg 1'
             ];
         }
 
@@ -596,11 +609,14 @@ class PdController extends Controller
                     'Technical Support QC & Maintenance',
                 ],
                 [
-                    'Sales Region I, II, III, IV',
-                    'Sales Region I, II',
-                    'Sales Region III, IV',
-                    'Sales Region II',
-                    'Sales Region I'
+                    'SOH Region 4',
+                    'SOH Region 3',
+                    'SOH Region 2',
+                    'SOH Region 1',
+                    'Sales Engineer Reg 4',
+                    'Sales Engineer Reg 3',
+                    'Sales Engineer Reg 2',
+                    'Sales Engineer Reg 1'
                 ],
                 [
                     'Logistics'
