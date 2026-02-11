@@ -24,7 +24,7 @@
     <!-- Vendor CSS Files -->
     <link href="{{ asset('assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
-                        @if (Auth::check() && Auth::user()->role_id === 1)
+                        @if (Auth::check() && in_array(Auth::user()->role_id, [1, 2, 3, 4, 5, 20, 21, 22, 23, 24, 44, 48, 49, 50, 51, 52, 53]))
                         <li>
                             <a class="dropdown-item d-flex align-items-center" href="{{ route('sales.crm_report') }}">
                                 <i class="bi bi-file-earmark-text me-2"></i>
@@ -790,7 +790,7 @@
                                     $isAdminName = $currentUser && in_array(strtoupper($currentUser->name ?? ''), ['ADMINISTRATOR','ADMINSTRATOR']);
                                 @endphp
                                 @php
-                                    $salesRoleIds = [2,3,4,44];
+                                    $salesRoleIds = [2,3,4,5,7,20,21,22,23,24,44,48,49,50,51,52,53];
                                     $userSection = $currentUser->section ?? '';
                                 @endphp
                                 @if (

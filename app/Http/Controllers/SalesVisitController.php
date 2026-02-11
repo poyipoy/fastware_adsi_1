@@ -32,7 +32,7 @@ class SalesVisitController extends Controller
         private function isSalesRole($user): bool
     {
         return isset($user->role_id)
-            && in_array((int)$user->role_id, [2, 3, 4, 44], true);
+            && in_array((int)$user->role_id, [2, 3, 4, 5, 7, 20, 21, 22, 23, 24, 44, 48, 49, 50, 51, 52, 53], true);
     }
 
     /**
@@ -811,9 +811,9 @@ class SalesVisitController extends Controller
             return $ids;
         }
 
-        // Prefer akses berbasis peran: jika pengguna saat ini memiliki peran sales, izinkan
-        // melihat data milik semua pengguna yang memiliki role sales (2,3,7,4,44).
-        $salesRoleIds = [2, 3, 4, 44];
+        // Prefer akses berbasis peran: jika pengguna saat ini memiliki peran sales / CRM, izinkan
+        // melihat data milik semua pengguna yang memiliki role sales/CRM.
+        $salesRoleIds = [2, 3, 4, 5, 7, 20, 21, 22, 23, 24, 44, 48, 49, 50, 51, 52, 53];
         if (isset($user->role_id) && in_array((int)$user->role_id, $salesRoleIds, true)) {
             $ids = User::whereIn('role_id', $salesRoleIds)->pluck('id')->toArray();
             // If no users found for those roles, fall back to no restriction to avoid empty results
@@ -1138,8 +1138,8 @@ class SalesVisitController extends Controller
             return true;
         }
 
-        // Allow users by role_id who belong to Sales roles
-        $salesRoleIds = [2, 3, 4, 44];
+        // Allow users by role_id who belong to Sales / CRM roles
+        $salesRoleIds = [2, 3, 4, 5, 7, 20, 21, 22, 23, 24, 44, 48, 49, 50, 51, 52, 53];
         if (isset($user->role_id) && in_array((int)$user->role_id, $salesRoleIds, true)) {
             return true;
         }
