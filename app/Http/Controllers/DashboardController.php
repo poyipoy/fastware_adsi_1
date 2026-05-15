@@ -170,264 +170,19 @@ public function getTcpdCompetencyData(Request $request)
 
     public function getTcpdCompanyData(Request $request)
     {
-        $yearOptions = $this->availableCompanyYears();
-
-        [$startDate, $endDate] = $this->resolveYearRange(
-            $request->input('year_from'),
-            $request->input('year_to')
-        );
-
-        if (!$startDate && !$endDate) {
-            $defaultYear = !empty($yearOptions) ? (int) end($yearOptions) : Carbon::now()->year;
-            $startDate = Carbon::create($defaultYear, 1, 1, 0, 0, 0)->startOfDay();
-            $endDate = Carbon::create($defaultYear, 12, 31, 23, 59, 59)->endOfDay();
+        try {
+            $payload = $this->tcpdDashboardService->getCompanyPayload($request, Auth::user());
+            return response()->json([
+                'success' => true,
+                'data' => $payload,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Error in getTcpdCompanyData: ' . $exception->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data TCPD company.',
+            ], 500);
         }
-
-        $departmentDefinitions = $this->departmentDefinitions();
-
-        // Filter job names based on user access, similar to dashboardTCPD
-        $user = Auth::user();
-        $normalizeName = static fn ($value) => strtolower(trim((string) $value));
-
-        $allowedJobNames = [];
-        if ($user) {
-            $userName = $user->name;
-            $roleId = $user->role_id;
-
-            if (!in_array($roleId, [1])) {
-                $allowed = [];
-                if ($userName == 'HARDI SAPUTRA') {
-                    $allowed = [
-                        'Warehouse Foreman',
-                        'Admin Cutting Sheet (ACS)',
-                        'Delivery Staff',
-                        'Feeder',
-                        'Warehouse Admin',
-                        'PPIC Staff'
-                    ];
-                } elseif ($userName == 'ABDUR RAHMAN AL FAAIZ') {
-                    $allowed = [
-                        'Warehouse Foreman',
-                        'Admin Cutting Sheet (ACS)',
-                        'Delivery Staff',
-                        'Feeder',
-                        'Warehouse Admin',
-                        'PPIC Staff'
-                    ];
-                } elseif ($userName == 'ARYA RODJO PRASETYO') {
-                    $allowed = [
-                        'Cutting Leader',
-                        'Cutting Operator',
-                        'Foreman QC',
-                        'Production HT Leader',
-                        'production HT Admin',
-                        'Admin HT & PPC',
-                        'Production HT Operator',
-                        'Maintenance Operator',
-                        'MC Custom & Bubut Leader',
-                        'MC Custom Staff',
-                        'Operator Mc. Custom',
-                        'Operator Machining',
-                        'Leader MC',
-                        'MC Operator',
-                        'Bubut Operator',
-                    ];
-                } elseif ($userName == 'MUGI PRAMONO') {
-                    $allowed = [
-                        'Leader HT',
-                        'Admin HT & PPC',
-                        'Operator HT',
-                        'Operator MTN',
-                        'Foreman CT',
-                        'Foreman QC',
-                        'Leader Cutting',
-                        'Operator CT',
-                    ];
-                } elseif ($userName == 'RAGIL ISHA RAHMANTO') {
-                    $allowed = [
-                        'Leader MC',
-                        'Operator Mc. Custom',
-                        'MC Custom Staff',
-                        'Operator Machining',
-                        'Operator Bubut',
-                        'Foreman Machining Custom',
-                    ];
-                } elseif ($userName == 'MARTINUS CAHYO RAHASTO') {
-                    $allowed = [
-                        'Accounting Staff & Kasir',
-                        'AR Staff',
-                        'Invoicing Staff',
-                        'HR & Legal Staff',
-                        'HRGA & CSR Staff',
-                        'Procurement Material Staff',
-                        'IT Staff',
-                        'PDCA, Inventory, Procurement & IT Sec. Head',
-                        'HR & GA Section Head',
-                        'PDCA & Procurement Non Material Staff',
-                        'Procurement Administration',
-                        'Inventory Staff',
-                    ];
-                } elseif ($userName == 'ADHI PRASETYO') {
-                    $allowed = [
-                        'Accounting Staff & Kasir',
-                        'AR Staff',
-                        'Invoicing Staff',
-                        'Accounting Staff',
-                    ];
-                } elseif ($userName == 'RICHARDUS') {
-                    $allowed = [
-                        'Accounting Staff & Kasir',
-                        'AR Staff',
-                        'Invoicing Staff',
-                        'Accounting Staff',
-                    ];
-                } elseif ($userName == 'JESSICA PAUNE') {
-                    $allowed = [
-                        'Feeder',
-                        'Admin Cutting Sheet (ACS)',
-                        'Logistic Admin',
-                        'Delivery Staff',
-                        'Logistic Foreman',
-                        'Finance & Accounting Sec. Head',
-                        'HR & Legal Staff',
-                        'Finance & Treasury Sec. Head',
-                        'HRGA & CSR Staff',
-                        'Accounting Staff & Kasir',
-                        'Invoicing Staff',
-                        'SOH Region 1',
-                        'Sales Admin',
-                        'Machining Custom Sec. Head',
-                        'Produksi HT Sec. Head',
-                        'Foreman CT & MC',
-                        'Foreman QC',
-                        'PPIC Staff',
-                        'Leader MC',
-                        'Leader HT',
-                        'Operator CT',
-                        'Operator Bubut',
-                        'Operator Mc. Custom',
-                        'MC Custom Staff',
-                        'Operator Machining',
-                        'Admin HT & PPC',
-                        'Operator MTN',
-                        'Operator HT',
-                        'Procurement Material Staff',
-                        'Sales Engineer Reg 3',
-                        'Sales Engineer Reg 4',
-                        'Foreman Machining Custom',
-                        'Sales Engineer Reg 1',
-                        'SOH Region 2',
-                        'AR Staff',
-                        'IT Staff',
-                        'Sales Engineer Reg 2',
-                        'SOH Region 3',
-                        'SOH Region 4',
-                        'HR, GA, Legal, PDCA, Procurement & IT Se. Head',
-                        'HR & GA Section Head',
-                        'Leader Cutting',
-                        'PDCA & Procurement Non Material Staff',
-                        'Procurement Administration',
-                        'Inventory Section Head',
-                    ];
-                } elseif ($userName == 'SITI MARIA ULFA') {
-                    $allowed = [
-                        'Feeder',
-                        'Admin Cutting Sheet (ACS)',
-                        'Logistic Admin',
-                        'Delivery Staff',
-                        'Logistic Foreman',
-                        'Finance & Accounting Sec. Head',
-                        'HR & Legal Staff',
-                        'Finance & Treasury Sec. Head',
-                        'HRGA & CSR Staff',
-                        'Accounting Staff & Kasir',
-                        'Invoicing Staff',
-                        'SOH Region 1',
-                        'Sales Admin',
-                        'Machining Custom Sec. Head',
-                        'Produksi HT Sec. Head',
-                        'Foreman CT & MC',
-                        'Foreman QC',
-                        'PPIC Staff',
-                        'Leader MC',
-                        'Leader HT',
-                        'Operator CT',
-                        'Operator Bubut',
-                        'Operator Mc. Custom',
-                        'MC Custom Staff',
-                        'Operator Machining',
-                        'Admin HT & PPC',
-                        'Operator MTN',
-                        'Operator HT',
-                        'Procurement Material Staff',
-                        'Sales Engineer Reg 3',
-                        'Sales Engineer Reg 4',
-                        'Foreman Machining Custom',
-                        'Sales Engineer Reg 1',
-                        'SOH Region 2',
-                        'AR Staff',
-                        'IT Staff',
-                        'Sales Engineer Reg 2',
-                        'SOH Region 3',
-                        'SOH Region 4',
-                        'HR, GA, Legal, PDCA, Procurement & IT Se. Head',
-                        'HR & GA Section Head',
-                        'Leader Cutting',
-                        'PDCA & Procurement Non Material Staff',
-                        'Procurement Administration',
-                        'Inventory Section Head',
-                    ];
-                }
-
-                if (!empty($allowed)) {
-                    $allowedNormalized = array_map($normalizeName, $allowed);
-                    $allowedJobNames = $allowed;
-                } else {
-                    $allowedJobNames = collect($departmentDefinitions)->flatten()->unique()->values()->all();
-                }
-            } else {
-                $allowedJobNames = collect($departmentDefinitions)->flatten()->unique()->values()->all();
-            }
-        } else {
-            $allowedJobNames = collect($departmentDefinitions)->flatten()->unique()->values()->all();
-        }
-
-        // Filter department definitions to only include allowed job names
-        $filteredDepartmentDefinitions = [];
-        foreach ($departmentDefinitions as $deptName => $jobNames) {
-            $filteredJobs = collect($jobNames)->filter(function ($jobName) use ($allowedJobNames, $normalizeName) {
-                return in_array($normalizeName($jobName), array_map($normalizeName, $allowedJobNames));
-            })->values()->all();
-
-            if (!empty($filteredJobs)) {
-                $filteredDepartmentDefinitions[$deptName] = $filteredJobs;
-            }
-        }
-
-        $allJobNames = collect($filteredDepartmentDefinitions)
-            ->flatten()
-            ->map(fn ($name) => trim((string) $name))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        $jobSnapshotData = $this->buildTcpdJobData($allJobNames, $startDate, $endDate);
-        $departmentSummaries = $this->buildDepartmentSummaries($filteredDepartmentDefinitions, $jobSnapshotData);
-        $companyOverview = $this->buildCompanyOverview($departmentSummaries, $jobSnapshotData['years'] ?? []);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'company_chart_rows' => $companyOverview['chartRows'],
-                'company_average' => $companyOverview['average'],
-                'company_years' => $companyOverview['years'],
-                'company_chart_mode' => $companyOverview['mode'],
-                'company_has_data' => $companyOverview['hasData'],
-                'company_department_count' => $companyOverview['departmentCount'],
-                'department_summaries' => $departmentSummaries,
-            ],
-        ]);
     }
 
     protected function resolveDateRange(?string $from, ?string $to): array
@@ -773,6 +528,10 @@ public function getTcpdCompetencyData(Request $request)
         }
 
         $scoreRowsQuery = TrsPenilaianTc::whereIn('id_user', $userIds)
+            ->where(function ($query) use ($jobPositionName, $jobPositionIds) {
+                $query->where('id_job_position', $jobPositionName)
+                    ->orWhereIn('id_job_position', $jobPositionIds->all());
+            })
             ->select('id_user', 'id_tc', 'id_sk', 'id_ad', 'nilai_tc', 'nilai_sk', 'nilai_ad');
         $this->applyDateConstraint($scoreRowsQuery, $startDate, $endDate);
         $scoreRows = $scoreRowsQuery->get();
@@ -1105,61 +864,62 @@ public function getTcpdCompetencyData(Request $request)
     {
         return [
             'Logistik' => [
-                'Logistic Admin',
+                'Logistic Foreman',
                 'Admin Cutting Sheet (ACS)',
                 'Delivery Staff',
-                'Feeder',
-                'Logistic Foreman',
-                'PPIC Staff',
+                'Feeder Operator',
+                'PPC Staff',
+                'Warehouse Staff',
+                'Feeder Staff',
             ],
             'Sales' => [
                 'Sales Admin',
-                'SOH Region 1',
-                'Sales Engineer Reg 1',
-                'SOH Region 2',
-                'Sales Engineer Reg 2',
-                'SOH Region 3',
-                'Sales Engineer Reg 3',
-                'SOH Region 4',
-                'Sales Engineer Reg 4',
+                'Sales Office Head Region 1',
+                'Sales Engineer Region 1',
+                'Sales Office Head Region 2',
+                'Sales Engineer Region 2',
+                'Sales Office Head Region 3&4',
+                'Sales Engineer Region 3',
+                'Sales Engineer Region 4',
+                'Sales Staff',
             ],
             'Procurement' => [
-                'PDCA, Inventory, Procurement & IT Sec. Head',
-                'PDCA & Procurement Non Material Staff',
-                'Procurement Material Staff',
-                'Procurement Administration',
+                'Dept Head PDCA Proc Inv IT',
+                'Procurement Staff',
                 'Inventory Staff',
                 'IT Staff',
+                'HALOO',
+                'IT Support',
             ],
             'Finance, AR, HRGA' => [
-                'HR & GA Section Head',
+                'HRGA Staff',
                 'HR & Legal Staff',
-                'HRGA & CSR Staff',
-                'Finance & Accounting Sec. Head',
-                'Finance Admin',
-                'Finance & Treasury Sec. Head',
+                'Accounting Sec Head',
+                'Finance Staff',
+                'Finance Sec Head',
                 'Invoicing Staff',
-                'AR Staff',
-                'Accounting Staff & Kasir',
+                'Accounting Staff',
+                'Finance Support',
             ],
             'Produksi' => [
-                'Produksi HT Sec. Head',
-                'Foreman CT',
-                'Foreman QC',
-                'Leader HT',
-                'Operator CT',
-                'Admin HT & PPC',
-                'Operator MTN',
-                'Operator HT',
-                'Leader Cutting',
-                'Machining Custom Sec. Head',
-                'Leader MC',
-                'Operator Bubut',
-                'Operator Mc. Custom',
+                'Prod HT & QC Sec Head',
+                'CT MC Foreman',
+                'QC Foreman',
+                'AKU LUCU',
+                'HT Leader',
+                'CT MC Operator',
+                'HT Admin',
+                'Maintenance Operator',
+                'HT Operator',
+                'Cutting Leader',
+                'MC Custom Sec Head',
+                'MC Leader',
+                'Bubut Operator',
+                'MC Custom Operator',
                 'MC Custom Staff',
-                'Operator Machining',
-                'Foreman Machining Custom',
-                'Foreman MC',
+                'Machining Operator',
+                'MC Custom Leader',
+                'Operator MC',
             ],
         ];
     }

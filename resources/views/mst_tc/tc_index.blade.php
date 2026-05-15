@@ -84,7 +84,7 @@
                             @foreach ($technicalData as $index => $data)
                                 <tr>
                                     <td>{{ $i++ }}</td>
-                                    <td>{{ $data->jobPosition->job_position }}</td>
+                                    <td>{{ data_get($data, 'jobPosition.job_position', '-') }}</td>
                                     <td>
                                         <a href="{{ route('mst_tc.edit', $data->id) }}" class="btn btn-warning btn-sm"> <i
                                                 class="fas fa-edit fs-6"></i></a>
@@ -109,7 +109,7 @@
                             @foreach ($softSkillsData as $index => $data)
                                 <tr>
                                     <td>{{ $i++ }}</td>
-                                    <td>{{ $data->jobPosition->job_position }}</td>
+                                    <td>{{ data_get($data, 'jobPosition.job_position', '-') }}</td>
                                     <td>
                                         <a href="{{ route('mst_sk.editSoftSKills', $data->id) }}"
                                             class="btn btn-warning btn-sm">
@@ -135,7 +135,7 @@
                             @foreach ($additionalData as $index => $data)
                                 <tr>
                                     <td>{{ $i++ }}</td>
-                                    <td>{{ $data->jobPosition->job_position }}</td>
+                                    <td>{{ data_get($data, 'jobPosition.job_position', '-') }}</td>
                                     <td>
                                         <a href="{{ route('mst_ad.editAdditionals', $data->id) }}"
                                             class="btn btn-warning btn-sm">

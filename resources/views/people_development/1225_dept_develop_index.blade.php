@@ -72,8 +72,7 @@
             @endphp
 
             <a href="{{ route('createPD') }}" id="trainingButton"
-                class="btn btn-success {{ Cache::get('button_status') ? '' : 'disabled' }}
-                    {{ $tahun_aktual == $nextYear ? 'disabled' : '' }}">
+                class="btn btn-success {{ Cache::get('button_status') ? '' : 'disabled' }} {{ $tahun_aktual == $nextYear ? 'disabled' : '' }}">
                 Tambah Data Training
             </a>
 

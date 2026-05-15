@@ -388,192 +388,222 @@
             $(document).ready(function() {
                 // Get the job position value from the input field
                 var jobPosition = $('#jobPositionSelect').val();
+
+                // Step 1: Fetch existing penilaian records
                 $.ajax({
-                    url: '{{ route('getDataTrs') }}', // Adjust the route name as per your routes definition
+                    url: '{{ route('getDataTrs') }}',
                     type: 'GET',
-                    data: {
-                        id_job_position: jobPosition
-                    },
-                    success: function(data) {
-                        // Clear the existing rows in the table body and header keterangan
-                        $('#penilaianTableBody').empty();
-                        $('#headerKeterangan').empty();
-                        $('#tcHeader').attr('colspan', 0);
-                        $('#skHeader').attr('colspan', 0);
-                        $('#adHeader').attr('colspan', 0);
-
-                        if (data.length > 0) {
-                            var tcHeaders = [];
-                            var skHeaders = [];
-                            var adHeaders = [];
-
-                            var displayedUsers = {}; // Object to track users and their data
-
-                            // Collect headers for tc, sk, and ad
-                            data.forEach(function(row) {
-                                if (row.tc && !tcHeaders.some(item => item.keterangan === row.tc
-                                        .keterangan_tc)) {
-                                    tcHeaders.push({
-                                        keterangan: row.tc.keterangan_tc,
-                                        nilai: row.tc.nilai,
-                                        id_poin_kategori: row.tc.id_poin_kategori
-                                    });
-                                }
-                                if (row.sk && !skHeaders.some(item => item.keterangan === row.sk
-                                        .keterangan_sk)) {
-                                    skHeaders.push({
-                                        keterangan: row.sk.keterangan_sk,
-                                        nilai: row.sk.nilai,
-                                        id_poin_kategori: row.sk.id_poin_kategori
-                                    });
-                                }
-                                if (row.ad && !adHeaders.some(item => item.keterangan === row.ad
-                                        .keterangan_ad)) {
-                                    adHeaders.push({
-                                        keterangan: row.ad.keterangan_ad,
-                                        nilai: row.ad.nilai,
-                                        id_poin_kategori: row.ad.id_poin_kategori
-                                    });
-                                }
-                            });
-
-                            // Function to determine the background color based on id_poin_kategori
-                            function getBackgroundColorByIdPoinKategori(id_poin_kategori) {
-                                if (id_poin_kategori === 1) return 'blue';
-                                if (id_poin_kategori === 2) return 'green';
-                                if (id_poin_kategori === 3) return 'orange';
-                                return 'transparent'; // Default background color
+                    data: { id_job_position: jobPosition },
+                    success: function(existingData) {
+                        // Step 2: Fetch ALL competency definitions from master data
+                        $.ajax({
+                            url: '{{ route('getJobPositionData') }}',
+                            type: 'GET',
+                            data: { id: jobPosition },
+                            success: function(masterData) {
+                                buildEditTable(existingData, masterData);
+                            },
+                            error: function() {
+                                buildEditTable(existingData, []);
                             }
-
-                            // Append tc headers with nilai, background color, and white text color
-                            tcHeaders.forEach(function(header) {
-                                var backgroundColor = getBackgroundColorByIdPoinKategori(header
-                                    .id_poin_kategori);
-                                $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
-                                    ' - (' + header.nilai + ')</th>');
-                                $('#tcHeader').attr('colspan', parseInt($('#tcHeader').attr(
-                                    'colspan')) + 1);
-                            });
-
-                            // Append sk headers with nilai, background color, and white text color
-                            skHeaders.forEach(function(header) {
-                                var backgroundColor = getBackgroundColorByIdPoinKategori(header
-                                    .id_poin_kategori);
-                                $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
-                                    ' - (' + header.nilai + ')</th>');
-                                $('#skHeader').attr('colspan', parseInt($('#skHeader').attr(
-                                    'colspan')) + 1);
-                            });
-
-                            // Append ad headers with nilai, background color, and white text color
-                            adHeaders.forEach(function(header) {
-                                var backgroundColor = getBackgroundColorByIdPoinKategori(header
-                                    .id_poin_kategori);
-                                $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
-                                    ' - (' + header.nilai + ')</th>');
-                                $('#adHeader').attr('colspan', parseInt($('#adHeader').attr(
-                                    'colspan')) + 1);
-                            });
-
-                            // Group the data by user
-                            data.forEach(function(row) {
-                                if (!displayedUsers[row.user.name]) {
-                                    displayedUsers[row.user.name] = {
-                                        tc: {},
-                                        sk: {},
-                                        ad: {}
-                                    };
-                                }
-                                if (row.tc) {
-                                    displayedUsers[row.user.name].tc[row.tc.keterangan_tc] = {
-                                        nilai: row.nilai_tc,
-                                        keterangan: row.tc.keterangan_tc
-                                    };
-                                }
-                                if (row.sk) {
-                                    displayedUsers[row.user.name].sk[row.sk.keterangan_sk] = {
-                                        nilai: row.nilai_sk,
-                                        keterangan: row.sk.keterangan_sk
-                                    };
-                                }
-                                if (row.ad) {
-                                    displayedUsers[row.user.name].ad[row.ad.keterangan_ad] = {
-                                        nilai: row.nilai_ad,
-                                        keterangan: row.ad.keterangan_ad
-                                    };
-                                }
-                            });
-
-                            // Create rows for each user
-                            for (var userName in displayedUsers) {
-                                var row = '<tr><td>' + userName + '</td>';
-
-                                tcHeaders.forEach(function(header) {
-                                    var tcData = displayedUsers[userName].tc[header.keterangan] || {
-                                        nilai: '',
-                                        keterangan: ''
-                                    };
-                                    // Jika nilai di bawah standar, berikan warna merah untuk teks dan background
-                                    var inputStyle = tcData.nilai < header.nilai ?
-                                        'color: red; background-color: #ffcccc;' : '';
-                                    row += '<td><input type="text" name="nilai_tc[]" value="' +
-                                        tcData.nilai +
-                                        '" style="width: 50px;' + inputStyle +
-                                        '" data-keterangan-tc="' + tcData.keterangan +
-                                        '" data-name="' + userName +
-                                        '"></td>';
-                                });
-
-                                skHeaders.forEach(function(header) {
-                                    var skData = displayedUsers[userName].sk[header.keterangan] || {
-                                        nilai: '',
-                                        keterangan: ''
-                                    };
-                                    // Jika nilai di bawah standar, berikan warna merah untuk teks dan background
-                                    var inputStyle = skData.nilai < header.nilai ?
-                                        'color: red; background-color: #ffcccc;' : '';
-                                    row += '<td><input type="text" name="nilai_sk[]" value="' +
-                                        skData.nilai +
-                                        '" style="width: 50px;' + inputStyle +
-                                        '" data-keterangan-sk="' + skData.keterangan +
-                                        '" data-name="' + userName +
-                                        '"></td>';
-                                });
-
-                                adHeaders.forEach(function(header) {
-                                    var adData = displayedUsers[userName].ad[header.keterangan] || {
-                                        nilai: '',
-                                        keterangan: ''
-                                    };
-                                    // Jika nilai di bawah standar, berikan warna merah untuk teks dan background
-                                    var inputStyle = adData.nilai < header.nilai ?
-                                        'color: red; background-color: #ffcccc;' : '';
-                                    row += '<td><input type="text" name="nilai_ad[]" value="' +
-                                        adData.nilai +
-                                        '" style="width: 50px;' + inputStyle +
-                                        '" data-keterangan-ad="' + adData.keterangan +
-                                        '" data-name="' + userName +
-                                        '"></td>';
-                                });
-
-                                row += '</tr>';
-                                $('#penilaianTableBody').append(row);
-                            }
-
-                        } else {
-                            // If no data is found, add a message row
-                            var noDataRow =
-                                '<tr><td colspan="4">No data found for the given job position.</td></tr>';
-                            $('#penilaianTableBody').append(noDataRow);
-                        }
+                        });
                     },
                     error: function() {
                         alert('Failed to fetch data.');
                     }
                 });
+
+                function buildEditTable(existingData, masterData) {
+                    $('#penilaianTableBody').empty();
+                    $('#headerKeterangan').empty();
+                    $('#tcHeader').attr('colspan', 0);
+                    $('#skHeader').attr('colspan', 0);
+                    $('#adHeader').attr('colspan', 0);
+
+                    var tcHeaders = [];
+                    var skHeaders = [];
+                    var adHeaders = [];
+
+                    // Build headers from master data (complete set including new competencies)
+                    masterData.forEach(function(row) {
+                        if (row.type === 'tc' && row.keterangan && !tcHeaders.some(h => h.keterangan === row.keterangan)) {
+                            tcHeaders.push({
+                                keterangan: row.keterangan,
+                                nilai: row.nilai,
+                                id_tc: row.id_tc,
+                                id_poin_kategori: row.id_poin_kategori
+                            });
+                        } else if (row.type === 'sk' && row.keterangan && !skHeaders.some(h => h.keterangan === row.keterangan)) {
+                            skHeaders.push({
+                                keterangan: row.keterangan,
+                                nilai: row.nilai,
+                                id_sk: row.id_sk,
+                                id_poin_kategori: row.id_poin_kategori
+                            });
+                        } else if (row.type === 'ad' && row.keterangan && !adHeaders.some(h => h.keterangan === row.keterangan)) {
+                            adHeaders.push({
+                                keterangan: row.keterangan,
+                                nilai: row.nilai,
+                                id_ad: row.id_ad,
+                                id_poin_kategori: row.id_poin_kategori
+                            });
+                        }
+                    });
+
+                    // Fallback: if master data empty, build headers from existing data
+                    if (tcHeaders.length === 0 && skHeaders.length === 0 && adHeaders.length === 0) {
+                        existingData.forEach(function(row) {
+                            if (row.tc && !tcHeaders.some(item => item.keterangan === row.tc.keterangan_tc)) {
+                                tcHeaders.push({
+                                    keterangan: row.tc.keterangan_tc,
+                                    nilai: row.tc.nilai,
+                                    id_tc: row.tc.id,
+                                    id_poin_kategori: row.tc.id_poin_kategori
+                                });
+                            }
+                            if (row.sk && !skHeaders.some(item => item.keterangan === row.sk.keterangan_sk)) {
+                                skHeaders.push({
+                                    keterangan: row.sk.keterangan_sk,
+                                    nilai: row.sk.nilai,
+                                    id_sk: row.sk.id,
+                                    id_poin_kategori: row.sk.id_poin_kategori
+                                });
+                            }
+                            if (row.ad && !adHeaders.some(item => item.keterangan === row.ad.keterangan_ad)) {
+                                adHeaders.push({
+                                    keterangan: row.ad.keterangan_ad,
+                                    nilai: row.ad.nilai,
+                                    id_ad: row.ad.id,
+                                    id_poin_kategori: row.ad.id_poin_kategori
+                                });
+                            }
+                        });
+                    }
+
+                    function getBackgroundColorByIdPoinKategori(id_poin_kategori) {
+                        if (id_poin_kategori == 1) return 'blue';
+                        if (id_poin_kategori == 2) return 'green';
+                        if (id_poin_kategori == 3) return 'orange';
+                        return 'transparent';
+                    }
+
+                    tcHeaders.forEach(function(header) {
+                        var bgColor = getBackgroundColorByIdPoinKategori(header.id_poin_kategori);
+                        $('#headerKeterangan').append('<th style="background-color:' + bgColor + '; color: white;">' + header.keterangan + ' - (' + header.nilai + ')</th>');
+                        $('#tcHeader').attr('colspan', parseInt($('#tcHeader').attr('colspan')) + 1);
+                    });
+                    skHeaders.forEach(function(header) {
+                        var bgColor = getBackgroundColorByIdPoinKategori(header.id_poin_kategori);
+                        $('#headerKeterangan').append('<th style="background-color:' + bgColor + '; color: white;">' + header.keterangan + ' - (' + header.nilai + ')</th>');
+                        $('#skHeader').attr('colspan', parseInt($('#skHeader').attr('colspan')) + 1);
+                    });
+                    adHeaders.forEach(function(header) {
+                        var bgColor = getBackgroundColorByIdPoinKategori(header.id_poin_kategori);
+                        $('#headerKeterangan').append('<th style="background-color:' + bgColor + '; color: white;">' + header.keterangan + ' - (' + header.nilai + ')</th>');
+                        $('#adHeader').attr('colspan', parseInt($('#adHeader').attr('colspan')) + 1);
+                    });
+
+                    // Group existing data by user (include record ID and user ID)
+                    var displayedUsers = {};
+                    existingData.forEach(function(row) {
+                        if (!displayedUsers[row.user.name]) {
+                            displayedUsers[row.user.name] = {
+                                userId: row.id_user || row.user.id,
+                                tc: {},
+                                sk: {},
+                                ad: {}
+                            };
+                        }
+                        if (row.tc) {
+                            displayedUsers[row.user.name].tc[row.tc.keterangan_tc] = {
+                                nilai: row.nilai_tc,
+                                keterangan: row.tc.keterangan_tc,
+                                recordId: row.id
+                            };
+                        }
+                        if (row.sk) {
+                            displayedUsers[row.user.name].sk[row.sk.keterangan_sk] = {
+                                nilai: row.nilai_sk,
+                                keterangan: row.sk.keterangan_sk,
+                                recordId: row.id
+                            };
+                        }
+                        if (row.ad) {
+                            displayedUsers[row.user.name].ad[row.ad.keterangan_ad] = {
+                                nilai: row.nilai_ad,
+                                keterangan: row.ad.keterangan_ad,
+                                recordId: row.id
+                            };
+                        }
+                    });
+
+                    if (Object.keys(displayedUsers).length === 0) {
+                        $('#penilaianTableBody').append('<tr><td colspan="4">No data found for the given job position.</td></tr>');
+                        return;
+                    }
+
+                    for (var userName in displayedUsers) {
+                        var userData = displayedUsers[userName];
+                        var row = '<tr><td>' + userName + '</td>';
+
+                        tcHeaders.forEach(function(header) {
+                            var tcData = userData.tc[header.keterangan] || {
+                                nilai: '',
+                                keterangan: header.keterangan,
+                                recordId: ''
+                            };
+                            var inputStyle = tcData.nilai && tcData.nilai < header.nilai ?
+                                'color: red; background-color: #ffcccc;' : '';
+                            row += '<td><input type="text" name="nilai_tc[]" value="' + tcData.nilai +
+                                '" style="width: 50px;' + inputStyle +
+                                '" data-keterangan-tc="' + header.keterangan +
+                                '" data-record-id="' + tcData.recordId +
+                                '" data-name="' + userName +
+                                '" data-id-tc="' + (header.id_tc || '') +
+                                '" data-id-user="' + userData.userId +
+                                '"></td>';
+                        });
+
+                        skHeaders.forEach(function(header) {
+                            var skData = userData.sk[header.keterangan] || {
+                                nilai: '',
+                                keterangan: header.keterangan,
+                                recordId: ''
+                            };
+                            var inputStyle = skData.nilai && skData.nilai < header.nilai ?
+                                'color: red; background-color: #ffcccc;' : '';
+                            row += '<td><input type="text" name="nilai_sk[]" value="' + skData.nilai +
+                                '" style="width: 50px;' + inputStyle +
+                                '" data-keterangan-sk="' + header.keterangan +
+                                '" data-record-id="' + skData.recordId +
+                                '" data-name="' + userName +
+                                '" data-id-sk="' + (header.id_sk || '') +
+                                '" data-id-user="' + userData.userId +
+                                '"></td>';
+                        });
+
+                        adHeaders.forEach(function(header) {
+                            var adData = userData.ad[header.keterangan] || {
+                                nilai: '',
+                                keterangan: header.keterangan,
+                                recordId: ''
+                            };
+                            var inputStyle = adData.nilai && adData.nilai < header.nilai ?
+                                'color: red; background-color: #ffcccc;' : '';
+                            row += '<td><input type="text" name="nilai_ad[]" value="' + adData.nilai +
+                                '" style="width: 50px;' + inputStyle +
+                                '" data-keterangan-ad="' + header.keterangan +
+                                '" data-record-id="' + adData.recordId +
+                                '" data-name="' + userName +
+                                '" data-id-ad="' + (header.id_ad || '') +
+                                '" data-id-user="' + userData.userId +
+                                '"></td>';
+                        });
+
+                        row += '</tr>';
+                        $('#penilaianTableBody').append(row);
+                    }
+                }
             });
 
             //button update
@@ -591,34 +621,80 @@
                 $('#saveFormButton').on('click', function(e) {
                     e.preventDefault();
 
-                    // Gather data from form fields
-                    var data = {
-                        nilai_tc: [],
-                        keterangan_tc: [],
-                        nilai_sk: [],
-                        keterangan_sk: [],
-                        nilai_ad: [],
-                        keterangan_ad: [],
-                        names: []
-                    };
+                    // Gather data grouped by record ID for correct backend mapping
+                    var recordsMap = {};
+                    var newRecords = [];
 
                     $('input[name="nilai_tc[]"]').each(function() {
-                        data.nilai_tc.push($(this).val());
-                        data.keterangan_tc.push($(this).data('keterangan-tc'));
-                        data.names.push($(this).data('name'));
+                        var recordId = $(this).data('record-id');
+                        if (!recordId) {
+                            var val = $(this).val();
+                            if (val) {
+                                newRecords.push({
+                                    id_user: $(this).data('id-user'),
+                                    id_tc: $(this).data('id-tc'),
+                                    nilai_tc: val,
+                                    keterangan_tc: $(this).data('keterangan-tc'),
+                                    name: $(this).data('name')
+                                });
+                            }
+                            return;
+                        }
+                        if (!recordsMap[recordId]) {
+                            recordsMap[recordId] = { id: recordId, name: $(this).data('name') };
+                        }
+                        recordsMap[recordId].nilai_tc = $(this).val();
+                        recordsMap[recordId].keterangan_tc = $(this).data('keterangan-tc');
                     });
 
                     $('input[name="nilai_sk[]"]').each(function() {
-                        data.nilai_sk.push($(this).val());
-                        data.keterangan_sk.push($(this).data('keterangan-sk'));
-                        data.names.push($(this).data('name'));
+                        var recordId = $(this).data('record-id');
+                        if (!recordId) {
+                            var val = $(this).val();
+                            if (val) {
+                                newRecords.push({
+                                    id_user: $(this).data('id-user'),
+                                    id_sk: $(this).data('id-sk'),
+                                    nilai_sk: val,
+                                    keterangan_sk: $(this).data('keterangan-sk'),
+                                    name: $(this).data('name')
+                                });
+                            }
+                            return;
+                        }
+                        if (!recordsMap[recordId]) {
+                            recordsMap[recordId] = { id: recordId, name: $(this).data('name') };
+                        }
+                        recordsMap[recordId].nilai_sk = $(this).val();
+                        recordsMap[recordId].keterangan_sk = $(this).data('keterangan-sk');
                     });
 
                     $('input[name="nilai_ad[]"]').each(function() {
-                        data.nilai_ad.push($(this).val());
-                        data.keterangan_ad.push($(this).data('keterangan-ad'));
-                        data.names.push($(this).data('name'));
+                        var recordId = $(this).data('record-id');
+                        if (!recordId) {
+                            var val = $(this).val();
+                            if (val) {
+                                newRecords.push({
+                                    id_user: $(this).data('id-user'),
+                                    id_ad: $(this).data('id-ad'),
+                                    nilai_ad: val,
+                                    keterangan_ad: $(this).data('keterangan-ad'),
+                                    name: $(this).data('name')
+                                });
+                            }
+                            return;
+                        }
+                        if (!recordsMap[recordId]) {
+                            recordsMap[recordId] = { id: recordId, name: $(this).data('name') };
+                        }
+                        recordsMap[recordId].nilai_ad = $(this).val();
+                        recordsMap[recordId].keterangan_ad = $(this).data('keterangan-ad');
                     });
+
+                    var data = {
+                        records: Object.values(recordsMap),
+                        new_records: newRecords
+                    };
 
                     console.log("Data to be sent:", data);
 

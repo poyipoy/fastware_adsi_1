@@ -5,261 +5,68 @@ namespace App\Http\Controllers;
 use App\Models\MstAdditionals;
 use App\Models\MstSoftSkill;
 use App\Models\MstTc;
-use App\Models\User;
 use App\Models\PoinKategori;
 use App\Models\TcJobPosition;
+use App\Models\UserJobAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // Import the DB facade
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-
-use function PHPSTORM_META\map;
 
 class TcController extends Controller
 {
+    private const FULL_ACCESS_USERS = [
+        'ADMINSTRATOR',
+        'JESSICA PAUNE',
+        'SITI MARIA ULFA',
+    ];
+
+    /**
+     * Ambil daftar job_position yang boleh dilihat user saat ini.
+     * Return null jika full access (tampilkan semua).
+     */
+    private function getAllowedJobPositions(): ?array
+    {
+        $userName = auth()->user()->name ?? '';
+
+        if (in_array($userName, self::FULL_ACCESS_USERS)) {
+            return null;
+        }
+
+        $userId = auth()->id();
+        $roleId = auth()->user()->role_id ?? null;
+
+        $positions = UserJobAccess::getPositionsForUser($userId);
+
+        if ($roleId) {
+            $rolePositions = UserJobAccess::getPositionsForRole($roleId);
+            $positions = array_unique(array_merge($positions, $rolePositions));
+        }
+
+        return $positions;
+    }
+
     public function tcShow()
     {
-        // Ambil nama dan role_id user yang sedang login
-        $userName = auth()->user()->name;
-        $roleId = auth()->user()->role_id;
+        $allowedPositions = $this->getAllowedJobPositions();
 
-        // Inisialisasi variabel untuk data yang akan difilter berdasarkan nama user
-        $technicalData = [];
-        $softSkillsData = [];
-        $additionalData = [];
+        $technicalData = MstTc::with(['jobPosition'])->get()
+            ->unique(fn($item) => optional($item->jobPosition)->job_position);
+        $softSkillsData = MstSoftSkill::with(['jobPosition'])->get()
+            ->unique(fn($item) => optional($item->jobPosition)->job_position);
+        $additionalData = MstAdditionals::with(['jobPosition'])->get()
+            ->unique(fn($item) => optional($item->jobPosition)->job_position);
 
-        // Cek apakah role_id adalah 1, 14, atau 15
-        if (in_array($roleId, [1])) {
-            // Jika ya, tampilkan semua data tanpa filter
-            $technicalData = MstTc::with(['jobPosition'])->get()->unique('id_job_position');
-            $softSkillsData = MstSoftSkill::with(['jobPosition'])->get()->unique('id_job_position');
-            $additionalData = MstAdditionals::with(['jobPosition'])->get()->unique('id_job_position');
-        } else {
-            // Tentukan data yang ditampilkan berdasarkan nama user
-            if ($userName == 'HARDI SAPUTRA') {
-                $jobPositions = [
-                    'Warehouse Foreman', //tidak ada di db
-                    'Admin Cutting Sheet (ACS)',
-                    'Delivery Staff',
-                    'Feeder',
-                    'Warehouse Admin', //tidak ada di db
-                    'PPIC Staff'
-                ];
-            } elseif ($userName == 'ABDUR RAHMAN AL FAAIZ') {
-                $jobPositions = [
-                    'Warehouse Foreman', //tidak ada di db
-                    'Admin Cutting Sheet (ACS)',
-                    'Delivery Staff',
-                    'Feeder',
-                    'Warehouse Admin', //tidak ada di db
-                    'PPIC Staff'
-                ];
-            } elseif ($userName == 'ARYA RODJO PRASETYO') {
-                $jobPositions = [
-                    'Cutting Leader',
-                    'Cutting Operator',
-                    'Foreman QC',
-                    'Production HT Leader', //tidak ada di db
-                    'production HT Admin', //tidak ada di db
-                    'Admin HT & PPC',
-                    'Production HT Operator', //tidak ada di db
-                    'Maintenance Operator', //tidak ada di db
-
-                    'MC Custom & Bubut Leader', //tidak ada di db
-                    'MC Custom Staff',
-                    'Operator Mc. Custom',
-                    'Operator Machining',
-                    'Leader MC',
-                    'MC Operator', //tidak ada di db
-                    'Bubut Operator', //tidak ada di db
-                ];
-            } elseif ($userName == 'MUGI PRAMONO') {
-                $jobPositions = [
-                    'Leader HT',
-                    'Admin HT & PPC',
-                    'Operator HT',
-                    'Operator MTN',
-                    'Foreman CT',
-                    'Foreman QC',
-                    'Leader Cutting',
-                    'Operator CT',
-                    // 'Foreman QC',
-                    // 'Production HT Leader', //tidak ada di db
-                    // 'production HT Admin', //tidak ada di db
-                    // 'Admin HT & PPC',
-                    // 'Production HT Operator', //tidak ada di db
-                    // 'Maintenance Operator', //tidak ada di db
-                ];
-            } elseif ($userName == 'RAGIL ISHA RAHMANTO') {
-                $jobPositions = [
-                    'Leader MC',
-                    'Operator Mc. Custom',
-                    'MC Custom Staff',
-                    'Operator Machining',
-                    'Operator Bubut',
-                    'Foreman Machining Custom',
-                    // 'MC Custom & Bubut Leader', //tidak ada di db
-                    // 'MC Custom Staff',
-                    // 'Operator Mc. Custom',
-                    // 'Operator Machining',
-                    // 'Leader MC',
-                    // 'MC Operator', //tidak ada di db
-                    // 'Bubut Operator', //tidak ada di db
-                ];
-            } elseif ($userName == 'MARTINUS CAHYO RAHASTO') {
-                $jobPositions = [
-                    'Accounting Staff & Kasir',
-                    'AR Staff',
-                    'Invoicing Staff',
-                    'HR & Legal Staff',
-                    'HRGA & CSR Staff',
-                    'Procurement Material Staff',
-                    'IT Staff',
-                    'PDCA, Inventory, Procurement & IT Sec. Head',
-                    'HR & GA Section Head',
-                    'PDCA & Procurement Non Material Staff',
-                    'Procurement Administration',
-                    'Inventory Staff',
-                ];
-            } elseif ($userName == 'ADHI PRASETYO') {
-                $jobPositions = [
-                    'Accounting Staff & Kasir',
-                    'AR Staff',
-                    'Invoicing Staff',
-                    'Accounting Staff', //Tidak ada di db
-                ];
-            } elseif ($userName == 'RICHARDUS') {
-                $jobPositions = [
-                    'Accounting Staff & Kasir',
-                    'AR Staff',
-                    'Invoicing Staff',
-                    'Accounting Staff', //Tidak ada di db
-                ];
-            } elseif ($userName == 'JESSICA PAUNE') {
-                $jobPositions = [
-                    // 'Inventory Staff', //tidak ada di db
-                    // 'PDCA, Procurement, Inventory & IT Section Head',
-                    // 'IT Staff',
-                    // 'PDCA, Procurement Staff', //tidak ada di db
-                    // 'Purchasing Import Staff'
-                    'Feeder',
-                    'Admin Cutting Sheet (ACS)',
-                    'Logistic Admin',
-                    'Delivery Staff',
-                    'Logistic Foreman',
-                    'Finance & Accounting Sec. Head',
-                    'HR & Legal Staff',
-                    'Finance & Treasury Sec. Head',
-                    'HRGA & CSR Staff',
-                    'Accounting Staff & Kasir',
-                    'Invoicing Staff',
-                    'SOH Region 1',
-                    'Sales Admin',
-                    'Machining Custom Sec. Head',
-                    'Produksi HT Sec. Head',
-                    'Foreman CT & MC',
-                    'Foreman QC',
-                    'PPIC Staff',
-                    'Leader MC',
-                    'Leader HT',
-                    'Operator CT',
-                    'Operator Bubut',
-                    'Operator Mc. Custom',
-                    'MC Custom Staff',
-                    'Operator Machining',
-                    'Admin HT & PPC',
-                    'Operator MTN',
-                    'Operator HT',
-                    'Procurement Material Staff',
-                    'Sales Engineer Reg 3',
-                    'Sales Engineer Reg 4',
-                    'Foreman Machining Custom',
-                    'Sales Engineer Reg 1',
-                    'SOH Region 2',
-                    'AR Staff',
-                    'IT Staff',
-                    'Sales Engineer Reg 2',
-                    'SOH Region 3',
-                    'SOH Region 4',
-                    'HR, GA, Legal, PDCA, Procurement & IT Se. Head',
-                    'HR & GA Section Head',
-                    'Leader Cutting',
-                    'PDCA & Procurement Non Material Staff',
-                    'Procurement Administration',
-                    'Inventory Section Head',
-                ];
-            } elseif ($userName == 'SITI MARIA ULFA') {
-                $jobPositions = [
-                    'Feeder',
-                    'Admin Cutting Sheet (ACS)',
-                    'Logistic Admin',
-                    'Delivery Staff',
-                    'Logistic Foreman',
-                    'Finance & Accounting Sec. Head',
-                    'HR & Legal Staff',
-                    'Finance & Treasury Sec. Head',
-                    'HRGA & CSR Staff',
-                    'Accounting Staff & Kasir',
-                    'Invoicing Staff',
-                    'SOH Region 1',
-                    'Sales Admin',
-                    'Machining Custom Sec. Head',
-                    'Produksi HT Sec. Head',
-                    'Foreman CT & MC',
-                    'Foreman QC',
-                    'PPIC Staff',
-                    'Leader MC',
-                    'Leader HT',
-                    'Operator CT',
-                    'Operator Bubut',
-                    'Operator Mc. Custom',
-                    'MC Custom Staff',
-                    'Operator Machining',
-                    'Admin HT & PPC',
-                    'Operator MTN',
-                    'Operator HT',
-                    'Procurement Material Staff',
-                    'Sales Engineer Reg 3',
-                    'Sales Engineer Reg 4',
-                    'Foreman Machining Custom',
-                    'Sales Engineer Reg 1',
-                    'SOH Region 2',
-                    'AR Staff',
-                    'IT Staff',
-                    'Sales Engineer Reg 2',
-                    'SOH Region 3',
-                    'SOH Region 4',
-                    'HR, GA, Legal, PDCA, Procurement & IT Se. Head',
-                    'HR & GA Section Head',
-                    'Leader Cutting',
-                    'PDCA & Procurement Non Material Staff',
-                    'Procurement Administration',
-                    'Inventory Section Head',
-                ];
-            } else {
-                // Jika nama user tidak cocok dengan yang ditentukan, tampilkan semua data
-                $technicalData = MstTc::with(['jobPosition'])->get()->unique('id_job_position');
-                $softSkillsData = MstSoftSkill::with(['jobPosition'])->get()->unique('id_job_position');
-                $additionalData = MstAdditionals::with(['jobPosition'])->get()->unique('id_job_position');
-
-                return view('mst_tc.tc_index', compact('technicalData', 'softSkillsData', 'additionalData'));
-            }
-
-            // Filter data berdasarkan job positions yang telah ditentukan
-            $technicalData = MstTc::with(['jobPosition'])
-                ->whereHas('jobPosition', function ($query) use ($jobPositions) {
-                    $query->whereIn('job_position', $jobPositions);
-                })->get()->unique('id_job_position');
-
-            $softSkillsData = MstSoftSkill::with(['jobPosition'])
-                ->whereHas('jobPosition', function ($query) use ($jobPositions) {
-                    $query->whereIn('job_position', $jobPositions);
-                })->get()->unique('id_job_position');
-
-            $additionalData = MstAdditionals::with(['jobPosition'])
-                ->whereHas('jobPosition', function ($query) use ($jobPositions) {
-                    $query->whereIn('job_position', $jobPositions);
-                })->get()->unique('id_job_position');
+        if ($allowedPositions !== null) {
+            $technicalData = $technicalData->filter(
+                fn($item) => in_array(optional($item->jobPosition)->job_position, $allowedPositions)
+            );
+            $softSkillsData = $softSkillsData->filter(
+                fn($item) => in_array(optional($item->jobPosition)->job_position, $allowedPositions)
+            );
+            $additionalData = $additionalData->filter(
+                fn($item) => in_array(optional($item->jobPosition)->job_position, $allowedPositions)
+            );
         }
 
         return view('mst_tc.tc_index', compact('technicalData', 'softSkillsData', 'additionalData'));
@@ -267,148 +74,18 @@ class TcController extends Controller
 
     public function createTC()
     {
-        // Ambil semua data job position
         $uniquejobPositions = TcJobPosition::all();
-        $dataTc1 = PoinKategori::find(1);  // Misalnya TcModel adalah model untuk tabel pertama
-        $dataTc2 = PoinKategori::find(2);  // Misalnya TcModel adalah model untuk tabel kedua
-        $dataTc3 = PoinKategori::find(3);  // Misalnya TcModel adalah model untuk tabel ketiga
+        $dataTc1 = PoinKategori::find(1);
+        $dataTc2 = PoinKategori::find(2);
+        $dataTc3 = PoinKategori::find(3);
 
-        // Ambil role_id dan nama user yang sedang login
-        $roleId = auth()->user()->role_id;
-        $userName = auth()->user()->name;
-
-        // Inisialisasi array job positions
-        $jobPositions = [];
-
-        // Cek apakah role_id adalah 1, 14, atau 15
-        if (in_array($roleId, [1, 14, 15])) {
-            // Jika ya, tampilkan semua data job_position
-            $jobPositions = $uniquejobPositions->unique('job_position');
-        } else {
-            // Jika tidak, tentukan job_position berdasarkan nama user
-            if ($userName == 'HARDI SAPUTRA') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Warehouse Foreman', //tidak ada di db
-                    'Admin Cutting Sheet (ACS)',
-                    'Delivery Staff',
-                    'Feeder',
-                    'Warehouse Admin', //tidak ada di db
-                    'PPIC Staff'
-                ])->unique('job_position');
-            } elseif ($userName == 'ABDUR RAHMAN AL FAAIZ') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Warehouse Foreman', //tidak ada di db
-                    'Admin Cutting Sheet (ACS)',
-                    'Delivery Staff',
-                    'Feeder',
-                    'Logistic Foreman',
-                    'Logistic Admin', //tidak ada di db
-                    'PPIC Staff'
-                ])->unique('job_position')
-                    ->sortBy('job_position');
-            } elseif ($userName == 'ARYA RODJO PRASETYO') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Cutting Leader',
-                    'Cutting Operator',
-                    'Foreman QC',
-                    'Production HT Leader', //tidak ada di db
-                    'production HT Admin', //tidak ada di db
-                    'Admin HT & PPC',
-                    'Production HT Operator', //tidak ada di db
-                    'Maintenance Operator', //tidak ada di db
-                    'MC Custom & Bubut Leader', //tidak ada di db
-                    'MC Custom Staff',
-                    'Operator Mc. Custom',
-                    'Operator Machining',
-                    'Leader MC',
-                    'MC Operator', //tidak ada di db
-                    'Bubut Operator', //tidak ada di db
-                ])->unique('job_position');
-            } elseif ($userName == 'MUGI PRAMONO') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Leader HT',
-                    'Admin HT & PPC',
-                    'Operator HT',
-                    'Operator MTN',
-                    'Foreman CT',
-                    'Foreman QC',
-                    'Leader Cutting',
-                    'Operator CT',
-                    // 'Cutting Leader',
-                    // 'Cutting Operator',
-                    // 'Foreman QC',
-                    // 'Production HT Leader', //tidak ada di db
-                    // 'production HT Admin', //tidak ada di db
-                    // 'Admin HT & PPC',
-                    // 'Production HT Operator', //tidak ada di db
-                    // 'Maintenance Operator', //tidak ada di db
-                ])->unique('job_position')
-                    ->sortBy('job_position');
-            } elseif ($userName == 'RAGIL ISHA RAHMANTO') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Leader MC',
-                    'Operator Mc. Custom',
-                    'MC Custom Staff',
-                    'Operator Machining',
-                    'Operator Bubut',
-                    'Foreman Machining Custom',
-                    // 'MC Custom & Bubut Leader', //tidak ada di db
-                    // 'MC Custom Staff',
-                    // 'Operator Mc. Custom',
-                    // 'Operator Machining',
-                    // 'Leader MC',
-                    // 'MC Operator', //tidak ada di db
-                    // 'Bubut Operator', //tidak ada di db
-                ])->unique('job_position');
-            } elseif ($userName == 'MARTINUS CAHYO RAHASTO') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Accounting Staff & Kasir',
-                    'AR Staff',
-                    'Invoicing Staff',
-                    'HR & Legal Staff',
-                    'HRGA & CSR Staff',
-                    'Procurement Material Staff',
-                    'IT Staff',
-                    'PDCA, Inventory, Procurement & IT Sec. Head',
-                    'HR & GA Section Head',
-                    'PDCA & Procurement Non Material Staff',
-                    'Procurement Administration',
-                    'Inventory Staff',
-                ])->unique('job_position');
-            } elseif ($userName == 'ADHI PRASETYO') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Accounting Staff & Kasir',
-                    'AR Staff',
-                    'Invoicing Staff',
-                    'Accounting Staff', //Tidak ada di db
-                ])->unique('job_position');
-            } elseif ($userName == 'RICHARDUS') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Accounting Staff & Kasir',
-                    'AR Staff',
-                    'Invoicing Staff',
-                    'Accounting Staff', //Tidak ada di db
-                ])->unique('job_position');
-            } elseif ($userName == 'JESSICA PAUNE') {
-                $jobPositions = $uniquejobPositions->whereIn('job_position', [
-                    'Inventory Staff', //tidak ada di db
-                    'HR, GA, Legal, PDCA, Procurement & IT Se. Head',
-                    'IT Staff',
-                    'PDCA, Procurement Staff', //tidak ada di db
-                    'Purchasing Import Staff',
-                ])->unique('job_position');
-            } else {
-                // Jika nama user tidak cocok dengan yang ditentukan, tampilkan semua data job_position
-                null;
-            }
-        }
+        $jobPositions = $uniquejobPositions->unique('job_position')->sortBy('job_position');
 
         return view('mst_tc.tc_create', compact('jobPositions', 'dataTc1', 'dataTc2', 'dataTc3'));
     }
 
     public function summaryData()
     {
-        // Ambil data unik berdasarkan job_position dan pilih ID terkecil (MIN) untuk setiap job_position
         $jobPositions = TcJobPosition::selectRaw('MIN(id) as id, job_position')
             ->groupBy('job_position')
             ->pluck('job_position', 'id');
@@ -477,10 +154,8 @@ class TcController extends Controller
 
     public function storeTC(Request $request)
     {
-        // Mengambil data JSON dari body request
         $data = $request->json()->all();
 
-        // Log data yang masuk untuk debugging
         Log::info('Request data:', $data);
 
         // Mengatur aturan validasi
@@ -509,41 +184,60 @@ class TcController extends Controller
         DB::beginTransaction();
 
         try {
-            // Menyimpan data TC
-            foreach ($data['tc']['keterangan_tc'] as $index => $keterangan_tc) {
-                MstTc::create([
-                    'id_job_position' => $data['tc']['id_job_position'],
-                    'keterangan_tc' => $keterangan_tc,
-                    'deskripsi_tc' => $data['tc']['deskripsi_tc'][$index],
-                    'nilai' => $data['tc']['nilai'][$index],
-                    'id_poin_kategori' => $data['tc']['id_poin_kategori'][$index], // Menyimpan id_poin_kategori
-                ]);
+            // Ambil job_position name dari ID yang dipilih, lalu cari SEMUA tc_job_positions dengan nama yang sama
+            $selectedJobPosition = TcJobPosition::findOrFail($data['tc']['id_job_position']);
+            $allJobPositionIds = TcJobPosition::where('job_position', $selectedJobPosition->job_position)
+                ->pluck('id')
+                ->toArray();
+
+            // Menyimpan data TC untuk SEMUA job position records
+            foreach ($allJobPositionIds as $jpId) {
+                foreach ($data['tc']['keterangan_tc'] as $index => $keterangan_tc) {
+                    MstTc::create([
+                        'id_job_position' => $jpId,
+                        'keterangan_tc' => $keterangan_tc,
+                        'deskripsi_tc' => $data['tc']['deskripsi_tc'][$index],
+                        'nilai' => $data['tc']['nilai'][$index],
+                        'id_poin_kategori' => $data['tc']['id_poin_kategori'][$index],
+                    ]);
+                }
             }
 
-            // Menyimpan data Soft Skills
-            foreach ($data['soft_skills']['keterangan_sk'] as $index => $keterangan_sk) {
-                MstSoftSkill::create([
-                    'id_job_position' => $data['tc']['id_job_position'],
-                    'keterangan_sk' => $keterangan_sk,
-                    'deskripsi_sk' => $data['soft_skills']['deskripsi_sk'][$index],
-                    'nilai' => $data['soft_skills']['nilai'][$index],
-                    'id_poin_kategori' => $data['soft_skills']['id_poin_kategori'][$index], // Menyimpan id_poin_kategori
-                ]);
+            // Menyimpan data Soft Skills untuk SEMUA job position records
+            foreach ($allJobPositionIds as $jpId) {
+                foreach ($data['soft_skills']['keterangan_sk'] as $index => $keterangan_sk) {
+                    MstSoftSkill::create([
+                        'id_job_position' => $jpId,
+                        'keterangan_sk' => $keterangan_sk,
+                        'deskripsi_sk' => $data['soft_skills']['deskripsi_sk'][$index],
+                        'nilai' => $data['soft_skills']['nilai'][$index],
+                        'id_poin_kategori' => $data['soft_skills']['id_poin_kategori'][$index],
+                    ]);
+                }
             }
 
-            // Menyimpan data Additional
-            foreach ($data['additional']['keterangan_ad'] as $index => $keterangan_ad) {
-                MstAdditionals::create([
-                    'id_job_position' => $data['tc']['id_job_position'],
-                    'keterangan_ad' => $keterangan_ad,
-                    'deskripsi_ad' => $data['additional']['deskripsi_ad'][$index],
-                    'nilai' => $data['additional']['nilai'][$index],
-                    'id_poin_kategori' => $data['additional']['id_poin_kategori'][$index], // Menyimpan id_poin_kategori
-                ]);
+            // Menyimpan data Additional untuk SEMUA job position records
+            foreach ($allJobPositionIds as $jpId) {
+                foreach ($data['additional']['keterangan_ad'] as $index => $keterangan_ad) {
+                    MstAdditionals::create([
+                        'id_job_position' => $jpId,
+                        'keterangan_ad' => $keterangan_ad,
+                        'deskripsi_ad' => $data['additional']['deskripsi_ad'][$index],
+                        'nilai' => $data['additional']['nilai'][$index],
+                        'id_poin_kategori' => $data['additional']['id_poin_kategori'][$index],
+                    ]);
+                }
             }
 
             // Commit transaksi jika semua berjalan lancar
             DB::commit();
+
+            // Auto-add job position ke UserJobAccess user saat ini agar muncul di listing
+            UserJobAccess::firstOrCreate(
+                ['user_id' => auth()->id(), 'job_position' => $selectedJobPosition->job_position],
+                ['role_id' => auth()->user()->role_id ?? null]
+            );
+
             // Mengembalikan respons sukses
             return response()->json(['success' => 'Data berhasil disimpan'], 200);
         } catch (\Exception $e) {
@@ -558,67 +252,52 @@ class TcController extends Controller
 
     public function edit($id)
     {
-        // Dapatkan data yang ingin diedit
         $tc = MstTc::with(['jobPosition'])->findOrFail($id);
 
-        // Ambil id_job_position dari data yang sedang diedit
         $idJobPosition = $tc->id_job_position;
 
-        // Ambil semua data dengan id_job_position yang sama
         $sameJobPositionData = MstTc::where('id_job_position', $idJobPosition)
             ->with(['jobPosition'])
             ->get();
 
-        // Ambil semua job positions
         $jobPositions = TcJobPosition::all();
 
-        $dataTc1 = PoinKategori::find(1);  // Misalnya TcModel adalah model untuk tabel pertama
-        $dataTc2 = PoinKategori::find(2);  // Misalnya TcModel adalah model untuk tabel kedua
-        $dataTc3 = PoinKategori::find(3);  // Misalnya TcModel adalah model untuk tabel ketiga
+        $dataTc1 = PoinKategori::find(1);
+        $dataTc2 = PoinKategori::find(2);
+        $dataTc3 = PoinKategori::find(3);
 
-        // Kirimkan data ke view
         return view('mst_tc.edit_tc', compact('tc', 'jobPositions', 'sameJobPositionData', 'dataTc1', 'dataTc2', 'dataTc3'));
     }
 
     public function editSoftSKills($id)
     {
-        // Dapatkan data yang ingin diedit
         $softSkill = MstSoftSkill::with(['jobPosition'])->findOrFail($id);
 
-        // Ambil id_job_position dari data yang sedang diedit
         $idJobPosition = $softSkill->id_job_position;
 
-        // Ambil semua data dengan id_job_position yang sama
         $sameJobPositionData = MstSoftSkill::where('id_job_position', $idJobPosition)
             ->with(['jobPosition'])
             ->get();
 
-        // Ambil semua job positions
         $jobPositions = TcJobPosition::all();
 
-        $dataTc1 = PoinKategori::find(1);  // Misalnya TcModel adalah model untuk tabel pertama
-        $dataTc2 = PoinKategori::find(2);  // Misalnya TcModel adalah model untuk tabel kedua
-        $dataTc3 = PoinKategori::find(3);  // Misalnya TcModel adalah model untuk tabel ketiga
+        $dataTc1 = PoinKategori::find(1);
+        $dataTc2 = PoinKategori::find(2);
+        $dataTc3 = PoinKategori::find(3);
 
-
-        // Kirimkan data ke view
         return view('mst_tc.edit_sk', compact('softSkill', 'jobPositions', 'sameJobPositionData', 'dataTc1', 'dataTc2', 'dataTc3'));
     }
 
     public function editAdditional($id)
     {
-        // Dapatkan data yang ingin diedit
         $additional = MstAdditionals::with(['jobPosition'])->findOrFail($id);
 
-        // Ambil id_job_position dari data yang sedang diedit
         $idJobPosition = $additional->id_job_position;
 
-        // Ambil semua data dengan id_job_position yang sama
         $sameJobPositionData = MstAdditionals::where('id_job_position', $idJobPosition)
             ->with(['jobPosition'])
             ->get();
 
-        // Ambil semua job positions
         $jobPositions = TcJobPosition::all();
 
         $dataTc1 = PoinKategori::find(1);  // Misalnya TcModel adalah model untuk tabel pertama
@@ -649,39 +328,37 @@ class TcController extends Controller
             // Ambil id_job_position dari data yang sedang diedit
             $idJobPosition = $validatedData['tc']['id_job_position'];
 
-            // Ambil semua data dengan id_job_position yang sama
-            $sameJobPositionData = MstTc::where('id_job_position', $idJobPosition)->get();
+            // Ambil job_position name untuk sync ke semua sibling records
+            $jobPositionRecord = TcJobPosition::findOrFail($idJobPosition);
+            $allSiblingIds = TcJobPosition::where('job_position', $jobPositionRecord->job_position)
+                ->pluck('id')
+                ->toArray();
 
-            foreach ($validatedData['tc']['keterangan_tc'] as $index => $keteranganTc) {
-                $nilai = $validatedData['tc']['nilai'][$index] ?? null;
-                $deskripsiTc = $validatedData['tc']['deskripsi_tc'][$index] ?? null;
-                $idPoinKategori = $validatedData['tc']['id_poin_kategori'][$index] ?? null;
+            // Update/create untuk SEMUA sibling job position records
+            foreach ($allSiblingIds as $jpId) {
+                $sameJobPositionData = MstTc::where('id_job_position', $jpId)->get();
 
-                Log::info('Processing data with index:', [
-                    'index' => $index,
-                    'keterangan_tc' => $keteranganTc,
-                    'nilai' => $nilai,
-                    'deskripsi_tc' => $deskripsiTc,
-                    'id_poin_kategori' => $idPoinKategori
-                ]);
+                foreach ($validatedData['tc']['keterangan_tc'] as $index => $keteranganTc) {
+                    $nilai = $validatedData['tc']['nilai'][$index] ?? null;
+                    $deskripsiTc = $validatedData['tc']['deskripsi_tc'][$index] ?? null;
+                    $idPoinKategori = $validatedData['tc']['id_poin_kategori'][$index] ?? null;
 
-                if (isset($sameJobPositionData[$index])) {
-                    // Update data jika sudah ada
-                    $data = $sameJobPositionData[$index];
-                    $data->keterangan_tc = $keteranganTc;
-                    $data->nilai = $nilai;
-                    $data->deskripsi_tc = $deskripsiTc; // Update deskripsi_tc
-                    $data->id_poin_kategori = $idPoinKategori; // Update id_poin_kategori
-                    $data->save();
-                } else {
-                    // Buat record baru jika belum ada
-                    MstTc::create([
-                        'id_job_position' => $idJobPosition,
-                        'keterangan_tc' => $keteranganTc,
-                        'nilai' => $nilai,
-                        'deskripsi_tc' => $deskripsiTc, // Save deskripsi_tc
-                        'id_poin_kategori' => $idPoinKategori, // Save id_poin_kategori
-                    ]);
+                    if (isset($sameJobPositionData[$index])) {
+                        $data = $sameJobPositionData[$index];
+                        $data->keterangan_tc = $keteranganTc;
+                        $data->nilai = $nilai;
+                        $data->deskripsi_tc = $deskripsiTc;
+                        $data->id_poin_kategori = $idPoinKategori;
+                        $data->save();
+                    } else {
+                        MstTc::create([
+                            'id_job_position' => $jpId,
+                            'keterangan_tc' => $keteranganTc,
+                            'nilai' => $nilai,
+                            'deskripsi_tc' => $deskripsiTc,
+                            'id_poin_kategori' => $idPoinKategori,
+                        ]);
+                    }
                 }
             }
 
@@ -717,39 +394,37 @@ class TcController extends Controller
             // Ambil id_job_position dari data yang sedang diedit
             $idJobPosition = $validatedData['sk']['id_job_position'];
 
-            // Ambil semua data dengan id_job_position yang sama
-            $sameJobPositionData = MstSoftSkill::where('id_job_position', $idJobPosition)->get();
+            // Ambil job_position name untuk sync ke semua sibling records
+            $jobPositionRecord = TcJobPosition::findOrFail($idJobPosition);
+            $allSiblingIds = TcJobPosition::where('job_position', $jobPositionRecord->job_position)
+                ->pluck('id')
+                ->toArray();
 
-            foreach ($validatedData['sk']['keterangan_sk'] as $index => $keteranganSk) {
-                $nilai = $validatedData['sk']['nilai'][$index] ?? null;
-                $deskripsiSk = $validatedData['sk']['deskripsi_sk'][$index] ?? null;
-                $idPoinKategori = $validatedData['sk']['id_poin_kategori'][$index] ?? null;
+            // Update/create untuk SEMUA sibling job position records
+            foreach ($allSiblingIds as $jpId) {
+                $sameJobPositionData = MstSoftSkill::where('id_job_position', $jpId)->get();
 
-                Log::info('Processing data with index:', [
-                    'index' => $index,
-                    'keterangan_sk' => $keteranganSk,
-                    'nilai' => $nilai,
-                    'deskripsi_sk' => $deskripsiSk,
-                    'id_poin_kategori' => $idPoinKategori
-                ]);
+                foreach ($validatedData['sk']['keterangan_sk'] as $index => $keteranganSk) {
+                    $nilai = $validatedData['sk']['nilai'][$index] ?? null;
+                    $deskripsiSk = $validatedData['sk']['deskripsi_sk'][$index] ?? null;
+                    $idPoinKategori = $validatedData['sk']['id_poin_kategori'][$index] ?? null;
 
-                if (isset($sameJobPositionData[$index])) {
-                    // Update data jika sudah ada
-                    $data = $sameJobPositionData[$index];
-                    $data->keterangan_sk = $keteranganSk;
-                    $data->nilai = $nilai;
-                    $data->deskripsi_sk = $deskripsiSk; // Update deskripsi_sk
-                    $data->id_poin_kategori = $idPoinKategori; // Update id_poin_kategori
-                    $data->save();
-                } else {
-                    // Buat record baru jika belum ada
-                    MstSoftSkill::create([
-                        'id_job_position' => $idJobPosition,
-                        'keterangan_sk' => $keteranganSk,
-                        'nilai' => $nilai,
-                        'deskripsi_sk' => $deskripsiSk, // Save deskripsi_sk
-                        'id_poin_kategori' => $idPoinKategori, // Save id_poin_kategori
-                    ]);
+                    if (isset($sameJobPositionData[$index])) {
+                        $data = $sameJobPositionData[$index];
+                        $data->keterangan_sk = $keteranganSk;
+                        $data->nilai = $nilai;
+                        $data->deskripsi_sk = $deskripsiSk;
+                        $data->id_poin_kategori = $idPoinKategori;
+                        $data->save();
+                    } else {
+                        MstSoftSkill::create([
+                            'id_job_position' => $jpId,
+                            'keterangan_sk' => $keteranganSk,
+                            'nilai' => $nilai,
+                            'deskripsi_sk' => $deskripsiSk,
+                            'id_poin_kategori' => $idPoinKategori,
+                        ]);
+                    }
                 }
             }
 
@@ -785,33 +460,37 @@ class TcController extends Controller
             // Ambil id_job_position dari data yang sedang diedit
             $idJobPosition = $validatedData['additional']['id_job_position'];
 
-            // Ambil semua data dengan id_job_position yang sama
-            $sameJobPositionData = MstAdditionals::where('id_job_position', $idJobPosition)->get();
+            // Ambil job_position name untuk sync ke semua sibling records
+            $jobPositionRecord = TcJobPosition::findOrFail($idJobPosition);
+            $allSiblingIds = TcJobPosition::where('job_position', $jobPositionRecord->job_position)
+                ->pluck('id')
+                ->toArray();
 
-            foreach ($validatedData['additional']['keterangan_ad'] as $index => $keteranganAdditionals) {
-                $nilai = $validatedData['additional']['nilai'][$index] ?? null;
-                $deskripsi = $validatedData['additional']['deskripsi_ad'][$index] ?? null;
-                $idPoinKategori = $validatedData['additional']['id_poin_kategori'][$index] ?? null;
+            // Update/create untuk SEMUA sibling job position records
+            foreach ($allSiblingIds as $jpId) {
+                $sameJobPositionData = MstAdditionals::where('id_job_position', $jpId)->get();
 
-                Log::info('Processing data with index:', ['index' => $index, 'keterangan_ad' => $keteranganAdditionals, 'nilai' => $nilai, 'deskripsi_ad' => $deskripsi, 'id_poin_kategori' => $idPoinKategori]);
+                foreach ($validatedData['additional']['keterangan_ad'] as $index => $keteranganAdditionals) {
+                    $nilai = $validatedData['additional']['nilai'][$index] ?? null;
+                    $deskripsi = $validatedData['additional']['deskripsi_ad'][$index] ?? null;
+                    $idPoinKategori = $validatedData['additional']['id_poin_kategori'][$index] ?? null;
 
-                if (isset($sameJobPositionData[$index])) {
-                    // Update data jika sudah ada
-                    $data = $sameJobPositionData[$index];
-                    $data->keterangan_ad = $keteranganAdditionals;
-                    $data->deskripsi_ad = $deskripsi;
-                    $data->nilai = $nilai;
-                    $data->id_poin_kategori = $idPoinKategori;
-                    $data->save();
-                } else {
-                    // Buat record baru jika belum ada
-                    MstAdditionals::create([
-                        'id_job_position' => $idJobPosition,
-                        'keterangan_ad' => $keteranganAdditionals,
-                        'deskripsi_ad' => $deskripsi,
-                        'nilai' => $nilai,
-                        'id_poin_kategori' => $idPoinKategori,
-                    ]);
+                    if (isset($sameJobPositionData[$index])) {
+                        $data = $sameJobPositionData[$index];
+                        $data->keterangan_ad = $keteranganAdditionals;
+                        $data->deskripsi_ad = $deskripsi;
+                        $data->nilai = $nilai;
+                        $data->id_poin_kategori = $idPoinKategori;
+                        $data->save();
+                    } else {
+                        MstAdditionals::create([
+                            'id_job_position' => $jpId,
+                            'keterangan_ad' => $keteranganAdditionals,
+                            'deskripsi_ad' => $deskripsi,
+                            'nilai' => $nilai,
+                            'id_poin_kategori' => $idPoinKategori,
+                        ]);
+                    }
                 }
             }
 

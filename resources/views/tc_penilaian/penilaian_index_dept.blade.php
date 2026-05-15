@@ -42,16 +42,18 @@
                                         @endif
                                     </td>
                                     <td>
+                                        
                                         <a href="{{ route('penilaian.edit2', $item->id_job_position) }}"
                                             class="btn btn-warning">
                                             <i class="fas fa-edit"></i> Konfirmasi Nilai
                                         </a>
 
-
+                                        @if ($item->status != 3)
                                         <button type="button" class="btn btn-success"
                                             onclick="kirimData('{{ $item->id_job_position }}')">
                                             <i class="fas fa-paper-plane"></i> Kirim
                                         </button>
+                                        @endif
 
 
                                         <a href="{{ route('penilaian.view', $item->id_job_position) }}"

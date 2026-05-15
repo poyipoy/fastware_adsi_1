@@ -1027,6 +1027,27 @@ return [
                     ],
                 ],
                 [
+                    'label' => 'Claim Submission',
+                    'children' => [
+                        [
+                            'label' => 'Form Claim Submission',
+                            'route' => 'claim.indexUser',
+                        ],
+                        [
+                            'label' => 'Persetujuan Claim Submission',
+                            'route' => 'claim.indexProc',
+                            'permissions' => [
+                                'usernames' => [
+                                    'ADMINSTRATOR',
+                                    'JESSICA PAUNE',
+                                    'VIVIAN ANGELIKA',
+                                    'FAJAR BAGASKARA',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                [
                     'label' => 'Inquiry Order Local',
                     'children' => [
                         [

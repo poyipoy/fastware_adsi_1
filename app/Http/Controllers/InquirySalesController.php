@@ -87,7 +87,10 @@ class InquirySalesController extends Controller
                 $searchCallback,
                 [
                     1 => 'create_by',
-                    2 => 'kode_inquiry',
+                    // When the user sorts the Reference column, sort by creation time (newest-first)
+                    // so the filter/ordering reflects newest -> oldest. Use `created_at` instead
+                    // of the raw `kode_inquiry` string which may not be chronological.
+                    2 => 'created_at',
                     3 => 'loc_imp',
                     4 => 'supplier',
                     9 => 'est_date',
@@ -2583,12 +2586,15 @@ class InquirySalesController extends Controller
                 $searchCallback,
                 [
                     1 => 'create_by',
-                    2 => 'kode_inquiry',
+                    2 => 'created_at',
                     3 => 'loc_imp',
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+                fn (Builder $query) => $query
+                    ->orderByRaw("CASE WHEN status IN (2,4,3) THEN 0 ELSE 1 END")
+                    ->orderByRaw("FIELD(status, 2,4,3)")
+                    ->orderBy('created_at', 'desc')
             );
         }
 
@@ -2690,12 +2696,15 @@ class InquirySalesController extends Controller
                 $searchCallback,
                 [
                     1 => 'create_by',
-                    2 => 'kode_inquiry',
+                    2 => 'created_at',
                     3 => 'loc_imp',
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+                fn (Builder $query) => $query
+                    ->orderByRaw("CASE WHEN status IN (2,4,3) THEN 0 ELSE 1 END")
+                    ->orderByRaw("FIELD(status, 2,4,3)")
+                    ->orderBy('created_at', 'desc')
             );
         }
 
@@ -3135,6 +3144,11 @@ class InquirySalesController extends Controller
         $orders = (array) $request->input('order', []);
         $appliedOrder = false;
 
+        // Apply default ordering first (e.g., status priority), then respect client ordering.
+        if ($defaultOrderCallback) {
+            $defaultOrderCallback($filteredQuery);
+        }
+
         foreach ($orders as $order) {
             $columnIndex = isset($order['column']) ? (int) $order['column'] : null;
 
@@ -3147,12 +3161,9 @@ class InquirySalesController extends Controller
             $appliedOrder = true;
         }
 
-        if (!$appliedOrder) {
-            if ($defaultOrderCallback) {
-                $defaultOrderCallback($filteredQuery);
-            } else {
-                $filteredQuery->orderBy('created_at', 'desc');
-            }
+        // If there was no default callback and no client order, fallback to created_at desc.
+        if (!$appliedOrder && !$defaultOrderCallback) {
+            $filteredQuery->orderBy('created_at', 'desc');
         }
 
         if ($length !== -1) {

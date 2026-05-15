@@ -1,0 +1,56 @@
+    MEMBER OF SALES DEPT;;;;;;MEMBER OF PRODUCTIONS DEPT;;;;;;MEMBER OF FINANCE ACCOUNTING HRGA DEPT;;;;;;MEMBER OF PROCUREMENT, INVENTORY, IT HRGA DEPT;;;;;;MEMBER OF LOGISTIC DEPT;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Related employees/Name;Login;Approval 1 - Section Head;Approval 2 - Departement Head;Related employees/Department/Department Name;;Related employees/Name;Login;Approval 1 - Section Head;Approval 2 - Departement Head;Related employees/Department/Department Name;;Related employees/Name;Login;Approval 1 - Section Head;Approval 2 - Departement Head;Related employees/Department/Department Name;;Related employees/Name;Login;Approval 1 - Section Head;Approval 2 - Departement Head;Related employees/Department/Department Name;;Related employees/Name;Login;Approval 1 - Section Head;Approval 2 - Departement Head;Related employees/Department/Department Name
+HARDI SAPUTRA;HARDI;NANI SUTARMAN ;;Sales Division;;ARY RODJO PRASETYO;ARY_R;NANI SUTARMAN ;;Production Department Head ;;MARTINUS CAHYO RAHASTO;CAHYO;NANI SUTARMAN ;;Finance, Accoounting, HRGA Departement Head;;JESSICA PAUNE;JESSICA;NANI SUTARMAN ;NANI SUTARMAN ;PDCA, Procurement, Inventory, IT Departement Head;;ABDUR RAHMAN AL FAAIZ;FAIZ;HARDI SAPUTRA;HARDI SAPUTRA;Logistics Section Head
+YULMAI RIDO WINANDA;YULMAI;HARDI SAPUTRA;NANI SUTARMAN ;Sales Office Head Region 1&2 Departement Head;;MUHAMMAD MAHBUB;MAHBUB;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Operator/Machining & Machining Custom/Production;;ADHI PRASETIYO;ADHI;MARTINUS CAHYO RAHASTO;MARTINUS CAHYO RAHASTO;Accounting Sec Head;;VIVIAN ANGELIKA;VIVIAN;JESSICA PAUNE;JESSICA PAUNE;PDCA, Procurement Staff;;NURSALIM;NURSALIM;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Logsitic Admin
+JUN JOHAMIN PD;JUN;YULMAI RIDO WINANDA;HARDI SAPUTRA;Sales Office Head Region 1 ;;RAGIL ISHA RAHMANTO;RAGIL;ARY RODJO PRASETIYO ;;Machining & Machining Custom Section Head;;RICHARDUS CHRISTIAN WIDJOJO;RICHARDUS;ADHI PRASETIYO;MARTINUS CAHYO RAHASTO;Finance Sec Head;;ILYAS NOOR FIRDAUS;ILYAS;JESSICA PAUNE;JESSICA PAUNE;Inventory Staff;;MAMIK ABIDIN;MAMIK;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Logistic Foreman
+ILHAM CHOLID;ILHAM;YULMAI RIDO WINANDA;HARDI SAPUTRA;Sales Office Head Region 2;;CECEP ISKANDAR;CECEP;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Bubut Operator/Machining & Machining Custom/Production ;;RAIHAN GILANG RAMADHAN;RAIHAN;ADHI PRASETIYO;MARTINUS CAHYO RAHASTO;Accounting Staff;;MEDI KRISNANTO;MEDI;JESSICA PAUNE;JESSICA PAUNE;IT Staff;;ARRY SOEBHEKTI;BEKTI;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Admin Cutting Sheet (ACS)
+DANIA ISNAWATI;DANIA;ANDIK TOTOK SISWOYO;HARDI SAPUTRA;Sales Engineer Region 3;;ILHAM SETIA DHARMA;ILHAM_S;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Custom Staff/Machining & Machining Custom/Production ;;DINA NIMAS AYU NAWAWULAN PRIHANTINI;DINA;ADHI PRASETIYO;MARTINUS CAHYO RAHASTO;Admin Tax;;;;;;;;R.WAWAN HIMAWAN;WAWAN;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Admin Cutting Sheet (ACS)
+ANDIK TOTOK SISWOYO;TOTO;HARDI SAPUTRA;NANI SUTARMAN ;Sales Office Head Region 3&4 Departement Head;;IMAM PRASETYO;IMAM_P;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Custom Operator/Machining & Machining Custom/Production ;;AHMAD RIDWAN;ARIDWAN;RICHARDUS CHRISTIAN WIDJOJO;ADHI PRASETIYO;AR Staff;;;;;;;;ELI HANDOYO;ELI;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Delivery Staff
+LINA UNIARSIH;LINA;JUN JOHAMIN;YULMAI RIDO WINANDA;Sales Admin ;;IMAM SOPYAN;IMAM_S;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining & Machining Custom Foreman/Machining & Machining Custom/Production ;;NUR DWITA SURA WIJAYA;DWI;RICHARDUS CHRISTIAN WIDJOJO;ADHI PRASETIYO;Invoice Staff;;;;;;;;FATUL MUKMIN;FATUL;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Delivery Staff
+SENDY PRABOWO;SENDY;JUN JOHAMIN;YULMAI RIDO WINANDA;Sales Engineer Region 1;;JEFRY WASTON .E;JEFRY;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Bubut Operator/Machining & Machining Custom/Production ;;MUHAMMAD DINAR FARISI;DINAR;MARTINUS CAHYO RAHASTO;MARTINUS CAHYO RAHASTO;HRGA & CSR Staff;;;;;;;;HAERUL IHSAN;HAERUL;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Feeder
+WULYO EKO PRASETYO;WULYO;JUN JOHAMIN;YULMAI RIDO WINANDA;Sales Engineer Region 1;;M. RIDWAN GUNAWAN;M_RIDWAN;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Custom Operator/Machining & Machining Custom/Production ;;SITI MARIA ULFA;ULFA;MARTINUS CAHYO RAHASTO;MARTINUS CAHYO RAHASTO;HRGA & Legal Staff;;;;;;;;LUKMAN AHMAD;LUKMAN;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Feeder
+YAN WELEM MANGINSELA;WELEM;JUN JOHAMIN;YULMAI RIDO WINANDA;Sales Engineer Region 1;;MOCHAMMAD ANDRIANSYAH EKA PUTRA;ANDRIAN;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Custom Operator/Machining & Machining Custom/Production ;;;;;;;;;;;;;;LUKMAN AHMAD;LUKMAN;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Feeder
+DIMAS ADITYA PRIANDANA;DIMAS;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Engineer Region 2;;RIZKY ANDREA RAHMAWAN;RIZKY;MUGI PRAMONO ;ARY RODJO PRASETIYO;HT Operator/Heat Treatment/ Production;;;;;;;;;;;;;;AWING;AWI;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;Feeder
+FRISILIA CLAUDIA HUTAMA;FRISILA;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Engineer Region 2;;SETIYAWAN;SETIYAWAN;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Custom Operator/Machining & Machining Custom/Production ;;;;;;;;;;;;;;DIAMAN DARMAWINATA;DIAMAN;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;PPC Staff
+HARRY SUPRIYADI;HARRY;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Admin ;;YANUARDIN SALEH SIREGAR;YANUARDIN;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Bubut Operator/Machining & Machining Custom/Production ;;;;;;;;;;;;;;FAIZAL AFDA'U;FAIZAL;ABDUR RAHMAN AL FAAIZ;HARDI SAPUTRA;PPC Staff
+HERLIANA;ELLY;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Admin ;;AFILIANDI;AFIL;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Leader/Cutting/Production;;;;;;;;;;;;;;;;;;
+HERY HERMAWAN;HERI;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Engineer Region 2;;AGUNG PANGESTU YUSUF;AGUNG;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+PUTRI ANINDIA;PUTRI;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Admin ;;AGUS PRIYANTO;AGUS;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Operator/Machining & Machining Custom/Production;;;;;;;;;;;;;;;;;;
+SARAH EGA BUDI ASTUTI;SARAH;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Engineer Region 2;;AGUS ROSIDIN;AGUS2;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+SONY STIAWAN;SONY;ILHAM CHOLID;YULMAI RIDO WINANDA;Sales Engineer Region 2;;ANDI SANTOSO;ANDI;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+FISKA CHRISMAS YUDHA;FISKA;ANDIK TOTOK SISWOYO;HARDI SAPUTRA;Sales Engineer Region 3;;DASUKI;DASUKI;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Leader/Cutting/Production;;;;;;;;;;;;;;;;;;
+DWI KUNTORO;KUNTORO;ANDIK TOTOK SISWOYO;HARDI SAPUTRA;Sales Engineer Region 4;;HENDRIO;HENDRIO;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+YUNASIS PALGUNADI;YUNASIS;ANDIK TOTOK SISWOYO;HARDI SAPUTRA;Sales Engineer Region 4;;JAKA RARA SUKMA;JAKA;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+HEXAPA DARMADI;HEXAPA;ANDIK TOTOK SISWOYO;HARDI SAPUTRA;Sales Engineer Region 4;;JAKARIA;JAKARIA;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+;;;;;;KARYA WIJAYA;KARYA;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Operator/Machining & Machining Custom/Production;;;;;;;;;;;;;;;;;;
+;;;;;;MIFTAKHUROHMAN;MIFTA;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+;;;;;;NUR SUPRIYANTO;NUR_S;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+;;;;;;NURSAID;SAID;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+;;;;;;RAHMAT NUGROHO;RAHMAT_NUG;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Operator/Machining & Machining Custom/Production;;;;;;;;;;;;;;;;;;
+;;;;;;RUKMAN;RUKMAN;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Operator/Cutting/Production;;;;;;;;;;;;;;;;;;
+;;;;;;RUSITO;RUSITO;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Foreman/Cutting/Production;;;;;;;;;;;;;;;;;;
+;;;;;;SABAR WASIRAN;SABAR;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Operator/Machining & Machining Custom/Production;;;;;;;;;;;;;;;;;;
+;;;;;;SEPTIADI PRATOMO;SEPTIADI;MUGI PRAMONO ;ARY RODJO PRASETIYO;Cutting Leader/Cutting/Production;;;;;;;;;;;;;;;;;;
+;;;;;;SUDIYATNO;YATNO;MUGI PRAMONO ;ARY RODJO PRASETIYO;Quality Control/Technical Support, QC & Maintenance/Production;;;;;;;;;;;;;;;;;;
+;;;;;;UMAR HADI;HADI;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Operator/Machining & Machining Custom/Production;;;;;;;;;;;;;;;;;;
+;;;;;;YUSUF SYAFA'AT;YUSUF;RAGIL ISHA RAHMANTO ;ARY RODJO PRASETIYO;Machining Leader/Machining & Machining Custom/Production;;;;;;;;;;;;;;;;;;
+;;;;;;MUGI PRAMONO;MUGI;ARY RODJO PRASETIYO;;"Cutting Section Head/Cutting/Production
+Heat Treatment Section Head/Heat Treatment/Production
+Technical Support, QC & Maintenance Section Head/Technical Support, QC & Maintenance/Production";;;;;;;;;;;;;;;;;;
+;;;;;;ANDI SIMPONI;ANDI_S;MUGI PRAMONO ;ARY RODJO PRASETIYO;Maintenance/Technical Support, QC & Maintenance/Production;;;;;;;;;;;;;;;;;;
+;;;;;;AVI SHENNA;AVI;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Operator/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;BANGUN SUTOPO;BANGUN;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Leader/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;FIKRI SYAHBANA;FIKRI;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Operator/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;GUNAWAN;GUNAWAN;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Admin & PPC/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;JONI SETIAWAN;JONI;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Admin/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;KUSTIONO;KUSTIONO;MUGI PRAMONO ;ARY RODJO PRASETIYO;Maintenance/Technical Support, QC & Maintenance/Production;;;;;;;;;;;;;;;;;;
+;;;;;;MOHAMMAD FATKHURROHMAN;FATKHUR;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Operator/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;RIADUS SOLIHIN;RIADUS;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Operator/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;RUSLAN M.ALI;RUSLAN;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Operator/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;YUDHI PRASETYO RAHMAWANTO;YUDHI_PR;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Admin/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;ZAENAL ARIFIN;ZAENAL;MUGI PRAMONO ;ARY RODJO PRASETIYO;Heat Treatment Leader/Heat Treatment/Production ;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;CONFIRM;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -461,29 +461,44 @@
                             userDropdown.innerHTML =
                                 '<option value="">---- Pilih Karyawan ----</option>';
 
-                            var addedUsers = [];
+                            if (!selectedSection) return;
 
-                            jobPositions.forEach(function(jobPosition) {
-                                if (jobPosition.user && jobPosition.user.section ===
-                                    selectedSection) {
-                                    var jobOption = document.createElement('option');
-                                    jobOption.value = jobPosition.job_position;
-                                    jobOption.text = jobPosition.job_position;
-                                    jobPositionDropdown.appendChild(jobOption);
-
-                                    if (!addedUsers.includes(jobPosition.user.id)) {
-                                        var userOption = document.createElement('option');
-                                        userOption.value = jobPosition.user.id;
-                                        userOption.text = jobPosition.user.name;
-                                        userDropdown.appendChild(userOption);
-                                        addedUsers.push(jobPosition.user.id);
-                                    }
+                            var uniqueJobs = [];
+                            jobPositions.forEach(function(jp) {
+                                if (jp.user && jp.user.section === selectedSection && !uniqueJobs.includes(jp.job_position)) {
+                                    uniqueJobs.push(jp.job_position);
+                                    var option = document.createElement('option');
+                                    option.value = jp.job_position;
+                                    option.text = jp.job_position;
+                                    jobPositionDropdown.appendChild(option);
                                 }
                             });
 
                             if (item.id_job_position) {
                                 jobPositionDropdown.value = item.id_job_position;
                             }
+                        });
+
+                        jobPositionDropdown.addEventListener('change', function() {
+                            var selectedJobPosition = this.value;
+                            var selectedSection = sectionDropdown.value;
+                            userDropdown.innerHTML =
+                                '<option value="">---- Pilih Karyawan ----</option>';
+
+                            if (!selectedJobPosition) return;
+
+                            var uniqueUserIds = [];
+                            jobPositions.forEach(function(jp) {
+                                if (jp.user && jp.user.section === selectedSection && jp.job_position === selectedJobPosition) {
+                                    if (!uniqueUserIds.includes(jp.user.id)) {
+                                        uniqueUserIds.push(jp.user.id);
+                                        var option = document.createElement('option');
+                                        option.value = jp.user.id;
+                                        option.text = jp.user.name;
+                                        userDropdown.appendChild(option);
+                                    }
+                                }
+                            });
 
                             if (item.user) {
                                 userDropdown.value = item.user.id;
@@ -494,6 +509,12 @@
                         if (item.section) {
                             sectionDropdown.value = item.section;
                             sectionDropdown.dispatchEvent(new Event('change'));
+                            setTimeout(function() {
+                                if (item.id_job_position) {
+                                    jobPositionDropdown.value = item.id_job_position;
+                                    jobPositionDropdown.dispatchEvent(new Event('change'));
+                                }
+                            }, 50);
                         }
                     }
                 });
@@ -614,28 +635,45 @@
                             userDropdown.innerHTML =
                                 '<option value="">---- Pilih Karyawan ----</option>';
 
-                            var addedUsers = [];
-                            jobPositions.forEach(function(jobPosition) {
-                                if (jobPosition.user && jobPosition.user.section ===
-                                    selectedSection) {
-                                    var jobOption = document.createElement('option');
-                                    jobOption.value = jobPosition.job_position;
-                                    jobOption.text = jobPosition.job_position;
-                                    jobPositionDropdown.appendChild(jobOption);
+                            if (!selectedSection) return;
 
-                                    if (!addedUsers.includes(jobPosition.user.id)) {
-                                        var userOption = document.createElement('option');
-                                        userOption.value = jobPosition.user.id;
-                                        userOption.text = jobPosition.user.name;
-                                        userDropdown.appendChild(userOption);
-                                        addedUsers.push(jobPosition.user.id);
-                                    }
+                            var uniqueJobs = [];
+                            jobPositions.forEach(function(jp) {
+                                if (jp.user && jp.user.section === selectedSection && !uniqueJobs.includes(jp.job_position)) {
+                                    uniqueJobs.push(jp.job_position);
+                                    var option = document.createElement('option');
+                                    option.value = jp.job_position;
+                                    option.text = jp.job_position;
+                                    jobPositionDropdown.appendChild(option);
                                 }
                             });
 
                             if (item.id_job_position) {
                                 jobPositionDropdown.value = item.id_job_position;
                             }
+                        });
+
+                        jobPositionDropdown.addEventListener('change', function() {
+                            var selectedJobPosition = this.value;
+                            var selectedSection = sectionDropdown.value;
+                            userDropdown.innerHTML =
+                                '<option value="">---- Pilih Karyawan ----</option>';
+
+                            if (!selectedJobPosition) return;
+
+                            var uniqueUserIds = [];
+                            jobPositions.forEach(function(jp) {
+                                if (jp.user && jp.user.section === selectedSection && jp.job_position === selectedJobPosition) {
+                                    if (!uniqueUserIds.includes(jp.user.id)) {
+                                        uniqueUserIds.push(jp.user.id);
+                                        var option = document.createElement('option');
+                                        option.value = jp.user.id;
+                                        option.text = jp.user.name;
+                                        userDropdown.appendChild(option);
+                                    }
+                                }
+                            });
+
                             if (item.user) {
                                 userDropdown.value = item.user.id;
                             }
@@ -644,6 +682,12 @@
                         if (item.section) {
                             sectionDropdown.value = item.section;
                             sectionDropdown.dispatchEvent(new Event('change'));
+                            setTimeout(function() {
+                                if (item.id_job_position) {
+                                    jobPositionDropdown.value = item.id_job_position;
+                                    jobPositionDropdown.dispatchEvent(new Event('change'));
+                                }
+                            }, 50);
                         }
                     }
                 });
@@ -813,6 +857,13 @@
                     dropdown.style.backgroundColor = '';
                     dropdown.style.color = 'black';
                 }
+            }
+
+            // Download function used by download buttons
+            function downloadPdf(id) {
+                var downloadPdfUrl = "{{ route('download.pdf', ['id' => ':id'], false) }}";
+                var url = downloadPdfUrl.replace(':id', id);
+                window.location.href = url;
             }
 
             // Fungsi untuk memformat angka sebagai mata uang

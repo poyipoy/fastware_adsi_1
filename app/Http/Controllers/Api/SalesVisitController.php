@@ -703,6 +703,9 @@ class SalesVisitController extends Controller
             ? Carbon::parse($request->input('end_date'))->endOfDay()
             : $endOfWeek->copy();
 
+        // Pakai id_user jika dikirim dari mobile agar data sesuai user login
+        $forcedUserId = $request->input('id_user');
+
         // Tentukan daftar sales berdasarkan akun yang login
         $user = Auth::user();
         $departmentMappings = $this->getDepartmentHeadMappings();
@@ -724,7 +727,19 @@ class SalesVisitController extends Controller
 
         $allSales = array_values(array_unique(array_filter($allSales)));
 
-        // Ambil daftar sales dari request (bisa berupa array atau string dipisah koma)
+        // Khusus: sembunyikan nama dept head NANI SUTARMAN dari filter sales
+        $excludedUpper = ['NANI SUTARMAN'];
+        $allSales = array_values(array_filter($allSales, function ($n) use ($excludedUpper) {
+            return !in_array(strtoupper($n), $excludedUpper, true);
+        }));
+
+        // Jika ada id_user, jadikan default pilihan tetapi tetap tampilkan daftar sales lengkap
+        $forcedUser = $forcedUserId ? User::find($forcedUserId) : null;
+        if ($forcedUser && !in_array($forcedUser->name, $allSales, true) && !in_array(strtoupper($forcedUser->name), $excludedUpper, true)) {
+            $allSales[] = $forcedUser->name;
+        }
+
+        // Ambil daftar sales dari request (bisa berupa array atau string dipisah koma). Default: tampilkan semua sales.
         $selectedSales = $request->input('sales', $allSales);
         if (is_string($selectedSales)) {
             $selectedSales = array_filter(array_map('trim', explode(',', $selectedSales)));
@@ -764,6 +779,12 @@ class SalesVisitController extends Controller
 
         // Cari ID user yang cocok dengan nama di atas
         $users = User::whereIn('name', $sales)->get(['id', 'name']);
+
+        if ($users->isEmpty()) {
+            $users = User::orderBy('name')->get(['id', 'name']);
+            $sales = $users->pluck('name')->all();
+            $allSales = $sales; // pastikan available_sales hanya menampilkan user yang ada di DB
+        }
 
         $usersMap = $users
             ->mapWithKeys(function (User $user) {
@@ -832,7 +853,7 @@ class SalesVisitController extends Controller
         foreach ($sales as $name) {
             $normalizedName = strtolower(trim($name));
             $uid = $usersMap[$normalizedName] ?? null;
-            $chartLabels[] = $name;
+            $chartLabels[] = $this->formatFirstName($name);
             $chartVisits[] = $uid ? (int) $visitsAgg->get($uid, 0) : 0;
             $chartPlans[]  = $uid ? (int) $plansAgg->get($uid, 0) : 0;
         }
@@ -860,6 +881,19 @@ class SalesVisitController extends Controller
     }
 
 
+    // Ambil kata pertama agar label chart lebih ringkas
+    private function formatFirstName(string $name): string
+    {
+        $trimmed = trim($name);
+        if ($trimmed === '') {
+            return $name;
+        }
+
+        $parts = preg_split('/\s+/', $trimmed);
+        return $parts[0] ?? $name;
+    }
+
+
     private function getRegionMappings(): array
     {
         return [
@@ -867,26 +901,32 @@ class SalesVisitController extends Controller
                 'YAN WELEM MANGINSELA',
                 'WULYO EKO PRASETYO',
                 'SENDY PRABOWO',
-                'Hexapa Darmadi',
+                'HEXAPA DARMADI',
+                'YULMAI RIDO WINANDA',
+                'JUN JOHAMIN PD',
             ],
             'Region 2' => [
                 'HERY HERMAWAN',
                 'RIFQI RAHMAT DZATNIKA',
-                'Sarah Ega Budi Astuti',
-                'Dimas Aditya Priandana',
+                'SARAH EGA BUDI ASTUTI',
+                'DIMAS ADITYA PRIANDANA',
                 'SONY STIAWAN',
-                'Hexapa Darmadi',
+                'HEXAPA DARMADI',
+                'ILHAM CHOLID',
+                'YULMAI RIDO WINANDA',
             ],
             'Region 3' => [
                 'DANIA ISNAWATI',
                 'FISKA CHRISMAS YUDHA',
                 'TOTOK SISWOYO',
-                'Hexapa Darmadi',
+                'ANDIK TOTOK SISWOYO',
+                'HEXAPA DARMADI',
             ],
             'Region 4' => [
                 'DWI KUNTORO',
                 'YUNASIS PALGUNADI',
-                'Hexapa Darmadi',
+                'HEXAPA DARMADI',
+                'ANDIK TOTOK SISWOYO',
             ],
         ];
     }
@@ -901,14 +941,14 @@ class SalesVisitController extends Controller
                 'TOTOK SISWOYO',
                 'DWI KUNTORO',
                 'YUNASIS PALGUNADI',
-                'Hexapa Darmadi',
+                'HEXAPA DARMADI',
             ],
             'ILHAM CHOLID' => [
                 'ILHAM CHOLID',
                 'HERY HERMAWAN',
                 'RIFQI RAHMAT DZATNIKA',
-                'Sarah Ega Budi Astuti',
-                'Dimas Aditya Priandana',
+                'SARAH EGA BUDI ASTUTI',
+                'DIMAS ADITYA PRIANDANA',
                 'SONY STIAWAN',
             ],
             'JUN JOHAMIN PD' => [
@@ -917,16 +957,36 @@ class SalesVisitController extends Controller
                 'WULYO EKO PRASETYO',
                 'SENDY PRABOWO',
             ],
-            'YULMAI RIDO WINANDA' => [
+            'YULMAI RIDO WINANDA' => [          
                 'YULMAI RIDO WINANDA',
                 'YAN WELEM MANGINSELA',
                 'WULYO EKO PRASETYO',
                 'SENDY PRABOWO',
                 'HERY HERMAWAN',
                 'RIFQI RAHMAT DZATNIKA',
-                'Sarah Ega Budi Astuti',
-                'Dimas Aditya Priandana',
+                'SARAH EGA BUDI ASTUTI',
+                'DIMAS ADITYA PRIANDANA',
                 'SONY STIAWAN',
+            ],
+            'NANI SUTARMAN' => [
+                'ILHAM CHOLID',
+                'ANDIK TOTOK SISWOYO',
+                'JUN JOHAMIN PD',
+                'YULMAI RIDO WINANDA',
+                'DANIA ISNAWATI',
+                'DIMAS ADITYA PRIANDANA',
+                'DWI KUNTORO',
+                'FISKA CHRISMAS YUDHA',
+                'HERY HERMAWAN',
+                'HEXAPA DARMADI',
+                'RIFQI RAHMAT DZATNIKA',
+                'SARAH EGA BUDI ASTUTI',
+                'SENDY PRABOWO',
+                'SONY STIAWAN',
+                'TOTOK SISWOYO',
+                'WULYO EKO PRASETYO',
+                'YAN WELEM MANGINSELA',
+                'YUNASIS PALGUNADI',
             ],
         ];
     }
@@ -938,6 +998,7 @@ class SalesVisitController extends Controller
             'ILHAM CHOLID',
             'JUN JOHAMIN PD',
             'YULMAI RIDO WINANDA',
+            'NANI SUTARMAN',
         ];
     }
 

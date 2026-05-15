@@ -67,6 +67,8 @@ class AuthController extends Controller
             'ILHAM CHOLID',
             'JUN JOHAMIN PD',
             'YULMAI RIDO WINANDA',
+            'NANI SUTARMAN',
+            'HARDI SAPUTRA',
         ]);
 
         $adminUsers = array_map('strtoupper', [

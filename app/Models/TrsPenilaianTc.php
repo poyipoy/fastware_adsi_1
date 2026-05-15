@@ -26,6 +26,12 @@ class TrsPenilaianTc extends Model
         'modified_updated',
     ];
 
+    protected $casts = [
+        'nilai_tc' => 'integer',
+        'nilai_sk' => 'integer',
+        'nilai_ad' => 'integer',
+    ];
+
     // Relasi ke model Tc (id_tc)
     public function tc()
     {

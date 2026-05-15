@@ -2,17 +2,91 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\HRMenuAccessGroup;
 use App\Models\Role;
 use App\Models\TcJobPosition;
+use App\Models\MstTc;
+use App\Models\MstSoftSkill;
+use App\Models\MstAdditionals;
 use App\Models\User;
+use App\Models\UserJobAccess;
+use App\Models\TrsPenilaianTc;
+use App\Models\DetailTcPenilaian;
+use App\Models\TcPeopleDevelopment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TcJobController extends Controller
 {
+    private function ensureJobPositionAccess(): void
+    {
+        $userName = auth()->user()->name ?? '';
+        abort_unless(HRMenuAccessGroup::JOB_POSITION->hasAccess($userName), 403);
+    }
+
+    /**
+     * Copy master competency data (mst_tcs, mst_soft_skills, mst_additionals)
+     * from an existing tc_job_positions record of the same job_position
+     * to a newly created tc_job_positions record.
+     */
+    private function copyMasterCompetencyData(TcJobPosition $newJobPosition): void
+    {
+        // Cari record lain dengan job_position yang sama yang sudah punya data master
+        $existingRecord = TcJobPosition::where('job_position', $newJobPosition->job_position)
+            ->where('id', '!=', $newJobPosition->id)
+            ->whereHas('mstTcs')
+            ->first();
+
+        if (!$existingRecord) {
+            Log::info('No existing master data to copy for job_position: ' . $newJobPosition->job_position);
+            return;
+        }
+
+        // Copy mst_tcs
+        foreach ($existingRecord->mstTcs as $tc) {
+            MstTc::create([
+                'id_job_position' => $newJobPosition->id,
+                'id_poin_kategori' => $tc->id_poin_kategori,
+                'keterangan_tc' => $tc->keterangan_tc,
+                'deskripsi_tc' => $tc->deskripsi_tc,
+                'nilai' => $tc->nilai,
+            ]);
+        }
+
+        // Copy mst_soft_skills
+        foreach ($existingRecord->mstSoftSkills as $sk) {
+            MstSoftSkill::create([
+                'id_job_position' => $newJobPosition->id,
+                'id_poin_kategori' => $sk->id_poin_kategori,
+                'keterangan_sk' => $sk->keterangan_sk,
+                'deskripsi_sk' => $sk->deskripsi_sk,
+                'nilai' => $sk->nilai,
+            ]);
+        }
+
+        // Copy mst_additionals
+        foreach ($existingRecord->mstAdditional as $ad) {
+            MstAdditionals::create([
+                'id_job_position' => $newJobPosition->id,
+                'id_poin_kategori' => $ad->id_poin_kategori,
+                'keterangan_ad' => $ad->keterangan_ad,
+                'deskripsi_ad' => $ad->deskripsi_ad,
+                'nilai' => $ad->nilai,
+            ]);
+        }
+
+        Log::info('Master competency data copied for new job_position record:', [
+            'new_id' => $newJobPosition->id,
+            'source_id' => $existingRecord->id,
+            'job_position' => $newJobPosition->job_position,
+        ]);
+    }
+
     public function jobShow()
     {
+        $this->ensureJobPositionAccess();
+
         // Ambil job position yang spesifik untuk edit
         $jobPositions = TcJobPosition::with('user', 'role')
             ->select('job_position', 'status', DB::raw('MIN(id) as id'))
@@ -41,6 +115,8 @@ class TcJobController extends Controller
 
     public function store(Request $request)
     {
+        $this->ensureJobPositionAccess();
+
         // Validate the incoming request data
         $request->validate([
             'id_user' => 'required|array', // Validate id_user as an array
@@ -65,6 +141,16 @@ class TcJobController extends Controller
 
                 // Create the new job position with the modified data
                 $jobPosition = TcJobPosition::create($data);
+
+                // Auto-copy master competency data dari record yang sudah ada
+                $this->copyMasterCompetencyData($jobPosition);
+
+                // Simpan akses untuk user target (bukan user login HR)
+                UserJobAccess::firstOrCreate([
+                    'user_id' => $user->id,
+                    'role_id' => $user->role_id,
+                    'job_position' => $request->job_position,
+                ]);
 
                 // Log the success for each job position created
                 Log::info('Job Position added successfully:', [
@@ -91,6 +177,8 @@ class TcJobController extends Controller
 
     public function getJobPositionData($id)
     {
+        $this->ensureJobPositionAccess();
+
         // Fetch the job position with associated user and role
         $jobPosition = TcJobPosition::find($id);
         if (!$jobPosition) {
@@ -128,6 +216,8 @@ class TcJobController extends Controller
 
     public function updateJob(Request $request, $id)
     {
+        $this->ensureJobPositionAccess();
+
         $jobPosition = TcJobPosition::find($id);
 
         if (!$jobPosition) {
@@ -137,10 +227,37 @@ class TcJobController extends Controller
             ], 404);
         }
 
-        // Memperbarui nama job position
+        // Simpan nama lama sebelum update
+        $oldJobPositionName = $jobPosition->job_position;
         $newJobPositionName = $request->input('job_position');
-        $jobPosition->job_position = $newJobPositionName;
-        $jobPosition->save();
+
+        // Jika nama job position berubah, update semua tabel terkait
+        if ($oldJobPositionName !== $newJobPositionName) {
+            // Update semua record di tc_job_positions yang punya nama lama
+            TcJobPosition::where('job_position', $oldJobPositionName)
+                ->update(['job_position' => $newJobPositionName]);
+
+            // Update id_job_position di trs_penilaian_tcs
+            TrsPenilaianTc::where('id_job_position', $oldJobPositionName)
+                ->update(['id_job_position' => $newJobPositionName]);
+
+            // Update id_job_position di detail_penilaian_tcs
+            DetailTcPenilaian::where('id_job_position', $oldJobPositionName)
+                ->update(['id_job_position' => $newJobPositionName]);
+
+            // Update job_position di tc_user_job_accesses
+            UserJobAccess::where('job_position', $oldJobPositionName)
+                ->update(['job_position' => $newJobPositionName]);
+
+            // Update id_job_position di tc_people_developments
+            TcPeopleDevelopment::where('id_job_position', $oldJobPositionName)
+                ->update(['id_job_position' => $newJobPositionName]);
+
+            Log::info('Job position name updated across all tables', [
+                'old_name' => $oldJobPositionName,
+                'new_name' => $newJobPositionName,
+            ]);
+        }
 
         // Mendapatkan ID pengguna yang dipilih
         $selectedUserIds = $request->input('id_user', []);
@@ -167,13 +284,24 @@ class TcJobController extends Controller
                     $existingJobPosition->save();
                 } else {
                     // Jika tidak ada, buat entri baru dengan status = 1
-                    TcJobPosition::create([
+                    $newEntry = TcJobPosition::create([
                         'job_position' => $newJobPositionName,
                         'id_user' => $user->id,
                         'id_role' => $user->role_id,
                         'status' => 1, // Mengatur status ke 1
                     ]);
+
+                    // Auto-copy master competency data dari record yang sudah ada
+                    $this->copyMasterCompetencyData($newEntry);
+
                 }
+
+                // Pastikan mapping akses selalu ada untuk user yang ditugaskan
+                UserJobAccess::firstOrCreate([
+                    'user_id' => $user->id,
+                    'role_id' => $user->role_id,
+                    'job_position' => $newJobPositionName,
+                ]);
             }
         }
 
@@ -184,6 +312,10 @@ class TcJobController extends Controller
                 TcJobPosition::where('job_position', $newJobPositionName)
                     ->where('id_user', $currentUserId)
                     ->delete(); // Baris ini menghapus catatan, ubah jika Anda perlu menyimpannya tetapi mengatur status ke tidak aktif
+
+                UserJobAccess::where('user_id', $currentUserId)
+                    ->where('job_position', $newJobPositionName)
+                    ->delete();
             }
         }
 
@@ -193,6 +325,8 @@ class TcJobController extends Controller
 
     public function deleteRow(Request $request)
     {
+        $this->ensureJobPositionAccess();
+
         // Ambil job_position dan id_user dari request
         $jobPositionName = $request->input('jobPositionId'); // Menggunakan job_position sebagai nama
         $userId = $request->input('userId'); // Ambil id_user yang dikirim dari front end
@@ -208,6 +342,10 @@ class TcJobController extends Controller
             TcJobPosition::where('job_position', $jobPositionName)
                 ->where('id_user', $userId)
                 ->delete(); // Hapus entri dari database
+
+            UserJobAccess::where('user_id', $userId)
+                ->where('job_position', $jobPositionName)
+                ->delete();
 
             return response()->json([
                 'success' => true,

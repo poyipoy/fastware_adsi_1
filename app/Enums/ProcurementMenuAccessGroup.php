@@ -14,6 +14,15 @@ enum ProcurementMenuAccessGroup: string
     case PERSETUJUAN_PROCUREMENT_2 = 'persetujuan_procurement_2';
     case PENAWARAN_SUBCONT_FORM = 'penawaran_subcont_form';
     case PENAWARAN_SUBCONT_PERSETUJUAN = 'penawaran_subcont_persetujuan';
+    case CLAIM_SUBMISSION_FORM = 'claim_submission_form';
+    case CLAIM_SUBMISSION_APPROVAL = 'claim_submission_approval';
+    case ITEM_CODE_ACCESS = 'item_code_access';
+    case ITEM_CODE_FORM = 'item_code_form';
+    case ITEM_CODE_APPROVAL = 'item_code_approval';
+    case ITEM_CODE_APPROVER = 'item_code_approver';
+    case ITEM_CODE_APPROVER_1 = 'item_code_approver_1';
+    case ITEM_CODE_APPROVER_2 = 'item_code_approver_2';
+    case ITEM_CODE_FINISHER = 'item_code_finisher';
     case INQUIRY_LOCAL_FORM = 'inquiry_local_form';
     case INQUIRY_LOCAL_APPROVAL_SIE = 'inquiry_local_approval_sie';
     case INQUIRY_LOCAL_APPROVAL_DEPT = 'inquiry_local_approval_dept';
@@ -34,6 +43,66 @@ enum ProcurementMenuAccessGroup: string
      */
     public function getAllowedUsers(): array
     {
+        $adminUsers = [
+            'ADMINISTRATOR',
+            'ADMINSTRATOR',
+        ];
+
+        $itemCodeFormUsers = [
+            'ILYAS NOOR FIRDAUS',
+            'VIVIAN ANGELIKA',
+            'FAJAR BAGASKARA',
+        ];
+
+        $itemCodeApprover1Users = [
+            'JESSICA PAUNE',
+        ];
+
+        $itemCodeApprover2Users = [
+            'MARTINUS CAHYO RAHASTO',
+        ];
+
+        $itemCodeFinisherUsers = [
+            'ADHI PRASETIYO',
+            'ADHI PRASETYO',
+        ];
+
+        $itemCodeApproverUsers = array_values(array_unique(array_merge(
+            $adminUsers,
+            $itemCodeApprover1Users,
+            $itemCodeApprover2Users
+        )));
+
+        $itemCodeApprovalUsers = array_values(array_unique(array_merge(
+            $itemCodeApproverUsers,
+            $itemCodeFinisherUsers
+        )));
+
+        $itemCodeAccessUsers = array_values(array_unique(array_merge(
+            $itemCodeApprovalUsers,
+            $itemCodeFormUsers
+        )));
+
+        $itemCodeFormAccessUsers = array_values(array_unique(array_merge(
+            $adminUsers,
+            $itemCodeFormUsers
+        )));
+
+        $itemCodeApprover1AccessUsers = array_values(array_unique(array_merge(
+            $adminUsers,
+            $itemCodeApprover1Users
+        )));
+
+        $itemCodeApprover2AccessUsers = array_values(array_unique(array_merge(
+            $adminUsers,
+            $itemCodeApprover2Users
+        )));
+
+        $itemCodeFinisherAccessUsers = array_values(array_unique(array_merge(
+            $adminUsers,
+            $itemCodeFinisherUsers
+        )));
+
         return match($this) {
             self::OVERVIEW_FPB => [], // Available for all authenticated users
             self::FORM_PENGAJUAN_BARANG => [
@@ -89,6 +158,22 @@ enum ProcurementMenuAccessGroup: string
                 'VIVIAN ANGELIKA',
                 'FAJAR BAGASKARA',
             ],
+            self::CLAIM_SUBMISSION_FORM => [
+                // form bisa diakses semua user, kosong berarti allow all
+            ],
+            self::CLAIM_SUBMISSION_APPROVAL => [
+                'ADMINSTRATOR',
+                'JESSICA PAUNE',
+                'VIVIAN ANGELIKA',
+                'FAJAR BAGASKARA',
+            ],
+            self::ITEM_CODE_ACCESS => $itemCodeAccessUsers,
+            self::ITEM_CODE_FORM => $itemCodeFormAccessUsers,
+            self::ITEM_CODE_APPROVAL => $itemCodeApprovalUsers,
+            self::ITEM_CODE_APPROVER => $itemCodeApproverUsers,
+            self::ITEM_CODE_APPROVER_1 => $itemCodeApprover1AccessUsers,
+            self::ITEM_CODE_APPROVER_2 => $itemCodeApprover2AccessUsers,
+            self::ITEM_CODE_FINISHER => $itemCodeFinisherAccessUsers,
             self::INQUIRY_LOCAL_FORM => [
                 'ADMINSTRATOR',
                 'ANDIK TOTOK SISWOYO',
@@ -188,7 +273,15 @@ enum ProcurementMenuAccessGroup: string
         if (empty($allowedUsers)) {
             return true;
         }
-        return in_array($userName, $allowedUsers, true);
+        $normalizedUser = self::normalizeUserName($userName);
+        $normalizedAllowedUsers = array_map([self::class, 'normalizeUserName'], $allowedUsers);
+
+        return in_array($normalizedUser, $normalizedAllowedUsers, true);
+    }
+
+    private static function normalizeUserName(string $userName): string
+    {
+        return strtoupper(trim($userName));
     }
 }
 

@@ -47,10 +47,12 @@
                                         title="View Form">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    @if ($item->status_1 != 3)
                                     <a href="{{ route('sendPD2', $item->tahun_aktual) }}" class="btn btn-sm btn-success"
                                         title="Kirim Form">
                                         <i class="fas fa-paper-plane"></i>
                                     </a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach

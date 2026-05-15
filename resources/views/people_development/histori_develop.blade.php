@@ -1,358 +1,402 @@
 @extends('layout')
 
 @section('content')
-    <style>
-        /* Profil pengguna */
-        .user-profile {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            width: 100%;
-        }
+<style>
+    .history-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        color: #fff;
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
 
-        .profile-icon {
-            font-size: 50px;
-            color: #555;
-            margin-right: 15px;
-        }
+    .history-toolbar .form-control,
+    .history-toolbar .form-select {
+        min-height: 40px;
+    }
 
-        .user-details {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
+    .employee-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 
-        .user-name,
-        .user-job {
-            font-weight: bold;
-            font-size: 14px;
-            margin: 2px 0;
-        }
+    .employee-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #0d6efd;
+        background-color: #e9f2ff;
+        border: 1px solid #cfe2ff;
+    }
 
-        /* Container for the radar charts */
-        #radarChartContainer {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            gap: 20px;
-            /* Tambahkan gap untuk spasi antar card */
-            margin-top: 20px;
-        }
+    .table td,
+    .table th {
+        vertical-align: middle;
+        white-space: nowrap;
+    }
 
-        /* Each card containing a radar chart */
-        .chart-card {
-            background-color: #fff;
-            border: 1px solid #000000;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            width: calc(33.33% - 20px);
-            /* Kalkulasi lebar agar 3 card muat dalam 1 baris */
-            box-sizing: border-box;
-        }
+    .loading-row {
+        color: #6c757d;
+    }
 
-        /* Card title */
-        .card-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-align: center;
-        }
+    .empty-state {
+        color: #6c757d;
+    }
 
-        /* Adjustments for the canvas to ensure it fits within the card */
-        .chart-card canvas {
-            width: 100% !important;
-            height: auto !important;
-            display: block;
-            margin: 0 auto;
-        }
+    .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .25rem .5rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        background: #eef6ff;
+        color: #0b5ed7;
+        border: 1px solid #cfe2ff;
+        cursor: pointer;
+    }
 
-        /* Responsive adjustments for smaller screens */
-        @media (max-width: 992px) {
-            .chart-card {
-                width: calc(50% - 20px);
-                /* Setengah lebar jika ruang terbatas */
-            }
-        }
+    .filter-chip .close-x {
+        font-weight: 700;
+        margin-left: .25rem;
+        color: #0b5ed7;
+    }
 
-        @media (max-width: 768px) {
-            .chart-card {
-                width: 100%;
-                /* Full width untuk layar kecil */
-                max-width: 100%;
-            }
-        }
+        /* Button visual improvements */
+    .history-toolbar .btn-action {
+        min-height: 44px;
+        font-size: 0.95rem;
+        padding: 0.45rem 0.9rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+    }
 
-        /* tabel */
-        .card {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            background-color: #f9f9f9;
-        }
+    .history-toolbar .btn-action i {
+        vertical-align: middle;
+        margin-right: 0.45rem;
+    }
 
-        .card-header {
-            background-color: #007bff;
-            color: white;
-            padding: 10px;
-            font-weight: bold;
-            text-align: center;
-            border-bottom: 2px solid #ccc;
-            border-radius: 5px 5px 0 0;
-        }
+    .history-toolbar .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+    }
+</style>
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            background-color: #f1f1f1;
-            font-weight: bold;
-            text-align: center;
-            border: 1px solid #ccc;
-        }
-
-        th[rowspan="2"] {
-            vertical-align: middle;
-        }
-
-        td,
-        th {
-            padding: 10px;
-            border: 1px solid #ccc;
-            white-space: nowrap;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            box-sizing: border-box;
-        }
-
-        @media (max-width: 768px) {
-
-            th,
-            td {
-                font-size: 12px;
-                padding: 5px;
-            }
-        }
-
-        th,
-        td {
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        th[rowspan="2"] {
-            vertical-align: middle;
-        }
-
-        /* Optional: Center the text inside input fields as well */
-        input[type="text"] {
-            text-align: center;
-        }
-    </style>
-    <main id="main" class="main">
-        <section class="section dashboard">
-            <div class="card">
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <div style="justify-content: space-between; align-items: center;">
-                            <span><b>Histori Development</b></span>
-                        </div>
-
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; gap: 50px; margin-top: 2%;">
-                            <div style="display: flex; align-items: center; gap: 40px;">
-                                <!-- Dropdown for selecting role_id -->
-                                <select id="role_id" style="width: 45%;">
-                                    <option value=""> ----- Pilih Departemen ------ </option>
-                                    <!-- Show only if user's role_id is 11 -->
-                                    @if (auth()->user()->role_id == 11 || in_array(auth()->user()->role_id, [1, 14, 15]))
-                                        <option value="11">Departemen Finn Acc Hrga IT Proc</option>
-                                    @endif
-
-                                    <!-- Show only if user's role_id is 2 -->
-                                    @if (auth()->user()->role_id == 2 || in_array(auth()->user()->role_id, [1, 14, 15]))
-                                        <option value="2">Departemen Sales Marketing</option>
-                                    @endif
-
-                                    <!-- Show only if user's role_id is 5 -->
-                                    @if (auth()->user()->role_id == 5 || in_array(auth()->user()->role_id, [1, 14, 15]))
-                                        <option value="5">Departemen Production</option>
-                                    @endif
-
-                                    <!-- Show only if user's role_id is 7 -->
-                                    @if (auth()->user()->role_id == 7 || in_array(auth()->user()->role_id, [1, 14, 15]))
-                                        <option value="7">Departemen Logistics</option>
-                                    @endif
-                                </select>
-
-                                <!-- Dropdown for selecting year -->
-                                <input list="yearList" id="year" name="year" placeholder="Pilih Tahun"
-                                    style="width: 150px;">
-                                <datalist id="yearList">
-                                    @for ($year = 2000; $year <= now()->year; $year++)
-                                        <option value="{{ $year }}">{{ $year }}</option>
-                                    @endfor
-                                </datalist>
-
-                                <!-- Button to trigger filtering -->
-                                <button onclick="filterData()">Filter Data</button>
-                            </div>
-
-                            <!-- Input field for search -->
-                            <input type="text" id="searchInput" placeholder="Cari Data Disemua Kolom..."
-                                style="padding: 5px; width: 250px;">
-                        </div>
-
+<main id="main" class="main">
+    <section class="section dashboard">
+        <div class="card shadow-sm border-0">
+            <div class="card-header history-header p-3 p-md-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                    <div>
+                        <h5 class="mb-1 fw-bold">Histori Development</h5>
+                    <div class="history-toolbar mb-3">
                     </div>
-
-                    <div style="overflow-x: auto; white-space: nowrap;">
-                        <table border="1" cellpadding="5" cellspacing="0" class="table table-bordered mt-3">
-                            <thead>
-                                <tr>
-                                    <th>Nama Employee</th>
-                                    <th>Nama Program</th>
-                                    <th>Kategori Competency</th>
-                                    <th>Competency</th>
-                                    <th>Lembaga</th>
-                                    <th>Periode Actual</th>
-                                    <th>File Download</th>
-                                </tr>
-                            </thead>
-                            <tbody id="peopleDevTabel">
-                                <!-- Initially populated from server-side -->
-                                @if ($dataTcPeopleDevelopment->isEmpty())
-                                    <tr>
-                                        <td colspan="6" style="text-align: center;">Tidak ada data tersedia</td>
-                                    </tr>
-                                @else
-                                    @foreach ($dataTcPeopleDevelopment as $data)
-                                        <tr>
-                                            <td>{{ $data->user->name ?? '-' }}</td>
-                                            <td>{{ $data->program_training_plan ?? '-' }}</td>
-                                            <td>{{ $data->kategori_competency ?? '-' }}</td>
-                                            <td>{{ $data->competency ?? '-' }}</td>
-                                            <td>{{ $data->lembaga_plan ?? '-' }}</td>
-                                            <td>{{ $data->due_date_plan ?? '-' }}</td>
-                                            <td>
-                                                <button onclick="downloadPdf({{ $data->id }})"
-                                                    style="cursor: pointer; background-color: transparent; border: none; color: blue; text-decoration: underline;">
-                                                    <i class="bi bi-download"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @endif
-                            </tbody>
-                        </table>
+                    <div class="d-flex align-items-center">
+                        <span class="badge text-bg-light" id="resultCount">{{ $dataTcPeopleDevelopment->count() }} Data</span>
                     </div>
+                </div>
+
+                <div class="mb-3">
+                    <div id="activeFilters" class="d-flex gap-2 flex-wrap"></div>
                 </div>
             </div>
 
-        </section>
-                        <!-- jQuery -->
-                        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-                        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-                        <script>
-                            $(document).ready(function() {
-                                // Hover function for dropdowns
-                                $('.nav-item.dropdown').hover(function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
-                                }, function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
-                                });
-                            });
-                            </script>
+            <div class="card-body p-3 p-md-4">
+                <div class="history-toolbar mb-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-4 col-lg-3">
+                            <label for="role_id" class="form-label mb-1 fw-semibold">Departemen</label>
+                            <select id="role_id" name="role_id" class="form-select">
+                                <option value="">Pilih Departemen</option>
+                                @if (auth()->user()->role_id == 11 || in_array(auth()->user()->role_id, [1, 3, 14, 15]))
+                                    <option value="11">Departemen Finn Acc Hrga IT Proc</option>
+                                @endif
+                                @if (auth()->user()->role_id == 2 || in_array(auth()->user()->role_id, [1, 3, 14, 15]))
+                                    <option value="2">Departemen Sales Marketing</option>
+                                @endif
+                                @if (auth()->user()->role_id == 5 || in_array(auth()->user()->role_id, [1, 3, 14, 15]))
+                                    <option value="5">Departemen Production</option>
+                                @endif
+                                @if (auth()->user()->role_id == 7 || in_array(auth()->user()->role_id, [1, 3, 14, 15]))
+                                    <option value="7">Departemen Logistics</option>
+                                @endif
+                            </select>
+                        </div>
 
-        <!-- Include Chart.js Library -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                        <div class="col-12 col-md-3 col-lg-2">
+                            <label for="year" class="form-label mb-1 fw-semibold">Tahun</label>
+                            <select id="year" name="year" class="form-select">
+                                <option value="">Pilih Tahun</option>
+                                @for ($year = now()->year; $year >= 2015; $year--)
+                                    <option value="{{ $year }}">{{ $year }}</option>
+                                @endfor
+                            </select>
+                        </div>
 
-        <!-- SimpleDataTables JS -->
-        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-        <script>
-            function filterData() {
-                var roleId = document.getElementById('role_id').value;
-                var year = document.getElementById('year').value;
+                        <div class="col-12 col-md-5 col-lg-3 d-grid d-md-flex gap-2">
+                            <button id="btnFilter" type="button" class="btn btn-success btn-action w-100" title="Filter data berdasarkan pilihan">
+                                <i class="bi bi-funnel"></i>
+                                <span>Filter</span>
+                            </button>
+                            <button id="btnReset" type="button" class="btn btn-secondary btn-action w-100 text-light" title="Reset semua filter">
+                                <span>Reset</span>
+                            </button>
+                        </div>
 
-                var url = "{{ route('people_development.filter') }}?role_id=" + roleId + "&year=" + year;
+                        <div class="col-12 col-lg-4">
+                            <label for="searchInput" class="form-label mb-1 fw-semibold">Cari Data</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="searchInput" class="form-control" placeholder="Cari di semua kolom...">
+                            </div>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a id="exportCsv" href="#" class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        var tbody = document.getElementById('peopleDevTabel');
-                        tbody.innerHTML = ''; // Clear the current table body
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered align-middle mb-0" id="historyTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nama Employee</th>
+                                <th>Nama Program</th>
+                                <th>Kategori Competency</th>
+                                <th>Competency</th>
+                                <th>Lembaga</th>
+                                <th>Periode Actual</th>
+                                <th class="text-center">File</th>
+                            </tr>
+                        </thead>
+                        <tbody id="peopleDevTabel">
+                            @if ($dataTcPeopleDevelopment->isEmpty())
+                                <tr class="empty-state-row">
+                                    <td colspan="7" class="text-center py-4 empty-state">
+                                        <i class="bi bi-inbox fs-5 d-block mb-2"></i>
+                                        Tidak ada data tersedia
+                                    </td>
+                                </tr>
+                            @else
+                                @foreach ($dataTcPeopleDevelopment as $data)
+                                    <tr>
+                                        <td>
+                                            <span class="employee-pill">
+                                                <span class="employee-avatar">
+                                                    {{ strtoupper(substr($data->user->name ?? '-', 0, 1)) }}
+                                                </span>
+                                                <span>{{ $data->user->name ?? '-' }}</span>
+                                            </span>
+                                        </td>
+                                        <td>{{ $data->program_training_plan ?? '-' }}</td>
+                                        <td>{{ $data->kategori_competency ?? '-' }}</td>
+                                        <td>{{ $data->competency ?? '-' }}</td>
+                                        <td>{{ $data->lembaga_plan ?? '-' }}</td>
+                                        <td>{{ $data->due_date_plan ?? '-' }}</td>
+                                        <td class="text-center">
+                                            <a href="{{ route('download.pdf', ['id' => $data->id]) }}" class="btn btn-sm btn-outline-primary" title="Download file">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                        if (data.length === 0) {
-                            // No data case
-                            tbody.innerHTML =
-                                `<tr><td colspan="6" style="text-align: center;">Tidak ada data tersedia</td></tr>`;
-                        } else {
-                            // Populate the table with the filtered data
-                            data.forEach(function(item) {
-                                var row = `
-                        <tr>
-                            <td>${item.user.name}</td>
-                            <td>${item.program_training_plan}</td>
-                            <td>${item.kategori_competency}</td>
-                            <td>${item.competency}</td>
-                            <td>${item.lembaga_plan}</td>
-                            <td>${item.due_date_plan}</td>
-                            <td>
-                                <button onclick="downloadPdf(${item.id})"
-                                    style="cursor: pointer; background-color: transparent; border: none; color: blue; text-decoration: underline;">
-                                    <i class="bi bi-download"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                                tbody.innerHTML += row; // Append each row to the table body
-                            });
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
+    <script>
+        const filterUrl = "{{ route('people_development.filter') }}";
+        const downloadTemplate = "{{ route('download.pdf', ['id' => ':id']) }}";
+
+        const roleInput = document.getElementById('role_id');
+        const yearInput = document.getElementById('year');
+        const searchInput = document.getElementById('searchInput');
+        const btnFilter = document.getElementById('btnFilter');
+        const btnReset = document.getElementById('btnReset');
+        const tableBody = document.getElementById('peopleDevTabel');
+        const resultCount = document.getElementById('resultCount');
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) {
+                return '-';
             }
 
-            function downloadPdf(id) {
-                var downloadPdfUrl = "{{ route('download.pdf', ['id' => ':id']) }}";
-                var url = downloadPdfUrl.replace(':id', id);
-                window.location.href = url; // Redirect to the download URL
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function makeEmployeeCell(name) {
+            const safeName = escapeHtml(name || '-');
+            const initial = safeName && safeName !== '-' ? safeName.charAt(0).toUpperCase() : '-';
+
+            return `
+                <span class="employee-pill">
+                    <span class="employee-avatar">${initial}</span>
+                    <span>${safeName}</span>
+                </span>
+            `;
+        }
+
+        function setLoadingState() {
+            tableBody.innerHTML = `
+                <tr class="loading-row">
+                    <td colspan="7" class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                        Memuat data...
+                    </td>
+                </tr>
+            `;
+        }
+
+        function setEmptyState() {
+            tableBody.innerHTML = `
+                <tr class="empty-state-row">
+                    <td colspan="7" class="text-center py-4 empty-state">
+                        <i class="bi bi-inbox fs-5 d-block mb-2"></i>
+                        Tidak ada data tersedia
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderRows(data) {
+            tableBody.innerHTML = '';
+
+            if (!Array.isArray(data) || data.length === 0) {
+                setEmptyState();
+                resultCount.textContent = '0 Data';
+                return;
             }
 
-            // Tambahkan event listener untuk fitur pencarian
-            document.getElementById('searchInput').addEventListener('input', function() {
-                var searchTerm = this.value.toLowerCase();
-                var tableRows = document.querySelectorAll('#peopleDevTabel tr');
+            const rows = data.map((item) => {
+                const fileUrl = downloadTemplate.replace(':id', item.id);
 
-                tableRows.forEach(function(row) {
-                    var rowText = row.textContent.toLowerCase();
-                    if (rowText.indexOf(searchTerm) > -1) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-            });
+                return `
+                    <tr>
+                        <td>${makeEmployeeCell(item.user ? item.user.name : '-')}</td>
+                        <td>${escapeHtml(item.program_training_plan)}</td>
+                        <td>${escapeHtml(item.kategori_competency)}</td>
+                        <td>${escapeHtml(item.competency)}</td>
+                        <td>${escapeHtml(item.lembaga_plan)}</td>
+                        <td>${escapeHtml(item.due_date_plan)}</td>
+                        <td class="text-center">
+                            <a href="${fileUrl}" class="btn btn-sm btn-outline-primary" title="Download file">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
 
-            document.getElementById("role_id").addEventListener("change", function() {
-                if (this.value === "") {
-                    window.location.href = "{{ route('historiDept') }}";
+            tableBody.innerHTML = rows;
+            resultCount.textContent = `${data.length} Data`;
+            applySearchFilter();
+        }
+
+        function applySearchFilter() {
+            const keyword = (searchInput.value || '').trim().toLowerCase();
+            const rows = tableBody.querySelectorAll('tr');
+            let visibleCount = 0;
+
+            rows.forEach((row) => {
+                const rowText = row.textContent.toLowerCase();
+                const isVisible = rowText.includes(keyword);
+                row.style.display = isVisible ? '' : 'none';
+
+                if (isVisible && !row.classList.contains('empty-state-row') && !row.classList.contains('loading-row')) {
+                    visibleCount += 1;
                 }
             });
-        </script>
-    </main>
+
+            if (keyword && visibleCount === 0 && rows.length > 0) {
+                resultCount.textContent = '0 Data';
+            }
+        }
+
+        async function filterData() {
+            const roleId = roleInput.value;
+            const year = yearInput.value;
+
+            const query = new URLSearchParams();
+            if (roleId) {
+                query.append('role_id', roleId);
+            }
+            if (year) {
+                query.append('year', year);
+            }
+
+            setLoadingState();
+
+            try {
+                const response = await fetch(`${filterUrl}?${query.toString()}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Gagal memuat data');
+                }
+
+                const data = await response.json();
+                renderRows(data);
+            } catch (error) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-danger">
+                            Terjadi kesalahan saat mengambil data.
+                        </td>
+                    </tr>
+                `;
+                resultCount.textContent = '0 Data';
+                console.error(error);
+            }
+        }
+
+        btnFilter.addEventListener('click', filterData);
+
+        btnReset.addEventListener('click', function() {
+            roleInput.value = '';
+            yearInput.value = '';
+            searchInput.value = '';
+            filterData();
+        });
+
+        yearInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                filterData();
+            }
+        });
+
+        searchInput.addEventListener('input', applySearchFilter);
+        // Export handlers
+        document.getElementById('exportCsv').addEventListener('click', function(e) {
+            e.preventDefault();
+            const params = new URLSearchParams();
+            if (roleInput.value) params.append('role_id', roleInput.value);
+            if (yearInput.value) params.append('year', yearInput.value);
+            window.location = `{{ route('people_development.export.csv') }}?${params.toString()}`;
+        });
+
+        // exportPdf removed — PDF export disabled
+    </script>
+</main>
 @endsection

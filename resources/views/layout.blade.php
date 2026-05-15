@@ -24,14 +24,6 @@
     <!-- Vendor CSS Files -->
     <link href="{{ asset('assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
-                        @if (Auth::check() && in_array(Auth::user()->role_id, [1, 2, 3, 4, 5, 20, 21, 22, 23, 24, 44, 48, 49, 50, 51, 52, 53]))
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center" href="{{ route('sales.crm_report') }}">
-                                <i class="bi bi-file-earmark-text me-2"></i>
-                                <span>CRM Report</span>
-                            </a>
-                        </li>
-                        @endif
     <link href="{{ asset('assets/vendor/boxicons/css/boxicons.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/vendor/quill/quill.snow.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/vendor/quill/quill.bubble.css') }}" rel="stylesheet">
@@ -1176,7 +1168,7 @@
                                 <li>
                                     <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
                                         role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Panawaran Subcont Project Sales
+                                        Penawaran Subcont Project Sales
                                     </a>
                                     <ul class="dropdown-menu" aria-labelledby="childDropdown">
                                         @if (in_array(Auth::user()->name, [
@@ -1192,6 +1184,44 @@
                                         @if (in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'FAJAR BAGASKARA']))
                                             <li><a class="dropdown-item" href="{{ route('indexProc') }}">Persetujuan
                                                     Subcont</a></li>
+                                        @endif
+                                    </ul>
+                                </li>
+
+                                <li>
+                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Claim Submission
+                                    </a>
+                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                        <li><a class="dropdown-item" href="{{ route('claim.indexUser') }}">Form
+                                                Claim Submission</a></li>
+                                        @if (in_array(Auth::user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'VIVIAN ANGELIKA', 'FAJAR BAGASKARA']))
+                                            <li><a class="dropdown-item" href="{{ route('claim.indexProc') }}">Persetujuan
+                                                    Claim Submission</a></li>
+                                        @endif
+                                    </ul>
+                                </li>
+
+                                @php
+                                    $itemCodeUserName = auth()->user()->name ?? '';
+                                    $itemCodeCanForm = \App\Enums\ProcurementMenuAccessGroup::ITEM_CODE_FORM->hasAccess($itemCodeUserName);
+                                    $itemCodeCanApproval = \App\Enums\ProcurementMenuAccessGroup::ITEM_CODE_APPROVAL->hasAccess($itemCodeUserName);
+                                @endphp
+                                <li>
+                                    <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
+                                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Item Code
+                                    </a>
+                                    <ul class="dropdown-menu" aria-labelledby="childDropdown">
+                                        @if ($itemCodeCanForm)
+                                            <li><a class="dropdown-item" href="{{ route('item-code.form') }}">Form
+                                                    Item Code</a></li>
+                                        @endif
+
+                                        @if ($itemCodeCanApproval)
+                                            <li><a class="dropdown-item" href="{{ route('item-code.approval') }}">Persetujuan
+                                                    Item Code</a></li>
                                         @endif
                                     </ul>
                                 </li>
@@ -1472,7 +1502,7 @@
                                                     'ABDUR RAHMAN AL FAAIZ',
                                                 ]))
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('penilaian.index') }}">Penilaian Technical
+                                                        href="{{ route('penilaian.index2') }}">Penilaian Technical
                                                         Competency Ka. Dept</a></li>
                                             @endif
 
@@ -1494,7 +1524,7 @@
                                                     'ABDUR RAHMAN AL FAAIZ',
                                                 ]))
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('penilaian.index') }}">Penilaian Technical
+                                                        href="{{ route('penilaian.index3') }}">Penilaian Technical
                                                         Competency HR</a></li>
                                             @endif
 
@@ -1660,7 +1690,7 @@
                                                     'ABDUR RAHMAN AL FAAIZ',
                                                 ]))
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('penilaian.index2') }}">History Development</a>
+                                                        href="{{ route('historiDept') }}">History Development</a>
                                                 </li>
                                             @endif
                                         </ul>

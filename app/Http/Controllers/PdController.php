@@ -22,6 +22,62 @@ use Illuminate\Support\Str;
 
 class PdController extends Controller
 {
+    /**
+     * Ambil daftar sections dari tc_job_positions secara dinamis, difilter per departemen.
+     */
+    private function getSectionsForUser(): array
+    {
+        $roleId = auth()->user()->role_id;
+
+        // Ambil semua section unik dari tc_job_positions → user → section
+        $allSections = TcJobPosition::with('user')
+            ->get()
+            ->filter(fn($jp) => $jp->user && $jp->user->section)
+            ->pluck('user.section')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+
+        // Full access roles
+        if (in_array($roleId, [1, 3, 15])) {
+            return $allSections;
+        }
+
+        // Deteksi departemen dari section user yang login
+        $userSection = auth()->user()->section ?? '';
+
+        $deptPatterns = [
+            'finance_hr_it' => ['Finance', 'Accounting', 'Fin,', 'HRGA', 'HR,', 'HR ', 'PDCA', 'Procurement', 'Inventory'],
+            'production'    => ['Production', 'PPC', 'Technical Support', 'Machining'],
+            'sales'         => ['Sales'],
+            'logistics'     => ['Logistic', 'Delivery', 'Feeder', 'Cutting Sheet', 'Warehouse'],
+        ];
+
+        $userDept = null;
+        foreach ($deptPatterns as $dept => $keywords) {
+            foreach ($keywords as $kw) {
+                if (str_contains($userSection, $kw)) {
+                    $userDept = $dept;
+                    break 2;
+                }
+            }
+        }
+
+        if ($userDept) {
+            $keywords = $deptPatterns[$userDept];
+            return array_values(array_filter($allSections, function ($s) use ($keywords) {
+                foreach ($keywords as $kw) {
+                    if (str_contains($s, $kw)) return true;
+                }
+                return false;
+            }));
+        }
+
+        // Fallback: tampilkan section user sendiri
+        return $userSection ? [$userSection] : $allSections;
+    }
+
     //
 
     public function indexPD()
@@ -64,7 +120,8 @@ class PdController extends Controller
 
 
         // Mengirim data ke view
-        return view('people_development.dept_develop_index', compact('data', 'tahun_aktual', 'hasDoneStatus'));
+        $buttonStatus = Storage::exists('button_status.txt') ? (int) Storage::get('button_status.txt') : 0;
+        return view('people_development.dept_develop_index', compact('data', 'tahun_aktual', 'hasDoneStatus', 'buttonStatus'));
     }
 
     public function indexPD2()
@@ -98,87 +155,14 @@ class PdController extends Controller
 
     public function historiDevelop()
     {
-        // Get the role of the authenticated user
-        $roleId = auth()->user()->role_id;
-
-        // Initialize the sections based on the role_id
-        $sections = [];
-
-        // Role 11: Finance, Accounting, HRGA, IT
-        if ($roleId == 11) {
-            $sections = [
-                'Finance, Accounting',
-                'PDCA, HR, GA, Legal, Procurement, IT',
-                'Fin, Acc, Proc, HRGA & IT',
-                'HR, GA & Legal',
-                'PDCA, Procurement, IT',
-            ];
-        }
-
-        // Role 5: Production-related sections
-        if ($roleId == 5) {
-            $sections = [
-                'PPC, Production CT',
-                'Production HT',
-                'Production MC & Machining Custom',
-                'Technical Support QC & Maintenance',
-            ];
-        }
-
-        // Role 2: Sales-related sections
-        if ($roleId == 2) {
-            $sections = [
-                'Sales Region I, II, III, IV',
-                'Sales Region I, II',
-                'Sales Region III, IV',
-                'Sales Region II',
-                'Sales Region I'
-            ];
-        }
-
-        // Role 7: Logistics
-        if ($roleId == 7) {
-            $sections = [
-                'Logistics'
-            ];
-        }
-
-        // Role 1, 14, 15: Can access all sections
-        if (in_array($roleId, [1, 14, 15])) {
-            $sections = array_merge(
-                [
-                    'Finance, Accounting',
-                    'PDCA, HR, GA, Legal, Procurement, IT',
-                    'Fin, Acc, Proc, HRGA & IT',
-                    'HR, GA & Legal',
-                    'PDCA, Procurement, IT',
-                ],
-                [
-                    'PPC, Production CT',
-                    'Production HT',
-                    'Production MC & Machining Custom',
-                    'Technical Support QC & Maintenance',
-                ],
-                [
-                    'Sales Region I, II, III, IV',
-                    'Sales Region I, II',
-                    'Sales Region III, IV',
-                    'Sales Region II',
-                    'Sales Region I'
-                ],
-                [
-                    'Logistics'
-                ]
-            );
-        }
+        $sections = $this->getSectionsForUser();
 
         // Query the TcPeopleDevelopment model based on sections
-        $dataTcPeopleDevelopment = TcPeopleDevelopment::whereIn('section', $sections) // Filter by sections
-            ->where('status_2', 'Done') // Add condition for status_2 to be 'Done'
-            ->with('user') // Ensure the user relationship is loaded
+        $dataTcPeopleDevelopment = TcPeopleDevelopment::whereIn('section', $sections)
+            ->where('status_2', 'Done')
+            ->with('user')
             ->get();
 
-        // Pass the data to the view using compact
         return view('people_development.histori_develop', compact('dataTcPeopleDevelopment'));
     }
 
@@ -197,84 +181,14 @@ class PdController extends Controller
         $query = TcPeopleDevelopment::where('tahun_aktual', $tahun_aktual)
             ->with('role', 'user', 'jobPosition');
 
-        if (!in_array($roleId, [1, 14, 15])) {
+        if (!in_array($roleId, [1, 3, 15])) {
             // Jika role bukan 1, 14, atau 15, filter berdasarkan modified_at
             $query->where('modified_at', $modified_at)->where('modified_at', $userId);
         }
 
         $data = $query->get();
 
-        // Menentukan sections berdasarkan nama pengguna
-        $sections = [];
-
-        // Nama pengguna: MARTINUS CAHYO RAHASTO
-        if ($userName == 'MARTINUS CAHYO RAHASTO') {
-            $sections = [
-                'Finance, Accounting',
-                'PDCA, HR, GA, Legal, Procurement, IT',
-                'Fin, Acc, Proc, HRGA & IT',
-                'HR, GA & Legal',
-                'PDCA, Procurement, IT',
-            ];
-        }
-
-        // Nama pengguna: ARY RODJO PRASETYO
-        if ($userName == 'ARY RODJO PRASETYO') {
-            $sections = [
-                'PPC, Production CT',
-                'Production HT',
-                'Production MC & Machining Custom',
-                'Technical Support QC & Maintenance',
-            ];
-        }
-
-        // Nama pengguna: YULMAI RIDO WINANDA, ANDIK TOTOK SISWOYO, HARDI SAPUTRA
-        if (in_array($userName, ['YULMAI RIDO WINANDA', 'ANDIK TOTOK SISWOYO', 'HARDI SAPUTRA'])) {
-            $sections = [
-                'Sales Region I, II, III, IV',
-                'Sales Region I, II',
-                'Sales Region III, IV',
-                'Sales Region II',
-                'Sales Region I',
-            ];
-        }
-
-        // Nama pengguna: VITRI HANDAYANI
-        if ($userName == 'VITRI HANDAYANI') {
-            $sections = [
-                'Logistics'
-            ];
-        }
-
-        // Role 1, 14, 15: Can access all sections
-        if (in_array($roleId, [1, 14, 15])) {
-            // Tambahkan semua sections tanpa batasan
-            $sections = array_merge(
-                [
-                    'Finance, Accounting',
-                    'PDCA, HR, GA, Legal, Procurement, IT',
-                    'Fin, Acc, Proc, HRGA & IT',
-                    'HR, GA & Legal',
-                    'PDCA, Procurement, IT',
-                ],
-                [
-                    'PPC, Production CT',
-                    'Production HT',
-                    'Production MC & Machining Custom',
-                    'Technical Support QC & Maintenance',
-                ],
-                [
-                    'Sales Region I, II, III, IV',
-                    'Sales Region I, II',
-                    'Sales Region III, IV',
-                    'Sales Region II',
-                    'Sales Region I',
-                ],
-                [
-                    'Logistics'
-                ]
-            );
-        }
+        $sections = $this->getSectionsForUser();
 
         // Mengambil job positions beserta relasinya
         $jobPositions = TcJobPosition::with('role', 'user')->get();
@@ -394,89 +308,7 @@ class PdController extends Controller
 
     public function createPD()
     {
-        // Get the logged-in user's role_id
-        $roleId = auth()->user()->role_id;
-
-        // Initialize the sections based on role_id
-        $sections = [];
-
-        // Role 11: Finance, Accounting, HRGA, IT
-        if ($roleId == 11) {
-            $sections = [
-                'Finance, Accounting',
-                'PDCA, HR, GA, Legal, Procurement, IT',
-                'Fin, Acc, Proc, HRGA & IT',
-                'HR, GA & Legal',
-                'PDCA, Procurement, IT',
-                'IT Staff',
-                'Procurement, IT',
-            ];
-        }
-
-        // Role 5: Production-related sections
-        if ($roleId == 5) {
-            $sections = [
-                'PPC, Production CT',
-                'Production HT',
-                'Production MC & Machining Custom',
-                'Technical Support QC & Maintenance',
-            ];
-        }
-
-        // Role 2: Sales-related sections
-        if ($roleId == 2) {
-            $sections = [
-                'SOH Region 4',
-                'SOH Region 3',
-                'SOH Region 2',
-                'SOH Region 1',
-                'Sales Engineer Reg 4',
-                'Sales Engineer Reg 3',
-                'Sales Engineer Reg 2',
-                'Sales Engineer Reg 1'
-            ];
-        }
-
-        // Role 2: Sales-related sections
-        if ($roleId == 7) {
-            $sections = [
-                'Logistics'
-            ];
-        }
-
-        // Role 1, 14, 15: Can access all sections
-        if (in_array($roleId, [1, 14, 15])) {
-            $sections = array_merge(
-                [
-                    'Finance, Accounting',
-                    'PDCA, HR, GA, Legal, Procurement, IT',
-                    'Fin, Acc, Proc, HRGA & IT',
-                    'HR, GA & Legal',
-                    'PDCA, Procurement, IT',
-                    'IT Staff',
-                    'Procurement, IT',
-                ],
-                [
-                    'PPC, Production CT',
-                    'Production HT',
-                    'Production MC & Machining Custom',
-                    'Technical Support QC & Maintenance',
-                ],
-                [
-                    'SOH Region 4',
-                    'SOH Region 3',
-                    'SOH Region 2',
-                    'SOH Region 1',
-                    'Sales Engineer Reg 4',
-                    'Sales Engineer Reg 3',
-                    'Sales Engineer Reg 2',
-                    'Sales Engineer Reg 1'
-                ],
-                [
-                    'Logistics'
-                ]
-            );
-        }
+        $sections = $this->getSectionsForUser();
 
         // Fetch job positions with relationships to users
         $jobPositions = TcJobPosition::with('user')->get();
@@ -543,86 +375,7 @@ class PdController extends Controller
 
     public function editPdPengajuan($modified_at, $tahun_aktual)
     {
-        // Get the logged-in user's role_id
-        $roleId = auth()->user()->role_id;
-
-        // Initialize the sections based on role_id
-        $sections = [];
-
-        // Role 11: Finance, Accounting, HRGA, IT
-        if ($roleId == 11) {
-            $sections = [
-                'Finance, Accounting',
-                'PDCA, HR, GA, Legal, Procurement, IT',
-                'Fin, Acc, Proc, HRGA & IT',
-                'HR, GA & Legal',
-                'PDCA, Procurement, IT',
-                'Procurement'
-            ];
-        }
-
-        // Role 5: Production-related sections
-        if ($roleId == 5) {
-            $sections = [
-                'PPC, Production CT',
-                'Production HT',
-                'Production MC & Machining Custom',
-                'Technical Support QC & Maintenance',
-            ];
-        }
-
-        // Role 2: Sales-related sections
-        if ($roleId == 2) {
-            $sections = [
-                'SOH Region 4',
-                'SOH Region 3',
-                'SOH Region 2',
-                'SOH Region 1',
-                'Sales Engineer Reg 4',
-                'Sales Engineer Reg 3',
-                'Sales Engineer Reg 2',
-                'Sales Engineer Reg 1'
-            ];
-        }
-
-        // Role 7: Logistics-related sections
-        if ($roleId == 7) {
-            $sections = [
-                'Logistics'
-            ];
-        }
-
-        // Role 1, 14, 15: Can access all sections
-        if (in_array($roleId, [1, 14, 15])) {
-            $sections = array_merge(
-                [
-                    'Finance, Accounting',
-                    'PDCA, HR, GA, Legal, Procurement, IT',
-                    'Fin, Acc, Proc, HRGA & IT',
-                    'HR, GA & Legal',
-                    'PDCA, Procurement, IT',
-                ],
-                [
-                    'PPC, Production CT',
-                    'Production HT',
-                    'Production MC & Machining Custom',
-                    'Technical Support QC & Maintenance',
-                ],
-                [
-                    'SOH Region 4',
-                    'SOH Region 3',
-                    'SOH Region 2',
-                    'SOH Region 1',
-                    'Sales Engineer Reg 4',
-                    'Sales Engineer Reg 3',
-                    'Sales Engineer Reg 2',
-                    'Sales Engineer Reg 1'
-                ],
-                [
-                    'Logistics'
-                ]
-            );
-        }
+        $sections = $this->getSectionsForUser();
 
         // Fetch job positions along with their relations
         $jobPositions = TcJobPosition::with('role', 'user')->get();
@@ -684,79 +437,7 @@ class PdController extends Controller
 
     public function editPdPengajuanHRGA($tahun_aktual)
     {
-        // Mengambil role_id pengguna yang sedang login
-        $roleId = auth()->user()->role_id;
-
-        // Menentukan sections berdasarkan role_id
-        $sections = [];
-
-        // Role 11: Finance, Accounting, HRGA, IT
-        if ($roleId == 11) {
-            $sections = [
-                'Finance, Accounting',
-                'PDCA, HR, GA, Legal, Procurement, IT',
-                'Fin, Acc, Proc, HRGA & IT',
-                'HR, GA & Legal',
-                'PDCA, Procurement, IT',
-            ];
-        }
-
-        // Role 5: Production-related sections
-        if ($roleId == 5) {
-            $sections = [
-                'PPC, Production CT',
-                'Production HT',
-                'Production MC & Machining Custom',
-                'Technical Support QC & Maintenance',
-            ];
-        }
-
-        // Role 2: Sales-related sections
-        if ($roleId == 2) {
-            $sections = [
-                'Sales Region I, II, III, IV',
-                'Sales Region I, II',
-                'Sales Region III, IV',
-                'Sales Region II',
-                'Sales Region I'
-            ];
-        }
-
-        // Role 2: Sales-related sections
-        if ($roleId == 7) {
-            $sections = [
-                'Logistics'
-            ];
-        }
-
-        // Role 1, 14, 15: Can access all sections
-        if (in_array($roleId, [1, 14, 15])) {
-            $sections = array_merge(
-                [
-                    'Finance, Accounting',
-                    'PDCA, HR, GA, Legal, Procurement, IT',
-                    'Fin, Acc, Proc, HRGA & IT',
-                    'HR, GA & Legal',
-                    'PDCA, Procurement, IT',
-                ],
-                [
-                    'PPC, Production CT',
-                    'Production HT',
-                    'Production MC & Machining Custom',
-                    'Technical Support QC & Maintenance',
-                ],
-                [
-                    'Sales Region I, II, III, IV',
-                    'Sales Region I, II',
-                    'Sales Region III, IV',
-                    'Sales Region II',
-                    'Sales Region I'
-                ],
-                [
-                    'Logistics'
-                ]
-            );
-        }
+        $sections = $this->getSectionsForUser();
 
         // Mengambil job positions beserta relasinya
         $jobPositions = TcJobPosition::with('role', 'user')->get();
@@ -967,7 +648,9 @@ class PdController extends Controller
                         $file = $request->file('file.' . $item['id']);
                         $fileName = time() . '_' . $file->getClientOriginalName();
                         $file->move(public_path('uploads'), $fileName);
-                        $existingItem->file_path = $fileName;
+                        // Save to existing columns: `file` and `file_name`
+                        $existingItem->file = $fileName;
+                        $existingItem->file_name = $file->getClientOriginalName();
                         $existingItem->save();
                     }
                 }
@@ -1051,11 +734,10 @@ class PdController extends Controller
         // Ambil data evaluasi berdasarkan ID
         $evaluasi = TcPeopleDevelopment::findOrFail($id);
 
-        // Ambil nama pengguna yang sedang login
-        $user = Auth::user();
-        $namaUserLogin = $user->name;
+        // Determine the trainee name (the user being trained). Fall back to id_user or current user.
+        $traineeName = $evaluasi->user->name ?? $evaluasi->id_user ?? Auth::user()->name;
 
-        // Simpan nama pengguna ke field 'diketahui' dan tanggal saat ini ke 'tgl_pengajuan'
+        // Simpan nama trainee ke field 'diketahui' dan tanggal saat ini ke 'tgl_pengajuan'
         $evaluasi->update([
             'relevansi' => $validated['relevansi'],
             'alasan_relevansi' => $validated['alasan_relevansi'],
@@ -1073,7 +755,8 @@ class PdController extends Controller
             'lainnya_2' => $validated['lainnya_2'],
             'efektif' => $validated['efektif'],
             'catatan_tambahan' => $validated['catatan_tambahan'],
-            'diketahui' => $namaUserLogin,
+            'diketahui' => $traineeName,
+            'dievaluasi' => Auth::user()->name,
             'tgl_pengajuan' => now(), // Menyimpan tanggal saat ini
         ]);
 
@@ -1087,16 +770,12 @@ class PdController extends Controller
     {
         $status = $request->input('enabled') ? 1 : 0;
 
-        // Simpan status ke database
-        BtnStatus::updateOrCreate(
-            ['id' => 1], // Misalkan hanya ada satu status yang diupdate, bisa disesuaikan
-            ['status' => $status]
-        );
+        // Simpan status ke file (persistent, tidak terpengaruh cache:clear)
+        Storage::put('button_status.txt', $status);
 
-        // Simpan status ke cache
-        Cache::put('button_status', $status);
+        Log::info('Button status updated', ['status' => $status, 'file_content' => Storage::get('button_status.txt')]);
 
-        return response()->json(['status' => 'success']);
+        return response()->json(['status' => 'success', 'button_status' => $status]);
     }
 
     public function downloadPDF($id)
@@ -1106,19 +785,71 @@ class PdController extends Controller
 
         // Check if the record exists
         if (!$data) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['error' => 'Data not found'], 404);
+            }
             return redirect()->back()->withErrors('Data not found');
         }
 
-        // Construct the file path
-        $filePath = public_path('assets/people_development/' . $data->file);
+        $candidates = [];
 
-        // Check if the file exists
-        if (!file_exists($filePath)) {
+        // If file field contains a full path, try it
+        if (!empty($data->file) && (Str::startsWith($data->file, '/') || preg_match('/^[A-Za-z]:\\\\/', $data->file))) {
+            $candidates[] = $data->file;
+        }
+
+        // Common public upload locations
+        if (!empty($data->file)) {
+            $candidates[] = public_path('uploads/' . $data->file);
+            $candidates[] = public_path($data->file);
+            $candidates[] = public_path('assets/people_development/' . $data->file);
+            $candidates[] = storage_path('app/public/uploads/' . $data->file);
+            $candidates[] = storage_path('app/' . $data->file);
+        }
+
+        // If original file name available, try to find matching file in uploads
+        if (!empty($data->file_name)) {
+            $pattern = public_path('uploads/*' . basename($data->file_name) . '*');
+            foreach (glob($pattern) as $match) {
+                $candidates[] = $match;
+            }
+            // also check assets folder
+            $pattern2 = public_path('assets/people_development/*' . basename($data->file_name) . '*');
+            foreach (glob($pattern2) as $match) {
+                $candidates[] = $match;
+            }
+        }
+
+        // Normalize and find first existing file
+        $found = null;
+        foreach ($candidates as $p) {
+            if (empty($p)) continue;
+            // prevent directory traversal
+            $p = str_replace(['\\', '\\'], DIRECTORY_SEPARATOR, $p);
+            if (file_exists($p) && is_file($p)) {
+                $found = $p;
+                break;
+            }
+        }
+
+        Log::info('downloadPDF debug', [
+            'id' => $id,
+            'data_file' => $data->file,
+            'file_name' => $data->file_name,
+            'candidates' => $candidates,
+            'found' => $found,
+        ]);
+
+        if (!$found) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['error' => 'File not found'], 404);
+            }
             return redirect()->back()->withErrors('File not found');
         }
 
-        // Return the file as a download response
-        return response()->download($filePath, $data->file_name);
+        $downloadName = $data->file_name ?: basename($found);
+        $mime = mime_content_type($found) ?: 'application/octet-stream';
+        return response()->download($found, $downloadName, ['Content-Type' => $mime]);
     }
 
     public function sendPD($modified_at, $tahun_aktual)
@@ -1144,95 +875,74 @@ class PdController extends Controller
 
     public function getFilteredData(Request $request)
     {
-        // Get the role ID from the request or default to the authenticated user's role ID
-        $roleId = $request->input('role_id', auth()->user()->role_id); // Role ID filtering
-        $yearEnd = $request->input('year', now()->year); // Default to the current year if not provided
+        $sections = $this->getSectionsForUser();
+        $yearEnd = $request->input('year', now()->year);
+        $roleFilter = $request->input('role_id'); // department selector from UI
 
-        // Initialize the sections based on the role_id
-        $sections = [];
+        // Base query: only completed (Done) records and eager-load user
+        $query = TcPeopleDevelopment::where('status_2', 'Done')
+            ->with('user');
 
-        // Role 11: Finance, Accounting, HRGA, IT
-        if ($roleId == 11) {
-            $sections = [
-                'Finance, Accounting',
-                'PDCA, HR, GA, Legal, Procurement, IT',
-                'Fin, Acc, Proc, HRGA & IT',
-                'HR, GA & Legal',
-                'PDCA, Procurement, IT',
-            ];
+        // Map UI role_id (department) to section keywords
+        $deptRoleMap = [
+            11 => ['Finance', 'Accounting', 'Fin,', 'HRGA', 'HR,', 'PDCA', 'Procurement', 'Inventory'],
+            2 => ['Sales'],
+            5 => ['Production', 'PPC', 'Technical Support', 'Machining'],
+            7 => ['Logistic', 'Delivery', 'Feeder', 'Cutting Sheet', 'Warehouse'],
+        ];
+
+        if ($roleFilter) {
+            $roleFilter = (int) $roleFilter;
+            $keywords = $deptRoleMap[$roleFilter] ?? null;
+
+            if ($keywords) {
+                // get all sections from job positions
+                $allSections = TcJobPosition::with('user')
+                    ->get()
+                    ->filter(fn($jp) => $jp->user && $jp->user->section)
+                    ->pluck('user.section')
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                // select sections that match any keyword
+                $selectedSections = array_values(array_filter($allSections, function ($s) use ($keywords) {
+                    foreach ($keywords as $kw) {
+                        if (Str::contains($s, $kw)) return true;
+                    }
+                    return false;
+                }));
+
+                // Respect user's allowed sections (permissions)
+                $effectiveSections = array_values(array_intersect($sections, $selectedSections));
+
+                // If user has admin-like roles, allow full selectedSections
+                if (empty($effectiveSections) && in_array(auth()->user()->role_id, [1, 3, 15])) {
+                    $effectiveSections = $selectedSections;
+                }
+
+                // If still empty, return empty result (no access or no matching sections)
+                if (empty($effectiveSections)) {
+                    return response()->json([]);
+                }
+
+                $query->whereIn('section', $effectiveSections);
+            } else {
+                // Unknown role filter — return empty
+                return response()->json([]);
+            }
+        } else {
+            // No department filter selected: apply user's allowed sections
+            $query->whereIn('section', $sections);
         }
-
-        // Role 5: Production-related sections
-        if ($roleId == 5) {
-            $sections = [
-                'PPC, Production CT',
-                'Production HT',
-                'Production MC & Machining Custom',
-                'Technical Support QC & Maintenance',
-            ];
-        }
-
-        // Role 2: Sales-related sections
-        if ($roleId == 2) {
-            $sections = [
-                'Sales Region I, II, III, IV',
-                'Sales Region I, II',
-                'Sales Region III, IV',
-                'Sales Region II',
-                'Sales Region I'
-            ];
-        }
-
-        // Role 7: Logistics
-        if ($roleId == 7) {
-            $sections = [
-                'Logistics'
-            ];
-        }
-
-        // Role 1, 14, 15: Can access all sections
-        if (in_array($roleId, [1, 14, 15])) {
-            $sections = array_merge(
-                [
-                    'Finance, Accounting',
-                    'PDCA, HR, GA, Legal, Procurement, IT',
-                    'Fin, Acc, Proc, HRGA & IT',
-                    'HR, GA & Legal',
-                    'PDCA, Procurement, IT',
-                ],
-                [
-                    'PPC, Production CT',
-                    'Production HT',
-                    'Production MC & Machining Custom',
-                    'Technical Support QC & Maintenance',
-                ],
-                [
-                    'Sales Region I, II, III, IV',
-                    'Sales Region I, II',
-                    'Sales Region III, IV',
-                    'Sales Region II',
-                    'Sales Region I'
-                ],
-                [
-                    'Logistics'
-                ]
-            );
-        }
-
-        // Query the TcPeopleDevelopment model based on sections and optional filters
-        $query = TcPeopleDevelopment::whereIn('section', $sections)
-            ->where('status_2', 'Done') // Add condition for status_2 to be 'Done'
-            ->with('user'); // Ensure the user relationship is loaded
 
         // Apply year range filter from 2000 to the selected year
         if ($yearEnd) {
             $query->whereBetween('created_at', ['2000-01-01', $yearEnd . '-12-31']);
         }
 
-        // Execute the query and get the results
         $dataTcPeopleDevelopment = $query->get();
 
-        // Return data as JSON
         return response()->json($dataTcPeopleDevelopment);
     }
 }

@@ -42,7 +42,7 @@
                                 <th scope="row">{{ $loop->iteration }}</th>
                                 <td>{{ $item->id_job_position }}</td>
                                 <td>
-                                    @if ($item->status == 1 && !in_array($userName, ['MARTINUS CAHYO RAHASTO','ARY RODJO PRASETYO','ANDIK TOTOK SISWOYO','YULMAI RIDO WINANDA','JESSICA PAUNE','SITI MARIA ULFA']))
+                                    @if ($item->status == 1)
                                         <span class="badge rounded-pill bg-secondary">Draf</span>
                                     @elseif ($item->status == 2)
                                         <span class="badge rounded-pill bg-warning">Menunggu Konfirmasi Dept. Head</span>

@@ -9,6 +9,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @property int|null $role_id
+ */
 class User extends Authenticatable
 {
     use HasFactory;
@@ -152,5 +155,20 @@ class User extends Authenticatable
     public function trsLogbookVisits(): HasMany
     {
         return $this->hasMany(TrsLogbookVisits::class, 'id_user');
+    }
+
+    public function itemCodesCreated(): HasMany
+    {
+        return $this->hasMany(ItemCode::class, 'created_by');
+    }
+
+    public function itemCodesApproved(): HasMany
+    {
+        return $this->hasMany(ItemCode::class, 'approved_by');
+    }
+
+    public function itemCodesFinished(): HasMany
+    {
+        return $this->hasMany(ItemCode::class, 'finished_by');
     }
 }

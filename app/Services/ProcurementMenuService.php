@@ -31,6 +31,8 @@ class ProcurementMenuService
         $submenus = [
             $this->getPersetujuanFormMenu($userName),
             $this->getPenawaranSubcontMenu($userName),
+            $this->getClaimSubmissionMenu($userName),
+            $this->getItemCodeMenu($userName),
             $this->getInquiryOrderLocalMenu($userName),
             $this->getInquiryOrderImportMenu($userName),
             $this->getImportAdministrationMenu($userName),
@@ -114,6 +116,62 @@ class ProcurementMenuService
 
         return [
             'title' => 'Panawaran Subcont Project Sales',
+            'visible' => collect($items)->contains(fn($item) => $item['visible']),
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * Get Claim Submission submenu
+     *
+     * @param string $userName
+     * @return array
+     */
+    private function getClaimSubmissionMenu(string $userName): array
+    {
+        $items = [
+            [
+                'label' => 'Form Claim Submission',
+                'route' => 'claim.indexUser',
+                'visible' => ProcurementMenuAccessGroup::CLAIM_SUBMISSION_FORM->hasAccess($userName),
+            ],
+            [
+                'label' => 'Persetujuan Claim Submission',
+                'route' => 'claim.indexProc',
+                'visible' => ProcurementMenuAccessGroup::CLAIM_SUBMISSION_APPROVAL->hasAccess($userName),
+            ],
+        ];
+
+        return [
+            'title' => 'Claim Submission',
+            'visible' => collect($items)->contains(fn($item) => $item['visible']),
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * Get Item Code submenu
+     *
+     * @param string $userName
+     * @return array
+     */
+    private function getItemCodeMenu(string $userName): array
+    {
+        $items = [
+            [
+                'label' => 'Form Item Code',
+                'route' => 'item-code.form',
+                'visible' => ProcurementMenuAccessGroup::ITEM_CODE_FORM->hasAccess($userName),
+            ],
+            [
+                'label' => 'Persetujuan Item Code',
+                'route' => 'item-code.approval',
+                'visible' => ProcurementMenuAccessGroup::ITEM_CODE_APPROVAL->hasAccess($userName),
+            ],
+        ];
+
+        return [
+            'title' => 'Item Code',
             'visible' => collect($items)->contains(fn($item) => $item['visible']),
             'items' => $items,
         ];

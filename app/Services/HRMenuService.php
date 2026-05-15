@@ -77,11 +77,13 @@ class HRMenuService
                 [
                     'label' => 'Penilaian Technical Competency Ka. Dept',
                     'route' => 'penilaian.index',
+                    'params' => ['level' => 'kadept'],
                     'visible' => HRMenuAccessGroup::COMPETENCY_KADEPT->hasAccess($userName),
                 ],
                 [
                     'label' => 'Penilaian Technical Competency HR',
                     'route' => 'penilaian.index',
+                    'params' => ['level' => 'hr'],
                     'visible' => HRMenuAccessGroup::COMPETENCY_HR->hasAccess($userName),
                 ],
                 [
@@ -115,7 +117,7 @@ class HRMenuService
                 ],
                 [
                     'label' => 'History Development',
-                    'route' => 'penilaian.index2',
+                    'route' => 'historiDept',
                     'visible' => HRMenuAccessGroup::TRAINING_HISTORY->hasAccess($userName),
                 ],
             ],

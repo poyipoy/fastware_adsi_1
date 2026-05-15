@@ -264,24 +264,21 @@
                         <div class="card-body">
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label for="dievaluasi" class="form-label"><strong>Diketahui oleh:</strong></label>
+                                    <label class="form-label"><strong>Diketahui oleh:</strong></label>
                                     <br>
-                                    <label for="tgl_pengajuan" class="form-label"><strong>Tgl:</strong></label>
-                                    <label id="tgl_pengajuan" class="form-control"
-                                        style="display: block;">{{ $data->tgl_pengajuan }}</label>
+                                    <label class="form-label"><strong>Tgl:</strong></label>
+                                    <label id="tgl_diketahui" class="form-control" style="display: block;">{{ $data->tgl_pengajuan }}</label>
                                     <br><br>
-                                    <label id="dievaluasi" class="form-control"
-                                        style="display: block; margin-top: 3%;">Jessica Paune</label>
+                                    <label id="diketahui_display" class="form-control" style="display: block; margin-top: 3%">{{ $data->user->name ?? ($data->diketahui ?? '-') }}</label>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="diketahui" class="form-label"><strong>Dievaluasi oleh:</strong></label>
+                                    <label class="form-label"><strong>Dievaluasi oleh:</strong></label>
                                     <br>
-                                    <label for="tgl_pengajuan" class="form-label"><strong>Tgl:</strong></label>
-                                    <label id="tgl_pengajuan" class="form-control"
-                                        style="display: block;">{{ $data->tgl_pengajuan }}</label>
+                                    <label class="form-label"><strong>Tgl:</strong></label>
+                                    <label id="tgl_dievaluasi" class="form-control" style="display: block;">{{ $data->tgl_pengajuan }}</label>
                                     <br><br>
-                                    <label id="diketahui" class="form-control" style="display: block; margin-top: 3%;">
-                                        {{ $data->diketahui }}</label>
+                                    <label id="dievaluasi_display" class="form-control" style="display: block; margin-top: 3%;">
+                                        {{ $data->dievaluasi ?? $data->modified_at ?? auth()->user()->name ?? '-' }}</label>
                                 </div>
                             </div>
                         </div>
@@ -358,11 +355,11 @@
             const efektif = document.querySelector('select[name="efektif"]')?.value || '-';
             const catatanTambahan = document.querySelector('textarea[name="catatan_tambahan"]')?.value || '-';
 
-            // Ambil data tanda tangan dari HTML
-            const diketahuiOleh = document.querySelector('label#dievaluasi')?.innerText || '-';
-            const diketahuiTanggal = document.querySelector('label#tgl_pengajuan')?.innerText || '-';
-            const dievaluasiOleh = document.querySelector('label#diketahui')?.innerText || '-';
-            const dievaluasiTanggal = document.querySelector('label#tgl_pengajuan')?.innerText || '-';
+            // Ambil data tanda tangan dari HTML (gunakan ID unik)
+            const diketahuiOleh = document.querySelector('label#diketahui_display')?.innerText || '-';
+            const diketahuiTanggal = document.querySelector('label#tgl_diketahui')?.innerText || '-';
+            const dievaluasiOleh = document.querySelector('label#dievaluasi_display')?.innerText || '-';
+            const dievaluasiTanggal = document.querySelector('label#tgl_dievaluasi')?.innerText || '-';
 
 
             const pdf = new jsPDF({
@@ -371,23 +368,35 @@
                 format: 'a4',
             });
 
-            // Logo
-            const logoURL = `{{ asset('assets/foto/AdasiLogo.png') }}`; // Path logo
+            // Try available logo paths and fall back to no-logo PDF
+            const logoUrls = [
+                `{{ asset('assets/img/AdasiLogo.png') }}`,
+                `{{ asset('assets/foto/AdasiLogo.jpg') }}`
+            ];
+
+            let logoIndex = 0;
             const logo = new Image();
-            logo.src = logoURL;
+            logo.crossOrigin = 'anonymous';
 
-            logo.onload = function() {
+            const generatePdf = function(logoImg) {
                 const pageWidth = pdf.internal.pageSize.getWidth();
-                const imgWidth = 40; // Lebar gambar dalam mm
-                const imgHeight = (logo.height / logo.width) * imgWidth; // Proporsi tinggi gambar
-                const imgX = (pageWidth - imgWidth) / 2; // Posisi X agar gambar di tengah
-                const imgY = 10; // Posisi Y gambar
+                let textY = 20; // Default title Y when no logo
 
-                // Tambahkan logo ke header
-                pdf.addImage(logo, 'PNG', imgX, imgY, imgWidth, imgHeight);
+                if (logoImg) {
+                    const imgWidth = 40; // Lebar gambar dalam mm
+                    const imgHeight = (logoImg.height / logoImg.width) * imgWidth; // Proporsi tinggi gambar
+                    const imgX = (pageWidth - imgWidth) / 2; // Posisi X agar gambar di tengah
+                    const imgY = 10; // Posisi Y gambar
+                    try {
+                        pdf.addImage(logoImg, 'PNG', imgX, imgY, imgWidth, imgHeight);
+                        textY = imgY + imgHeight + 5;
+                    } catch (e) {
+                        // If adding image fails, continue without logo
+                        textY = 20;
+                    }
+                }
 
                 // Sesuaikan posisi teks judul berdasarkan posisi akhir gambar
-                const textY = imgY + imgHeight + 5; // Tambahkan margin kecil (5mm) antara gambar dan teks
                 pdf.setFontSize(12);
                 pdf.text("FORMULIR EVALUASI HASIL PELATIHAN", pageWidth / 2, textY, {
                     align: "center"
@@ -500,9 +509,23 @@
                 pdf.save("Export_Form Evaluasi.pdf");
             };
 
-            logo.onerror = function() {
-                alert("Logo tidak ditemukan. Pastikan path logo sudah benar.");
+            logo.onload = function() {
+                generatePdf(logo);
             };
+
+            logo.onerror = function() {
+                logoIndex++;
+                if (logoIndex < logoUrls.length) {
+                    // Try next URL
+                    logo.src = logoUrls[logoIndex];
+                } else {
+                    // No logo found, generate PDF without logo
+                    generatePdf(null);
+                }
+            };
+
+            // Start loading first logo
+            logo.src = logoUrls[0];
         });
     </script>
 @endsection

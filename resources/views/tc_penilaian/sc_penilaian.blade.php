@@ -195,9 +195,9 @@
                                 <tr>
                                     <th rowspan="2">Nama Employee</th>
                                     <!-- Placeholder for dynamic column titles based on type -->
-                                    <th id="tcHeader" colspan="0">Technical Competency</th>
-                                    <th id="skHeader" colspan="0">Softskills</th>
-                                    <th id="adHeader" colspan="0">Additional</th>
+                                    <th id="tcHeader" colspan="0" style="background-color: blue; color: white; display: none;">Technical Competency</th>
+                                    <th id="skHeader" colspan="0" style="background-color: green; color: white; display: none;">Softskills</th>
+                                    <th id="adHeader" colspan="0" style="background-color: orange; color: white; display: none;">Additional</th>
                                 </tr>
                                 <tr id="headerKeterangan">
                                     <!-- Keterangan headers will be dynamically inserted here -->
@@ -381,6 +381,10 @@
                             success: function(data) {
                                 $('#headerKeterangan').empty();
                                 $('#keteranganFields').empty();
+                                // Reset colspan group headers
+                                $('#tcHeader').attr('colspan', 0).hide();
+                                $('#skHeader').attr('colspan', 0).hide();
+                                $('#adHeader').attr('colspan', 0).hide();
 
                                 var tcHeaders = [];
                                 var skHeaders = [];
@@ -394,8 +398,8 @@
                                         tcHeaders.push({
                                             keterangan: row.keterangan,
                                             nilai: row.nilai,
-                                            id_tc: row
-                                                .id_tc // Menggunakan keterangan sebagai id_tc
+                                            id_tc: row.id_tc,
+                                            id_poin_kategori: row.id_poin_kategori
                                         });
                                     } else if (row.type === "sk" && row.keterangan && !
                                         skHeaders
@@ -404,8 +408,8 @@
                                         skHeaders.push({
                                             keterangan: row.keterangan,
                                             nilai: row.nilai,
-                                            id_sk: row
-                                                .id_sk // Menggunakan keterangan sebagai id_sk
+                                            id_sk: row.id_sk,
+                                            id_poin_kategori: row.id_poin_kategori
                                         });
                                     } else if (row.type === "ad" && row.keterangan && !
                                         adHeaders
@@ -414,41 +418,68 @@
                                         adHeaders.push({
                                             keterangan: row.keterangan,
                                             nilai: row.nilai,
-                                            id_ad: row
-                                                .id_ad // Menggunakan keterangan sebagai id_ad
+                                            id_ad: row.id_ad,
+                                            id_poin_kategori: row.id_poin_kategori
                                         });
                                     }
                                 });
 
-                                // Tambahkan headers ke dalam tabel dengan nilai yang sesuai
+                                // Helper: warna berdasarkan id_poin_kategori
+                                function getColorByPoinKategori(id) {
+                                    if (id == 1) return 'blue';
+                                    if (id == 2) return 'green';
+                                    if (id == 3) return 'orange';
+                                    return '#6c757d';
+                                }
+
+                                // Update colspan & tampilkan group header jika ada data
+                                if (tcHeaders.length > 0) {
+                                    $('#tcHeader').attr('colspan', tcHeaders.length).show();
+                                }
+                                if (skHeaders.length > 0) {
+                                    $('#skHeader').attr('colspan', skHeaders.length).show();
+                                }
+                                if (adHeaders.length > 0) {
+                                    $('#adHeader').attr('colspan', adHeaders.length).show();
+                                }
+
+                                // Tambahkan sub-headers TC dengan warna
                                 tcHeaders.forEach(function(header) {
+                                    var bgColor = getColorByPoinKategori(header.id_poin_kategori);
                                     $('#headerKeterangan').append(
-                                        `<th style="width: 200px; white-space: nowrap;">
+                                        `<th style="width: 200px; white-space: nowrap; background-color: ${bgColor}; color: white;">
                             ${header.keterangan} - (STD ${header.nilai})
                         </th>`
                                     );
                                 });
 
+                                // Tambahkan sub-headers SK dengan warna
                                 skHeaders.forEach(function(header) {
+                                    var bgColor = getColorByPoinKategori(header.id_poin_kategori);
                                     $('#headerKeterangan').append(
-                                        `<th style="width: 200px; white-space: nowrap;">
+                                        `<th style="width: 200px; white-space: nowrap; background-color: ${bgColor}; color: white;">
                             ${header.keterangan} - (STD ${header.nilai})
                         </th>`
                                     );
                                 });
 
+                                // Tambahkan sub-headers AD dengan warna
                                 adHeaders.forEach(function(header) {
+                                    var bgColor = getColorByPoinKategori(header.id_poin_kategori);
                                     $('#headerKeterangan').append(
-                                        `<th style="width: 200px; white-space: nowrap;">
+                                        `<th style="width: 200px; white-space: nowrap; background-color: ${bgColor}; color: white;">
                             ${header.keterangan} - (STD ${header.nilai})
                         </th>`
                                     );
                                 });
 
-                                // Membuat baris untuk setiap karyawan
+                                // Membuat baris hanya untuk karyawan yang BELUM punya penilaian
                                 var displayedNames = {};
 
                                 data.forEach(function(row) {
+                                    // Skip user yang sudah punya penilaian (hanya dipakai untuk headers)
+                                    if (row.has_penilaian == 1) return;
+
                                     if (!displayedNames[row.name]) {
                                         var newRow = `<tr>
                                 <td>${row.name}</td>

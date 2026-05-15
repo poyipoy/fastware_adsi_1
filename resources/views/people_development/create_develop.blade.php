@@ -199,14 +199,14 @@
 
                     <!-- Job Position dropdown -->
                     <td>
-                        <select class="job-position-dropdown" name="id_job_position[]"> <!-- Dropdown job position -->
+                        <select class="job-position-dropdown" name="id_job_position[]">
                             <option value="">---- Pilih Job Position ----</option>
                         </select>
                     </td>
 
                     <!-- User dropdown -->
                     <td>
-                        <select class="user-dropdown" name="id_user[]"> <!-- Dropdown user -->
+                        <select class="user-dropdown" name="id_user[]">
                             <option value="">---- Pilih Karyawan ----</option>
                         </select>
                     </td>
@@ -224,7 +224,7 @@
                     </td>
 
                     <td>
-                        <select name="competency[]" class="competency-dropdown"> <!-- Dropdown competency -->
+                        <select name="competency[]" class="competency-dropdown">
                             <option value="">---- Pilih Competency ----</option>
                         </select>
                     </td>
@@ -233,112 +233,114 @@
                     <td><input type="text" id="keterangan_tujuan" name="keterangan_tujuan[]" placeholder="Keterangan Tujuan"></td>
                 `;
 
-                // Add the new row to the table body
                 tableBody.appendChild(newRow);
-
-                // Update row numbers in the table
                 updateRowNumbers();
 
-                // Get references to the dynamically created dropdowns
                 var sectionDropdown = newRow.querySelector('.section-dropdown');
                 var jobPositionDropdown = newRow.querySelector('.job-position-dropdown');
                 var userDropdown = newRow.querySelector('.user-dropdown');
                 var competencyCategoryDropdown = newRow.querySelector('.competency-category-dropdown');
                 var competencyDropdown = newRow.querySelector('.competency-dropdown');
 
-                console.log('Job positions data:', @json($jobPositions));
+                var allJobPositions = @json($jobPositions);
+                var allPenilaians = @json($penilaians);
 
-                // Event listener for section dropdown change
+                // Track selected user for competency filtering
+                var currentSelectedUserId = null;
+
+                // Section change → populate unique Job Positions
                 sectionDropdown.addEventListener('change', function() {
                     var selectedSection = this.value;
-                    console.log('Selected section:', selectedSection);
 
-                    // Clear job position and user dropdowns
+                    // Reset dropdowns
                     jobPositionDropdown.innerHTML = '<option value="">---- Pilih Job Position ----</option>';
                     userDropdown.innerHTML = '<option value="">---- Pilih Karyawan ----</option>';
+                    competencyDropdown.innerHTML = '<option value="">---- Pilih Competency ----</option>';
+                    currentSelectedUserId = null;
 
-                    var jobPositions =
-                        @json($jobPositions); // Get job positions with users from the controller
-                    var uniqueUsers = [];
+                    if (!selectedSection) return;
 
-                    // Filter and populate job positions and users based on selected section
-                    jobPositions.forEach(function(jobPosition) {
-                        console.log('Checking job position:', jobPosition);
-
-                        if (jobPosition.user.section === selectedSection) {
-                            // Add job position to job position dropdown
+                    // Filter job positions by section, unique by job_position name
+                    var uniqueJobs = [];
+                    allJobPositions.forEach(function(jp) {
+                        if (jp.user && jp.user.section === selectedSection && !uniqueJobs.includes(jp.job_position)) {
+                            uniqueJobs.push(jp.job_position);
                             var option = document.createElement('option');
-                            option.value = jobPosition.job_position;
-                            option.text = jobPosition.job_position;
+                            option.value = jp.job_position;
+                            option.text = jp.job_position;
                             jobPositionDropdown.appendChild(option);
-                            console.log('Added job position:', jobPosition.job_position);
+                        }
+                    });
+                });
 
-                            // Only add the user if they haven't been added yet (unique user logic)
-                            if (!uniqueUsers.includes(jobPosition.user.id)) {
-                                var userOption = document.createElement('option');
-                                userOption.value = jobPosition.user.id;
-                                userOption.text = jobPosition.user.name;
-                                userDropdown.appendChild(userOption);
-                                uniqueUsers.push(jobPosition.user.id);
-                                console.log('Added unique user:', jobPosition.user.name);
+                // Job Position change → populate Users yang punya job position tersebut
+                jobPositionDropdown.addEventListener('change', function() {
+                    var selectedJobPosition = this.value;
+                    var selectedSection = sectionDropdown.value;
+
+                    // Reset user & competency
+                    userDropdown.innerHTML = '<option value="">---- Pilih Karyawan ----</option>';
+                    competencyDropdown.innerHTML = '<option value="">---- Pilih Competency ----</option>';
+                    currentSelectedUserId = null;
+
+                    if (!selectedJobPosition) return;
+
+                    // Filter users by section + job_position, unique by user id
+                    var uniqueUserIds = [];
+                    allJobPositions.forEach(function(jp) {
+                        if (jp.user && jp.user.section === selectedSection && jp.job_position === selectedJobPosition) {
+                            if (!uniqueUserIds.includes(jp.user.id)) {
+                                uniqueUserIds.push(jp.user.id);
+                                var option = document.createElement('option');
+                                option.value = jp.user.id;
+                                option.text = jp.user.name;
+                                userDropdown.appendChild(option);
                             }
                         }
                     });
-
-                    console.log('Final unique users:', uniqueUsers);
                 });
 
-                // Optional event listener for job position dropdown change
-                jobPositionDropdown.addEventListener('change', function() {
-                    var selectedJobPositionId = this.value;
-                    console.log('Selected job position ID:', selectedJobPositionId);
-
-                    // Additional logic (if needed)
-                });
-
-                // Additional logic for user selection and competency dropdown
+                // User change → update selected user for competency
                 userDropdown.addEventListener('change', function() {
-                    var selectedUserId = this.value;
-                    console.log('Selected user ID:', selectedUserId);
+                    currentSelectedUserId = this.value;
+                    competencyDropdown.innerHTML = '<option value="">---- Pilih Competency ----</option>';
+                    // Re-populate competency if category already selected
+                    populateCompetency();
+                });
+
+                // Competency Category change → populate competencies
+                competencyCategoryDropdown.addEventListener('change', function() {
+                    competencyDropdown.innerHTML = '<option value="">---- Pilih Competency ----</option>';
+                    populateCompetency();
+                });
+
+                function populateCompetency() {
+                    var selectedCategory = competencyCategoryDropdown.value;
+                    if (!currentSelectedUserId || !selectedCategory) return;
+
                     competencyDropdown.innerHTML = '<option value="">---- Pilih Competency ----</option>';
 
-                    competencyCategoryDropdown.addEventListener('change', function() {
-                        var selectedCategory = this.value;
-                        console.log('Selected competency category:', selectedCategory);
+                    allPenilaians.forEach(function(penilaian) {
+                        if (penilaian.id_user == currentSelectedUserId) {
+                            var optionText = '';
 
-                        var penilaians = @json($penilaians);
-
-                        competencyDropdown.innerHTML =
-                            '<option value="">---- Pilih Competency ----</option>';
-
-                        penilaians.forEach(function(penilaian) {
-                            if (penilaian.id_user == selectedUserId) {
-                                var optionText = '';
-
-                                if (selectedCategory === 'technical' && penilaian.id_tc) {
-                                    optionText =
-                                        `${penilaian.keterangan} - std: ${penilaian.nilai_standard} - aktual: ${penilaian.nilai_aktual}`;
-                                } else if (selectedCategory === 'nontechnical' && penilaian
-                                    .id_sk) {
-                                    optionText =
-                                        `${penilaian.keterangan} - std: ${penilaian.nilai_standard} - aktual: ${penilaian.nilai_aktual}`;
-                                } else if (selectedCategory === 'additional' && penilaian
-                                    .id_ad) {
-                                    optionText =
-                                        `${penilaian.keterangan} - std: ${penilaian.nilai_standard} - aktual: ${penilaian.nilai_aktual}`;
-                                }
-
-                                if (optionText !== '') {
-                                    var option = document.createElement('option');
-                                    option.value = optionText;
-                                    option.text = optionText;
-                                    competencyDropdown.appendChild(option);
-                                    console.log('Added competency option:', optionText);
-                                }
+                            if (selectedCategory === 'technical' && penilaian.id_tc) {
+                                optionText = penilaian.keterangan + ' - std: ' + penilaian.nilai_standard + ' - aktual: ' + penilaian.nilai_aktual;
+                            } else if (selectedCategory === 'nontechnical' && penilaian.id_sk) {
+                                optionText = penilaian.keterangan + ' - std: ' + penilaian.nilai_standard + ' - aktual: ' + penilaian.nilai_aktual;
+                            } else if (selectedCategory === 'additional' && penilaian.id_ad) {
+                                optionText = penilaian.keterangan + ' - std: ' + penilaian.nilai_standard + ' - aktual: ' + penilaian.nilai_aktual;
                             }
-                        });
+
+                            if (optionText !== '') {
+                                var option = document.createElement('option');
+                                option.value = optionText;
+                                option.text = optionText;
+                                competencyDropdown.appendChild(option);
+                            }
+                        }
                     });
-                });
+                }
             });
 
             // Function to update row numbers

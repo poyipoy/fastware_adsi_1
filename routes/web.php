@@ -21,6 +21,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\MadingController;
 use App\Http\Controllers\PoPengajuanController;
 use App\Http\Controllers\PengajuanSubcontController;
+use App\Http\Controllers\ClaimSubmissionController;
 use App\Http\Controllers\JsonToCsvController;
 use App\Http\Controllers\CrpController;
 use App\Http\Controllers\CustomRequestController;
@@ -30,6 +31,8 @@ use App\Http\Controllers\LayoutEditorController;
 use App\Http\Controllers\EntertainController;
 use App\Http\Controllers\BopmController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\ItemCodeController;
+use App\Http\Controllers\ApprovalController;
 use App\Models\InquirySales;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
@@ -533,6 +536,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/send-pd2/{tahun_aktual}', [PdController::class, 'sendPD2'])->name('sendPD2');
 
     Route::get('/people-development/filter', [PdController::class, 'getFilteredData'])->name('people_development.filter');
+    Route::get('/people-development/export/csv', [PdController::class, 'exportFilteredCsv'])->name('people_development.export.csv');
 
     Route::get('/trs/edit-penilaian/{id_job_position}', [PenilaianTCController::class, 'editTrs'])->name('penilaian.edit');
     Route::get('/trs/edit-dept/{id_job_position}', [PenilaianTCController::class, 'editTrs2'])->name('penilaian.edit2');
@@ -627,6 +631,71 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/pengajuan-subcont/{id}', [PengajuanSubcontController::class, 'update'])->name('pengajuan-subcont.update');
     Route::delete('/pengajuan-subcont/{id}', [PengajuanSubcontController::class, 'delete'])->name('pengajuan-subcont.destroy');
 
+    //Claim Submission
+    Route::get('/claim-submission/user', [ClaimSubmissionController::class, 'indexUser'])->name('claim.indexUser');
+    Route::get('/claim-submission/procurement', [ClaimSubmissionController::class, 'indexProc'])->name('claim.indexProc');
+    Route::get('/claim-submission/export-excel-proc', [ClaimSubmissionController::class, 'exportExcelProc'])->name('claim.exportExcelProc');
+    Route::get('/claim-submission/create', [ClaimSubmissionController::class, 'create'])->name('claim.create');
+    Route::get('/claim-submission/{id}/edit', [ClaimSubmissionController::class, 'edit'])->name('claim.edit');
+    Route::get('/claim-submission/{id}/view', [ClaimSubmissionController::class, 'viewClaim'])->name('claim.view');
+    Route::get('/claim-submission/{id}/editProc', [ClaimSubmissionController::class, 'editProc'])->name('claim.editProc');
+    Route::get('/claim-submission/{id}/history', [ClaimSubmissionController::class, 'getHistory'])->name('claim.history');
+    Route::post('/claim-submission/store', [ClaimSubmissionController::class, 'store'])->name('claim.store');
+    Route::put('/claim-submission/{id}', [ClaimSubmissionController::class, 'update'])->name('claim.update');
+    Route::delete('/claim-submission/{id}', [ClaimSubmissionController::class, 'delete'])->name('claim.destroy');
+    Route::post('/claim-submission/{id}/proses', [ClaimSubmissionController::class, 'prosesProc'])->name('claim.proses');
+    Route::post('/claim-submission/{id}/submit-proc', [ClaimSubmissionController::class, 'submitProc'])->name('claim.submitProc');
+    Route::post('/claim-submission/{id}/finish', [ClaimSubmissionController::class, 'finishProc'])->name('claim.finish');
+
+    Route::get('/upload-json', [JsonToCsvController::class, 'showUploadForm'])->name('upload.json');
+    Route::post('/convert-json-to-csv', [JsonToCsvController::class, 'convert'])->name('convert.json');
+
+    // Item Code
+    Route::prefix('item-code')->name('item-code.')->middleware([
+        'auth',
+        'role:item_code_access',
+    ])->group(function () {
+ 
+    // --- Form (Pembuat) ---
+    Route::middleware(['role:item_code_form'])->group(function () {
+        Route::get('/form-item-code', [ItemCodeController::class, 'index'])->name('form');
+        Route::get('/form-item-code/next-nomor', [ItemCodeController::class, 'nextNomor'])->name('nextNomor');
+        Route::get('/form-item-code/export', [ItemCodeController::class, 'export'])->name('exportForm');
+        Route::get('/form-item-code/import-template', [ItemCodeController::class, 'importTemplate'])->name('importTemplate');
+        Route::post('/form-item-code/import', [ItemCodeController::class, 'import'])->name('import');
+        Route::post('/form-item-code', [ItemCodeController::class, 'store'])->name('store');
+        Route::post('/form-item-code/submit-all', [ItemCodeController::class, 'submitAll'])->name('submitAll');
+        Route::put('/form-item-code/{id}', [ItemCodeController::class, 'update'])->name('update');
+        Route::delete('/form-item-code/{id}', [ItemCodeController::class, 'destroy'])->name('destroy');
+        Route::post('/form-item-code/{id}/submit', [ItemCodeController::class, 'submit'])->name('submit');
+    });
+ 
+    // --- Persetujuan (Approver 1, Approver 2, Finisher) ---
+    Route::middleware(['role:item_code_approval'])->group(function () {
+        Route::get('/persetujuan', [ApprovalController::class, 'index'])->name('approval');
+        Route::get('/persetujuan/export', [ApprovalController::class, 'export'])->name('exportApproval');
+ 
+        // Approve 1 — Jessica Paune (submitted → approved_1)
+        Route::post('/persetujuan/approve-all', [ApprovalController::class, 'approveAll'])->name('approveAll');
+        Route::post('/persetujuan/{id}/approve', [ApprovalController::class, 'approve'])->name('approve');
+ 
+        // Approve 2 — Martinus Cahyo Rahasto (approved_1 → approved_2)
+        Route::post('/persetujuan/approve2-all', [ApprovalController::class, 'approve2All'])->name('approve2All');
+        Route::post('/persetujuan/{id}/approve2', [ApprovalController::class, 'approve2'])->name('approve2');
+ 
+        // Reject — bisa dilakukan Approver 1 atau Approver 2
+        Route::post('/persetujuan/{id}/reject', [ApprovalController::class, 'reject'])->name('reject');
+ 
+        // Finish — Adhi Prasetiyo (approved_2 → finished)
+        Route::post('/persetujuan/finish-all', [ApprovalController::class, 'finishAll'])->name('finishAll');
+        Route::post('/persetujuan/{id}/finish', [ApprovalController::class, 'finish'])->name('finish');
+    });
+ 
+    // --- Shared (semua role item-code) ---
+    Route::get('/form-item-code/{id}/history', [ItemCodeController::class, 'history'])->name('history');
+    Route::get('/form-item-code/{id}/attachment', [ItemCodeController::class, 'attachment'])->name('attachment');
+    });
+
     Route::get('/upload-json', [JsonToCsvController::class, 'showUploadForm'])->name('upload.json');
     Route::post('/convert-json-to-csv', [JsonToCsvController::class, 'convert'])->name('convert.json');
 
@@ -669,6 +738,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/dashboard-tcpd/data', [DashboardController::class, 'getTcpdCompetencyData'])->name('dashboardTCPD.data');
     Route::get('/dashboard-tcpd/company-data', [DashboardController::class, 'getTcpdCompanyData'])->name('dashboardTCPD.companyData');
     Route::get('/dashboard-tcpd/export', [DashboardController::class, 'exportTcpdCompetencyData'])->name('dashboardTCPD.export');
+    Route::get('/dashboard-tcpd/company-export', [DashboardController::class, 'exportTcpdCompanyData'])->name('dashboardTCPD.companyExport');
     
     // BOPM Dashboard
     Route::get('/dashboard-bopm', [BOPMController::class, 'index'])->name('bopm.dashboard.index');
