@@ -118,73 +118,108 @@
 
 <body>
     <div class="container">
-        <div class="header">
-            <img src="{{ asset('assets/img/AdasiLogo.png') }}" alt="">
-            <h1>Detail Inquiry</h1>
-        </div>
+        <!-- Header using Table for DomPDF compatibility -->
+        <table style="width: 100%; border: none; margin-bottom: 20px;">
+            <tr style="border: none;">
+                <td style="width: 25%; border: none; text-align: left; vertical-align: middle;">
+                    @php
+                        $imagePath = public_path('assets/img/AdasiLogo.png');
+                        if (file_exists($imagePath)) {
+                            $imageData = base64_encode(file_get_contents($imagePath));
+                            $src = 'data:image/png;base64,' . $imageData;
+                        } else {
+                            $src = '';
+                        }
+                    @endphp
+                    @if($src)
+                        <img src="{{ $src }}" alt="Adasi Logo" style="width: 200px; max-width: 100%;">
+                    @endif
+                </td>
+                <td style="width: 50%; border: none; text-align: center; vertical-align: middle;">
+                    <h1 style="margin: 0; font-size: 24px;">Detail Inquiry</h1>
+                </td>
+                <td style="width: 25%; border: none;"></td>
+            </tr>
+        </table>
 
         @if($inquiry) <!-- Check if $inquiry data exists -->
-            <table class="table-n">
+            <table class="table-n" style="margin-bottom: 30px; width: 100%;">
                 <thead class="table-n">
-                    <tr class="table-n">
-                        @if($inquiry->create_by) <th style="width: 20%;" class="table-n">Create By</th> @endif
-                        @if($inquiry->loc_imp) <th style="width: 20%;" class="table-n">Category</th> @endif
-                        @if($inquiry->kode_inquiry) <th style="width: 20%;" class="table-n">Reference</th> @endif
-                        @if($inquiry->customer) <th style="width: 20%;" class="table-n">Customer</th> @endif
-                        @if($inquiry->supplier) <th style="width: 20%;" class="table-n">Supplier</th> @endif
-                        @if($inquiry->created_at) <th style="width: 20%;" class="table-n">Date Create</th> @endif
+                    <tr class="table-n" style="background-color: #f2f2f2;">
+                        <th style="width: 15%; padding: 5px;" class="table-n">Create By</th>
+                        <th style="width: 10%; padding: 5px;" class="table-n">Category</th>
+                        <th style="width: 20%; padding: 5px;" class="table-n">Reference</th>
+                        <th style="width: 20%; padding: 5px;" class="table-n">Customer</th>
+                        <th style="width: 15%; padding: 5px;" class="table-n">Supplier</th>
+                        <th style="width: 20%; padding: 5px;" class="table-n">Date Create</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="table-n">
-                        @if($inquiry->create_by) <td class="table-n">{{ $inquiry->create_by }}</td> @endif
-                        @if($inquiry->loc_imp) <td class="table-n">{{ $inquiry->loc_imp }}</td> @endif
-                        @if($inquiry->kode_inquiry) <td class="table-n">{{ $inquiry->kode_inquiry }}</td> @endif
-                        @if($inquiry->customer) <td class="table-n">{{ $inquiry->customer->name_customer ?? '-' }}</td> @endif
-                        @if($inquiry->supplier) <td class="table-n">{{ $inquiry->supplier }}</td> @endif
-                        @if($inquiry->created_at) <td class="table-n">{{ $inquiry->created_at }}</td> @endif
+                        <td class="table-n" style="padding: 5px;">{{ $inquiry->create_by ?? '-' }}</td>
+                        <td class="table-n" style="padding: 5px;">{{ $inquiry->loc_imp ?? '-' }}</td>
+                        <td class="table-n" style="padding: 5px;">{{ $inquiry->kode_inquiry ?? '-' }}</td>
+                        <td class="table-n" style="padding: 5px;">{{ $inquiry->customer->name_customer ?? '-' }}</td>
+                        <td class="table-n" style="padding: 5px;">{{ $inquiry->supplier ?? '-' }}</td>
+                        <td class="table-n" style="padding: 5px;">{{ $inquiry->created_at ?? '-' }}</td>
                     </tr>
                 </tbody>
             </table>
         @endif
 
         @if($materials->isNotEmpty()) <!-- Check if there are materials data -->
-            <table>
+            @php
+                $firstMaterial = $materials->first();
+                $hasType = !empty($firstMaterial->type_materials);
+                $hasJenis = !empty($firstMaterial->jenis);
+                $hasThickness = !empty($firstMaterial->thickness);
+                $hasWeight = !empty($firstMaterial->weight);
+                $hasInnerDia = !empty($firstMaterial->inner_diameter);
+                $hasOuterDia = !empty($firstMaterial->outer_diameter);
+                $hasLength = !empty($firstMaterial->length);
+                $hasQty = !empty($firstMaterial->qty);
+                $hasM1 = !empty($firstMaterial->m1);
+                $hasM2 = !empty($firstMaterial->m2);
+                $hasM3 = !empty($firstMaterial->m3);
+                $hasShip = !empty($firstMaterial->ship);
+                $hasSo = !empty($firstMaterial->so);
+            @endphp
+            <table style="width: 100%;">
                 <thead>
                     <tr>
-                        @if($materials->first()->type_materials) <th style="width: 100px;">Raw Material</th> @endif
-                        @if($materials->first()->jenis) <th style="width: 50px;">Shapes</th> @endif
-                        @if($materials->first()->thickness) <th style="width: 40px;text-align:center;">Thickness</th> @endif
-                        @if($materials->first()->weight) <th style="width: 40px;text-align:center;">Width</th> @endif
-                        @if($materials->first()->inner_diameter) <th style="width: 40px; text-align:center;">Inner Dia</th> @endif
-                        @if($materials->first()->outer_diameter) <th style="width: 40px; text-align:center;">Outer Dia</th> @endif
-                        @if($materials->first()->length) <th style="width: 50px;text-align:center;">Length</th> @endif
-                        @if($materials->first()->qty) <th style="width: 50px; text-align:center;">Qty</th> @endif
-                        @if($materials->first()->m1) <th style="width: 50px; text-align:center;">Forecast Month 1</th> @endif
-                        @if($materials->first()->m2) <th style="width: 50px; text-align:center;">Forecast Month 2</th> @endif
-                        @if($materials->first()->m3) <th style="width: 50px; text-align:center;">Forecast Month 3</th> @endif
-                        @if($materials->first()->ship) <th style="width: 70px; text-align:center;">Ship-to</th> @endif
-                        @if($materials->first()->so) <th style="width: 50px; text-align:center;">Sales Order</th> @endif
-                        <th style="width: 50px;">Remark</th>
+                        @if($hasType) <th>Raw Material</th> @endif
+                        @if($hasJenis) <th>Shapes</th> @endif
+                        @if($hasThickness) <th style="text-align:center;">Thickness</th> @endif
+                        @if($hasWeight) <th style="text-align:center;">Width</th> @endif
+                        @if($hasInnerDia) <th style="text-align:center;">Inner Dia</th> @endif
+                        @if($hasOuterDia) <th style="text-align:center;">Outer Dia</th> @endif
+                        @if($hasLength) <th style="text-align:center;">Length</th> @endif
+                        @if($hasQty) <th style="text-align:center;">Qty</th> @endif
+                        @if($hasM1) <th style="text-align:center;">Forecast M1</th> @endif
+                        @if($hasM2) <th style="text-align:center;">Forecast M2</th> @endif
+                        @if($hasM3) <th style="text-align:center;">Forecast M3</th> @endif
+                        @if($hasShip) <th style="text-align:center;">Ship-to</th> @endif
+                        @if($hasSo) <th style="text-align:center;">Sales Order</th> @endif
+                        <th>Remark</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
                     @foreach ($materials as $index => $material)
                         <tr>
-                            @if($material->type_materials) <td>{{ $material->type_materials->type_name ?? 'N/A' }}</td> @endif
-                            @if($material['jenis']) <td>{{ $material['jenis'] }}</td> @endif
-                            @if($material['thickness']) <td style="text-align:center;">{{ $material['thickness'] }}</td> @endif
-                            @if($material['weight']) <td style="text-align:center;">{{ $material['weight'] }}</td> @endif
-                            @if($material['inner_diameter']) <td style="text-align:center;">{{ $material['inner_diameter'] }}</td> @endif
-                            @if($material['outer_diameter']) <td style="text-align:center;">{{ $material['outer_diameter'] }}</td> @endif
-                            @if($material['length']) <td style="text-align:center;">{{ $material['length'] }}</td> @endif
-                            @if($material['qty']) <td style="text-align:center;">{{ $material['qty'] }}</td> @endif
-                            @if($material['m1']) <td style="text-align:center;">{{ $material['m1'] }}</td> @endif
-                            @if($material['m2']) <td style="text-align:center;">{{ $material['m2'] }}</td> @endif
-                            @if($material['m3']) <td style="text-align:center;">{{ $material['m3'] }}</td> @endif
-                            @if($material['ship']) <td style="text-align:center;">{{ $material['ship'] }}</td> @endif
-                            @if($material['so']) <td>{{ $material['so'] }}</td> @endif
-                            <td>{{ $material['note'] }}</td>
+                            @if($hasType) <td>{{ $material->type_materials->type_name ?? '-' }}</td> @endif
+                            @if($hasJenis) <td>{{ $material['jenis'] ?? '-' }}</td> @endif
+                            @if($hasThickness) <td style="text-align:center;">{{ $material['thickness'] ?? '-' }}</td> @endif
+                            @if($hasWeight) <td style="text-align:center;">{{ $material['weight'] ?? '-' }}</td> @endif
+                            @if($hasInnerDia) <td style="text-align:center;">{{ $material['inner_diameter'] ?? '-' }}</td> @endif
+                            @if($hasOuterDia) <td style="text-align:center;">{{ $material['outer_diameter'] ?? '-' }}</td> @endif
+                            @if($hasLength) <td style="text-align:center;">{{ $material['length'] ?? '-' }}</td> @endif
+                            @if($hasQty) <td style="text-align:center;">{{ $material['qty'] ?? '-' }}</td> @endif
+                            @if($hasM1) <td style="text-align:center;">{{ $material['m1'] ?? '-' }}</td> @endif
+                            @if($hasM2) <td style="text-align:center;">{{ $material['m2'] ?? '-' }}</td> @endif
+                            @if($hasM3) <td style="text-align:center;">{{ $material['m3'] ?? '-' }}</td> @endif
+                            @if($hasShip) <td style="text-align:center;">{{ $material['ship'] ?? '-' }}</td> @endif
+                            @if($hasSo) <td style="text-align:center;">{{ $material['so'] ?? '-' }}</td> @endif
+                            <td>{{ $material['note'] ?? '-' }}</td>
                         </tr>
                     @endforeach
                 </tbody>

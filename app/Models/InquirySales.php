@@ -22,6 +22,7 @@ class InquirySales extends Model
         'kode_inquiry',
         'jenis_inquiry',
         'loc_imp',
+        'region',
         'est_date',
         'supplier',
         'create_by',

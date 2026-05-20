@@ -452,7 +452,8 @@
                                 'JUN JOHAMIN PD',
                                 'WULYO EKO PRASETYO',
                                 'YAN WELEM MANGINSELA',
-                                'SENDY PRABOWO'
+                                'SENDY PRABOWO',
+                                'ILYAS NOOR FIRDAUS'
                                 ]))
                                 <div class="card">
                                     <div class="card-body">
@@ -646,13 +647,13 @@
                                                         $allowedRegions = [];
 
                                                          // Menentukan region yang bisa diakses berdasarkan nama pengguna
-                                                        if (in_array($user->name, ['JUN JOHAMIN PD' ,'ADMINSTRATOR','JESSICA PAUNE'])) {
+                                                        if (in_array($user->name, ['JUN JOHAMIN PD' ,'ADMINSTRATOR','JESSICA PAUNE','ILYAS NOOR FIRDAUS'])) {
                                                             $allowedRegions[] = 1; // Region 1
                                                         }
                                                         if (in_array($user->name, ['YULMAI RIDO WINANDA', 'ILHAM CHOLID','ADMINSTRATOR','JESSICA PAUNE'])) {
                                                             $allowedRegions[] = 2; // Region 2
                                                         }
-                                                        if (in_array($user->name, ['ANDIK TOTOK SISWOYO','ADMINSTRATOR ','JESSICA PAUNE'])) {
+                                                        if (in_array($user->name, ['ANDIK TOTOK SISWOYO','ADMINSTRATOR','JESSICA PAUNE'])) {
                                                             $allowedRegions[] = 3; // Region 3
                                                         }
                                                         if (in_array($user->name, ['ANDIK TOTOK SISWOYO', 'DANIA ISNAWATI','ADMINSTRATOR','JESSICA PAUNE'])) {
@@ -667,8 +668,7 @@
                                                     @endforeach
                                                 </select>
                                             </div>
-                                        </div>
-
+                                        </div>  
 
                                         <!-- Modal Footer -->
                                         <div class="modal-footer">

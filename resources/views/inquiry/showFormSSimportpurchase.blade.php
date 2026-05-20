@@ -153,7 +153,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 25px;">No</th>                                
-                                <th style="width: 50px; text-align:center;">klasifikasi</th>
+                                <th style="width: 50px; text-align:center;">Klasifikasi</th>
                                 <th style="width: 50px; text-align:center;">Region</th>
                                 <th style="width: 100px;">Raw Material</th>
                                 <th style="width: 50px;">Shapes</th>
@@ -170,6 +170,8 @@
                                 <th style="width: 50px; text-align:center;">Forecast Month 3</th>
                                 <th style="width: 90px; text-align:center;">Ship-to</th>
                                 <th style="width: 50px; text-align:center;">Sales Order</th>
+                                <th style="width: 50px; text-align:center;">Keterangan Order</th>
+                                <th style="width: 50px; text-align:center;">Keterangan Size</th>
                                 <th style="width: 50px; text-align:center;">Remark</th>
                                 <th style="width: 50px; text-align:center;">Customer</th>
                                 <th style="width: 50px; text-align:center;">Partner</th>
@@ -211,6 +213,8 @@
                                     <td>{{ $material['m3'] }}</td>
                                     <td>{{ $material['ship'] }}</td>
                                     <td>{{ $material['so'] }}</td>
+                                    <td>{{ $material['keterangan_order'] }}</td>
+                                    <td>{{ $material['keterangan_size'] }}</td>
                                     <td>{{ $material['note'] }}</td>
                                     <td>
                                         @php

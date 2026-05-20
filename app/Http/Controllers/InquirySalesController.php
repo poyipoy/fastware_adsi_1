@@ -95,7 +95,7 @@ class InquirySalesController extends Controller
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn (Builder $query) => $query
+                fn(Builder $query) => $query
                     ->orderByRaw('FIELD(status, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)')
                     ->orderBy('created_at', 'desc')
             );
@@ -312,6 +312,8 @@ class InquirySalesController extends Controller
             'materials.*.m3' => 'nullable|string',
             'materials.*.ship' => 'nullable|string',
             'materials.*.so' => 'required|string',
+            'materials.*.keteranganorder' => 'required|string',
+            'materials.*.keterangansize' => 'required|string',
             'materials.*.note' => 'nullable|string',
             'materials.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10048',
         ]);
@@ -344,6 +346,8 @@ class InquirySalesController extends Controller
                     'm3' => $material['m3'],
                     'ship' => $material['ship'],
                     'so' => $material['so'],
+                    'keterangan_order' => $material['keterangan_order'],
+                    'keterangan_size' => $material['keterangan_size'],
                     'note' => $material['note']
                 ]);
             } else {
@@ -363,6 +367,8 @@ class InquirySalesController extends Controller
                     'm3' => $material['m3'],
                     'ship' => $material['ship'],
                     'so' => $material['so'],
+                    'keterangan_order' => $material['keterangan_order'],
+                    'keterangan_size' => $material['keterangan_size'],
                     'note' => $material['note']
                 ]);
             }
@@ -407,6 +413,8 @@ class InquirySalesController extends Controller
             'materials.*.m3' => 'nullable|string',
             'materials.*.ship' => 'required|string',
             'materials.*.so' => 'required|string',
+            'materials.*.keterangan_order' => 'required|string',
+            'materials.*.keterangan_size' => 'required|string',
             'materials.*.note' => 'required|string',
             'materials.*.customer' => 'required|string',         // JSON string: ["1","2"]
             'materials.*.name_customer' => 'required|string',    // JSON string: ["PT A","PT B"]
@@ -445,6 +453,8 @@ class InquirySalesController extends Controller
             $newDetail->m3 = $material['m3'];
             $newDetail->ship = $material['ship'];
             $newDetail->so = $material['so'];
+            $newDetail->keterangan_order = $material['keterangan_order'];
+            $newDetail->keterangan_size = $material['keterangan_size'];
             $newDetail->note = $material['note'];
             $newDetail->create_by = $user_id;
             $newDetail->customer = $material['customer'];
@@ -871,12 +881,12 @@ class InquirySalesController extends Controller
 
     public function overviewPurchase2(Request $request)
     {
-        $statuses = [1,2,3,4,5, 6, 8, 9];
+        $statuses = [1, 2, 3, 4, 5, 6, 8, 9];
 
         if ($this->isDataTableRequest($request)) {
             $baseQuery = InquirySales::with([
                 'customer:id,name_customer',
-                'details:id,id_inquiry,id_type,jenis,qty,ship,status,thickness,weight,inner_diameter,outer_diameter,length,m1,m2,m3,so,nopo,nopo_item,note',
+                'details:id,id_inquiry,id_type,jenis,qty,ship,status,thickness,weight,inner_diameter,outer_diameter,length,m1,m2,m3,so,nopo,nopo_item,keterangan_order,keterangan_size,note',
                 'details.type_materials:id,type_name',
                 'latestPurchaseProgress',
             ])
@@ -919,7 +929,7 @@ class InquirySalesController extends Controller
 
                     $shipHtml = $shipLines->isEmpty()
                         ? '--- No Shipping Options ---'
-                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
+                        : $shipLines->map(fn($ship) => e($ship))->implode('<br>');
 
                     $estimatedDate = $inquiry->est_date ? Carbon::parse($inquiry->est_date)->format('d-m-Y') : '-';
 
@@ -939,14 +949,14 @@ class InquirySalesController extends Controller
                         'actions' => $this->renderOverviewPurchaseActions($inquiry),
                         'checkbox' => '<input type="checkbox" name="selected_inquiries[]" value="' . e($inquiry->id) . '" class="form-check-input inquiry-checkbox">',
                         'detail_rows' => $inquiry->details
-                              ->map(function (DetailInquiry $detail): array {
-                                  $meta = $this->detailStatusMeta((int) ($detail->status ?? 0));
-                                  $materialName = optional($detail->type_materials)->type_name ?? '-';
+                            ->map(function (DetailInquiry $detail): array {
+                                $meta = $this->detailStatusMeta((int) ($detail->status ?? 0));
+                                $materialName = optional($detail->type_materials)->type_name ?? '-';
 
-                                  return [
-                                      'id' => $detail->id,
-                                      'no_po' => $detail->nopo_item ?? ($detail->nopo ?? '-'),
-                                      'po_value' => $detail->nopo_item ?? '',
+                                return [
+                                    'id' => $detail->id,
+                                    'no_po' => $detail->nopo_item ?? ($detail->nopo ?? '-'),
+                                    'po_value' => $detail->nopo_item ?? '',
                                     'material' => $materialName,
                                     'jenis' => $detail->jenis ?? '-',
                                     'thickness' => $detail->thickness ?? '-',
@@ -959,6 +969,8 @@ class InquirySalesController extends Controller
                                     'm2' => $detail->m2 ?? '-',
                                     'm3' => $detail->m3 ?? '-',
                                     'so' => $detail->so ?? '-',
+                                    'keterangan_order' => $detail->keterangan_order ?? '-',
+                                    'keterangan_size' => $detail->keterangan_size ?? '-',
                                     'note' => $detail->note ?? '-',
                                     'ship' => $detail->ship ?? '-',
                                     'status' => (int) ($detail->status ?? 0),
@@ -979,7 +991,7 @@ class InquirySalesController extends Controller
                     6 => 'supplier',
                     11 => 'est_date',
                 ],
-                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+                fn(Builder $query) => $query->orderBy('created_at', 'desc')
             );
         }
 
@@ -1129,9 +1141,9 @@ class InquirySalesController extends Controller
         DetailInquiry::where('id_inquiry', $inquiryId)
             ->whereIn('id', $detailIds)
             ->update([
-            'status' => $status,
-            'updated_at' => now(),
-        ]);
+                'status' => $status,
+                'updated_at' => now(),
+            ]);
 
         $statusMeta = $this->detailStatusMeta($status);
 
@@ -1146,12 +1158,12 @@ class InquirySalesController extends Controller
 
         $detailStatuses = DetailInquiry::where('id_inquiry', $inquiryId)
             ->pluck('status')
-            ->map(static fn ($value) => (int) $value);
+            ->map(static fn($value) => (int) $value);
 
         $newInquiryStatus = null;
 
         if ($detailStatuses->isNotEmpty()) {
-            if ($detailStatuses->every(static fn (int $value): bool => $value === 6)) {
+            if ($detailStatuses->every(static fn(int $value): bool => $value === 6)) {
                 $newInquiryStatus = 6;
             } elseif ($detailStatuses->contains(9)) {
                 $newInquiryStatus = 9;
@@ -1540,6 +1552,8 @@ class InquirySalesController extends Controller
             'materials.*.m3' => 'nullable|numeric',
             'materials.*.ship' => 'required|string',
             'materials.*.so' => 'nullable|string',
+            'materials.*.keterangan_order' => 'required|string',
+            'materials.*.keterangan_size' => 'required|string',
             'materials.*.note' => 'nullable|string',
         ]);
 
@@ -1569,6 +1583,8 @@ class InquirySalesController extends Controller
                 $material->m3 = $materialData['m3'];
                 $material->ship = $materialData['ship'];
                 $material->so = $materialData['so'];
+                $material->keterangan_order = $materialData['keterangan_order'];
+                $material->keterangan_size = $materialData['keterangan_size'];
                 $material->note = $materialData['note'];
                 $material->save();
 
@@ -1602,6 +1618,8 @@ class InquirySalesController extends Controller
             'm3' => 'required',
             'ship' => 'required|in:Deltamas,DS8',
             'so' => 'required',
+            'keterangan_order' => 'required|string',
+            'keterangan_size' => 'required|string',
             'note' => 'nullable',
             'customer' => 'required|array',
             'customer.*' => 'exists:customers,id',
@@ -1629,6 +1647,8 @@ class InquirySalesController extends Controller
             'm3' => $validatedData['m3'],
             'ship' => $validatedData['ship'],
             'so' => $validatedData['so'],
+            'keterangan_order' => $validatedData['keterangan_order'],
+            'keterangan_size' => $validatedData['keterangan_size'],
             'note' => $validatedData['note'],
             'customer' => $encodedCustomer,
         ]);
@@ -1700,6 +1720,8 @@ class InquirySalesController extends Controller
             'materials.*.m3' => 'nullable|numeric',
             'materials.*.ship' => 'required|string',
             'materials.*.so' => 'nullable|string',
+            'materials.*.keterangan_order' => 'required|string',
+            'materials.*.keterangan_size' => 'required|string',
             'materials.*.note' => 'nullable|string',
             'materials.*.customer' => 'required|string',
         ]);
@@ -1740,6 +1762,8 @@ class InquirySalesController extends Controller
                 $material->m3 = $materialData['m3'];
                 $material->ship = $materialData['ship'];
                 $material->so = $materialData['so'];
+                $material->keterangan_order = $materialData['keterangan_order'];
+                $material->keterangan_size = $materialData['keterangan_size'];
                 $material->note = $materialData['note'];
                 $material->customer = $materialData['customer'];
 
@@ -1748,7 +1772,8 @@ class InquirySalesController extends Controller
                 $changes = [];
 
                 foreach ($material->getAttributes() as $key => $newValue) {
-                    if (in_array($key, $ignoredFields)) continue;
+                    if (in_array($key, $ignoredFields))
+                        continue;
 
                     $oldValue = $oldData[$key] ?? null;
                     if ($oldValue != $newValue) {
@@ -1880,8 +1905,10 @@ class InquirySalesController extends Controller
                     'm3' => $row[21] ?? null,
                     'so' => $row[22] ?? null,
                     'ship' => $row[23] ?? null,
-                    'note' => $row[24] ?? null,
-                    'progress' => $row[28] ?? null,
+                    'keterangan_order' => $row[24] ?? null,
+                    'keterangan_size' => $row[25] ?? null,
+                    'note' => $row[26] ?? null,
+                    'progress' => $row[27] ?? null,
                     'customer' => json_encode($customerIds),
                     'create_by' => $userId,
                     'est_date' => $row[8] ?? null,
@@ -2038,7 +2065,9 @@ class InquirySalesController extends Controller
                     'm3' => $row[21] ?? null,
                     'so' => $row[22] ?? null,
                     'ship' => $row[23] ?? null,
-                    'note' => $row[24] ?? null,
+                    'keterangan_order' => $row[24] ?? null,
+                    'keterangan_size' => $row[25] ?? null,
+                    'note' => $row[26] ?? null,
                     'customer' => json_encode($customerIds),
                     'create_by' => $partnerId,
                     'updated_at' => $now,
@@ -2563,7 +2592,7 @@ class InquirySalesController extends Controller
 
                     $shipHtml = $shipLines->isEmpty()
                         ? '--- No Shipping Options ---'
-                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
+                        : $shipLines->map(fn($ship) => e($ship))->implode('<br>');
 
                     $estimatedDate = $inquiry->est_date ? Carbon::parse($inquiry->est_date)->format('d-m-Y') : '-';
 
@@ -2591,7 +2620,7 @@ class InquirySalesController extends Controller
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn (Builder $query) => $query
+                fn(Builder $query) => $query
                     ->orderByRaw("CASE WHEN status IN (2,4,3) THEN 0 ELSE 1 END")
                     ->orderByRaw("FIELD(status, 2,4,3)")
                     ->orderBy('created_at', 'desc')
@@ -2651,7 +2680,7 @@ class InquirySalesController extends Controller
 
                     $shipText = $shipLines->isEmpty()
                         ? '--- No Shipping Options ---'
-                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
+                        : $shipLines->map(fn($ship) => e($ship))->implode('<br>');
 
                     $klasifikasiLines = $inquiry->detailinquiryimport
                         ->pluck('klasifikasi')
@@ -2661,7 +2690,7 @@ class InquirySalesController extends Controller
 
                     $klasifikasiText = $klasifikasiLines->isEmpty()
                         ? '-'
-                        : $klasifikasiLines->map(fn ($value) => e($value))->implode('<br>');
+                        : $klasifikasiLines->map(fn($value) => e($value))->implode('<br>');
 
                     $supplierLines = $inquiry->detailinquiryimport
                         ->pluck('supplier')
@@ -2671,7 +2700,7 @@ class InquirySalesController extends Controller
 
                     $supplierText = $supplierLines->isEmpty()
                         ? e($inquiry->supplier ?? '-')
-                        : $supplierLines->map(fn ($value) => e($value))->implode('<br>');
+                        : $supplierLines->map(fn($value) => e($value))->implode('<br>');
 
                     $estimatedDate = $inquiry->est_date
                         ? Carbon::parse($inquiry->est_date)->format('d-m-Y')
@@ -2701,7 +2730,7 @@ class InquirySalesController extends Controller
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn (Builder $query) => $query
+                fn(Builder $query) => $query
                     ->orderByRaw("CASE WHEN status IN (2,4,3) THEN 0 ELSE 1 END")
                     ->orderByRaw("FIELD(status, 2,4,3)")
                     ->orderBy('created_at', 'desc')
@@ -2746,7 +2775,7 @@ class InquirySalesController extends Controller
                 });
             });
         })->filter(); // Buang null values jika tidak ada inquiry NonDaido di bulan tersebut
-        
+
 
         return view('inquiry.overviewPurchaseImport', [
             'inquiries' => $inquiries,
@@ -2925,12 +2954,12 @@ class InquirySalesController extends Controller
         $normalizedHierarchy = [];
         foreach ($userHierarchy as $superior => $subordinates) {
             $normalizedHierarchy[strtoupper(trim($superior))] = array_map(
-                static fn ($name) => strtoupper(trim((string) $name)),
+                static fn($name) => strtoupper(trim((string) $name)),
                 $subordinates
             );
         }
 
-        $visibleUpperNames = collect([$authNameNormalized])->filter(fn ($name) => $name !== '');
+        $visibleUpperNames = collect([$authNameNormalized])->filter(fn($name) => $name !== '');
 
         if ($authNameNormalized !== '' && isset($normalizedHierarchy[$authNameNormalized])) {
             $visibleUpperNames = $visibleUpperNames->merge($normalizedHierarchy[$authNameNormalized]);
@@ -2943,7 +2972,7 @@ class InquirySalesController extends Controller
         }
 
         $visibleUpperNames = $visibleUpperNames
-            ->filter(fn ($name) => $name !== '')
+            ->filter(fn($name) => $name !== '')
             ->unique()
             ->values();
 
@@ -2964,24 +2993,24 @@ class InquirySalesController extends Controller
         if ($this->isDataTableRequest($request)) {
             $region = (int) $request->input('region', 0);
 
-          if ($region === 0) {
-              return response()->json([
-                  'draw' => (int) $request->input('draw', 0),
-                  'recordsTotal' => 0,
-                  'recordsFiltered' => 0,
-                  'data' => [],
-              ]);
-          }
+            if ($region === 0) {
+                return response()->json([
+                    'draw' => (int) $request->input('draw', 0),
+                    'recordsTotal' => 0,
+                    'recordsFiltered' => 0,
+                    'data' => [],
+                ]);
+            }
 
-          $baseQuery = InquirySales::with([
-              'customer:id,name_customer',
-              'latestPurchaseProgress',
-              'earliestPurchaseProgress',
-              'purchaseProgresses' => function ($query): void {
-                  $query->select('id', 'inquiry_id', 'description', 'created_at')
-                      ->orderBy('created_at');
-              },
-          ])
+            $baseQuery = InquirySales::with([
+                'customer:id,name_customer',
+                'latestPurchaseProgress',
+                'earliestPurchaseProgress',
+                'purchaseProgresses' => function ($query): void {
+                    $query->select('id', 'inquiry_id', 'description', 'created_at')
+                        ->orderBy('created_at');
+                },
+            ])
                 ->select('inquiry_sales.*')
                 ->where('region', $region)
                 ->where('loc_imp', 'Import')
@@ -2992,58 +3021,58 @@ class InquirySalesController extends Controller
                 $baseQuery->whereIn('create_by', $visibleUsers);
             }
 
-          $baseQuery->whereIn('id', function ($sub) use ($statuses, $visibleUsers, $region) {
-              $sub->selectRaw('MAX(id)')
-                  ->from('inquiry_sales')
-                  ->whereIn('status', $statuses)
-                  ->where('is_active', 1)
-                  ->where('loc_imp', 'Import')
-                  ->where('region', $region);
+            $baseQuery->whereIn('id', function ($sub) use ($statuses, $visibleUsers, $region) {
+                $sub->selectRaw('MAX(id)')
+                    ->from('inquiry_sales')
+                    ->whereIn('status', $statuses)
+                    ->where('is_active', 1)
+                    ->where('loc_imp', 'Import')
+                    ->where('region', $region);
 
-              if (!empty($visibleUsers)) {
-                  $sub->whereIn('create_by', $visibleUsers);
-              }
+                if (!empty($visibleUsers)) {
+                    $sub->whereIn('create_by', $visibleUsers);
+                }
 
-              $sub->groupBy('kode_inquiry');
-          });
+                $sub->groupBy('kode_inquiry');
+            });
 
-          $searchCallback = function (Builder $query, string $search): void {
-              $query->where(function (Builder $inner) use ($search) {
-                  $inner->where('kode_inquiry', 'like', "%{$search}%")
-                      ->orWhere('create_by', 'like', "%{$search}%")
-                      ->orWhere('loc_imp', 'like', "%{$search}%")
-                      ->orWhereHas('customer', function (Builder $customer) use ($search) {
-                          $customer->where('name_customer', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
-                          $progress->where('description', 'like', "%{$search}%");
-                      });
-              });
-          };
+            $searchCallback = function (Builder $query, string $search): void {
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('kode_inquiry', 'like', "%{$search}%")
+                        ->orWhere('create_by', 'like', "%{$search}%")
+                        ->orWhere('loc_imp', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function (Builder $customer) use ($search) {
+                            $customer->where('name_customer', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
+                            $progress->where('description', 'like', "%{$search}%");
+                        });
+                });
+            };
 
-          $user = Auth::user();
-          $request->attributes->set('visible_users', $visibleUsers);
-          $visibilityMode = empty($visibleUsers) ? 'all' : 'restricted';
+            $user = Auth::user();
+            $request->attributes->set('visible_users', $visibleUsers);
+            $visibilityMode = empty($visibleUsers) ? 'all' : 'restricted';
 
-          Log::info('createInquiryImport datatable request', [
-              'user_id' => $user->id ?? null,
-              'user_name' => $user->name ?? null,
-              'role_id' => $user->role_id ?? null,
-              'region' => $region,
-              'visible_users' => $visibleUsers,
-              'visibility_mode' => $visibilityMode,
-              'search' => $request->input('search.value'),
-              'draw' => (int) $request->input('draw', 0),
-          ]);
+            Log::info('createInquiryImport datatable request', [
+                'user_id' => $user->id ?? null,
+                'user_name' => $user->name ?? null,
+                'role_id' => $user->role_id ?? null,
+                'region' => $region,
+                'visible_users' => $visibleUsers,
+                'visibility_mode' => $visibilityMode,
+                'search' => $request->input('search.value'),
+                'draw' => (int) $request->input('draw', 0),
+            ]);
 
-          return $this->dataTableResponse(
+            return $this->dataTableResponse(
                 $request,
                 $baseQuery,
                 function (InquirySales $inquiry): array {
                     $statusMeta = $this->statusMeta((int) $inquiry->status);
                     $firstProgress = $inquiry->earliestPurchaseProgress;
-                      $allProgress = $inquiry->purchaseProgresses ?? collect();
-                      $approvedProgress = $allProgress->firstWhere('description', 'Inquiry Approved');
+                    $allProgress = $inquiry->purchaseProgresses ?? collect();
+                    $approvedProgress = $allProgress->firstWhere('description', 'Inquiry Approved');
                     $latestProgress = $inquiry->latestPurchaseProgress;
 
                     $monthLabel = $firstProgress && $firstProgress->created_at
@@ -3079,7 +3108,7 @@ class InquirySalesController extends Controller
                     2 => 'create_by',
                     3 => 'kode_inquiry',
                 ],
-                fn (Builder $query) => $query->orderBy('created_at', 'desc')
+                fn(Builder $query) => $query->orderBy('created_at', 'desc')
             );
         }
 

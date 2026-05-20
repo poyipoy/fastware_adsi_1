@@ -572,6 +572,8 @@
                                     <th style="width: 30px;">Forecast Month 3</th>
                                     <th style="width: 60px;">Ship-to</th>
                                     <th style="width: 60px;">Sales Order</th>
+                                    <th style="width: 60px;">Keterangan Order</th>
+                                    <th style="width: 60px;">Keterangan Size</th>
                                     <th style="width: 50px;">Remark</th>
                                     <th style="width: 300px;">Customer</th>
                                 </tr>
@@ -698,7 +700,7 @@
 
                 // Membuat array untuk menyimpan cell
                 let cells = [];
-                for (let i = 0; i < 18; i++) {
+                for (let i = 0; i < 20; i++) {
                     cells[i] = newRow.insertCell(i);
                 }
 
@@ -800,7 +802,8 @@
                 });
 
                 cells[14].appendChild(shipDropdown);
-
+                
+                // Kolom 15: Input SO
                 let soInput = document.createElement("input");
                 soInput.type = "text";
                 soInput.name = "so";
@@ -819,16 +822,49 @@
 
                 cells[15].appendChild(soInput);
 
+                //Kolom 16: Keterangan Order
+                let keteranganOrderDropdown = document.createElement("select");
+                keteranganOrderDropdown.name = "keterangan_order";
+                keteranganOrderDropdown.classList.add("jenis-dropdown");
+                keteranganOrderDropdown.style.width = "200px";
+                keteranganOrderDropdown.style.height = "30px";
+                
 
-                // Kolom 16: Note
+                ["Stack Rutin", "New Project", "PO Customer", "QTY Request"].forEach(value => {
+                    let option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = value;
+                    keteranganOrderDropdown.appendChild(option);
+                });
+
+                cells[16].appendChild(keteranganOrderDropdown);
+
+                // Kolom 17: Keterangan Size
+                let keteranganSizeDropdown = document.createElement("select");
+                keteranganSizeDropdown.name = "keterangan_size";
+                keteranganSizeDropdown.classList.add("jenis-dropdown");
+                keteranganSizeDropdown.style.width = "210px";
+                keteranganSizeDropdown.style.height = "30px";
+                keteranganSizeDropdown.required = true;
+
+                ["Ukuran Mengikuti Standar", "Ukuran Sesuai Request"].forEach(value => {
+                    let option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = value;
+                    keteranganSizeDropdown.appendChild(option);
+                });
+
+                cells[17].appendChild(keteranganSizeDropdown);
+
+                // Kolom 18: Note
                 let noteInput = document.createElement("input");
                 noteInput.type = "text";
                 noteInput.name = "note";
                 noteInput.size = 10;
                 noteInput.required = true;
-                cells[16].appendChild(noteInput);
+                cells[18].appendChild(noteInput);
 
-                // Kolom 17: Searchable Dropdown Customer
+                // Kolom 19: Searchable Dropdown Customer
                 let uniqueId = `search_customer_${rowCount}`;
                 let uniqueHiddenId = `customer_${rowCount}`;
                 let uniqueNameCustomerId = `name_customer_${rowCount}`;
@@ -879,7 +915,7 @@
                 searchContainer.appendChild(hiddenInput);
                 searchContainer.appendChild(nameCustomerInput); // Menambahkan input tersembunyi untuk nama customer
                 searchContainer.appendChild(selectedCustomersList);
-                cells[17].appendChild(searchContainer);
+                cells[19].appendChild(searchContainer);
 
                 // Inisialisasi event listener untuk searchable dropdown
                 initializeSearchableDropdown(searchInput, dropdownMenu, hiddenInput, nameCustomerInput, selectedCustomersList);
@@ -1027,6 +1063,8 @@
                     var m3Element = row.querySelector('input[name="m3"]');
                     var shipElement = row.querySelector('select[name="ship"]');
                     var soElement = row.querySelector('input[name="so"]');
+                    var keteranganOrderElement = row.querySelector('select[name="keterangan_order"]');
+                    var keteranganSizeElement = row.querySelector('select[name="keterangan_size"]');
                     var noteElement = row.querySelector('input[name="note"]');
                     var customerElement = row.querySelector('input[name="customer"]');
                     var nameCustomerElement = row.querySelector('input[name="name_customer"]');
@@ -1059,6 +1097,8 @@
                             m3: m3Element ? m3Element.value : null,
                             ship: shipElement ? shipElement.value : null,
                             so: formattedSO,
+                            keterangan_order: keteranganOrderElement ? keteranganOrderElement.value : null,
+                            keterangan_size: keteranganSizeElement ? keteranganSizeElement.value : null,
                             note: noteElement ? noteElement.value : null,
                             customer: customerElement ? customerElement.value : [],
                             name_customer: nameCustomerElement ? customerElement.value : [],
@@ -1077,7 +1117,7 @@
 
                 // Validasi data sebelum dikirim
                 var isValid = data.materials.every(material =>
-                    material.id_type && material.jenis && material.qty && material.m1 && material.so && material.note &&
+                    material.id_type && material.jenis && material.qty && material.m1 && material.so && material.keterangan_order && material.keterangan_size && material.note &&
                     material.customer && material.name_customer && material.klasifikasi
                 );
 

@@ -56,7 +56,8 @@ class InquiryImportInventoryExport implements FromCollection, WithHeadings, With
             'detail_inquiry_import.ship AS ship_to', 'detail_inquiry_import.note AS remark', 'detail_inquiry_import.file',
             'detail_inquiry_import.created_at AS detail_created_at', 'detail_inquiry_import.updated_at AS detail_updated_at',
             'detail_inquiry_import.customer AS customer','detail_inquiry_import.klasifikasi AS klasifikasi',
-            'users.name AS partner'
+            'users.name AS partner','detail_inquiry_import.keterangan_order AS keterangan_order',
+            'detail_inquiry_import.keterangan_size AS keterangan_size','detail_inquiry_import.progress AS progress'
         ])
         ->get();
     return $result;
@@ -75,7 +76,7 @@ class InquiryImportInventoryExport implements FromCollection, WithHeadings, With
         'Est. Date', 'Sales Person', 'Status', 'Raw Material', 'Shapes', 'Thickness', 
         'Inner Diameter', 'Outer Diameter', 'Width', 'Length', 'Qty *Unit', 
         'Forecast Month 1', 'Forecast Month 2', 'Forecast Month 3', 
-        'Ref. SO', 'Ship-To', 'Remark', 'Partner', 'Klasifikasi', 'ID Inquiry', 'ID Detail', 'Progress'
+        'Ref. SO', 'Ship-To', 'Keterangan Order', 'Keterangan Size', 'Remark', 'Partner', 'Klasifikasi', 'ID Inquiry', 'ID Detail', 'Progress'
     ];
 }
 
@@ -142,6 +143,8 @@ class InquiryImportInventoryExport implements FromCollection, WithHeadings, With
          $inquiry->forecast_month_3,
          $inquiry->ref_so,
          $inquiry->ship_to,
+         $inquiry->keterangan_order,
+         $inquiry->keterangan_size,
          $inquiry->remark,
          $inquiry->partner,
          $inquiry->klasifikasi,

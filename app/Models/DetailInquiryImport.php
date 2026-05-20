@@ -33,6 +33,8 @@ class DetailInquiryImport extends Model
         'konfirmasi',
         'nopo',
         'ship',
+        'keterangan_order',
+        'keterangan_size',
         'note',
         'file',
         'modified_by',

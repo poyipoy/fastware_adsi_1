@@ -75,7 +75,7 @@ class InquiryImportInventoryExportcustom implements FromCollection, WithHeadings
         'Est. Date', 'Sales Person', 'Status', 'Raw Material', 'Shapes', 'Thickness', 
         'Inner Diameter', 'Outer Diameter', 'Width', 'Length', 'Qty *Unit', 
         'Forecast Month 1', 'Forecast Month 2', 'Forecast Month 3', 
-        'Ref. SO', 'Ship-To', 'Remark', 'Partner', 'Klasifikasi', 'ID Inquiry', 'ID Detail', 'Progress'
+        'Ref. SO', 'Ship-To', 'Remark', 'Partner', 'Klasifikasi', 'ID Inquiry', 'ID Detail',
     ];
 }
 

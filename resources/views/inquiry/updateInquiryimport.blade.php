@@ -486,6 +486,8 @@
                                     <th style="width: 30px;">Forecast Month 3</th>
                                     <th style="width: 60px;">Ship-to</th>
                                     <th style="width: 60px;">Sales Order</th>
+                                    <th style="width: 60px;">Keterangan Order</th>
+                                    <th style="width: 60px;">Keterangan Size</th>
                                     <th style="width: 50px;">Remark</th>
                                     <th style="width: 300px;">Customer</th>
                                 </tr>
@@ -532,6 +534,20 @@
                                             </select>
                                         </td>
                                         <td><input type="text" name="materials[{{ $index }}][so]" size="10" required value="{{ $material->so }}"></td>
+                                        <td>
+                                            <select name="materials[{{ $index }}][keterangan_order]" class="jenis-dropdown" style="width: 200px; height: 30px;">
+                                                <option value="Stack Rutin" {{ $material->keterangan_order == 'Stack Rutin' ? 'selected' : '' }}>Stack Rutin</option>
+                                                <option value="New Project" {{ $material->keterangan_order == 'New Project' ? 'selected' : '' }}>New Project</option>
+                                                <option value="PO Customer" {{ $material->keterangan_order == 'PO Customer' ? 'selected' : '' }}>PO Customer</option>
+                                                <option value="QTY Request" {{ $material->keterangan_order == 'QTY Request' ? 'selected' : '' }}>QTY Request</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select name="materials[{{ $index }}][keterangan_size]" class="je   nis-dropdown" style="width: 210px; height: 30px;">
+                                                <option value="Ukuran Mengikuti Standar" {{ $material->keterangan_size == 'Ukuran Mengikuti Standar' ? 'selected' : '' }}>Ukuran Mengikuti Standar</option>
+                                                <option value="Ukuran Mengikuti Request" {{ $material->keterangan_size == 'Ukuran Mengikuti Request' ? 'selected' : '' }}>Ukuran Mengikuti Request</option>
+                                            </select>
+                                        </td>
                                         <td><input type="text" name="materials[{{ $index }}][note]" size="10" required value="{{ $material->note }}"></td>
                                         <td>
                                             <div class="searchable-dropdown">

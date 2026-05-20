@@ -17,7 +17,7 @@ class InquiryImportPurchaseExport implements FromCollection, WithHeadings, WithM
     protected $klasifikasi;
 
     public function __construct($idArray, $klasifikasi = null)
-    {
+    {   
         $this->ids = is_array($idArray) ? $idArray : [$idArray];
         $this->klasifikasi = $klasifikasi;
     }
@@ -56,7 +56,7 @@ class InquiryImportPurchaseExport implements FromCollection, WithHeadings, WithM
             'detail_inquiry_import.weight', 'detail_inquiry_import.length', 'detail_inquiry_import.qty AS qty_unit',
             'detail_inquiry_import.m1 AS forecast_month_1', 'detail_inquiry_import.m2 AS forecast_month_2',
             'detail_inquiry_import.m3 AS forecast_month_3', 'detail_inquiry_import.so AS ref_so',
-            'detail_inquiry_import.ship AS ship_to', 'detail_inquiry_import.note AS remark',
+            'detail_inquiry_import.ship AS ship_to', 'detail_inquiry_import.keterangan_order','detail_inquiry_import.keterangan_size', 'detail_inquiry_import.note AS remark',
             'detail_inquiry_import.klasifikasi AS klasifikasi',
             'detail_inquiry_import.customer AS customer',
             'detail_inquiry_import.supplier AS supplier',
@@ -84,7 +84,7 @@ class InquiryImportPurchaseExport implements FromCollection, WithHeadings, WithM
             'No', 'Bulan', 'Region', 'Klasifikasi', 'Customer Name', 'Inquiry Code', 'Order Type', 'Inquiry Type', 'Category',
             'Est. Date', 'Sales Person', 'Raw Material', 'Shapes', 'Thickness',
             'Inner Diameter', 'Outer Diameter', 'Weight', 'Length', 'Qty *Unit', 'Forecast Month 1',
-            'Forecast Month 2', 'Forecast Month 3', 'Ref. SO', 'Ship-To', 'Remark', 'Partner',
+            'Forecast Month 2', 'Forecast Month 3', 'Ref. SO', 'Ship-To','Keterangan Order','Keterangan Size', 'Remark', 'Partner',
             'Sec ID', 'Sec Detail ID', 'Progress', 'NO PO', 'Supplier'
         ];
     }
@@ -153,6 +153,8 @@ class InquiryImportPurchaseExport implements FromCollection, WithHeadings, WithM
         $inquiry->forecast_month_3,
         $inquiry->ref_so,
         $inquiry->ship_to,
+        $inquiry->keterangan_order,
+        $inquiry->keterangan_size,
         $inquiry->remark,
         $inquiry->partner,
         $inquiry->inquiry_id,
