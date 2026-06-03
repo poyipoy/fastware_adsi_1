@@ -46,7 +46,7 @@ class ItemCodeImportTemplateExport implements FromArray, WithHeadings, WithStyle
                 'current_price',
                 'effective_date_new',
                 'new_price',
-                'reason_new_price',
+                'reason',
                 'selisih',
             ];
         }
@@ -63,6 +63,7 @@ class ItemCodeImportTemplateExport implements FromArray, WithHeadings, WithStyle
             'unit',
             'currency',
             'price',
+            'reason',
         ];
     }
 
@@ -112,7 +113,7 @@ class ItemCodeImportTemplateExport implements FromArray, WithHeadings, WithStyle
                 'description' => 36,
                 'price', 'current_price', 'new_price', 'selisih' => 16,
                 'tanggal', 'effective_date_current', 'effective_date_new' => 20,
-                'reason_new_price' => 32,
+                'reason', 'reason_new_price' => 32,
                 'category' => 16,
                 'currency' => 10,
                 'qty', 'unit' => 10,

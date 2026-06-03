@@ -26,6 +26,7 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         'unit',
         'currency',
         'price',
+        'reason',
     ];
 
     private const NEW_PRODUCT_COLUMNS_LEGACY = [
@@ -39,6 +40,21 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         'unit',
         'currency',
         'price',
+    ];
+
+    private const NEW_PRODUCT_COLUMNS_LEGACY_REASON_NEW_PRICE = [
+        'nomor_pengajuan',
+        'tanggal',
+        'creator',
+        'category',
+        'supplier',
+        'product_code',
+        'description',
+        'qty',
+        'unit',
+        'currency',
+        'price',
+        'reason_new_price',
     ];
 
     private const UPDATE_PRICE_COLUMNS = [
@@ -56,7 +72,7 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         'current_price',
         'effective_date_new',
         'new_price',
-        'reason_new_price',
+        'reason',
         'selisih',
     ];
 
@@ -139,9 +155,7 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 'tanggal_harga_baru' => $this->importType === 'update_price'
                     ? $this->normalizeDate($row['effective_date_new'] ?? null)
                     : null,
-                'reason_new_price' => $this->importType === 'update_price'
-                    ? $this->normalizeString($row['reason_new_price'] ?? null)
-                    : null,
+                'reason_new_price' => $this->normalizeString($row['reason'] ?? ($row['reason_new_price'] ?? null)),
                 'selisih_input' => $this->importType === 'update_price'
                     ? $this->normalizeNumber($row['selisih'] ?? null)
                     : null,
@@ -197,7 +211,6 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 $data['tanggal_lama'] = null;
                 $data['harga_baru'] = null;
                 $data['tanggal_harga_baru'] = null;
-                $data['reason_new_price'] = null;
                 $data['attachment'] = null;
                 $data['selisih'] = null;
             } else {
@@ -446,6 +459,7 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         return [
             self::NEW_PRODUCT_COLUMNS,
             self::NEW_PRODUCT_COLUMNS_LEGACY,
+            self::NEW_PRODUCT_COLUMNS_LEGACY_REASON_NEW_PRICE,
         ];
     }
 

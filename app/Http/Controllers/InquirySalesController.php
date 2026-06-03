@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\DetailInquiry;
 use App\Models\DetailInquiryImport;
 use App\Models\InquirySales;
+use App\Models\OutstandingMaterial;
 use App\Models\TypeMaterial;
 use App\Models\TrxDboProgPurchase;
 use App\Services\InquirySalesService;
@@ -95,7 +96,7 @@ class InquirySalesController extends Controller
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn(Builder $query) => $query
+                fn (Builder $query) => $query
                     ->orderByRaw('FIELD(status, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)')
                     ->orderBy('created_at', 'desc')
             );
@@ -313,7 +314,7 @@ class InquirySalesController extends Controller
             'materials.*.ship' => 'nullable|string',
             'materials.*.so' => 'required|string',
             'materials.*.keteranganorder' => 'required|string',
-            'materials.*.keterangansize' => 'required|string',
+            'materials.*.keterangansize' => 'required|string',  
             'materials.*.note' => 'nullable|string',
             'materials.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10048',
         ]);
@@ -419,12 +420,24 @@ class InquirySalesController extends Controller
             'materials.*.customer' => 'required|string',         // JSON string: ["1","2"]
             'materials.*.name_customer' => 'required|string',    // JSON string: ["PT A","PT B"]
             'materials.*.klasifikasi' => 'required|string',
+            'ignore_outstanding_warning' => 'sometimes|boolean',
         ]);
 
         $user = Auth::user();
         $user_id = $user->id;
         $user_name = $user->name;
         $id_inquiry = $request->id_inquiry;
+        $typeMaterials = TypeMaterial::whereIn('id', collect($request->materials)->pluck('id_type')->filter()->unique()->all())
+            ->pluck('type_name', 'id');
+        $outstandingMatches = $this->findOutstandingMaterialMatches($request->materials, $typeMaterials);
+
+        if (!$request->boolean('ignore_outstanding_warning') && count($outstandingMatches) > 0) {
+            return response()->json([
+                'message' => 'Beberapa material terdeteksi sudah ada di Outstanding Material.',
+                'requires_outstanding_confirmation' => true,
+                'matches' => $outstandingMatches,
+            ], 409);
+        }
 
         foreach ($request->materials as $material) {
             $customerIds = json_decode($material['customer'], true);
@@ -462,8 +475,7 @@ class InquirySalesController extends Controller
             $newDetail->save();
 
             // Ambil nama tipe material
-            $typeMaterial = TypeMaterial::find($material['id_type']);
-            $typeName = $typeMaterial ? $typeMaterial->type_name : 'Unknown Type';
+            $typeName = $typeMaterials->get($material['id_type'], 'Unknown Type');
 
             // Buat log per item (jika kamu ingin log per material, bukan terakhir saja)
             TrxDboProgPurchase::create([
@@ -881,7 +893,7 @@ class InquirySalesController extends Controller
 
     public function overviewPurchase2(Request $request)
     {
-        $statuses = [1, 2, 3, 4, 5, 6, 8, 9];
+        $statuses = [1,2,3,4,5, 6, 8, 9];
 
         if ($this->isDataTableRequest($request)) {
             $baseQuery = InquirySales::with([
@@ -929,7 +941,7 @@ class InquirySalesController extends Controller
 
                     $shipHtml = $shipLines->isEmpty()
                         ? '--- No Shipping Options ---'
-                        : $shipLines->map(fn($ship) => e($ship))->implode('<br>');
+                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
 
                     $estimatedDate = $inquiry->est_date ? Carbon::parse($inquiry->est_date)->format('d-m-Y') : '-';
 
@@ -949,14 +961,14 @@ class InquirySalesController extends Controller
                         'actions' => $this->renderOverviewPurchaseActions($inquiry),
                         'checkbox' => '<input type="checkbox" name="selected_inquiries[]" value="' . e($inquiry->id) . '" class="form-check-input inquiry-checkbox">',
                         'detail_rows' => $inquiry->details
-                            ->map(function (DetailInquiry $detail): array {
-                                $meta = $this->detailStatusMeta((int) ($detail->status ?? 0));
-                                $materialName = optional($detail->type_materials)->type_name ?? '-';
+                              ->map(function (DetailInquiry $detail): array {
+                                  $meta = $this->detailStatusMeta((int) ($detail->status ?? 0));
+                                  $materialName = optional($detail->type_materials)->type_name ?? '-';
 
-                                return [
-                                    'id' => $detail->id,
-                                    'no_po' => $detail->nopo_item ?? ($detail->nopo ?? '-'),
-                                    'po_value' => $detail->nopo_item ?? '',
+                                  return [
+                                      'id' => $detail->id,
+                                      'no_po' => $detail->nopo_item ?? ($detail->nopo ?? '-'),
+                                      'po_value' => $detail->nopo_item ?? '',
                                     'material' => $materialName,
                                     'jenis' => $detail->jenis ?? '-',
                                     'thickness' => $detail->thickness ?? '-',
@@ -991,7 +1003,7 @@ class InquirySalesController extends Controller
                     6 => 'supplier',
                     11 => 'est_date',
                 ],
-                fn(Builder $query) => $query->orderBy('created_at', 'desc')
+                fn (Builder $query) => $query->orderBy('created_at', 'desc')
             );
         }
 
@@ -1141,9 +1153,9 @@ class InquirySalesController extends Controller
         DetailInquiry::where('id_inquiry', $inquiryId)
             ->whereIn('id', $detailIds)
             ->update([
-                'status' => $status,
-                'updated_at' => now(),
-            ]);
+            'status' => $status,
+            'updated_at' => now(),
+        ]);
 
         $statusMeta = $this->detailStatusMeta($status);
 
@@ -1158,12 +1170,12 @@ class InquirySalesController extends Controller
 
         $detailStatuses = DetailInquiry::where('id_inquiry', $inquiryId)
             ->pluck('status')
-            ->map(static fn($value) => (int) $value);
+            ->map(static fn ($value) => (int) $value);
 
         $newInquiryStatus = null;
 
         if ($detailStatuses->isNotEmpty()) {
-            if ($detailStatuses->every(static fn(int $value): bool => $value === 6)) {
+            if ($detailStatuses->every(static fn (int $value): bool => $value === 6)) {
                 $newInquiryStatus = 6;
             } elseif ($detailStatuses->contains(9)) {
                 $newInquiryStatus = 9;
@@ -1772,8 +1784,7 @@ class InquirySalesController extends Controller
                 $changes = [];
 
                 foreach ($material->getAttributes() as $key => $newValue) {
-                    if (in_array($key, $ignoredFields))
-                        continue;
+                    if (in_array($key, $ignoredFields)) continue;
 
                     $oldValue = $oldData[$key] ?? null;
                     if ($oldValue != $newValue) {
@@ -1987,59 +1998,67 @@ class InquirySalesController extends Controller
             $userId = Auth::id();
             $userName = Auth::user()->name;
 
-            // Ambil type_materials untuk reference
+            // Ambil mapping untuk reference
             $typeMaterials = DB::table('type_materials')->pluck('id', 'type_name');
             $partner = DB::table('users')->pluck('id', 'name');
 
-            // Array untuk batch insert/update
-            $inquiryUpdates = [];
-            $detailUpdates = [];
-            $logs = [];
-
             $customerRaw = DB::table('customers')->select('id', 'name_customer')->get();
             $customerMap = [];
-
             foreach ($customerRaw as $c) {
                 $normalized = strtolower(trim(preg_replace('/\s+/', ' ', $c->name_customer)));
                 $customerMap[$normalized] = (string) $c->id;
             }
 
+            $validRowCount = 0;
+            $logs = [];
+
+            DB::beginTransaction();
+
             foreach ($rows as $index => $row) {
-                // *Lewati 2 baris pertama (judul) & baris kosong*
+                // Lewati judul (1 baris) dan baris kosong
                 if ($index < 1 || empty(array_filter($row))) {
                     continue;
                 }
 
-                // *Pastikan jumlah kolom cukup sebelum akses indeks*
-                if (count($row) < 30) {
+                $secId = $row[28] ?? null;
+                $secDetailId = $row[29] ?? null;
+
+                if (empty($secId) || !is_numeric($secId) || empty($secDetailId) || !is_numeric($secDetailId)) {
+                    Log::warning("Row $index skipped: Sec ID atau Sec Detail ID tidak valid/kosong.", ['row' => $row]);
                     continue;
                 }
 
-                $partnerId = isset($row[25]) ? ($partner[$row[25]] ?? null) : null;
-                // *Ambil Type ID dengan cek validitas data*
+                // Cek eksistensi di database
+                $inquiryExists = DB::table('inquiry_sales')->where('id', $secId)->exists();
+                $detailExists = DB::table('detail_inquiry_import')
+                                    ->where('id', $secDetailId)
+                                    ->where('id_inquiry', $secId)
+                                    ->exists();
+
+                if (!$inquiryExists || !$detailExists) {
+                    Log::warning("Row $index skipped: Data Inquiry atau Detail tidak ditemukan di database untuk Sec ID $secId dan Sec Detail ID $secDetailId.");
+                    continue;
+                }
+
+                $partnerId = isset($row[27]) ? ($partner[$row[27]] ?? null) : null;
                 $typeId = isset($row[11]) ? ($typeMaterials[$row[11]] ?? null) : null;
 
-                // *Pastikan ID inquiry tidak kosong*
-                if (empty($row[26])) {
-                    continue;
-                }
-
-                $customerRaw = $row[4] ?? '';
-                $customerNames = array_map('trim', explode(';', $customerRaw));
+                $customerRawVal = $row[4] ?? '';
+                $customerNames = array_map('trim', explode(';', $customerRawVal));
                 $customerIds = [];
 
                 foreach ($customerNames as $name) {
+                    if (empty($name)) continue;
                     $normalizedName = strtolower(trim(preg_replace('/\s+/', ' ', $name)));
-
                     if (isset($customerMap[$normalizedName])) {
                         $customerIds[] = $customerMap[$normalizedName];
                     } else {
-                        Log::warning("Customer tidak ditemukan: [$normalizedName]");
+                        Log::warning("Customer tidak ditemukan: [$normalizedName] pada baris $index");
                     }
                 }
 
-                $inquiryUpdates[] = [
-                    'id' => $row[26] ?? null,
+                // Update inquiry_sales
+                DB::table('inquiry_sales')->where('id', $secId)->update([
                     'region' => $row[2] ?? null,
                     'kode_inquiry' => $row[5] ?? null,
                     'type_order' => $row[6] ?? null,
@@ -2047,63 +2066,72 @@ class InquirySalesController extends Controller
                     'loc_imp' => $row[8] ?? null,
                     'create_by' => $row[10] ?? null,
                     'updated_at' => $now,
-                ];
+                ]);
 
-                $detailUpdates[] = [
-                    'id' => $row[27] ?? null,
-                    'id_inquiry' => $row[26] ?? null,
-                    'id_type' => $typeId,
-                    'jenis' => $row[12] ?? null,
-                    'thickness' => $row[13] ?? null,
-                    'inner_diameter' => $row[14] ?? null,
-                    'outer_diameter' => $row[15] ?? null,
-                    'weight' => $row[16] ?? null,
-                    'length' => $row[17] ?? null,
-                    'qty' => $row[18] ?? null,
-                    'm1' => $row[19] ?? null,
-                    'm2' => $row[20] ?? null,
-                    'm3' => $row[21] ?? null,
-                    'so' => $row[22] ?? null,
-                    'ship' => $row[23] ?? null,
-                    'keterangan_order' => $row[24] ?? null,
-                    'keterangan_size' => $row[25] ?? null,
-                    'note' => $row[26] ?? null,
-                    'customer' => json_encode($customerIds),
-                    'create_by' => $partnerId,
-                    'updated_at' => $now,
-                    'nopo' => $row[29] ?? null,
-                    'supplier' => $row[30] ?? null,
-                    'progress' => $row[28] ?? null,
-                    'est_date' => !empty($row[9]) ? Carbon::parse($row[9])->format('Y-m-d') : null,
-                ];
+                // Update detail_inquiry_import
+                DB::table('detail_inquiry_import')
+                    ->where('id', $secDetailId)
+                    ->where('id_inquiry', $secId)
+                    ->update([
+                        'klasifikasi' => $row[3] ?? null,
+                        'id_type' => $typeId,
+                        'jenis' => $row[12] ?? null,
+                        'thickness' => $row[13] ?? null,
+                        'inner_diameter' => $row[14] ?? null,
+                        'outer_diameter' => $row[15] ?? null,
+                        'weight' => $row[16] ?? null,
+                        'length' => $row[17] ?? null,
+                        'qty' => $row[18] ?? null,
+                        'm1' => $row[19] ?? null,
+                        'm2' => $row[20] ?? null,
+                        'm3' => $row[21] ?? null,
+                        'so' => $row[22] ?? null,
+                        'ship' => $row[23] ?? null,
+                        'keterangan_order' => $row[24] ?? null,
+                        'keterangan_size' => $row[25] ?? null,
+                        'note' => $row[26] ?? null,
+                        'create_by' => $partnerId,
+                        'progress' => $row[30] ?? null,
+                        'nopo' => $row[31] ?? null,
+                        'supplier' => $row[32] ?? null,
+                        'customer' => json_encode($customerIds),
+                        'est_date' => !empty($row[9]) ? Carbon::parse($row[9])->format('Y-m-d') : null,
+                        'updated_at' => $now,
+                    ]);
 
                 $logs[] = [
-                    'inquiry_id' => $row[26] ?? null,
+                    'inquiry_id' => $secId,
                     'description' => 'Updated purchase oleh ' . $userName . ' via Excel Import',
                     'user_id' => $userId,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
+
+                $validRowCount++;
             }
 
-            // *Batch insert/update hanya jika ada data*
-            if (!empty($inquiryUpdates)) {
-                DB::table('inquiry_sales')->upsert($inquiryUpdates, ['id'], array_keys($inquiryUpdates[0]));
-            }
-
-            if (!empty($detailUpdates)) {
-                DB::table('detail_inquiry_import')->upsert($detailUpdates, ['id_inquiry'], array_keys($detailUpdates[0]));
+            if ($validRowCount === 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Tidak ada baris data yang valid untuk diupdate. Pastikan Sec ID dan Sec Detail ID benar.'
+                ], 422);
             }
 
             if (!empty($logs)) {
                 DB::table('trx_dbo_progpurchase')->insert($logs);
             }
 
+            DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Import berhasil',
             ]);
         } catch (\Exception $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
         }
     }
@@ -2446,9 +2474,12 @@ class InquirySalesController extends Controller
 
             $signaturesList = [];
             if ($latestInquiry) {
-                $signaturesList[$latestInquiry->id] = [
-                    'approved_inventory' => $latestInquiry->inventory->name ?? 'Waiting Approval',
-                    'confirmed_purchasing' => $latestInquiry->purchasing->name ?? 'Waiting Approval',
+                $signaturesList = [
+                    'submitted' => $latestInquiry->create_by,
+                    'approved_kasie' => $latestInquiry->kasie ? $latestInquiry->kasie->name : 'Waiting Approval',
+                    'approved_kadept' => $latestInquiry->kadept ? $latestInquiry->kadept->name : 'Waiting Approval',
+                    'approved_inventory' => $latestInquiry->inventory ? $latestInquiry->inventory->name : 'Waiting Approval',
+                    'confirmed_purchasing' => $latestInquiry->purchasing ? $latestInquiry->purchasing->name : 'Waiting Approval',
                 ];
             }
 
@@ -2469,9 +2500,9 @@ class InquirySalesController extends Controller
             $pdf = PDF::loadView('pdf.inquiry', [
                 'inquiries' => $inquiries,
                 'materials' => $materials,
-                'signaturesList' => $signaturesList,
+                'signatures' => $signaturesList,
                 'customers' => $customers,
-                'latestInquiry' => $latestInquiry,
+                'inquiry' => $latestInquiry,
                 'users' => $users
             ])->setPaper('a4', 'landscape');
 
@@ -2592,7 +2623,7 @@ class InquirySalesController extends Controller
 
                     $shipHtml = $shipLines->isEmpty()
                         ? '--- No Shipping Options ---'
-                        : $shipLines->map(fn($ship) => e($ship))->implode('<br>');
+                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
 
                     $estimatedDate = $inquiry->est_date ? Carbon::parse($inquiry->est_date)->format('d-m-Y') : '-';
 
@@ -2620,7 +2651,7 @@ class InquirySalesController extends Controller
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn(Builder $query) => $query
+                fn (Builder $query) => $query
                     ->orderByRaw("CASE WHEN status IN (2,4,3) THEN 0 ELSE 1 END")
                     ->orderByRaw("FIELD(status, 2,4,3)")
                     ->orderBy('created_at', 'desc')
@@ -2680,7 +2711,7 @@ class InquirySalesController extends Controller
 
                     $shipText = $shipLines->isEmpty()
                         ? '--- No Shipping Options ---'
-                        : $shipLines->map(fn($ship) => e($ship))->implode('<br>');
+                        : $shipLines->map(fn ($ship) => e($ship))->implode('<br>');
 
                     $klasifikasiLines = $inquiry->detailinquiryimport
                         ->pluck('klasifikasi')
@@ -2690,7 +2721,7 @@ class InquirySalesController extends Controller
 
                     $klasifikasiText = $klasifikasiLines->isEmpty()
                         ? '-'
-                        : $klasifikasiLines->map(fn($value) => e($value))->implode('<br>');
+                        : $klasifikasiLines->map(fn ($value) => e($value))->implode('<br>');
 
                     $supplierLines = $inquiry->detailinquiryimport
                         ->pluck('supplier')
@@ -2700,7 +2731,7 @@ class InquirySalesController extends Controller
 
                     $supplierText = $supplierLines->isEmpty()
                         ? e($inquiry->supplier ?? '-')
-                        : $supplierLines->map(fn($value) => e($value))->implode('<br>');
+                        : $supplierLines->map(fn ($value) => e($value))->implode('<br>');
 
                     $estimatedDate = $inquiry->est_date
                         ? Carbon::parse($inquiry->est_date)->format('d-m-Y')
@@ -2730,7 +2761,7 @@ class InquirySalesController extends Controller
                     4 => 'supplier',
                     9 => 'est_date',
                 ],
-                fn(Builder $query) => $query
+                fn (Builder $query) => $query
                     ->orderByRaw("CASE WHEN status IN (2,4,3) THEN 0 ELSE 1 END")
                     ->orderByRaw("FIELD(status, 2,4,3)")
                     ->orderBy('created_at', 'desc')
@@ -2775,7 +2806,7 @@ class InquirySalesController extends Controller
                 });
             });
         })->filter(); // Buang null values jika tidak ada inquiry NonDaido di bulan tersebut
-
+        
 
         return view('inquiry.overviewPurchaseImport', [
             'inquiries' => $inquiries,
@@ -2954,12 +2985,12 @@ class InquirySalesController extends Controller
         $normalizedHierarchy = [];
         foreach ($userHierarchy as $superior => $subordinates) {
             $normalizedHierarchy[strtoupper(trim($superior))] = array_map(
-                static fn($name) => strtoupper(trim((string) $name)),
+                static fn ($name) => strtoupper(trim((string) $name)),
                 $subordinates
             );
         }
 
-        $visibleUpperNames = collect([$authNameNormalized])->filter(fn($name) => $name !== '');
+        $visibleUpperNames = collect([$authNameNormalized])->filter(fn ($name) => $name !== '');
 
         if ($authNameNormalized !== '' && isset($normalizedHierarchy[$authNameNormalized])) {
             $visibleUpperNames = $visibleUpperNames->merge($normalizedHierarchy[$authNameNormalized]);
@@ -2972,7 +3003,7 @@ class InquirySalesController extends Controller
         }
 
         $visibleUpperNames = $visibleUpperNames
-            ->filter(fn($name) => $name !== '')
+            ->filter(fn ($name) => $name !== '')
             ->unique()
             ->values();
 
@@ -2993,24 +3024,24 @@ class InquirySalesController extends Controller
         if ($this->isDataTableRequest($request)) {
             $region = (int) $request->input('region', 0);
 
-            if ($region === 0) {
-                return response()->json([
-                    'draw' => (int) $request->input('draw', 0),
-                    'recordsTotal' => 0,
-                    'recordsFiltered' => 0,
-                    'data' => [],
-                ]);
-            }
+          if ($region === 0) {
+              return response()->json([
+                  'draw' => (int) $request->input('draw', 0),
+                  'recordsTotal' => 0,
+                  'recordsFiltered' => 0,
+                  'data' => [],
+              ]);
+          }
 
-            $baseQuery = InquirySales::with([
-                'customer:id,name_customer',
-                'latestPurchaseProgress',
-                'earliestPurchaseProgress',
-                'purchaseProgresses' => function ($query): void {
-                    $query->select('id', 'inquiry_id', 'description', 'created_at')
-                        ->orderBy('created_at');
-                },
-            ])
+          $baseQuery = InquirySales::with([
+              'customer:id,name_customer',
+              'latestPurchaseProgress',
+              'earliestPurchaseProgress',
+              'purchaseProgresses' => function ($query): void {
+                  $query->select('id', 'inquiry_id', 'description', 'created_at')
+                      ->orderBy('created_at');
+              },
+          ])
                 ->select('inquiry_sales.*')
                 ->where('region', $region)
                 ->where('loc_imp', 'Import')
@@ -3021,58 +3052,58 @@ class InquirySalesController extends Controller
                 $baseQuery->whereIn('create_by', $visibleUsers);
             }
 
-            $baseQuery->whereIn('id', function ($sub) use ($statuses, $visibleUsers, $region) {
-                $sub->selectRaw('MAX(id)')
-                    ->from('inquiry_sales')
-                    ->whereIn('status', $statuses)
-                    ->where('is_active', 1)
-                    ->where('loc_imp', 'Import')
-                    ->where('region', $region);
+          $baseQuery->whereIn('id', function ($sub) use ($statuses, $visibleUsers, $region) {
+              $sub->selectRaw('MAX(id)')
+                  ->from('inquiry_sales')
+                  ->whereIn('status', $statuses)
+                  ->where('is_active', 1)
+                  ->where('loc_imp', 'Import')
+                  ->where('region', $region);
 
-                if (!empty($visibleUsers)) {
-                    $sub->whereIn('create_by', $visibleUsers);
-                }
+              if (!empty($visibleUsers)) {
+                  $sub->whereIn('create_by', $visibleUsers);
+              }
 
-                $sub->groupBy('kode_inquiry');
-            });
+              $sub->groupBy('kode_inquiry');
+          });
 
-            $searchCallback = function (Builder $query, string $search): void {
-                $query->where(function (Builder $inner) use ($search) {
-                    $inner->where('kode_inquiry', 'like', "%{$search}%")
-                        ->orWhere('create_by', 'like', "%{$search}%")
-                        ->orWhere('loc_imp', 'like', "%{$search}%")
-                        ->orWhereHas('customer', function (Builder $customer) use ($search) {
-                            $customer->where('name_customer', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
-                            $progress->where('description', 'like', "%{$search}%");
-                        });
-                });
-            };
+          $searchCallback = function (Builder $query, string $search): void {
+              $query->where(function (Builder $inner) use ($search) {
+                  $inner->where('kode_inquiry', 'like', "%{$search}%")
+                      ->orWhere('create_by', 'like', "%{$search}%")
+                      ->orWhere('loc_imp', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function (Builder $customer) use ($search) {
+                          $customer->where('name_customer', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('latestPurchaseProgress', function (Builder $progress) use ($search) {
+                          $progress->where('description', 'like', "%{$search}%");
+                      });
+              });
+          };
 
-            $user = Auth::user();
-            $request->attributes->set('visible_users', $visibleUsers);
-            $visibilityMode = empty($visibleUsers) ? 'all' : 'restricted';
+          $user = Auth::user();
+          $request->attributes->set('visible_users', $visibleUsers);
+          $visibilityMode = empty($visibleUsers) ? 'all' : 'restricted';
 
-            Log::info('createInquiryImport datatable request', [
-                'user_id' => $user->id ?? null,
-                'user_name' => $user->name ?? null,
-                'role_id' => $user->role_id ?? null,
-                'region' => $region,
-                'visible_users' => $visibleUsers,
-                'visibility_mode' => $visibilityMode,
-                'search' => $request->input('search.value'),
-                'draw' => (int) $request->input('draw', 0),
-            ]);
+          Log::info('createInquiryImport datatable request', [
+              'user_id' => $user->id ?? null,
+              'user_name' => $user->name ?? null,
+              'role_id' => $user->role_id ?? null,
+              'region' => $region,
+              'visible_users' => $visibleUsers,
+              'visibility_mode' => $visibilityMode,
+              'search' => $request->input('search.value'),
+              'draw' => (int) $request->input('draw', 0),
+          ]);
 
-            return $this->dataTableResponse(
+          return $this->dataTableResponse(
                 $request,
                 $baseQuery,
                 function (InquirySales $inquiry): array {
                     $statusMeta = $this->statusMeta((int) $inquiry->status);
                     $firstProgress = $inquiry->earliestPurchaseProgress;
-                    $allProgress = $inquiry->purchaseProgresses ?? collect();
-                    $approvedProgress = $allProgress->firstWhere('description', 'Inquiry Approved');
+                      $allProgress = $inquiry->purchaseProgresses ?? collect();
+                      $approvedProgress = $allProgress->firstWhere('description', 'Inquiry Approved');
                     $latestProgress = $inquiry->latestPurchaseProgress;
 
                     $monthLabel = $firstProgress && $firstProgress->created_at
@@ -3108,7 +3139,7 @@ class InquirySalesController extends Controller
                     2 => 'create_by',
                     3 => 'kode_inquiry',
                 ],
-                fn(Builder $query) => $query->orderBy('created_at', 'desc')
+                fn (Builder $query) => $query->orderBy('created_at', 'desc')
             );
         }
 
@@ -3349,6 +3380,192 @@ class InquirySalesController extends Controller
         $viewUrl = e(route('showFormSSimport', ['id' => $inquiry->id]));
 
         return '<a class="btn btn-custom-view m-1 btn-sm" title="View Form" href="' . $viewUrl . '"><i class="bi bi-eye-fill"></i></a>';
+    }
+
+    private function findOutstandingMaterialMatches(array $materials, $typeMaterials): array
+    {
+        $matches = [];
+
+        foreach ($materials as $index => $material) {
+            $typeName = trim((string) $typeMaterials->get($material['id_type'] ?? null, ''));
+
+            if ($typeName === '') {
+                continue;
+            }
+
+            $query = OutstandingMaterial::query()
+                ->select([
+                    'id',
+                    'supplier',
+                    'type',
+                    'thickness',
+                    'width',
+                    'diameter',
+                    'length',
+                    'qty_pcs',
+                    'number_invoice',
+                    'status',
+                    'estimasi_eta_warehouse',
+                ])
+                ->whereRaw('LOWER(TRIM(type)) = ?', [strtolower($typeName)]);
+
+            $criteriaCount = 0;
+            $criteria = [];
+
+            $this->applyOutstandingNumericMatch($query, 'thickness', $material['thickness'] ?? null, $criteriaCount, $criteria, 'Thickness');
+            $this->applyOutstandingNumericMatch($query, 'width', $material['weight'] ?? null, $criteriaCount, $criteria, 'Width');
+
+            $diameterValue = $this->normalizeOutstandingNumber($material['outer_diameter'] ?? null) !== null
+                ? ($material['outer_diameter'] ?? null)
+                : ($material['inner_diameter'] ?? null);
+            $this->applyOutstandingNumericMatch($query, 'diameter', $diameterValue, $criteriaCount, $criteria, 'Diameter');
+
+            $this->applyOutstandingLengthMatch($query, $material['length'] ?? null, $criteriaCount, $criteria);
+            $this->applyOutstandingNumericMatch($query, 'qty_pcs', $material['qty'] ?? null, $criteriaCount, $criteria, 'QTY (PCS)');
+
+            if ($criteriaCount < 2) {
+                continue;
+            }
+
+            $foundMaterials = $query
+                ->limit(3)
+                ->get();
+
+            if ($foundMaterials->isEmpty()) {
+                continue;
+            }
+
+            $matches[] = [
+                'row' => $index + 1,
+                'type' => $typeName,
+                'criteria' => $criteria,
+                'input' => [
+                    'thickness' => $this->displayOutstandingValue($material['thickness'] ?? null),
+                    'width' => $this->displayOutstandingValue($material['weight'] ?? null),
+                    'diameter' => $this->displayOutstandingValue($diameterValue),
+                    'length' => $this->displayOutstandingValue($material['length'] ?? null),
+                    'qty_pcs' => $this->displayOutstandingValue($material['qty'] ?? null),
+                ],
+                'outstanding' => $foundMaterials->map(function (OutstandingMaterial $outstandingMaterial): array {
+                    return [
+                        'id' => $outstandingMaterial->id,
+                        'supplier' => $outstandingMaterial->supplier,
+                        'type' => $outstandingMaterial->type,
+                        'thickness' => $this->displayOutstandingValue($outstandingMaterial->thickness),
+                        'width' => $this->displayOutstandingValue($outstandingMaterial->width),
+                        'diameter' => $this->displayOutstandingValue($outstandingMaterial->diameter),
+                        'length' => $this->displayOutstandingValue($outstandingMaterial->length),
+                        'qty_pcs' => $this->displayOutstandingValue($outstandingMaterial->qty_pcs),
+                        'number_invoice' => $outstandingMaterial->number_invoice ?: '-',
+                        'status' => $outstandingMaterial->status ?: '-',
+                        'eta_warehouse' => $outstandingMaterial->estimasi_eta_warehouse ?: '-',
+                    ];
+                })->all(),
+            ];
+
+            if (count($matches) >= 5) {
+                break;
+            }
+        }
+
+        return $matches;
+    }
+
+    private function applyOutstandingNumericMatch(
+        Builder $query,
+        string $field,
+        mixed $value,
+        int &$criteriaCount,
+        array &$criteria,
+        string $label
+    ): void {
+        $normalizedValue = $this->normalizeOutstandingNumber($value);
+
+        if ($normalizedValue === null) {
+            return;
+        }
+
+        $query->where($field, $normalizedValue);
+        $criteriaCount++;
+        $criteria[] = $label . ': ' . $this->displayOutstandingValue($normalizedValue);
+    }
+
+    private function applyOutstandingLengthMatch(Builder $query, mixed $value, int &$criteriaCount, array &$criteria): void
+    {
+        $normalizedValue = $this->normalizeOutstandingLength($value);
+
+        if ($normalizedValue === null) {
+            return;
+        }
+
+        $query->whereRaw("REPLACE(REPLACE(LOWER(TRIM(length)), ' ', ''), ',', '') = ?", [$normalizedValue]);
+        $criteriaCount++;
+        $criteria[] = 'Length: ' . $this->displayOutstandingValue($value);
+    }
+
+    private function normalizeOutstandingNumber(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return round((float) $value, 2);
+        }
+
+        $value = trim((string) $value);
+        if ($value === '' || in_array(strtolower($value), ['-', '--', 'n/a', 'na'], true)) {
+            return null;
+        }
+
+        $value = str_replace(' ', '', $value);
+
+        if (str_contains($value, ',') && str_contains($value, '.')) {
+            if (strrpos($value, ',') > strrpos($value, '.')) {
+                $value = str_replace('.', '', $value);
+                $value = str_replace(',', '.', $value);
+            } else {
+                $value = str_replace(',', '', $value);
+            }
+        } elseif (str_contains($value, ',')) {
+            if (substr_count($value, ',') > 1) {
+                $value = str_replace(',', '', $value);
+            } else {
+                $value = str_replace(',', '.', $value);
+            }
+        }
+
+        return is_numeric($value) ? round((float) $value, 2) : null;
+    }
+
+    private function normalizeOutstandingLength(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = strtolower(trim((string) $value));
+        if ($value === '') {
+            return null;
+        }
+
+        $value = preg_replace('/\s+/', '', $value) ?: '';
+        $value = str_replace(',', '', $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private function displayOutstandingValue(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '-';
+        }
+
+        if (is_numeric($value)) {
+            return rtrim(rtrim(number_format((float) $value, 2, '.', ','), '0'), '.');
+        }
+
+        return (string) $value;
     }
 
     /**

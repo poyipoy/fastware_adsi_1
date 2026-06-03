@@ -1,7 +1,7 @@
 <div class="modal fade itemcode-modal" id="itemcode_modal_new_product" tabindex="-1" aria-labelledby="newProductModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
-            <form id="itemcode_form_new_product" method="POST" action="{{ route('item-code.store') }}">
+            <form id="itemcode_form_new_product" method="POST" action="{{ route('item-code.store') }}" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" id="itemcode_new_product_method" name="_method" disabled>
                 <input type="hidden" id="itemcode_new_product_type" name="type" value="new_product">
@@ -88,6 +88,21 @@
                         <div class="col-12 itemcode-field-wrap">
                             <label for="itemcode_new_price_per_pcs" class="form-label">Price</label>
                             <input type="number" step="1" min="0" class="form-control fw-semibold" id="itemcode_new_price_per_pcs" name="price_per_pcs" required>
+                        </div>
+
+                        <div class="col-12 itemcode-section-title">
+                            <h6 class="mb-0 itemcode-section-heading">Alasan Pengajuan</h6>
+                        </div>
+
+                        <div class="col-12 itemcode-field-wrap">
+                            <label for="itemcode_new_reason_new_price" class="form-label">Reason</label>
+                            <textarea class="form-control" id="itemcode_new_reason_new_price" name="reason_new_price" rows="3" placeholder="Jelaskan alasan pengajuan produk baru"></textarea>
+                        </div>
+
+                        <div class="col-12 itemcode-field-wrap">
+                            <label for="itemcode_new_attachment" class="form-label">Attachment</label>
+                            <input type="file" class="form-control" id="itemcode_new_attachment" name="attachment" accept=".pdf,.jpg,.jpeg,.png,.xlsx">
+                            <div class="form-text">Opsional saat simpan dan submit. Format: PDF/JPG/PNG/XLSX, maksimal 5MB.</div>
                         </div>
                     </div>
                 </div>

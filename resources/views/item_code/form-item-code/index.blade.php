@@ -4,7 +4,7 @@
     <main id="main" class="main">
         @php
             $activeTab = $activeTab ?? 'new_product';
-            $perPage = (int) ($perPage ?? 20);
+            $perPage = (int) ($perPage ?? 100);
             $filters = $filters ?? ['q' => null, 'status' => null];
             $statsByType = $statsByType ?? [
                 'new_product' => ['total' => 0, 'draft' => 0, 'submitted' => 0, 'approved_1' => 0, 'approved_2' => 0, 'finished' => 0],
@@ -156,6 +156,8 @@
                                             <option value="10" {{ $perPage === 10 ? 'selected' : '' }}>10</option>
                                             <option value="20" {{ $perPage === 20 ? 'selected' : '' }}>20</option>
                                             <option value="50" {{ $perPage === 50 ? 'selected' : '' }}>50</option>
+                                            <option value="100" {{ $perPage === 100 ? 'selected' : '' }}>100</option>
+                                            <option value="500" {{ $perPage === 500 ? 'selected' : '' }}>500</option>
                                         </select>
                                         <span>entries</span>
                                     </div>
@@ -209,6 +211,8 @@
                                         <th>Unit</th>
                                         <th>Currency</th>
                                         <th>Price</th>
+                                        <th>Reason</th>
+                                        <th>Attachment</th>
                                         <th>Status</th>
                                         <th style="width:120px; min-width:120px; max-width:130px;">Aksi</th>
                                     </tr>
@@ -249,8 +253,16 @@
                                             <td>{{ $item->description }}</td>
                                             <td class="text-end">{{ number_format((float) $item->qty, 0, '.', '') }}</td>
                                             <td>{{ $item->unit ?: '-' }}</td>
-                                            <td>{{ $item->currency }}</td>
+                                            <td>{{ $item->currency }}</td>                                           
                                             <td class="text-end">{{ number_format((float) $item->price_per_pcs) }}</td>
+                                            <td>{{ $item->reason_new_price ?: '-' }}</td>
+                                            <td>
+                                                @if (!empty($item->attachment))
+                                                    <a href="{{ route('item-code.attachment', $item->id) }}" target="_blank" class="btn btn-sm btn-outline-primary">Lihat</a>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
                                             <td>
                                                 <span class="badge itemcode-status-badge bg-{{ $badgeClass }}">{!! $statusLabelHtml !!}</span>
                                             </td>
@@ -296,9 +308,9 @@
 
                                                         @if ($item->status === 'draft')
                                                             <button type="button" class="btn btn-sm btn-warning"
-                                                                data-bs-toggle="modal" data-bs-target="#itemcode_modal_update_price"
+                                                                data-bs-toggle="modal" data-bs-target="#itemcode_modal_new_product"
                                                                 data-item='@json($item)'
-                                                                onclick="openEditUpdatePrice(this)">
+                                                                onclick="openEditNewProduct(this)">
                                                                 Edit
                                                             </button>
 
@@ -325,7 +337,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="14" class="text-center text-muted">Belum ada data produk baru.</td>
+                                            <td colspan="16" class="text-center text-muted">Belum ada data produk baru.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -420,6 +432,8 @@
                                             <option value="10" {{ $perPage === 10 ? 'selected' : '' }}>10</option>
                                             <option value="20" {{ $perPage === 20 ? 'selected' : '' }}>20</option>
                                             <option value="50" {{ $perPage === 50 ? 'selected' : '' }}>50</option>
+                                            <option value="100" {{ $perPage === 100 ? 'selected' : '' }}>100</option>
+                                            <option value="500" {{ $perPage === 500 ? 'selected' : '' }}>500</option>
                                         </select>
                                         <span>entries</span>
                                     </div>
@@ -477,7 +491,8 @@
                                         <th>Current <br>Price</th>
                                         <th>Eff. Date<br> (New)</th>
                                         <th>New <br>Price</th>
-                                        <th>Lihat <br>File</th>
+                                        <th>Reason</th>
+                                        <th>Attachment</th>
                                         <th>Selisih</th>
                                         <th>Status</th>
                                         <th style="width:120px; min-width:120px; max-width:120px;">Aksi</th>
@@ -529,6 +544,7 @@
                                             <td class="text-end">{{ number_format((int) $item->price_per_pcs) }}</td>
                                             <td>{{ optional($item->tanggal_harga_baru)->format('d-m-Y') ?: '-' }}</td>
                                             <td class="text-end">{{ $hargaBaruValue !== null ? number_format($hargaBaruValue) : '-' }}</td>
+                                            <td>{{ $item->reason_new_price ?: '-' }}</td>
                                             <td>
                                                 @if (!empty($item->attachment))
                                                     <a href="{{ route('item-code.attachment', $item->id) }}" target="_blank" class="btn btn-sm btn-outline-primary">Lihat</a>
@@ -610,7 +626,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="19" class="text-center text-muted">Belum ada data update harga.</td>
+                                            <td colspan="20" class="text-center text-muted">Belum ada data update harga.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -1330,6 +1346,7 @@
                 fillInput('itemcode_new_category', 'Material');
                 fillInput('itemcode_new_supplier', '');
                 fillInput('itemcode_new_price_per_pcs', '');
+                fillInput('itemcode_new_reason_new_price', '');
                 fillInput('itemcode_new_tanggal', today);
                 fillInput('itemcode_new_nomor_pengajuan', '');
                 fillInput('itemcode_new_qty', 1);
@@ -1357,8 +1374,8 @@
                     ? 'Template Update Harga wajib persis urutan sistem. Kolom nomor_pengajuan boleh dikosongkan untuk auto-generate.'
                     : 'Template Produk Baru wajib persis urutan sistem. Kolom nomor_pengajuan boleh dikosongkan untuk auto-generate.';
                 const columnsText = isUpdatePrice
-                    ? 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, effective_date_current, current_price, effective_date_new, new_price, reason_new_price, selisih'
-                    : 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, price';
+                    ? 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, effective_date_current, current_price, effective_date_new, new_price, reason, selisih'
+                    : 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, price, reason';
                 const columnsNote = isUpdatePrice
                     ? 'Kolom wajib persis urutan sistem Update Harga.'
                     : 'Kolom wajib persis urutan sistem Produk Baru.';
@@ -1412,6 +1429,7 @@
                     ? Math.round(Number(item.price_per_pcs))
                     : item.price_per_pcs);
                 fillInput('itemcode_new_currency', item.currency);
+                fillInput('itemcode_new_reason_new_price', item.reason_new_price || '');
                 fillInput('itemcode_new_tanggal', toDateInputValue(item.tanggal));
 
                 document.getElementById('itemcode_new_product_modal_title').textContent = 'Edit Produk Baru';

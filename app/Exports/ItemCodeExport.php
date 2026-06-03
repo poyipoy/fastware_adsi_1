@@ -119,15 +119,15 @@ class ItemCodeExport implements FromCollection, WithHeadings, WithMapping, WithS
 
             $sheet->getStyle('C2:C' . $highestRow)
                 ->getNumberFormat()
-                ->setFormatCode('0');
+                ->setFormatCode('0.00');
 
             $sheet->getStyle('G2:G' . $highestRow)
                 ->getNumberFormat()
-                ->setFormatCode('0');
+                ->setFormatCode('0.00');
 
             $sheet->getStyle('I2:I' . $highestRow)
                 ->getNumberFormat()
-                ->setFormatCode('0');
+                ->setFormatCode('0.00');
 
             $sheet->getStyle('C2:C' . $highestRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle('G2:G' . $highestRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);

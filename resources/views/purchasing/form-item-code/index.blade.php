@@ -205,6 +205,7 @@
                                         <th>Supplier</th>
                                         <th>Product Code</th>
                                         <th>Description</th>
+                                        <th>Reason</th>
                                         <th>Qty</th>
                                         <th>Unit</th>
                                         <th>Currency</th>
@@ -247,6 +248,7 @@
                                             <td>{{ $item->supplier ?: '-' }}</td>
                                             <td class="text-primary-emphasis fw-semibold">{{ $item->product_code }}</td>
                                             <td>{{ $item->description }}</td>
+                                            <td>{{ $item->reason_new_price ?: '-' }}</td>
                                             <td class="text-end">{{ number_format((float) $item->qty, 0, '.', '') }}</td>
                                             <td>{{ $item->unit ?: '-' }}</td>
                                             <td>{{ $item->currency }}</td>
@@ -325,7 +327,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="14" class="text-center text-muted">Belum ada data produk baru.</td>
+                                            <td colspan="15" class="text-center text-muted">Belum ada data produk baru.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -1330,6 +1332,7 @@
                 fillInput('new_category', 'Material');
                 fillInput('new_supplier', '');
                 fillInput('new_price_per_pcs', '');
+                fillInput('new_reason_new_price', '');
                 fillInput('new_tanggal', today);
                 fillInput('new_nomor_pengajuan', '');
                 fillInput('new_qty', 1);
@@ -1357,8 +1360,8 @@
                     ? 'Template Update Harga wajib persis urutan sistem. Kolom nomor_pengajuan boleh dikosongkan untuk auto-generate.'
                     : 'Template Produk Baru wajib persis urutan sistem. Kolom nomor_pengajuan boleh dikosongkan untuk auto-generate.';
                 const columnsText = isUpdatePrice
-                    ? 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, effective_date_current, current_price, effective_date_new, new_price, reason_new_price, selisih'
-                    : 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, price';
+                    ? 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, effective_date_current, current_price, effective_date_new, new_price, reason, selisih'
+                    : 'nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, price, reason';
                 const columnsNote = isUpdatePrice
                     ? 'Kolom wajib persis urutan sistem Update Harga.'
                     : 'Kolom wajib persis urutan sistem Produk Baru.';
@@ -1412,6 +1415,7 @@
                     ? Math.round(Number(item.price_per_pcs))
                     : item.price_per_pcs);
                 fillInput('new_currency', item.currency);
+                fillInput('new_reason_new_price', item.reason_new_price || '');
                 fillInput('new_tanggal', toDateInputValue(item.tanggal));
 
                 document.getElementById('new_product_modal_title').textContent = 'Edit Produk Baru';

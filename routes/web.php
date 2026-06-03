@@ -33,6 +33,7 @@ use App\Http\Controllers\BopmController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\ItemCodeController;
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\OutstandingMaterialController;
 use App\Models\InquirySales;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
@@ -694,6 +695,24 @@ Route::middleware(['web', 'auth'])->group(function () {
     // --- Shared (semua role item-code) ---
     Route::get('/form-item-code/{id}/history', [ItemCodeController::class, 'history'])->name('history');
     Route::get('/form-item-code/{id}/attachment', [ItemCodeController::class, 'attachment'])->name('attachment');
+    });
+
+    Route::prefix('outstanding-materials')->name('outstanding-materials.')->middleware([
+        'auth',
+        'role:outstanding_material',
+    ])->group(function () {
+        Route::get('/', [OutstandingMaterialController::class, 'index'])->name('index');
+        Route::get('/data', [OutstandingMaterialController::class, 'data'])->name('data');
+        Route::get('/create', [OutstandingMaterialController::class, 'create'])->name('create');
+        Route::post('/', [OutstandingMaterialController::class, 'store'])->name('store');
+        Route::get('/export', [OutstandingMaterialController::class, 'export'])->name('export');
+        Route::post('/import', [OutstandingMaterialController::class, 'import'])->name('import');
+        Route::get('/template', [OutstandingMaterialController::class, 'template'])->name('template');
+        Route::get('/{outstandingMaterial}/attachment', [OutstandingMaterialController::class, 'attachment'])->name('attachment');
+        Route::get('/{outstandingMaterial}', [OutstandingMaterialController::class, 'show'])->name('show');
+        Route::get('/{outstandingMaterial}/edit', [OutstandingMaterialController::class, 'edit'])->name('edit');
+        Route::put('/{outstandingMaterial}', [OutstandingMaterialController::class, 'update'])->name('update');
+        Route::delete('/{outstandingMaterial}', [OutstandingMaterialController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/upload-json', [JsonToCsvController::class, 'showUploadForm'])->name('upload.json');

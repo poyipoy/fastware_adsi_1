@@ -1139,11 +1139,42 @@
                 }
 
 
-                // Kirim data dengan AJAX
+                submitInquiryImport(data);
+            }
+
+            function escapeHtml(value) {
+                return $('<div>').text(value ?? '-').html();
+            }
+
+            function outstandingWarningHtml(matches) {
+                if (!Array.isArray(matches) || matches.length === 0) {
+                    return 'Material yang diinput terdeteksi sudah ada di Outstanding Material.';
+                }
+
+                return '<div style="text-align:left; font-size:15px; line-height:1.5; max-height:260px; overflow:auto;">' +
+                    matches.map(function(match) {
+                        const firstOutstanding = Array.isArray(match.outstanding) && match.outstanding.length > 0 ? match.outstanding[0] : {};
+                        const criteria = Array.isArray(match.criteria) ? match.criteria.join(', ') : '-';
+
+                        return '<div style="border-bottom:1px solid #dee2e6; padding:8px 0;">' +
+                            '<strong style="font-size:16px;">Baris ' + escapeHtml(match.row) + ' - ' + escapeHtml(match.type) + '</strong><br>' +
+                            '<span>Kriteria match: ' + escapeHtml(criteria) + '</span><br>' +
+                            '<span>Supplier : ' + escapeHtml(firstOutstanding.supplier) + ' | Invoice: ' + escapeHtml(firstOutstanding.number_invoice) + ' | Status: ' + escapeHtml(firstOutstanding.status) + '</span><br>' +
+                            '<span>ETA Warehouse: ' + escapeHtml(firstOutstanding.eta_warehouse) + '</span>' +
+                        '</div>';
+                    }).join('') +
+                '</div>';
+            }
+ 
+            function submitInquiryImport(data, ignoreOutstandingWarning = false) {
+                const payload = Object.assign({}, data, {
+                    ignore_outstanding_warning: ignoreOutstandingWarning
+                });
+
                 $.ajax({
                     url: '{{ route('inquiry.previewSSImport') }}',
                     method: 'POST',
-                    data: JSON.stringify(data),
+                    data: JSON.stringify(payload),
                     contentType: 'application/json',
                     dataType: 'json', // Pastikan menerima JSON dari server
                     headers: {
@@ -1173,10 +1204,32 @@
                     },
                     error: function(xhr) {
                         console.error('Error occurred:', xhr);
+                        const response = xhr.responseJSON || {};
+
+                        if (xhr.status === 409 && response.requires_outstanding_confirmation) {
+                            Swal.fire({
+                                title: 'Material ada di Outstanding',
+                                html: outstandingWarningHtml(response.matches),
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'Tetap simpan',
+                                cancelButtonText: 'Cek lagi',
+                                confirmButtonColor: '#3085d6',
+                                cancelButtonColor: '#d33',
+                                width: 520,
+                            }).then(function(result) {
+                                if (result.isConfirmed) {
+                                    submitInquiryImport(data, true);
+                                }
+                            });
+
+                            return;
+                        }
+
                         var errorMessage = 'Terjadi kesalahan saat menyimpan data.';
 
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            errorMessage = xhr.responseJSON.message;
+                        if (response.message) {
+                            errorMessage = response.message;
                         }
 
                         Swal.fire({

@@ -545,10 +545,10 @@ class ApprovalController extends Controller
 
     private function resolvePerPage(mixed $perPage): int
     {
-        $allowed = [10, 20, 50];
-        $value   = is_numeric($perPage) ? (int) $perPage : 20;
+        $allowed = [100, 500];
+        $value = is_numeric($perPage) ? (int) $perPage : 100;
 
-        return in_array($value, $allowed, true) ? $value : 20;
+        return in_array($value, $allowed, true) ? $value : 100;
     }
 
     private function applyFilters(Builder $query, array $filters): void

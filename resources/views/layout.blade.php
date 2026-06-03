@@ -1226,6 +1226,10 @@
                                     </ul>
                                 </li>
 
+                                @if (\App\Enums\ProcurementMenuAccessGroup::OUTSTANDING_MATERIAL->hasAccess(Auth::user()->name))
+                                    <li><a class="dropdown-item" href="{{ route('outstanding-materials.index') }}">Outstanding Material</a></li>
+                                @endif
+
                                 <li>
                                     <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
                                         role="button" data-bs-toggle="dropdown" aria-expanded="false">

@@ -26,6 +26,11 @@ class ProcurementMenuService
                 'route' => 'index.PO',
                 'visible' => ProcurementMenuAccessGroup::FORM_PENGAJUAN_BARANG->hasAccess($userName),
             ],
+            [
+                'label' => 'Outstanding Material',
+                'route' => 'outstanding-materials.index',
+                'visible' => ProcurementMenuAccessGroup::OUTSTANDING_MATERIAL->hasAccess($userName),
+            ],
         ];
 
         $submenus = [
@@ -312,4 +317,3 @@ class ProcurementMenuService
         ];
     }
 }
-

@@ -335,7 +335,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="22" style="text-align: center;">Data tidak ditemukan</td>
+                                            <td colspan="24" style="text-align: center;">Data tidak ditemukan</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

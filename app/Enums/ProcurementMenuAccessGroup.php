@@ -35,6 +35,7 @@ enum ProcurementMenuAccessGroup: string
     case ADMINISTRATION_FORM_PURCHASING = 'administration_form_purchasing';
     case ADMINISTRATION_FORM_ADMIN = 'administration_form_admin';
     case SUPPLIER_FORM_INDEX = 'supplier_form_index';
+    case OUTSTANDING_MATERIAL = 'outstanding_material';
 
     /**
      * Get allowed users for this access group
@@ -256,6 +257,12 @@ enum ProcurementMenuAccessGroup: string
             ],
             self::ADMINISTRATION_FORM_PURCHASING, self::ADMINISTRATION_FORM_ADMIN => [], // Available for all
             self::SUPPLIER_FORM_INDEX => [], // Available for all
+            self::OUTSTANDING_MATERIAL => array_values(array_unique(array_merge($adminUsers, [
+                'ILYAS NOOR FIRDAUS',
+                'JESSICA PAUNE',
+                'FAJAR BAGASKARA',
+                'VIVIAN ANGELIKA',
+            ]))),
             default => [],
         };
     }
@@ -284,4 +291,3 @@ enum ProcurementMenuAccessGroup: string
         return strtoupper(trim($userName));
     }
 }
-

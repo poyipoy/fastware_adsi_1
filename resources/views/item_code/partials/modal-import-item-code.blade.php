@@ -22,9 +22,9 @@
                     </div>
 
                     <div class="alert alert-info small mb-3">
-                        <div><strong>Kolom wajib persis:</strong> <span id="import_columns_text">nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, price</span></div>
+                        <div><strong>Kolom wajib persis:</strong> <span id="import_columns_text">nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, price, reason</span></div>
                         <div class="mt-2"><strong>Info:</strong><span class="d-block" id="import_columns_note">
-                            Kolom nomor_pengajuan boleh dikosongkan untuk auto-generate. Untuk mode Update Harga, urutan wajib: nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, effective_date_current, current_price, effective_date_new, new_price, reason_new_price, selisih.
+                            Kolom nomor_pengajuan boleh dikosongkan untuk auto-generate. Untuk mode Update Harga, urutan wajib: nomor_pengajuan, tanggal, creator, category, supplier, product_code, description, qty, unit, currency, effective_date_current, current_price, effective_date_new, new_price, reason, selisih.
                         </span></div>
                         <div class="mt-2"><strong>Catatan:</strong><span class="d-block">
                             Jika kombinasi nomor_pengajuan dan product_code sama (duplikat), baris import akan ditolak.

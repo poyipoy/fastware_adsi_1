@@ -502,19 +502,18 @@ class ItemCodeController extends Controller
 
         $currentAttachment = $existingItem?->attachment;
 
+        if ($request->hasFile('attachment')) {
+            $currentAttachment = $this->storeAttachmentFile($request->file('attachment'));
+        }
+
+        $data['attachment'] = $currentAttachment;
+
         if ($data['type'] === ItemCode::TYPE_NEW_PRODUCT) {
             $data['tanggal_lama'] = null;
             $data['harga_baru'] = null;
             $data['tanggal_harga_baru'] = null;
-            $data['reason_new_price'] = null;
-            $data['attachment'] = null;
             $data['selisih'] = null;
         } else {
-            if ($request->hasFile('attachment')) {
-                $currentAttachment = $this->storeAttachmentFile($request->file('attachment'));
-            }
-
-            $data['attachment'] = $currentAttachment;
             $data['selisih'] = $this->calculateSelisih($data['price_per_pcs'], $data['harga_baru']);
         }
 
@@ -555,7 +554,7 @@ class ItemCodeController extends Controller
 
     private function resolvePerPage(mixed $perPage): int
     {
-        $allowed = [10, 20, 50];
+        $allowed = [10, 20, 50, 100, 500];
         $value = is_numeric($perPage) ? (int) $perPage : 20;
 
         return in_array($value, $allowed, true) ? $value : 20;

@@ -140,9 +140,8 @@
                                     <div class="d-flex align-items-center gap-1 small text-muted">
                                         <span>Show</span>
                                         <select class="form-select form-select-sm" data-per-page-select style="width: auto;">
-                                            <option value="10" {{ $perPage === 10 ? 'selected' : '' }}>10</option>
-                                            <option value="20" {{ $perPage === 20 ? 'selected' : '' }}>20</option>
-                                            <option value="50" {{ $perPage === 50 ? 'selected' : '' }}>50</option>
+                                            <option value="100" {{ $perPage === 100 ? 'selected' : '' }}>100</option>
+                                            <option value="500" {{ $perPage === 500 ? 'selected' : '' }}>500</option>
                                         </select>
                                         <span>entries</span>
                                     </div>
@@ -213,6 +212,7 @@
                                         <th>Unit</th>
                                         <th>Currency</th>
                                         <th>Price</th>
+                                        <th>Reason</th>
                                         <th>Status</th>
                                         <th style="width:130px; min-width:130px; max-width:130px;">Aksi</th>
                                     </tr>
@@ -255,6 +255,7 @@
                                             <td>{{ $item->unit ?: '-' }}</td>
                                             <td>{{ $item->currency }}</td>
                                             <td class="text-end">{{ number_format((float) $item->price_per_pcs, 2) }}</td>
+                                            <td>{{ $item->reason_new_price ?: '-' }}</td>
                                             <td><span class="badge itemcode-status-badge bg-{{ $badgeClass }}">{!! $statusLabelHtml !!}</span></td>
                                             <td class="action-cell">
                                                 @php
@@ -334,7 +335,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="14" class="text-center text-muted">Belum ada data produk baru.</td>
+                                            <td colspan="15" class="text-center text-muted">Belum ada data produk baru.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -426,9 +427,8 @@
                                     <div class="d-flex align-items-center gap-1 small text-muted">
                                         <span>Show</span>
                                         <select class="form-select form-select-sm" data-per-page-select style="width: auto;">
-                                            <option value="10" {{ $perPage === 10 ? 'selected' : '' }}>10</option>
-                                            <option value="20" {{ $perPage === 20 ? 'selected' : '' }}>20</option>
-                                            <option value="50" {{ $perPage === 50 ? 'selected' : '' }}>50</option>
+                                            <option value="100" {{ $perPage === 100 ? 'selected' : '' }}>100</option>
+                                            <option value="500" {{ $perPage === 500 ? 'selected' : '' }}>500</option>
                                         </select>
                                         <span>entries</span>
                                     </div>
@@ -502,6 +502,7 @@
                                         <th>Current <br>Price</th>
                                         <th>Eff. Date<br> (New)</th>
                                         <th>New <br>Price</th>
+                                        <th>Reason</th>
                                         <th>Lihat <br>File</th>
                                         <th>Selisih</th>
                                         <th>Status</th>
@@ -553,6 +554,7 @@
                                             <td class="text-end">{{ number_format((float) $item->price_per_pcs, 2) }}</td>
                                             <td>{{ optional($item->tanggal_harga_baru)->format('d-m-Y') ?: '-' }}</td>
                                             <td class="text-end">{{ $hargaBaruValue !== null ? number_format($hargaBaruValue, 2) : '-' }}</td>
+                                            <td>{{ $item->reason_new_price ?: '-' }}</td>
                                             <td>
                                                 @if (!empty($item->attachment))
                                                     <a href="{{ route('item-code.attachment', $item->id) }}" target="_blank" class="btn btn-sm btn-outline-primary">Lihat</a>
@@ -641,7 +643,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="19" class="text-center text-muted">Belum ada data update harga.</td>
+                                            <td colspan="20" class="text-center text-muted">Belum ada data update harga.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
