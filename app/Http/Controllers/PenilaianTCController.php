@@ -50,18 +50,43 @@ class PenilaianTCController extends Controller
      * Mapping Ka. Dept → Ka. Sie bawahan (user IDs).
      * Berdasarkan CSV "Employee All Dept" kolom Approval 1 & 2.
      */
+    private function getKaSieNames(): array
+    {
+        return [
+            'MUGI PRAMONO',
+            'ABDUR RAHMAN AL FAAIZ',
+            'RAGIL ISHA RAHMANTO',
+            'JUN JOHAMIN PD',
+            'ILHAM CHOLID',
+            'RICHARDUS',
+            'ADHI PRASETYO',
+        ];
+    }
+
+    private function getKaDeptSubordinates(): array
+    {
+        return [
+            'ARY RODJO PRASETYO'     => ['MUGI PRAMONO', 'RAGIL ISHA RAHMANTO'],
+            'YULMAI RIDO WINANDA'    => ['JUN JOHAMIN PD', 'ILHAM CHOLID'],
+            'MARTINUS CAHYO RAHASTO' => ['RICHARDUS','ADHI PRASETYO'],
+            'HARDI SAPUTRA'          => ['ABDUR RAHMAN AL FAAIZ'],
+        ];
+    }
+
+    private function getUserIdsByNames(array $names): array
+    {
+        $upperNames = array_map(fn($name) => mb_strtoupper(trim($name)), $names);
+
+        return User::whereIn(DB::raw('UPPER(name)'), $upperNames)
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+    }
+
     private function getKaSieIdsForKaDept(string $kaDeptName): array
     {
-        $mapping = [
-            'HARDI SAPUTRA'          => [102],                 // ABDUR
-            'ARY RODJO PRASETYO'     => [25, 84],              // MUGI, RAGIL
-            'MARTINUS CAHYO RAHASTO' => [42, 86],              // ADHI, RICHARDUS
-            'YULMAI RIDO WINANDA'    => [72, 65],              // JUN, ILHAM
-            'ADHI PRASETIYO'         => [86],                  // RICHARDUS
-            'ANDIK TOTOK SISWOYO'    => [45],                  // TOTOK
-            'JESSICA PAUNE'          => [70],                  // JESSICA
-        ];
-        return $mapping[$kaDeptName] ?? [];
+        $mapping = $this->getKaDeptSubordinates();
+        return $this->getUserIdsByNames($mapping[$kaDeptName] ?? []);
     }
 
     /**
@@ -71,36 +96,52 @@ class PenilaianTCController extends Controller
     public function indexTrs(Request $request)
     {
         $level = $request->query('level', 'kasie');
-        $penilaianData = TrsPenilaianTc::all()->unique('id_job_position');
         $user = auth()->user();
+
+        $statusFilter = 1;
+        if ($level === 'kadept') {
+            $statusFilter = 2;
+        } elseif ($level === 'hr') {
+            $statusFilter = 3;
+        }
+
+        $penilaianData = TrsPenilaianTc::where('status', $statusFilter)
+            ->get()
+            ->unique('id_job_position');
 
         if (!in_array($user->role_id, [1, 15])) {
             if ($level === 'kadept') {
-                // Sumber 1: akses langsung dari tc_user_job_accesses
+                // Ka. Dept: lihat posisi yang dia dapat akses langsung,
+                // plus posisi hasil kiriman Ka. Sie bawahan.
                 $directAccess = $this->getAccessiblePositions($user);
 
-                // Sumber 2: posisi yang dikirim Ka. Sie bawahan (status >= 2)
                 $subordinateIds = $this->getKaSieIdsForKaDept($user->name);
-                $subordinateIds[] = $user->id;
-                $submittedPositions = TrsPenilaianTc::whereIn('modified_at', $subordinateIds)
-                    ->where('status', '>=', 2)
-                    ->pluck('id_job_position')
-                    ->map(fn($p) => trim($p))->filter()->unique()->values()->toArray();
+                $submittedPositions = [];
+                if (!empty($subordinateIds)) {
+                    $submittedPositions = TrsPenilaianTc::whereIn('modified_at', $subordinateIds)
+                        ->where('status', 2)
+                        ->pluck('id_job_position')
+                        ->map(fn($p) => trim($p))->filter()->unique()->values()->toArray();
+                }
 
                 $allVisible = collect(array_merge($directAccess, $submittedPositions))
                     ->filter()->unique()->values()->toArray();
 
                 if (!empty($allVisible)) {
                     $penilaianData = $penilaianData->filter(fn($item) => in_array(trim($item->id_job_position), $allVisible));
+                } else {
+                    $penilaianData = collect();
                 }
             } elseif ($level === 'kasie') {
                 // Ka. Sie: hanya posisi yang user punya akses
                 $positions = $this->getAccessiblePositions($user);
                 if (!empty($positions)) {
                     $penilaianData = $penilaianData->filter(fn($item) => in_array(trim($item->id_job_position), $positions));
+                } else {
+                    $penilaianData = collect();
                 }
             }
-            // level === 'hr': tanpa filter (lihat semua)
+            // HR melihat semua status 3 tanpa pembatasan tambahan
         }
 
         $positions = TcJobPosition::all();
@@ -110,7 +151,7 @@ class PenilaianTCController extends Controller
             ? 'tc_penilaian.penilaian_index_dept'
             : 'tc_penilaian.penilaian_index';
 
-        return view($viewName, compact('penilaianData', 'positions', 'employees'));
+        return view($viewName, compact('penilaianData', 'positions', 'employees', 'level'));
     }
 
     /**
@@ -182,7 +223,7 @@ class PenilaianTCController extends Controller
 
         // Query pertama untuk data TC
         $tcResults = DB::select('
-            SELECT jp.id, jp.id_user, jp.id AS id_job_position, jp.job_position, u.name, 
+            SELECT jp.id, jp.id_user, jp.id AS id_job_position, jp.job_position, jp.department, jp.section, jp.department_head_name, jp.section_head_name, u.name, 
                 tcs.id AS id_tc, NULL AS id_sk, NULL AS id_ad, 
                 tcs.keterangan_tc AS keterangan,
                 tcs.id_poin_kategori, 
@@ -191,7 +232,7 @@ class PenilaianTCController extends Controller
                 CASE WHEN EXISTS (
                     SELECT 1 FROM trs_penilaian_tcs trs 
                     WHERE trs.id_user = jp.id_user 
-                    AND trs.id_job_position = jp.job_position
+                    AND trs.id_job_position = jp.id
                 ) THEN 1 ELSE 0 END AS has_penilaian
             FROM tc_job_positions jp
             JOIN users u ON jp.id_user = u.id
@@ -203,7 +244,7 @@ class PenilaianTCController extends Controller
 
         // Query kedua untuk data SK
         $skResults = DB::select('
-            SELECT jp.id, jp.id_user, jp.id AS id_job_position, jp.job_position, u.name, 
+            SELECT jp.id, jp.id_user, jp.id AS id_job_position, jp.job_position, jp.department, jp.section, jp.department_head_name, jp.section_head_name, u.name, 
                 NULL AS id_tc, sk.id AS id_sk, NULL AS id_ad, 
                 sk.keterangan_sk AS keterangan, 
                 sk.id_poin_kategori,
@@ -212,7 +253,7 @@ class PenilaianTCController extends Controller
                 CASE WHEN EXISTS (
                     SELECT 1 FROM trs_penilaian_tcs trs 
                     WHERE trs.id_user = jp.id_user 
-                    AND trs.id_job_position = jp.job_position
+                    AND trs.id_job_position = jp.id
                 ) THEN 1 ELSE 0 END AS has_penilaian
             FROM tc_job_positions jp
             JOIN users u ON jp.id_user = u.id
@@ -224,7 +265,7 @@ class PenilaianTCController extends Controller
 
         // Query ketiga untuk data AD
         $adResults = DB::select('
-            SELECT jp.id, jp.id_user, jp.id AS id_job_position, jp.job_position, u.name, 
+            SELECT jp.id, jp.id_user, jp.id AS id_job_position, jp.job_position, jp.department, jp.section, jp.department_head_name, jp.section_head_name, u.name, 
                 NULL AS id_tc, NULL AS id_sk, ad.id AS id_ad, 
                 ad.keterangan_ad AS keterangan, 
                 ad.id_poin_kategori,
@@ -233,7 +274,7 @@ class PenilaianTCController extends Controller
                 CASE WHEN EXISTS (
                     SELECT 1 FROM trs_penilaian_tcs trs 
                     WHERE trs.id_user = jp.id_user 
-                    AND trs.id_job_position = jp.job_position
+                    AND trs.id_job_position = jp.id
                 ) THEN 1 ELSE 0 END AS has_penilaian
             FROM tc_job_positions jp
             JOIN users u ON jp.id_user = u.id
@@ -259,7 +300,7 @@ class PenilaianTCController extends Controller
 
         $results = DB::select('
         (
-            SELECT jp.id, jp.id_user, jp.job_position, u.name, 
+            SELECT jp.id, jp.id_user, jp.job_position, jp.department, jp.section, jp.department_head_name, jp.section_head_name, u.name, 
                 tcs.id AS id_tc, NULL AS id_sk, NULL AS id_ad, 
                 tcs.keterangan_tc AS keterangan, 
                 COALESCE(trs.nilai_tc, 0) AS nilai_tc,  
@@ -274,7 +315,7 @@ class PenilaianTCController extends Controller
         )
         UNION ALL
         (
-            SELECT jp.id, jp.id_user, jp.job_position, u.name, 
+            SELECT jp.id, jp.id_user, jp.job_position, jp.department, jp.section, jp.department_head_name, jp.section_head_name, u.name, 
                 NULL AS id_tc, sk.id AS id_sk, NULL AS id_ad, 
                 sk.keterangan_sk AS keterangan, 
                 NULL AS nilai_tc,  
@@ -289,7 +330,7 @@ class PenilaianTCController extends Controller
         )
         UNION ALL
         (
-            SELECT jp.id, jp.id_user, jp.job_position, u.name, 
+            SELECT jp.id, jp.id_user, jp.job_position, jp.department, jp.section, jp.department_head_name, jp.section_head_name, u.name, 
                 NULL AS id_tc, NULL AS id_sk, ad.id AS id_ad, 
                 ad.keterangan_ad AS keterangan, 
                 NULL AS nilai_tc,  

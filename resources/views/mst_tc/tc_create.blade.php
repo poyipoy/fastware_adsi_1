@@ -127,26 +127,26 @@
                                                 <div class="col-md-4">
                                                     <div class="card card-equal-height mb-3">
                                                         <div class="card-header bg-primary text-white">
-                                                            {{ $dataTc1->judul_keterangan }}
+                                                            {{ $dataTc1?->judul_keterangan ?? 'Technical Competency' }}
                                                         </div>
                                                         <div class="card-body">
                                                             <table class="table table-borderless">
                                                                 <tbody>
                                                                     <tr>
                                                                         <td>1.</td>
-                                                                        <td>{{ $dataTc1->deskripsi_1 }}</td>
+                                                                        <td>{{ $dataTc1?->deskripsi_1 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>2.</td>
-                                                                        <td>{{ $dataTc1->deskripsi_2 }}</td>
+                                                                        <td>{{ $dataTc1?->deskripsi_2 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>3.</td>
-                                                                        <td>{{ $dataTc1->deskripsi_3 }}</td>
+                                                                        <td>{{ $dataTc1?->deskripsi_3 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>4.</td>
-                                                                        <td>{{ $dataTc1->deskripsi_4 }}</td>
+                                                                        <td>{{ $dataTc1?->deskripsi_4 ?? '-' }}</td>
                                                                     </tr>
                                                                 </tbody>
                                                             </table>
@@ -158,26 +158,26 @@
                                                 <div class="col-md-4">
                                                     <div class="card card-equal-height mb-3">
                                                         <div class="card-header bg-success text-white">
-                                                            {{ $dataTc2->judul_keterangan }}
+                                                            {{ $dataTc2?->judul_keterangan ?? 'Soft Skills' }}
                                                         </div>
                                                         <div class="card-body">
                                                             <table class="table table-borderless">
                                                                 <tbody>
                                                                     <tr>
                                                                         <td>1.</td>
-                                                                        <td>{{ $dataTc2->deskripsi_1 }}</td>
+                                                                        <td>{{ $dataTc2?->deskripsi_1 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>2.</td>
-                                                                        <td>{{ $dataTc2->deskripsi_2 }}</td>
+                                                                        <td>{{ $dataTc2?->deskripsi_2 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>3.</td>
-                                                                        <td>{{ $dataTc2->deskripsi_3 }}</td>
+                                                                        <td>{{ $dataTc2?->deskripsi_3 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>4.</td>
-                                                                        <td>{{ $dataTc2->deskripsi_4 }}</td>
+                                                                        <td>{{ $dataTc2?->deskripsi_4 ?? '-' }}</td>
                                                                     </tr>
                                                                 </tbody>
                                                             </table>
@@ -190,26 +190,26 @@
                                                     <div class="card card-equal-height mb-3">
                                                         <div class="card-header"
                                                             style="background-color: orange; color: white;">
-                                                            {{ $dataTc3->judul_keterangan }}
+                                                            {{ $dataTc3?->judul_keterangan ?? 'Additional' }}
                                                         </div>
                                                         <div class="card-body">
                                                             <table class="table table-borderless">
                                                                 <tbody>
                                                                     <tr>
                                                                         <td>1.</td>
-                                                                        <td>{{ $dataTc3->deskripsi_1 }}</td>
+                                                                        <td>{{ $dataTc3?->deskripsi_1 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>2.</td>
-                                                                        <td>{{ $dataTc3->deskripsi_2 }}</td>
+                                                                        <td>{{ $dataTc3?->deskripsi_2 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>3.</td>
-                                                                        <td>{{ $dataTc3->deskripsi_3 }}</td>
+                                                                        <td>{{ $dataTc3?->deskripsi_3 ?? '-' }}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td>4.</td>
-                                                                        <td>{{ $dataTc3->deskripsi_4 }}</td>
+                                                                        <td>{{ $dataTc3?->deskripsi_4 ?? '-' }}</td>
                                                                     </tr>
                                                                 </tbody>
                                                             </table>
@@ -273,26 +273,26 @@
                                                     <div class="col-md-4">
                                                         <div class="card card-equal-height mb-3">
                                                             <div class="card-header bg-primary text-white">
-                                                                {{ $dataTc1->judul_keterangan }}
+                                                                {{ $dataTc1?->judul_keterangan ?? 'Technical Competency' }}
                                                             </div>
                                                             <div class="card-body">
                                                                 <table class="table table-borderless">
                                                                     <tbody>
                                                                         <tr>
                                                                             <td>1.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_1 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_1 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>2.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_2 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_2 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>3.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_3 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_3 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>4.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_4 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_4 ?? '-' }}</td>
                                                                         </tr>
                                                                     </tbody>
                                                                 </table>
@@ -304,26 +304,26 @@
                                                     <div class="col-md-4">
                                                         <div class="card card-equal-height mb-3">
                                                             <div class="card-header bg-success text-white">
-                                                                {{ $dataTc2->judul_keterangan }}
+                                                                {{ $dataTc2?->judul_keterangan ?? 'Soft Skills' }}
                                                             </div>
                                                             <div class="card-body">
                                                                 <table class="table table-borderless">
                                                                     <tbody>
                                                                         <tr>
                                                                             <td>1.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_1 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_1 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>2.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_2 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_2 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>3.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_3 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_3 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>4.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_4 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_4 ?? '-' }}</td>
                                                                         </tr>
                                                                     </tbody>
                                                                 </table>
@@ -336,26 +336,26 @@
                                                         <div class="card card-equal-height mb-3">
                                                             <div class="card-header"
                                                                 style="background-color: orange; color: white;">
-                                                                {{ $dataTc3->judul_keterangan }}
+                                                                {{ $dataTc3?->judul_keterangan ?? 'Additional' }}
                                                             </div>
                                                             <div class="card-body">
                                                                 <table class="table table-borderless">
                                                                     <tbody>
                                                                         <tr>
                                                                             <td>1.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_1 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_1 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>2.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_2 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_2 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>3.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_3 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_3 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>4.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_4 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_4 ?? '-' }}</td>
                                                                         </tr>
                                                                     </tbody>
                                                                 </table>
@@ -420,26 +420,26 @@
                                                     <div class="col-md-4">
                                                         <div class="card card-equal-height mb-3">
                                                             <div class="card-header bg-primary text-white">
-                                                                {{ $dataTc1->judul_keterangan }}
+                                                                {{ $dataTc1?->judul_keterangan ?? 'Technical Competency' }}
                                                             </div>
                                                             <div class="card-body">
                                                                 <table class="table table-borderless">
                                                                     <tbody>
                                                                         <tr>
                                                                             <td>1.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_1 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_1 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>2.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_2 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_2 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>3.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_3 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_3 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>4.</td>
-                                                                            <td>{{ $dataTc1->deskripsi_4 }}</td>
+                                                                            <td>{{ $dataTc1?->deskripsi_4 ?? '-' }}</td>
                                                                         </tr>
                                                                     </tbody>
                                                                 </table>
@@ -451,26 +451,26 @@
                                                     <div class="col-md-4">
                                                         <div class="card card-equal-height mb-3">
                                                             <div class="card-header bg-success text-white">
-                                                                {{ $dataTc2->judul_keterangan }}
+                                                                {{ $dataTc2?->judul_keterangan ?? 'Soft Skills' }}
                                                             </div>
                                                             <div class="card-body">
                                                                 <table class="table table-borderless">
                                                                     <tbody>
                                                                         <tr>
                                                                             <td>1.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_1 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_1 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>2.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_2 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_2 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>3.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_3 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_3 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>4.</td>
-                                                                            <td>{{ $dataTc2->deskripsi_4 }}</td>
+                                                                            <td>{{ $dataTc2?->deskripsi_4 ?? '-' }}</td>
                                                                         </tr>
                                                                     </tbody>
                                                                 </table>
@@ -483,26 +483,26 @@
                                                         <div class="card card-equal-height mb-3">
                                                             <div class="card-header"
                                                                 style="background-color: orange; color: white;">
-                                                                {{ $dataTc3->judul_keterangan }}
+                                                                {{ $dataTc3?->judul_keterangan ?? 'Additional' }}
                                                             </div>
                                                             <div class="card-body">
                                                                 <table class="table table-borderless">
                                                                     <tbody>
                                                                         <tr>
                                                                             <td>1.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_1 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_1 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>2.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_2 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_2 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>3.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_3 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_3 ?? '-' }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <td>4.</td>
-                                                                            <td>{{ $dataTc3->deskripsi_4 }}</td>
+                                                                            <td>{{ $dataTc3?->deskripsi_4 ?? '-' }}</td>
                                                                         </tr>
                                                                     </tbody>
                                                                 </table>
@@ -577,62 +577,84 @@
                 const additionalNilaiElements = document.querySelectorAll('select[name="additional[nilai][]"]');
 
                 // Kumpulkan data dari form
-                const data = {
-                    tc: {
-                        id_job_position: jobPositionElement ? jobPositionElement.value : '',
-                        keterangan_tc: Array.from(tcKeteranganElements).map(el => el.value),
-                        deskripsi_tc: Array.from(tcDeskripsiElements).map(el => el.value),
-                        id_poin_kategori: Array.from(tcKategoriElements).map(el => el.value),
-                        nilai: Array.from(tcNilaiElements).map(el => el.value)
-                    },
-                    soft_skills: {
-                        keterangan_sk: Array.from(softSkillsKeteranganElements).map(el => el.value),
-                        deskripsi_sk: Array.from(softSkillsDeskripsiElements).map(el => el.value),
-                        id_poin_kategori: Array.from(softSkillsKategoriElements).map(el => el.value),
-                        nilai: Array.from(softSkillsNilaiElements).map(el => el.value)
-                    },
-                    additional: {
-                        keterangan_ad: Array.from(additionalKeteranganElements).map(el => el.value),
-                        deskripsi_ad: Array.from(additionalDeskripsiElements).map(el => el.value),
-                        id_poin_kategori: Array.from(additionalKategoriElements).map(el => el.value),
-                        nilai: Array.from(additionalNilaiElements).map(el => el.value)
-                    }
+                const tcData = {
+                    id_job_position: jobPositionElement ? jobPositionElement.value : '',
+                    keterangan_tc: Array.from(tcKeteranganElements).map(el => el.value),
+                    deskripsi_tc: Array.from(tcDeskripsiElements).map(el => el.value),
+                    id_poin_kategori: Array.from(tcKategoriElements).map(el => el.value),
+                    nilai: Array.from(tcNilaiElements).map(el => el.value)
                 };
+
+                const softSkillsData = {
+                    keterangan_sk: Array.from(softSkillsKeteranganElements).map(el => el.value),
+                    deskripsi_sk: Array.from(softSkillsDeskripsiElements).map(el => el.value),
+                    id_poin_kategori: Array.from(softSkillsKategoriElements).map(el => el.value),
+                    nilai: Array.from(softSkillsNilaiElements).map(el => el.value)
+                };
+
+                const additionalRows = Array.from(additionalKeteranganElements).map((el, index) => ({
+                    keterangan_ad: el.value.trim(),
+                    deskripsi_ad: additionalDeskripsiElements[index]?.value.trim() ?? '',
+                    id_poin_kategori: additionalKategoriElements[index]?.value ?? '',
+                    nilai: additionalNilaiElements[index]?.value ?? ''
+                }));
+
+                const filteredAdditionalRows = additionalRows.filter(row =>
+                    row.keterangan_ad !== '' ||
+                    row.deskripsi_ad !== '' ||
+                    row.id_poin_kategori !== '' ||
+                    row.nilai !== ''
+                );
+
+                const data = {
+                    tc: tcData,
+                    soft_skills: softSkillsData
+                };
+
+                if (filteredAdditionalRows.length > 0) {
+                    data.additional = {
+                        keterangan_ad: filteredAdditionalRows.map(row => row.keterangan_ad),
+                        deskripsi_ad: filteredAdditionalRows.map(row => row.deskripsi_ad),
+                        id_poin_kategori: filteredAdditionalRows.map(row => row.id_poin_kategori),
+                        nilai: filteredAdditionalRows.map(row => row.nilai)
+                    };
+                }
+
+                console.log('Payload to send:', data);
 
                 fetch('{{ route('mst_tc.store') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}' // Pastikan token CSRF disertakan
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify(data)
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Sukses:', data);
-                        // Tampilkan SweetAlert dengan pesan sukses dan pengalihan otomatis
+                    .then(async response => {
+                        const text = await response.text();
+                        let json = null;
+                        try { json = JSON.parse(text); } catch (e) { /* not JSON */ }
+                        if (!response.ok) {
+                            console.error('Server returned', response.status, text);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal menyimpan',
+                                html: `<pre style="text-align:left;white-space:pre-wrap">Status: ${response.status}\n${text}</pre>`,
+                                width: 600
+                            });
+                            return Promise.reject({status: response.status, body: json || text});
+                        }
+                        console.log('Sukses:', json ?? text);
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil!',
                             text: 'Data berhasil disimpan.',
-                            didClose: () => {
-                                // Kembali ke route setelah SweetAlert ditutup
-                                window.location.href = '{{ route('tcShow') }}';
-                            }
+                            didClose: () => { window.location.href = '{{ route('tcShow') }}'; }
                         });
                         document.getElementById('combinedForm').reset();
                     })
                     .catch((error) => {
-                        console.error('Error:', error);
-                        // Tampilkan SweetAlert dengan pesan kesalahan
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Terjadi kesalahan!',
-                            text: 'Data tidak berhasil disimpan.',
-                            timer: 2000, // Durasi tampilan pesan (dalam milidetik)
-                            timerProgressBar: true,
-                            showConfirmButton: false // Hapus tombol OK
-                        });
+                        console.error('Fetch error:', error);
                     });
 
             });

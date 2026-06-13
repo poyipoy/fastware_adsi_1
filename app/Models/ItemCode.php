@@ -22,6 +22,13 @@ class ItemCode extends Model
     public const STATUS_APPROVED_2 = 'approved_2';
     public const STATUS_FINISHED   = 'finished';
 
+    private const CURRENCIES = [
+        'IDR',
+        'CNY',
+        'USD',
+        'JPY',
+    ];
+
     /**
      * Alur transisi status:
      *  Draft → Submitted → Approved 1 → Approved 2 → Finished
@@ -117,6 +124,16 @@ class ItemCode extends Model
             self::TYPE_NEW_PRODUCT,
             self::TYPE_UPDATE_PRICE,
         ];
+    }
+
+    public static function currencyList(): array
+    {
+        return self::CURRENCIES;
+    }
+
+    public static function currencyValidationRule(): string
+    {
+        return 'in:' . implode(',', self::currencyList());
     }
 
     public function canTransitionTo(string $targetStatus): bool

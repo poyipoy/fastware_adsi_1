@@ -25,7 +25,7 @@
                     </thead>
                     <tbody>
                         @foreach ($penilaianData as $item)
-                            @if ($item->status == 1 || $item->status == 2 || $item->status == 3)
+                            @if ($item->status == 2)
                                 <tr>
                                     <th scope="row">{{ $loop->iteration }}</th>
                                     <td>{{ $item->id_job_position }}</td>
@@ -48,13 +48,10 @@
                                             <i class="fas fa-edit"></i> Konfirmasi Nilai
                                         </a>
 
-                                        @if ($item->status != 3)
                                         <button type="button" class="btn btn-success"
                                             onclick="kirimData('{{ $item->id_job_position }}')">
-                                            <i class="fas fa-paper-plane"></i> Kirim
+                                            <i class="fas fa-paper-plane"></i> Setuju
                                         </button>
-                                        @endif
-
 
                                         <a href="{{ route('penilaian.view', $item->id_job_position) }}"
                                             class="btn btn-info">

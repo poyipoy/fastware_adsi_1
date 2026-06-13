@@ -140,6 +140,9 @@
                                     <div class="d-flex align-items-center gap-1 small text-muted">
                                         <span>Show</span>
                                         <select class="form-select form-select-sm" data-per-page-select style="width: auto;">
+                                            <option value="10" {{ $perPage === 10 ? 'selected' : '' }}>10</option>
+                                            <option value="20" {{ $perPage === 20 ? 'selected' : '' }}>20</option>
+                                            <option value="50" {{ $perPage === 50 ? 'selected' : '' }}>50</option>
                                             <option value="100" {{ $perPage === 100 ? 'selected' : '' }}>100</option>
                                             <option value="500" {{ $perPage === 500 ? 'selected' : '' }}>500</option>
                                         </select>
@@ -157,7 +160,8 @@
                                 @if ($canApprove1)
                                     <form action="{{ route('item-code.approveAll') }}" method="POST" class="d-inline"
                                         data-approval-action-form data-action-type="approve_all"
-                                        data-confirm-text="Approve 1 semua data Submitted pada tab Produk Baru?">
+                                        data-bulk-scope="new_product"
+                                        data-confirm-text="Approve 1 data Submitted yang dipilih pada tab Produk Baru?">
                                         @csrf
                                         <input type="hidden" name="tab" value="new_product">
                                         <button type="submit" class="btn btn-sm btn-success"
@@ -170,7 +174,8 @@
                                 @if ($canApprove2)
                                     <form action="{{ route('item-code.approve2All') }}" method="POST" class="d-inline"
                                         data-approval-action-form data-action-type="approve_all"
-                                        data-confirm-text="Approve 2 semua data Approved 1 pada tab Produk Baru?">
+                                        data-bulk-scope="new_product"
+                                        data-confirm-text="Approve 2 data Approved 1 yang dipilih pada tab Produk Baru?">
                                         @csrf
                                         <input type="hidden" name="tab" value="new_product">
                                         <button type="submit" class="btn btn-sm btn-info"
@@ -183,7 +188,8 @@
                                 @if ($canFinish)
                                     <form action="{{ route('item-code.finishAll') }}" method="POST" class="d-inline"
                                         data-approval-action-form data-action-type="finish_all"
-                                        data-confirm-text="Finish semua data Approved 2 pada tab Produk Baru?">
+                                        data-bulk-scope="new_product"
+                                        data-confirm-text="Finish data Approved 2 yang dipilih pada tab Produk Baru?">
                                         @csrf
                                         <input type="hidden" name="tab" value="new_product">
                                         <button type="submit" class="btn btn-sm btn-primary"
@@ -200,6 +206,9 @@
                             <table id="approval-new-table" class="table table-bordered table-striped align-middle itemcode-table">
                                 <thead>
                                     <tr>
+                                        <th class="itemcode-select-cell">
+                                            <input type="checkbox" class="form-check-input" data-bulk-select-all data-bulk-scope="new_product" aria-label="Pilih semua data Produk Baru">
+                                        </th>
                                         <th>No</th>
                                         <th>Nomor Pengajuan</th>
                                         <th>Tanggal</th>
@@ -239,8 +248,14 @@
                                                 $statusLabelHtml = e($statusLabel);
                                             }
                                             $typeLabel = $item->type === 'new_product' ? 'Produk Baru' : 'Update Harga';
+                                            $canSelectForBulk = ($canApprove1 && $item->status === 'submitted')
+                                                || ($canApprove2 && $item->status === 'approved_1')
+                                                || ($canFinish && $item->status === 'approved_2');
                                         @endphp
                                         <tr>
+                                            <td class="itemcode-select-cell">
+                                                <input type="checkbox" class="form-check-input" data-bulk-select data-bulk-scope="new_product" value="{{ $item->id }}" aria-label="Pilih {{ $item->nomor_pengajuan ?: $item->product_code }}" {{ $canSelectForBulk ? '' : 'disabled' }}>
+                                            </td>
                                             <td>
                                                 {{ method_exists($itemsNewProduct, 'firstItem') && $itemsNewProduct->firstItem() !== null ? $itemsNewProduct->firstItem() + $loop->index : $loop->iteration }}
                                             </td>
@@ -335,7 +350,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="15" class="text-center text-muted">Belum ada data produk baru.</td>
+                                            <td colspan="16" class="text-center text-muted">Belum ada data produk baru.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -427,6 +442,9 @@
                                     <div class="d-flex align-items-center gap-1 small text-muted">
                                         <span>Show</span>
                                         <select class="form-select form-select-sm" data-per-page-select style="width: auto;">
+                                            <option value="10" {{ $perPage === 10 ? 'selected' : '' }}>10</option>
+                                            <option value="20" {{ $perPage === 20 ? 'selected' : '' }}>20</option>
+                                            <option value="50" {{ $perPage === 50 ? 'selected' : '' }}>50</option>
                                             <option value="100" {{ $perPage === 100 ? 'selected' : '' }}>100</option>
                                             <option value="500" {{ $perPage === 500 ? 'selected' : '' }}>500</option>
                                         </select>
@@ -444,7 +462,8 @@
                                 @if ($canApprove1)
                                     <form action="{{ route('item-code.approveAll') }}" method="POST" class="d-inline"
                                         data-approval-action-form data-action-type="approve_all"
-                                        data-confirm-text="Approve 1 semua data Submitted pada tab Update Harga?">
+                                        data-bulk-scope="update_price"
+                                        data-confirm-text="Approve 1 data Submitted yang dipilih pada tab Update Harga?">
                                         @csrf
                                         <input type="hidden" name="tab" value="update_price">
                                         <button type="submit" class="btn btn-sm btn-success"
@@ -457,7 +476,8 @@
                                 @if ($canApprove2)
                                     <form action="{{ route('item-code.approve2All') }}" method="POST" class="d-inline"
                                         data-approval-action-form data-action-type="approve_all"
-                                        data-confirm-text="Approve 2 semua data Approved 1 pada tab Update Harga?">
+                                        data-bulk-scope="update_price"
+                                        data-confirm-text="Approve 2 data Approved 1 yang dipilih pada tab Update Harga?">
                                         @csrf
                                         <input type="hidden" name="tab" value="update_price">
                                         <button type="submit" class="btn btn-sm btn-info"
@@ -470,7 +490,8 @@
                                 @if ($canFinish)
                                     <form action="{{ route('item-code.finishAll') }}" method="POST" class="d-inline"
                                         data-approval-action-form data-action-type="finish_all"
-                                        data-confirm-text="Finish semua data Approved 2 pada tab Update Harga?">
+                                        data-bulk-scope="update_price"
+                                        data-confirm-text="Finish data Approved 2 yang dipilih pada tab Update Harga?">
                                         @csrf
                                         <input type="hidden" name="tab" value="update_price">
                                         <button type="submit" class="btn btn-sm btn-primary"
@@ -487,6 +508,9 @@
                             <table id="approval-update-table" class="table table-bordered table-striped align-middle itemcode-table">
                                 <thead>
                                     <tr>
+                                        <th class="itemcode-select-cell">
+                                            <input type="checkbox" class="form-check-input" data-bulk-select-all data-bulk-scope="update_price" aria-label="Pilih semua data Update Harga">
+                                        </th>
                                         <th>No</th>
                                         <th>Nomor Pengajuan</th>
                                         <th>Tanggal</th>
@@ -531,12 +555,18 @@
                                                 $statusLabelHtml = e($statusLabel);
                                             }
                                             $typeLabel = $item->type === 'new_product' ? 'Produk Baru' : 'Update Harga';
+                                            $canSelectForBulk = ($canApprove1 && $item->status === 'submitted')
+                                                || ($canApprove2 && $item->status === 'approved_1')
+                                                || ($canFinish && $item->status === 'approved_2');
                                             $hargaBaruValue = $item->harga_baru !== null ? (float) $item->harga_baru : null;
                                             $selisihValue = $item->selisih !== null
                                                 ? (float) $item->selisih
                                                 : ($hargaBaruValue !== null ? (float) $item->price_per_pcs - $hargaBaruValue : null);
                                         @endphp
                                         <tr>
+                                            <td class="itemcode-select-cell">
+                                                <input type="checkbox" class="form-check-input" data-bulk-select data-bulk-scope="update_price" value="{{ $item->id }}" aria-label="Pilih {{ $item->nomor_pengajuan ?: $item->product_code }}" {{ $canSelectForBulk ? '' : 'disabled' }}>
+                                            </td>
                                             <td>
                                                 {{ method_exists($itemsUpdatePrice, 'firstItem') && $itemsUpdatePrice->firstItem() !== null ? $itemsUpdatePrice->firstItem() + $loop->index : $loop->iteration }}
                                             </td>
@@ -643,7 +673,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="20" class="text-center text-muted">Belum ada data update harga.</td>
+                                            <td colspan="21" class="text-center text-muted">Belum ada data update harga.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -840,6 +870,24 @@
                 background: linear-gradient(180deg, #1f6fd1 0%, #1252ab 100%);
                 padding: 0.72rem 0.68rem;
                 border-bottom: 2px solid #0f3f84;
+            }
+
+            .itemcode-select-cell {
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                text-align: center;
+                vertical-align: middle;
+            }
+
+            .itemcode-select-cell .form-check-input {
+                cursor: pointer;
+                margin: 0;
+            }
+
+            .itemcode-select-cell .form-check-input:disabled {
+                cursor: not-allowed;
+                opacity: 0.35;
             }
 
             .itemcode-table td {
@@ -1151,6 +1199,81 @@
                 restoreSearchFocusState();
             }
 
+            function getBulkSelectedIds(scope) {
+                return Array.from(document.querySelectorAll(`[data-bulk-select][data-bulk-scope="${scope}"]:checked:not(:disabled)`))
+                    .map((checkbox) => checkbox.value)
+                    .filter((value) => value !== '');
+            }
+
+            function setBulkSelectedInputs(form, selectedIds) {
+                form.querySelectorAll('[data-generated-selected-id]').forEach((input) => input.remove());
+
+                selectedIds.forEach((id) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_ids[]';
+                    input.value = id;
+                    input.setAttribute('data-generated-selected-id', 'true');
+                    form.appendChild(input);
+                });
+            }
+
+            function syncBulkSelectAll(scope) {
+                const checkboxes = Array.from(document.querySelectorAll(`[data-bulk-select][data-bulk-scope="${scope}"]:not(:disabled)`));
+                const checkedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+
+                document.querySelectorAll(`[data-bulk-select-all][data-bulk-scope="${scope}"]`).forEach((selectAll) => {
+                    selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+                    selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+                    selectAll.disabled = checkboxes.length === 0;
+                });
+            }
+
+            function initBulkSelectionControls() {
+                const scopes = new Set();
+
+                document.querySelectorAll('[data-bulk-select]').forEach((checkbox) => {
+                    const scope = checkbox.getAttribute('data-bulk-scope') || '';
+                    if (scope) {
+                        scopes.add(scope);
+                    }
+
+                    checkbox.addEventListener('change', () => {
+                        syncBulkSelectAll(scope);
+                    });
+                });
+
+                document.querySelectorAll('[data-bulk-select-all]').forEach((selectAll) => {
+                    const scope = selectAll.getAttribute('data-bulk-scope') || '';
+                    if (scope) {
+                        scopes.add(scope);
+                    }
+
+                    selectAll.addEventListener('change', () => {
+                        document.querySelectorAll(`[data-bulk-select][data-bulk-scope="${scope}"]:not(:disabled)`).forEach((checkbox) => {
+                            checkbox.checked = selectAll.checked;
+                        });
+                        syncBulkSelectAll(scope);
+                    });
+                });
+
+                scopes.forEach((scope) => syncBulkSelectAll(scope));
+            }
+
+            function showBulkSelectionWarning(message) {
+                if (typeof Swal === 'undefined') {
+                    window.alert(message);
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Belum ada data dipilih',
+                    text: message,
+                    icon: 'warning',
+                    confirmButtonColor: '#0d6efd',
+                });
+            }
+
             function initApprovalActionAlerts() {
                 const actionForms = document.querySelectorAll('[data-approval-action-form]');
 
@@ -1173,6 +1296,18 @@
 
                         const actionType = String(form.getAttribute('data-action-type') || '').toLowerCase();
                         const fallbackText = form.getAttribute('data-confirm-text') || 'Lanjutkan aksi ini?';
+                        const bulkScope = form.getAttribute('data-bulk-scope') || '';
+
+                        if (bulkScope) {
+                            const selectedIds = getBulkSelectedIds(bulkScope);
+
+                            if (selectedIds.length === 0) {
+                                showBulkSelectionWarning('Centang minimal 1 data yang sesuai untuk diproses.');
+                                return;
+                            }
+
+                            setBulkSelectedInputs(form, selectedIds);
+                        }
 
                         if (typeof Swal === 'undefined') {
                             if (actionType === 'reject') {
@@ -1627,6 +1762,7 @@
             }
 
             initAutoFilterForms();
+            initBulkSelectionControls();
             initApprovalActionAlerts();
             attachModalCleanupHandlers();
 

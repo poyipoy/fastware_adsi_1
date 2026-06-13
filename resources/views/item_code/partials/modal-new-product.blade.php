@@ -79,9 +79,9 @@
                         <div class="col-12 itemcode-field-wrap">
                             <label for="itemcode_new_currency" class="form-label">Currency</label>
                             <select class="form-select" id="itemcode_new_currency" name="currency" required>
-                                <option value="IDR">IDR</option>
-                                <option value="CNY">CNY</option>
-                                <option value="USD">USD</option>
+                                @foreach (($currencyOptions ?? \App\Models\ItemCode::currencyList()) as $currencyOption)
+                                    <option value="{{ $currencyOption }}">{{ $currencyOption }}</option>
+                                @endforeach
                             </select>
                         </div>
 

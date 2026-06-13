@@ -172,7 +172,7 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 'description' => 'required|string|max:255',
                 'qty' => 'required|integer|gt:0',
                 'unit' => 'required|string|max:50',
-                'currency' => 'required|in:IDR,CNY,USD',
+                'currency' => 'required|' . ItemCode::currencyValidationRule(),
                 'price_per_pcs' => 'required|integer|min:0',
             ];
 
@@ -259,7 +259,7 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
     {
         $value = strtoupper((string) $this->normalizeString($value));
 
-        return in_array($value, ['IDR', 'CNY', 'USD'], true) ? $value : null;
+        return in_array($value, ItemCode::currencyList(), true) ? $value : null;
     }
 
     private function calculateSelisih(mixed $hargaLama, mixed $hargaBaru): ?float

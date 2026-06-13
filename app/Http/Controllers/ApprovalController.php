@@ -117,11 +117,21 @@ class ApprovalController extends Controller
 
         $validated = $request->validate([
             'tab' => 'required|in:' . implode(',', ItemCode::typeList()),
+            'selected_ids' => 'nullable|array',
+            'selected_ids.*' => 'integer',
         ]);
 
         $tab = $this->resolveActiveTab($validated['tab']);
+        $selectedIds = array_values(array_unique(array_map('intval', $validated['selected_ids'] ?? [])));
+
+        if ($selectedIds === []) {
+            return redirect()
+                ->route('item-code.approval', ['tab' => $tab])
+                ->with('warning', 'Pilih minimal 1 data Submitted untuk di-approve.');
+        }
 
         $items = ItemCode::query()
+            ->whereIn('id', $selectedIds)
             ->where('type', $tab)
             ->where('status', ItemCode::STATUS_SUBMITTED)
             ->orderBy('id')
@@ -222,11 +232,21 @@ class ApprovalController extends Controller
 
         $validated = $request->validate([
             'tab' => 'required|in:' . implode(',', ItemCode::typeList()),
+            'selected_ids' => 'nullable|array',
+            'selected_ids.*' => 'integer',
         ]);
 
         $tab = $this->resolveActiveTab($validated['tab']);
+        $selectedIds = array_values(array_unique(array_map('intval', $validated['selected_ids'] ?? [])));
+
+        if ($selectedIds === []) {
+            return redirect()
+                ->route('item-code.approval', ['tab' => $tab])
+                ->with('warning', 'Pilih minimal 1 data Approved 1 untuk di-approve.');
+        }
 
         $items = ItemCode::query()
+            ->whereIn('id', $selectedIds)
             ->where('type', $tab)
             ->where('status', ItemCode::STATUS_APPROVED_1)
             ->orderBy('id')
@@ -386,11 +406,21 @@ class ApprovalController extends Controller
 
         $validated = $request->validate([
             'tab' => 'required|in:' . implode(',', ItemCode::typeList()),
+            'selected_ids' => 'nullable|array',
+            'selected_ids.*' => 'integer',
         ]);
 
         $tab = $this->resolveActiveTab($validated['tab']);
+        $selectedIds = array_values(array_unique(array_map('intval', $validated['selected_ids'] ?? [])));
+
+        if ($selectedIds === []) {
+            return redirect()
+                ->route('item-code.approval', ['tab' => $tab])
+                ->with('warning', 'Pilih minimal 1 data Approved 2 untuk di-finish.');
+        }
 
         $items = ItemCode::query()
+            ->whereIn('id', $selectedIds)
             ->where('type', $tab)
             ->where('status', ItemCode::STATUS_APPROVED_2)
             ->orderBy('id')
@@ -545,7 +575,7 @@ class ApprovalController extends Controller
 
     private function resolvePerPage(mixed $perPage): int
     {
-        $allowed = [100, 500];
+        $allowed = [10, 20, 50, 100, 500];
         $value = is_numeric($perPage) ? (int) $perPage : 100;
 
         return in_array($value, $allowed, true) ? $value : 100;

@@ -164,6 +164,30 @@
                             </td>
 
                         </tr>
+                        <tr>
+                            <td colspan="2">Departement :</td>
+                            <td colspan="9">
+                                <input id="departmentField" type="text" name="department" class="input-field" value="" readonly>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">Section (Mapping) :</td>
+                            <td colspan="9">
+                                <input id="sectionField" type="text" name="section_mapping" class="input-field" value="" readonly>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">Departement Head :</td>
+                            <td colspan="9">
+                                <input id="departmentHeadField" type="text" name="department_head_name" class="input-field" value="" readonly>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">Section Head :</td>
+                            <td colspan="9">
+                                <input id="sectionHeadField" type="text" name="section_head_name" class="input-field" value="" readonly>
+                            </td>
+                        </tr>
                     </table>
                     <!-- Modal Summary -->
                     <div class="modal fade" id="jobPositionModal" tabindex="-1" aria-labelledby="jobPositionModalLabel"
@@ -379,6 +403,24 @@
                                 id: jobPosition // Mengirimkan job_position dari dropdown
                             },
                             success: function(data) {
+                                // Populate department/section/head fields from returned data
+                                if (data && data.length > 0) {
+                                    // Find first row that has department info
+                                    var firstRowWithDept = data.find(function(r) {
+                                        return r.department || r.section || r.department_head_name || r.section_head_name;
+                                    }) || {};
+
+                                    $('#departmentField').val(firstRowWithDept.department || '');
+                                    $('#sectionField').val(firstRowWithDept.section || '');
+                                    $('#departmentHeadField').val(firstRowWithDept.department_head_name || '');
+                                    $('#sectionHeadField').val(firstRowWithDept.section_head_name || '');
+                                } else {
+                                    $('#departmentField').val('');
+                                    $('#sectionField').val('');
+                                    $('#departmentHeadField').val('');
+                                    $('#sectionHeadField').val('');
+                                }
+
                                 $('#headerKeterangan').empty();
                                 $('#keteranganFields').empty();
                                 // Reset colspan group headers
@@ -530,6 +572,11 @@
                     } else {
                         $('#headerKeterangan').empty();
                         $('#keteranganFields').empty();
+                        // Clear mapping fields
+                        $('#departmentField').val('');
+                        $('#sectionField').val('');
+                        $('#departmentHeadField').val('');
+                        $('#sectionHeadField').val('');
                     }
                 });
             });

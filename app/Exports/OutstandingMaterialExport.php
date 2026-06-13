@@ -48,7 +48,6 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
             'Keterangan',
             'Estimasi Delay ETA Port',
             'Estimasi Delay ETA Warehouse',
-            'DOKUMEN PACKING LIST DAN MTC',
         ];
     }
 
@@ -74,7 +73,6 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
             $material->keterangan,
             $this->dateValue($material->estimasi_delay_eta_port),
             $this->dateValue($material->estimasi_delay_eta_warehouse),
-            $material->attachment_path,
         ];
     }
 
@@ -143,17 +141,20 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
             'O' => 18,
             'P' => 24,
             'Q' => 28,
-            'R' => 34,
         ];
     }
 
     private function dateValue(mixed $value): ?string
     {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
         if ($value instanceof \DateTimeInterface) {
             return $value->format('d-m-Y');
         }
 
-        return $value ? (string) $value : null;
+        return (string) $value;
     }
 
     private function numberValue(mixed $value): mixed

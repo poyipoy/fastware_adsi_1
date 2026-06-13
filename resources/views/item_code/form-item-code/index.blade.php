@@ -6,6 +6,9 @@
             $activeTab = $activeTab ?? 'new_product';
             $perPage = (int) ($perPage ?? 100);
             $filters = $filters ?? ['q' => null, 'status' => null];
+            $sorting = array_merge(['sort' => null, 'direction' => 'desc'], $sorting ?? []);
+            $itemsTotal = (int) ($itemsTotal ?? 0);
+            $currencyOptions = $currencyOptions ?? \App\Models\ItemCode::currencyList();
             $statsByType = $statsByType ?? [
                 'new_product' => ['total' => 0, 'draft' => 0, 'submitted' => 0, 'approved_1' => 0, 'approved_2' => 0, 'finished' => 0],
                 'update_price' => ['total' => 0, 'draft' => 0, 'submitted' => 0, 'approved_1' => 0, 'approved_2' => 0, 'finished' => 0],
@@ -17,6 +20,56 @@
                 'approved_2' => 'primary',
                 'finished' => 'success',
             ];
+            $baseQueryParams = function (string $tab) use ($filters, $perPage): array {
+                $params = [
+                    'tab' => $tab,
+                    'per_page' => $perPage,
+                ];
+
+                foreach (['q', 'status', 'start_date', 'end_date'] as $filterKey) {
+                    if (!empty($filters[$filterKey])) {
+                        $params[$filterKey] = $filters[$filterKey];
+                    }
+                }
+
+                return $params;
+            };
+            $appendSortingParams = function (array $params) use ($sorting): array {
+                if (!empty($sorting['sort'])) {
+                    $params['sort'] = $sorting['sort'];
+                    $params['direction'] = $sorting['direction'] === 'asc' ? 'asc' : 'desc';
+                }
+
+                return $params;
+            };
+            $sortParamsFor = function (string $tab, string $sortKey) use ($baseQueryParams, $sorting): array {
+                $params = $baseQueryParams($tab);
+                $isActive = ($sorting['sort'] ?? null) === $sortKey;
+                $params['sort'] = $sortKey;
+                $params['direction'] = $isActive && ($sorting['direction'] ?? 'desc') === 'asc' ? 'desc' : 'asc';
+
+                return $params;
+            };
+            $sortHeader = function (string $tab, string $sortKey, string $label) use ($sortParamsFor, $sorting): string {
+                $isActive = ($sorting['sort'] ?? null) === $sortKey;
+                $direction = $isActive && ($sorting['direction'] ?? 'desc') === 'desc' ? 'desc' : 'asc';
+                $arrowClass = ' itemcode-sort-arrows';
+                $arrowClass .= $isActive ? ' itemcode-sort-arrows-active itemcode-sort-' . $direction : '';
+                $indicator = '<span class="' . trim($arrowClass) . '" aria-hidden="true"><span class="itemcode-sort-arrow-up"></span><span class="itemcode-sort-arrow-down"></span></span>';
+                $class = $isActive ? ' itemcode-sort-link-active' : '';
+
+                return '<a href="' . e(route('item-code.form', $sortParamsFor($tab, $sortKey))) . '" class="itemcode-sort-link' . $class . '">' . e($label) . $indicator . '</a>';
+            };
+            $rowNumberFor = function ($paginator, $loop) use ($sorting, $itemsTotal): int {
+                $firstItem = method_exists($paginator, 'firstItem') ? $paginator->firstItem() : null;
+                $number = $firstItem !== null ? $firstItem + $loop->index : $loop->iteration;
+
+                if (($sorting['sort'] ?? null) === 'no' && ($sorting['direction'] ?? 'desc') === 'desc' && $itemsTotal > 0) {
+                    return max($itemsTotal - $number + 1, 1);
+                }
+
+                return $number;
+            };
         @endphp
 
         <div class="pagetitle">
@@ -97,6 +150,8 @@
                                     $newFilterParams['end_date'] = $filters['end_date'];
                                 }
                             }
+
+                            $newFilterParams = $appendSortingParams($newFilterParams);
                         @endphp
 
                         <div class="itemcode-toolbar">
@@ -114,6 +169,10 @@
                                     class="d-flex flex-wrap gap-2 align-items-center itemcode-filter-form" data-auto-filter-form>
                                     <input type="hidden" name="tab" value="new_product">
                                     <input type="hidden" name="per_page" value="{{ $perPage }}" data-per-page-hidden>
+                                    @if (!empty($sorting['sort']))
+                                        <input type="hidden" name="sort" value="{{ $sorting['sort'] }}">
+                                        <input type="hidden" name="direction" value="{{ $sorting['direction'] }}">
+                                    @endif
 
                                     <div class="input-group input-group-sm itemcode-filter-input">
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
@@ -177,8 +236,9 @@
 
                                     <form action="{{ route('item-code.submitAll') }}" method="POST" class="d-inline"
                                         data-submit-all-form
+                                        data-bulk-scope="new_product"
                                         data-confirm-title="Submit semua data Draft Produk Baru?"
-                                        data-confirm-text="Semua data berstatus Draft pada tab Produk Baru akan disubmit untuk approval.">
+                                        data-confirm-text="Data Draft Produk Baru yang dipilih akan disubmit untuk approval.">
                                         @csrf
                                         <input type="hidden" name="tab" value="new_product">
                                         <button type="submit" class="btn btn-sm btn-primary"
@@ -199,19 +259,22 @@
                             <table id="new-product-table" class="table table-bordered table-striped align-middle itemcode-table">
                                 <thead>
                                     <tr>
-                                        <th>No</th>
-                                        <th>Nomor Pengajuan</th>
-                                        <th>Tanggal</th>
-                                        <th>Nama</th>
-                                        <th>Category</th>
-                                        <th>Supplier</th>
-                                        <th>Product Code</th>
-                                        <th>Description</th>
-                                        <th>Qty</th>
-                                        <th>Unit</th>
-                                        <th>Currency</th>
-                                        <th>Price</th>
-                                        <th>Reason</th>
+                                        <th class="itemcode-select-cell">
+                                            <input type="checkbox" class="form-check-input" data-bulk-select-all data-bulk-scope="new_product" aria-label="Pilih semua Draft Produk Baru">
+                                        </th>
+                                        <th>{!! $sortHeader('new_product', 'no', 'No') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'nomor_pengajuan', 'Nomor Pengajuan') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'tanggal', 'Tanggal') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'nama', 'Nama') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'material', 'Category') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'supplier', 'Supplier') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'item_code', 'Product Code') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'item_name', 'Description') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'qty', 'Qty') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'unit', 'Unit') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'currency', 'Currency') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'price', 'Price') !!}</th>
+                                        <th>{!! $sortHeader('new_product', 'reason', 'Reason') !!}</th>
                                         <th>Attachment</th>
                                         <th>Status</th>
                                         <th style="width:120px; min-width:120px; max-width:130px;">Aksi</th>
@@ -241,8 +304,11 @@
                                             $typeLabel = $item->type === 'new_product' ? 'Produk Baru' : 'Update Harga';
                                         @endphp
                                         <tr>
+                                            <td class="itemcode-select-cell">
+                                                <input type="checkbox" class="form-check-input" data-bulk-select data-bulk-scope="new_product" value="{{ $item->id }}" aria-label="Pilih {{ $item->nomor_pengajuan ?: $item->product_code }}" {{ $item->status !== 'draft' ? 'disabled' : '' }}>
+                                            </td>
                                             <td>
-                                                {{ method_exists($itemsNewProduct, 'firstItem') && $itemsNewProduct->firstItem() !== null ? $itemsNewProduct->firstItem() + $loop->index : $loop->iteration }}
+                                                {{ $rowNumberFor($itemsNewProduct, $loop) }}
                                             </td>
                                             <td>{{ $item->nomor_pengajuan ?: '-' }}</td>
                                             <td>{{ optional($item->tanggal)->format('d-m-Y') }}</td>
@@ -337,7 +403,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="16" class="text-center text-muted">Belum ada data produk baru.</td>
+                                            <td colspan="17" class="text-center text-muted">Belum ada data produk baru.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -373,6 +439,8 @@
                                     $updateFilterParams['end_date'] = $filters['end_date'];
                                 }
                             }
+
+                            $updateFilterParams = $appendSortingParams($updateFilterParams);
                         @endphp
 
                         <div class="itemcode-toolbar">
@@ -390,6 +458,10 @@
                                     class="d-flex flex-wrap gap-2 align-items-center itemcode-filter-form" data-auto-filter-form>
                                     <input type="hidden" name="tab" value="update_price">
                                     <input type="hidden" name="per_page" value="{{ $perPage }}" data-per-page-hidden>
+                                    @if (!empty($sorting['sort']))
+                                        <input type="hidden" name="sort" value="{{ $sorting['sort'] }}">
+                                        <input type="hidden" name="direction" value="{{ $sorting['direction'] }}">
+                                    @endif
 
                                     <div class="input-group input-group-sm itemcode-filter-input">
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
@@ -454,8 +526,9 @@
 
                                 <form action="{{ route('item-code.submitAll') }}" method="POST" class="d-inline"
                                     data-submit-all-form
+                                    data-bulk-scope="update_price"
                                     data-confirm-title="Submit semua data Draft Update Harga?"
-                                    data-confirm-text="Semua data berstatus Draft pada tab Update Harga akan disubmit untuk approval.">
+                                    data-confirm-text="Data Draft Update Harga yang dipilih akan disubmit untuk approval.">
                                     @csrf
                                     <input type="hidden" name="tab" value="update_price">
                                     <button type="submit" class="btn btn-sm btn-primary"
@@ -476,22 +549,25 @@
                             <table id="update-price-table" class="table table-bordered table-striped align-middle itemcode-table">
                                 <thead>
                                     <tr>
-                                        <th>No</th>
-                                        <th>Nomor Pengajuan</th>
-                                        <th>Tanggal</th>
-                                        <th>Nama</th>
-                                        <th>Category</th>
-                                        <th>Supplier</th>
-                                        <th>Product <br>Code</th>
-                                        <th>Description</th>
-                                        <th>Qty</th>
-                                        <th>Unit</th>
-                                        <th>Currency</th>
-                                        <th>Eff. Date <br>(Current)</th>
-                                        <th>Current <br>Price</th>
-                                        <th>Eff. Date<br> (New)</th>
-                                        <th>New <br>Price</th>
-                                        <th>Reason</th>
+                                        <th class="itemcode-select-cell">
+                                            <input type="checkbox" class="form-check-input" data-bulk-select-all data-bulk-scope="update_price" aria-label="Pilih semua Draft Update Harga">
+                                        </th>
+                                        <th>{!! $sortHeader('update_price', 'no', 'No') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'nomor_pengajuan', 'Nomor Pengajuan') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'tanggal', 'Tanggal') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'nama', 'Nama') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'material', 'Category') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'supplier', 'Supplier') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'item_code', 'Product Code') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'item_name', 'Description') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'qty', 'Qty') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'unit', 'Unit') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'currency', 'Currency') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'effective_date_current', 'Eff. Date (Current)') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'current_price', 'Current Price') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'effective_date_new', 'Eff. Date (New)') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'new_price', 'New Price') !!}</th>
+                                        <th>{!! $sortHeader('update_price', 'reason', 'Reason') !!}</th>
                                         <th>Attachment</th>
                                         <th>Selisih</th>
                                         <th>Status</th>
@@ -527,8 +603,11 @@
                                                 : ($hargaBaruValue !== null ? (float) $item->price_per_pcs - $hargaBaruValue : null);
                                         @endphp
                                         <tr>
+                                            <td class="itemcode-select-cell">
+                                                <input type="checkbox" class="form-check-input" data-bulk-select data-bulk-scope="update_price" value="{{ $item->id }}" aria-label="Pilih {{ $item->nomor_pengajuan ?: $item->product_code }}" {{ $item->status !== 'draft' ? 'disabled' : '' }}>
+                                            </td>
                                             <td>
-                                                {{ method_exists($itemsUpdatePrice, 'firstItem') && $itemsUpdatePrice->firstItem() !== null ? $itemsUpdatePrice->firstItem() + $loop->index : $loop->iteration }}
+                                                {{ $rowNumberFor($itemsUpdatePrice, $loop) }}
                                             </td>
                                             <td>{{ $item->nomor_pengajuan ?: '-' }}</td>
                                             <td>{{ optional($item->tanggal)->format('d-m-Y') }}</td>
@@ -626,7 +705,7 @@
                                         </tr>
                                     @empty
                                         <tr class="js-empty-row">
-                                            <td colspan="20" class="text-center text-muted">Belum ada data update harga.</td>
+                                            <td colspan="21" class="text-center text-muted">Belum ada data update harga.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -830,6 +909,79 @@
                 background: linear-gradient(180deg, #1f6fd1 0%, #1252ab 100%);
                 padding: 0.6rem 0.56rem;
                 border-bottom: 2px solid #0f3f84;
+            }
+
+            .itemcode-select-cell {
+                width: 44px;
+                min-width: 44px;
+                max-width: 44px;
+                text-align: center;
+                vertical-align: middle;
+            }
+
+            .itemcode-select-cell .form-check-input {
+                cursor: pointer;
+                margin: 0;
+            }
+
+            .itemcode-select-cell .form-check-input:disabled {
+                cursor: not-allowed;
+                opacity: 0.35;
+            }
+
+            .itemcode-sort-link {
+                color: inherit;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                text-decoration: none;
+                white-space: nowrap;
+            }
+
+            .itemcode-sort-link:hover,
+            .itemcode-sort-link:focus {
+                color: inherit;
+                text-decoration: underline;
+            }
+
+            .itemcode-sort-link-active {
+                font-weight: 800;
+            }
+
+            .itemcode-sort-arrows {
+                display: inline-flex;
+                flex-direction: column;
+                gap: 2px;
+                line-height: 1;
+                transform: translateY(-1px);
+            }
+
+            .itemcode-sort-arrow-up,
+            .itemcode-sort-arrow-down {
+                display: block;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                opacity: 0.45;
+            }
+
+            .itemcode-sort-arrow-up {
+                border-bottom: 6px solid rgba(255, 255, 255, 0.55);
+            }
+
+            .itemcode-sort-arrow-down {
+                border-top: 6px solid rgba(255, 255, 255, 0.55);
+            }
+
+            .itemcode-sort-asc .itemcode-sort-arrow-up {
+                border-bottom-color: #ffffff;
+                opacity: 1;
+            }
+
+            .itemcode-sort-desc .itemcode-sort-arrow-down {
+                border-top-color: #ffffff;
+                opacity: 1;
             }
 
             .itemcode-table td {
@@ -1227,6 +1379,81 @@
                 });
             }
 
+            function getBulkSelectedIds(scope) {
+                return Array.from(document.querySelectorAll(`[data-bulk-select][data-bulk-scope="${scope}"]:checked:not(:disabled)`))
+                    .map((checkbox) => checkbox.value)
+                    .filter((value) => value !== '');
+            }
+
+            function setBulkSelectedInputs(form, selectedIds) {
+                form.querySelectorAll('[data-generated-selected-id]').forEach((input) => input.remove());
+
+                selectedIds.forEach((id) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_ids[]';
+                    input.value = id;
+                    input.setAttribute('data-generated-selected-id', 'true');
+                    form.appendChild(input);
+                });
+            }
+
+            function syncBulkSelectAll(scope) {
+                const checkboxes = Array.from(document.querySelectorAll(`[data-bulk-select][data-bulk-scope="${scope}"]:not(:disabled)`));
+                const checkedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+
+                document.querySelectorAll(`[data-bulk-select-all][data-bulk-scope="${scope}"]`).forEach((selectAll) => {
+                    selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+                    selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+                    selectAll.disabled = checkboxes.length === 0;
+                });
+            }
+
+            function initBulkSelectionControls() {
+                const scopes = new Set();
+
+                document.querySelectorAll('[data-bulk-select]').forEach((checkbox) => {
+                    const scope = checkbox.getAttribute('data-bulk-scope') || '';
+                    if (scope) {
+                        scopes.add(scope);
+                    }
+
+                    checkbox.addEventListener('change', () => {
+                        syncBulkSelectAll(scope);
+                    });
+                });
+
+                document.querySelectorAll('[data-bulk-select-all]').forEach((selectAll) => {
+                    const scope = selectAll.getAttribute('data-bulk-scope') || '';
+                    if (scope) {
+                        scopes.add(scope);
+                    }
+
+                    selectAll.addEventListener('change', () => {
+                        document.querySelectorAll(`[data-bulk-select][data-bulk-scope="${scope}"]:not(:disabled)`).forEach((checkbox) => {
+                            checkbox.checked = selectAll.checked;
+                        });
+                        syncBulkSelectAll(scope);
+                    });
+                });
+
+                scopes.forEach((scope) => syncBulkSelectAll(scope));
+            }
+
+            function showBulkSelectionWarning(message) {
+                if (typeof Swal === 'undefined') {
+                    window.alert(message);
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Belum ada data dipilih',
+                    text: message,
+                    icon: 'warning',
+                    confirmButtonColor: '#0d6efd',
+                });
+            }
+
             function initSubmitAllAlerts() {
                 const submitAllForms = document.querySelectorAll('[data-submit-all-form]');
 
@@ -1236,6 +1463,15 @@
 
                         const confirmTitle = form.getAttribute('data-confirm-title') || 'Submit semua data Draft?';
                         const confirmText = form.getAttribute('data-confirm-text') || 'Semua data Draft akan disubmit untuk approval.';
+                        const scope = form.getAttribute('data-bulk-scope') || '';
+                        const selectedIds = getBulkSelectedIds(scope);
+
+                        if (selectedIds.length === 0) {
+                            showBulkSelectionWarning('Centang minimal 1 data Draft terlebih dahulu.');
+                            return;
+                        }
+
+                        setBulkSelectedInputs(form, selectedIds);
 
                         if (typeof Swal === 'undefined') {
                             if (window.confirm(confirmText)) {
@@ -1821,6 +2057,7 @@
             initAutoFilterForms();
             initDeleteAlerts();
             initSubmitItemAlerts();
+            initBulkSelectionControls();
             initSubmitAllAlerts();
             attachModalCleanupHandlers();
 

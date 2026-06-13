@@ -8,15 +8,25 @@
             <h1>Halaman Penilaian Competency</h1>
             <nav>
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item active">Menu List Penilaian Competency</li>
+                    <li class="breadcrumb-item active">
+                        @if ($level === 'kasie')
+                            Penilaian Technical Competency Ka. Sie
+                        @elseif ($level === 'hr')
+                            Penilaian Technical Competency HR
+                        @else
+                            Penilaian Technical Competency
+                        @endif
+                    </li>
                 </ol>
             </nav>
         </div>
         <section class="section">
             <div class="container">
-                <button class="btn btn-success" onclick="window.location.href='{{ route('create.penilaian') }}'">
-                    <i class="fas fa-plus"></i> Buat Penilaian
-                </button>
+                @if ($level === 'kasie')
+                    <button class="btn btn-success" onclick="window.location.href='{{ route('create.penilaian') }}'">
+                        <i class="fas fa-plus"></i> Buat Penilaian
+                    </button>
+                @endif
                 <table class="datatable table">
                     <thead>
                         <tr>
@@ -33,11 +43,6 @@
                         @endphp
 
                         @foreach ($penilaianData as $item)
-                            {{-- @if ($userName == 'SITI MARIA ULFA' && $item->status != 2) --}}
-                            @if ($userName == 'SITI MARIA ULFA' && !in_array($item->status, [1, 2, 3]))
-                                @continue
-                            @endif
-
                             <tr>
                                 <th scope="row">{{ $loop->iteration }}</th>
                                 <td>{{ $item->id_job_position }}</td>
@@ -51,7 +56,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if ($item->status == 1)
+                                    @if ($level === 'kasie' && $item->status == 1)
                                         <a href="{{ route('penilaian.edit', $item->id_job_position) }}"
                                             class="btn btn-warning">
                                             <i class="fas fa-edit"></i> Edit
@@ -62,30 +67,6 @@
                                         </button>
                                     @endif
 
-                                    @php
-                                        $userDeptH = [
-                                            'MARTINUS CAHYO RAHASTO',
-                                            'YULMAI RIDO WINANDA',
-                                            'HARDI SAPUTRA',
-                                            'ARY RODJO PRASETYO',
-                                            'JESSICA PAUNE',
-                                            'SITI MARIA ULFA'
-                                        ];
-                                    @endphp
-
-                                    @if ($item->status == 2 && in_array($userName, $userDeptH))
-                                        <button type="button" class="btn btn-success"
-                                            onclick="kirimData2('{{ $item->id_job_position }}')">
-                                            <i class="fas fa-paper-plane"></i> Kirim
-                                        </button>
-                                    @endif
-
-                                    @if ($item->status == 3 || $item->status == 2)
-                                        <a href="{{ route('penilaian.edit', $item->id_job_position) }}"
-                                            class="btn btn-warning">
-                                            <i class="fas fa-edit"></i> Update Nilai
-                                        </a>
-                                    @endif
                                     <a href="{{ route('penilaian.view', $item->id_job_position) }}" class="btn btn-info">
                                         <i class="fas fa-eye"></i> View
                                     </a>

@@ -22,6 +22,11 @@ use Maatwebsite\Excel\Facades\Excel;
 class OutstandingMaterialController extends Controller
 {
     private const ATTACHMENT_DIRECTORY = 'outstanding-materials';
+    private const MANAGER_NAMES = [
+        'ADMINISTRATOR',
+        'ADMINSTRATOR',
+        'ILYAS NOOR FIRDAUS',
+    ];
 
     public function index(): View
     {
@@ -29,6 +34,8 @@ class OutstandingMaterialController extends Controller
             'statusOptions' => OutstandingMaterial::statusOptions(),
             'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
             'filterOptions' => $this->filterOptions(),
+            'canManageOutstandingMaterials' => $this->canManageOutstandingMaterials(),
+            'summary' => $this->summaryStats(),
         ]);
     }
 
@@ -74,6 +81,8 @@ class OutstandingMaterialController extends Controller
 
     public function create(): View
     {
+        $this->authorizeOutstandingMaterialManagement();
+
         return view('outstanding_materials.form', [
             'material' => new OutstandingMaterial(),
             'isEdit' => false,
@@ -84,6 +93,8 @@ class OutstandingMaterialController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeOutstandingMaterialManagement();
+
         $data = $this->validatedPayload($request);
         $data['created_by'] = Auth::id();
         $data['updated_by'] = null;
@@ -101,11 +112,14 @@ class OutstandingMaterialController extends Controller
 
         return view('outstanding_materials.show', [
             'material' => $outstandingMaterial,
+            'canManageOutstandingMaterials' => $this->canManageOutstandingMaterials(),
         ]);
     }
 
     public function edit(OutstandingMaterial $outstandingMaterial): View
     {
+        $this->authorizeOutstandingMaterialManagement();
+
         return view('outstanding_materials.form', [
             'material' => $outstandingMaterial,
             'isEdit' => true,
@@ -116,15 +130,24 @@ class OutstandingMaterialController extends Controller
 
     public function update(Request $request, OutstandingMaterial $outstandingMaterial): RedirectResponse
     {
-        $oldAttachment = $outstandingMaterial->attachment_path;
+        $this->authorizeOutstandingMaterialManagement();
+
+        $oldPaths = [
+            $outstandingMaterial->attachment_path,
+            $outstandingMaterial->packing_list_path,
+            $outstandingMaterial->mtc_path,
+        ];
+
         $data = $this->validatedPayload($request, $outstandingMaterial);
         $data['updated_by'] = Auth::id();
 
         $outstandingMaterial->update($data);
 
-        if ($request->hasFile('attachment') && $oldAttachment !== $outstandingMaterial->attachment_path) {
-            $this->deleteStoredAttachment($oldAttachment);
-        }
+        $this->deleteReplacedStoredAttachments($oldPaths, [
+            $outstandingMaterial->attachment_path,
+            $outstandingMaterial->packing_list_path,
+            $outstandingMaterial->mtc_path,
+        ]);
 
         return redirect()
             ->route('outstanding-materials.show', $outstandingMaterial)
@@ -133,15 +156,20 @@ class OutstandingMaterialController extends Controller
 
     public function destroy(OutstandingMaterial $outstandingMaterial): RedirectResponse
     {
-        $oldAttachment = $outstandingMaterial->attachment_path;
+        $this->authorizeOutstandingMaterialManagement();
 
-        if ($this->isStoredAttachment($oldAttachment)) {
-            $this->deleteStoredAttachment($oldAttachment);
-            $outstandingMaterial->forceFill([
-                'attachment_path' => null,
-                'updated_by' => Auth::id(),
-            ])->save();
-        }
+        $this->deleteStoredAttachments([
+            $outstandingMaterial->attachment_path,
+            $outstandingMaterial->packing_list_path,
+            $outstandingMaterial->mtc_path,
+        ]);
+
+        $outstandingMaterial->forceFill([
+            'attachment_path' => null,
+            'packing_list_path' => null,
+            'mtc_path' => null,
+            'updated_by' => Auth::id(),
+        ])->save();
 
         $outstandingMaterial->delete();
 
@@ -173,6 +201,8 @@ class OutstandingMaterialController extends Controller
 
     public function import(Request $request): RedirectResponse
     {
+        $this->authorizeOutstandingMaterialManagement();
+
         $request->validate([
             'import_file' => [
                 'required',
@@ -263,6 +293,8 @@ class OutstandingMaterialController extends Controller
 
     public function template()
     {
+        $this->authorizeOutstandingMaterialManagement();
+
         return Excel::download(
             new OutstandingMaterialTemplateExport(),
             'template_import_outstanding_material.xlsx',
@@ -270,9 +302,109 @@ class OutstandingMaterialController extends Controller
         );
     }
 
-    public function attachment(OutstandingMaterial $outstandingMaterial)
+    public function invoiceIndex(): View
     {
-        $path = $outstandingMaterial->attachment_path;
+        $this->authorizeOutstandingMaterialManagement();
+
+        return view('outstanding_materials.invoice', [
+            'statusOptions' => OutstandingMaterial::statusOptions(),
+            'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
+        ]);
+    }
+
+    public function invoiceData(Request $request): JsonResponse
+    {
+        $this->authorizeOutstandingMaterialManagement();
+
+        $baseQuery = $this->invoiceBaseQuery();
+        $recordsTotal = $this->countGroupedQuery($baseQuery);
+
+        $filteredQuery = clone $baseQuery;
+        $search = trim((string) ($request->input('search.value') ?: $request->input('q', '')));
+
+        if ($search !== '') {
+            $filteredQuery->where(function (Builder $query) use ($search): void {
+                $query->where('number_invoice', 'like', '%' . $search . '%')
+                    ->orWhere('supplier', 'like', '%' . $search . '%')
+                    ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhere('keterangan', 'like', '%' . $search . '%');
+            });
+        }
+
+        $recordsFiltered = $this->countGroupedQuery($filteredQuery);
+        $this->applyInvoiceOrdering($filteredQuery, $request);
+
+        $start = max((int) $request->input('start', 0), 0);
+        $length = (int) $request->input('length', 10);
+
+        if ($length !== -1) {
+            $filteredQuery->skip($start)->take(max($length, 1));
+        } elseif ($start > 0) {
+            $filteredQuery->skip($start);
+        }
+
+        $data = $filteredQuery
+            ->get()
+            ->map(fn (object $invoice): array => $this->invoiceDataTableRow($invoice))
+            ->values()
+            ->all();
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 0),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function invoiceMaterials(Request $request): JsonResponse
+    {
+        $this->authorizeOutstandingMaterialManagement();
+        $invoice = $request->query('invoice');
+        
+        $materials = OutstandingMaterial::where('number_invoice', $invoice)
+            ->select('id', 'supplier', 'type', 'thickness', 'width', 'diameter', 'length', 'qty_pcs', 'est_qty_kg', 'status', 'keterangan')
+            ->get();
+            
+        return response()->json($materials);
+    }
+
+    public function updateInvoiceFields(Request $request): JsonResponse
+    {
+        $this->authorizeOutstandingMaterialManagement();
+
+        $data = $request->validate([
+            'invoice' => 'required|string',
+            'material_ids' => 'required|array',
+            'material_ids.*' => 'integer|exists:outstanding_materials,id',
+            'status' => ['nullable', 'string', Rule::in(OutstandingMaterial::statusOptions())],
+            'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
+        ]);
+
+        $updates = ['updated_by' => Auth::id()];
+        
+        if (array_key_exists('keterangan', $data)) {
+            $updates['keterangan'] = $data['keterangan'];
+        }
+
+        if (!empty($data['status'])) {
+            $updates['status'] = $data['status'];
+        }
+
+        if (count($updates) > 1) { // more than just updated_by
+            OutstandingMaterial::whereIn('id', $data['material_ids'])
+                ->update($updates);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($data['material_ids']) . ' material(s) updated successfully.'
+        ]);
+    }
+
+    public function attachment(OutstandingMaterial $outstandingMaterial, ?string $type = null)
+    {
+        $path = $this->attachmentPathForType($outstandingMaterial, $type);
 
         if (!$this->isStoredAttachment($path)) {
             abort(404, 'File attachment tidak ditemukan.');
@@ -280,8 +412,10 @@ class OutstandingMaterialController extends Controller
 
         $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
         $fileName = basename($path);
-        $fullPath = Storage::disk('public')->path($path);
-        $mimeType = Storage::disk('public')->mimeType($path) ?: 'application/octet-stream';
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk('public');
+        $fullPath = $disk->path($path);
+        $mimeType = $disk->mimeType($path) ?: 'application/octet-stream';
 
         if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'], true)) {
             return response()->file($fullPath, [
@@ -297,6 +431,8 @@ class OutstandingMaterialController extends Controller
 
     private function validatedPayload(Request $request, ?OutstandingMaterial $material = null): array
     {
+        $attachmentRules = 'nullable|file|mimes:pdf,xls,xlsx,doc,docx,jpg,jpeg,png|max:10240';
+
         $data = $request->validate([
             'supplier' => 'required|string|max:255',
             'type' => 'required|string|max:255',
@@ -314,47 +450,76 @@ class OutstandingMaterialController extends Controller
             'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
             'estimasi_delay_eta_port' => 'nullable|date',
             'estimasi_delay_eta_warehouse' => 'nullable|date',
-            'attachment' => 'nullable|file|mimes:pdf,xls,xlsx,doc,docx,jpg,jpeg,png|max:10240',
+            'attachment' => $attachmentRules,
+            'packing_list' => $attachmentRules,
+            'mtc' => $attachmentRules,
         ], [], $this->validationAttributes());
 
         $data['attachment_path'] = $material?->attachment_path;
+        $data['packing_list_path'] = $material?->packing_list_path;
+        $data['mtc_path'] = $material?->mtc_path;
+
+        if ($request->hasFile('packing_list')) {
+            $path = $request->file('packing_list')->store(self::ATTACHMENT_DIRECTORY . '/packing-list', 'public');
+            $data['packing_list_path'] = $path;
+            $data['attachment_path'] = $path;
+        }
+
+        if ($request->hasFile('mtc')) {
+            $data['mtc_path'] = $request->file('mtc')->store(self::ATTACHMENT_DIRECTORY . '/mtc', 'public');
+        }
 
         if ($request->hasFile('attachment')) {
-            $data['attachment_path'] = $request->file('attachment')->store(self::ATTACHMENT_DIRECTORY, 'public');
+            $path = $request->file('attachment')->store(self::ATTACHMENT_DIRECTORY, 'public');
+            $data['attachment_path'] = $path;
+
+            if (!$request->hasFile('packing_list')) {
+                $data['packing_list_path'] = $path;
+            }
         }
 
         unset($data['attachment']);
+        unset($data['packing_list']);
+        unset($data['mtc']);
 
         return $data;
     }
 
     private function applyFilters(Builder $query, Request $request): void
     {
-        foreach (['supplier', 'type', 'status', 'keterangan', 'estimasi_bulan_eta'] as $field) {
+        foreach (['supplier', 'type', 'number_invoice', 'status', 'keterangan', 'estimasi_bulan_eta'] as $field) {
             if ($request->filled($field)) {
                 $query->where($field, $request->input($field));
             }
         }
 
-        $etaPortFrom = $this->filterDate($request->input('eta_port_from'));
-        $etaPortTo = $this->filterDate($request->input('eta_port_to'));
-        $etaWarehouseFrom = $this->filterDate($request->input('eta_warehouse_from'));
-        $etaWarehouseTo = $this->filterDate($request->input('eta_warehouse_to'));
-
-        if ($etaPortFrom) {
-            $query->whereDate('estimasi_eta_port', '>=', $etaPortFrom);
+        foreach (['thickness', 'width', 'diameter', 'qty_pcs', 'est_qty_kg'] as $field) {
+            if ($request->filled($field)) {
+                $query->where($field, 'like', '%' . $request->input($field) . '%');
+            }
+        }
+        
+        if ($request->filled('material_length')) {
+            $query->where('length', 'like', '%' . $request->input('material_length') . '%');
         }
 
-        if ($etaPortTo) {
-            $query->whereDate('estimasi_eta_port', '<=', $etaPortTo);
+        $this->applyDateRangeFilter($query, 'estimasi_eta_port', $request->input('eta_port_from'), $request->input('eta_port_to'));
+        $this->applyDateRangeFilter($query, 'estimasi_eta_warehouse', $request->input('eta_warehouse_from'), $request->input('eta_warehouse_to'));
+        $this->applyDateRangeFilter($query, 'estimasi_delay_eta_port', $request->input('delay_eta_port_from'), $request->input('delay_eta_port_to'));
+        $this->applyDateRangeFilter($query, 'estimasi_delay_eta_warehouse', $request->input('delay_eta_warehouse_from'), $request->input('delay_eta_warehouse_to'));
+    }
+
+    private function applyDateRangeFilter(Builder $query, string $field, mixed $from, mixed $to): void
+    {
+        $fromDate = $this->filterDate($from);
+        $toDate = $this->filterDate($to);
+
+        if ($fromDate) {
+            $query->whereDate($field, '>=', $fromDate);
         }
 
-        if ($etaWarehouseFrom) {
-            $query->whereDate('estimasi_eta_warehouse', '>=', $etaWarehouseFrom);
-        }
-
-        if ($etaWarehouseTo) {
-            $query->whereDate('estimasi_eta_warehouse', '<=', $etaWarehouseTo);
+        if ($toDate) {
+            $query->whereDate($field, '<=', $toDate);
         }
     }
 
@@ -367,7 +532,9 @@ class OutstandingMaterialController extends Controller
                 ->orWhere('status', 'like', '%' . $search . '%')
                 ->orWhere('estimasi_bulan_eta', 'like', '%' . $search . '%')
                 ->orWhere('keterangan', 'like', '%' . $search . '%')
-                ->orWhere('attachment_path', 'like', '%' . $search . '%');
+                ->orWhere('attachment_path', 'like', '%' . $search . '%')
+                ->orWhere('packing_list_path', 'like', '%' . $search . '%')
+                ->orWhere('mtc_path', 'like', '%' . $search . '%');
         });
     }
 
@@ -390,7 +557,8 @@ class OutstandingMaterialController extends Controller
             14 => 'keterangan',
             15 => 'estimasi_delay_eta_port',
             16 => 'estimasi_delay_eta_warehouse',
-            17 => 'attachment_path',
+            17 => 'packing_list_path',
+            18 => 'mtc_path',
         ];
 
         $orders = (array) $request->input('order', []);
@@ -432,7 +600,8 @@ class OutstandingMaterialController extends Controller
             'keterangan' => e($material->keterangan ?: '-'),
             'estimasi_delay_eta_port' => $this->formatDate($material->estimasi_delay_eta_port),
             'estimasi_delay_eta_warehouse' => $this->formatDate($material->estimasi_delay_eta_warehouse),
-            'attachment' => $this->attachmentDisplay($material),
+            'packing_list' => $this->attachmentDisplay($material, 'packing_list_path', 'packing-list'),
+            'mtc' => $this->attachmentDisplay($material, 'mtc_path', 'mtc'),
             'actions' => $this->actionButtons($material),
         ];
     }
@@ -442,6 +611,7 @@ class OutstandingMaterialController extends Controller
         return [
             'suppliers' => $this->distinctValues('supplier'),
             'types' => $this->distinctValues('type'),
+            'invoices' => $this->distinctValues('number_invoice'),
             'months' => $this->distinctValues('estimasi_bulan_eta'),
         ];
     }
@@ -457,9 +627,9 @@ class OutstandingMaterialController extends Controller
             ->all();
     }
 
-    private function attachmentDisplay(OutstandingMaterial $material): string
+    private function attachmentDisplay(OutstandingMaterial $material, string $field, string $type): string
     {
-        $path = $material->attachment_path;
+        $path = $material->{$field};
 
         if (!$path) {
             return '-';
@@ -468,7 +638,10 @@ class OutstandingMaterialController extends Controller
         if ($this->isStoredAttachment($path)) {
             return sprintf(
                 '<a href="%s" target="_blank" class="btn btn-sm btn-outline-primary">Lihat</a>',
-                e(route('outstanding-materials.attachment', $material))
+                e(route('outstanding-materials.attachment', [
+                    'outstandingMaterial' => $material,
+                    'type' => $type,
+                ]))
             );
         }
 
@@ -478,23 +651,37 @@ class OutstandingMaterialController extends Controller
     private function actionButtons(OutstandingMaterial $material): string
     {
         $showUrl = route('outstanding-materials.show', $material);
-        $editUrl = route('outstanding-materials.edit', $material);
-        $deleteUrl = route('outstanding-materials.destroy', $material);
-        $supplier = e($material->supplier ?: '-');
-        $type = e($material->type ?: '-');
-        $invoice = e($material->number_invoice ?: '-');
-        $csrf = csrf_field();
-        $method = method_field('DELETE');
+        $manageButtons = '';
 
-        return <<<HTML
-            <div class="d-flex gap-1 justify-content-center">
-                <a href="{$showUrl}" class="btn btn-sm btn-outline-info">Detail</a>
-                <a href="{$editUrl}" class="btn btn-sm btn-outline-warning">Edit</a>
+        if ($this->canManageOutstandingMaterials()) {
+            $editUrl = route('outstanding-materials.edit', $material);
+            $deleteUrl = route('outstanding-materials.destroy', $material);
+            $supplier = e($material->supplier ?: '-');
+            $type = e($material->type ?: '-');
+            $invoice = e($material->number_invoice ?: '-');
+            $csrf = csrf_field();
+            $method = method_field('DELETE');
+
+            $manageButtons = <<<HTML
+                <a href="{$editUrl}" class="om-action-btn om-action-btn--edit" title="Edit" data-bs-toggle="tooltip">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
                 <form action="{$deleteUrl}" method="POST" class="d-inline js-outstanding-delete-form" data-supplier="{$supplier}" data-type="{$type}" data-invoice="{$invoice}">
                     {$csrf}
                     {$method}
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    <button type="submit" class="om-action-btn om-action-btn--delete" title="Delete" data-bs-toggle="tooltip">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </form>
+            HTML;
+        }
+
+        return <<<HTML
+            <div class="om-actions">
+                <a href="{$showUrl}" class="om-action-btn om-action-btn--detail" title="Detail" data-bs-toggle="tooltip">
+                    <i class="bi bi-eye"></i>
+                </a>
+                {$manageButtons}
             </div>
         HTML;
     }
@@ -506,13 +693,29 @@ class OutstandingMaterialController extends Controller
         }
 
         $class = match ($status) {
-            OutstandingMaterial::STATUS_RECEIVED => 'success',
-            OutstandingMaterial::STATUS_ON_PRODUCTION => 'warning',
-            OutstandingMaterial::STATUS_ON_SHIPMENT => 'primary',
-            default => 'secondary',
+            OutstandingMaterial::STATUS_RECEIVED => 'om-badge--received',
+            OutstandingMaterial::STATUS_ON_PRODUCTION => 'om-badge--production',
+            OutstandingMaterial::STATUS_ON_SHIPMENT => 'om-badge--shipment',
+            default => 'om-badge--default',
         };
 
-        return '<span class="badge bg-' . $class . '">' . e($status) . '</span>';
+        return '<span class="om-badge ' . $class . '">' . e($status) . '</span>';
+    }
+
+    private function summaryStats(): array
+    {
+        $counts = OutstandingMaterial::query()
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->all();
+
+        return [
+            'total' => array_sum($counts),
+            'on_production' => $counts[OutstandingMaterial::STATUS_ON_PRODUCTION] ?? 0,
+            'on_shipment' => $counts[OutstandingMaterial::STATUS_ON_SHIPMENT] ?? 0,
+            'received' => $counts[OutstandingMaterial::STATUS_RECEIVED] ?? 0,
+        ];
     }
 
     private function formatNumber(mixed $value): string
@@ -546,6 +749,155 @@ class OutstandingMaterialController extends Controller
         }
     }
 
+    private function invoiceBaseQuery(): Builder
+    {
+        return OutstandingMaterial::query()
+            ->select([
+                'number_invoice',
+                DB::raw('COUNT(*) as material_count'),
+                DB::raw('MIN(supplier) as supplier_sample'),
+                DB::raw('GROUP_CONCAT(DISTINCT status ORDER BY status SEPARATOR \',\') as status'),
+                DB::raw('GROUP_CONCAT(DISTINCT keterangan ORDER BY keterangan SEPARATOR \',\') as keterangan'),
+                DB::raw('MAX(estimasi_eta_warehouse) as latest_eta_warehouse'),
+            ])
+            ->whereNotNull('number_invoice')
+            ->where('number_invoice', '!=', '')
+            ->groupBy('number_invoice');
+    }
+
+    private function countGroupedQuery(Builder $query): int
+    {
+        return (int) DB::query()
+            ->fromSub(clone $query, 'invoice_groups')
+            ->count();
+    }
+
+    private function applyInvoiceOrdering(Builder $query, Request $request): void
+    {
+        $columnOrderMap = [
+            0 => 'number_invoice',
+            1 => 'supplier_sample',
+            2 => 'material_count',
+            3 => 'status',
+            4 => 'keterangan',
+            5 => 'latest_eta_warehouse',
+        ];
+
+        $orders = (array) $request->input('order', []);
+        $appliedOrder = false;
+
+        foreach ($orders as $order) {
+            $columnIndex = isset($order['column']) ? (int) $order['column'] : null;
+            if ($columnIndex === null || !array_key_exists($columnIndex, $columnOrderMap)) {
+                continue;
+            }
+
+            $direction = strtolower((string) ($order['dir'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+            $query->orderBy($columnOrderMap[$columnIndex], $direction);
+            $appliedOrder = true;
+        }
+
+        if (!$appliedOrder) {
+            $query->orderBy('number_invoice');
+        }
+    }
+
+    private function invoiceDataTableRow(object $invoice): array
+    {
+        $invoiceValue = (string) $invoice->number_invoice;
+        $formId = 'invoice-update-form-' . md5($invoiceValue);
+
+        $statusHtml = collect(explode(',', (string) $invoice->status))->filter()->map(fn($s) => '<span class="om-badge ' . $this->statusBadgeClass(trim($s)) . '">' . e(trim($s)) . '</span>')->implode(' ');
+        $keteranganHtml = collect(explode(',', (string) $invoice->keterangan))->filter()->map(fn($k) => '<span class="om-badge ' . $this->keteranganBadgeClass(trim($k)) . '">' . e(trim($k)) . '</span>')->implode(' ');
+
+        return [
+            'number_invoice' => e($invoice->number_invoice ?: '-'),
+            'supplier' => e($invoice->supplier_sample ?: '-'),
+            'material_count' => number_format((int) $invoice->material_count),
+            'keterangan' => $keteranganHtml ?: '<span class="om-badge">-</span>',
+            'status' => $statusHtml ?: '<span class="om-badge">-</span>',
+            'latest_eta_warehouse' => $this->formatDate($invoice->latest_eta_warehouse),
+            'actions' => $this->invoiceActionForm($formId, $invoiceValue),
+        ];
+    }
+
+    private function invoiceStatusSelect(string $formId, ?string $currentStatus, ?string $statusSummary): string
+    {
+        $formId = e($formId);
+        $title = $statusSummary ? ' title="Status saat ini: ' . e($statusSummary) . '"' : '';
+        $options = '<option value="">Pilih Status</option>';
+
+        foreach (OutstandingMaterial::statusOptions() as $option) {
+            $selected = $currentStatus === $option ? ' selected' : '';
+            $escapedOption = e($option);
+            $options .= '<option value="' . $escapedOption . '"' . $selected . '>' . $escapedOption . '</option>';
+        }
+
+        return <<<HTML
+            <select name="status" form="{$formId}" class="form-select form-select-sm"{$title}>
+                {$options}
+            </select>
+        HTML;
+    }
+
+    private function invoiceKeteranganSelect(string $formId, ?string $currentKeterangan): string
+    {
+        $formId = e($formId);
+        $options = '<option value="">Pilih Keterangan</option>';
+
+        foreach (OutstandingMaterial::keteranganOptions() as $option) {
+            $selected = $currentKeterangan === $option ? ' selected' : '';
+            $escapedOption = e($option);
+            $options .= '<option value="' . $escapedOption . '"' . $selected . '>' . $escapedOption . '</option>';
+        }
+
+        return <<<HTML
+            <select name="keterangan" form="{$formId}" class="form-select form-select-sm">
+                {$options}
+            </select>
+        HTML;
+    }
+
+    private function statusBadgeClass(?string $status): string
+    {
+        return match (strtolower((string) $status)) {
+            'production' => 'om-badge--production',
+            'on shipment', 'shipment' => 'om-badge--shipment',
+            'received' => 'om-badge--received',
+            default => 'om-badge--default',
+        };
+    }
+
+    private function keteranganBadgeClass(?string $keterangan): string
+    {
+        return match (strtolower((string) $keterangan)) {
+            'on schedule' => 'om-badge--on-schedule',
+            'delay' => 'om-badge--delay',
+            'closed' => 'om-badge--closed',
+            default => 'om-badge--default',
+        };
+    }
+
+    private function invoiceActionForm(string $formId, string $invoice): string
+    {
+        $invoiceValue = e($invoice);
+
+        return <<<HTML
+            <button type="button" class="btn btn-sm btn-primary js-open-invoice-modal" data-invoice="{$invoiceValue}">
+                <i class="bi bi-pencil-square me-1"></i> Update Materials
+            </button>
+        HTML;
+    }
+
+    private function attachmentPathForType(OutstandingMaterial $material, ?string $type): ?string
+    {
+        return match ($type) {
+            'packing-list' => $material->packing_list_path ?: $material->attachment_path,
+            'mtc' => $material->mtc_path,
+            default => $material->attachment_path ?: $material->packing_list_path,
+        };
+    }
+
     private function isStoredAttachment(?string $path): bool
     {
         if (!$path || !str_starts_with($path, self::ATTACHMENT_DIRECTORY . '/')) {
@@ -560,6 +912,60 @@ class OutstandingMaterialController extends Controller
         if ($this->isStoredAttachment($path)) {
             Storage::disk('public')->delete($path);
         }
+    }
+
+    private function deleteStoredAttachments(array $paths): void
+    {
+        foreach (array_unique(array_filter($paths)) as $path) {
+            $this->deleteStoredAttachment((string) $path);
+        }
+    }
+
+    private function deleteReplacedStoredAttachments(array $oldPaths, array $newPaths): void
+    {
+        $newPaths = array_unique(array_filter($newPaths));
+
+        foreach (array_unique(array_filter($oldPaths)) as $oldPath) {
+            if (!in_array($oldPath, $newPaths, true)) {
+                $this->deleteStoredAttachment((string) $oldPath);
+            }
+        }
+    }
+
+    private function syncInvoiceFields(?string $invoice, array $updates): int
+    {
+        $invoice = trim((string) $invoice);
+
+        $updates = array_intersect_key($updates, array_flip(['status', 'keterangan']));
+
+        if ($invoice === '' || empty($updates)) {
+            return 0;
+        }
+
+        return DB::table('outstanding_materials')
+            ->where('number_invoice', $invoice)
+            ->whereNull('deleted_at')
+            ->update($updates);
+    }
+
+    private function canManageOutstandingMaterials(): bool
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return false;
+        }
+
+        if (isset($user->role_id) && (int) $user->role_id === 1) {
+            return true;
+        }
+
+        return in_array(strtoupper(trim((string) $user->name)), self::MANAGER_NAMES, true);
+    }
+
+    private function authorizeOutstandingMaterialManagement(): void
+    {
+        abort_unless($this->canManageOutstandingMaterials(), 403, 'Unauthorized');
     }
 
     private function validationAttributes(): array
@@ -582,6 +988,8 @@ class OutstandingMaterialController extends Controller
             'estimasi_delay_eta_port' => 'Estimasi Delay ETA Port',
             'estimasi_delay_eta_warehouse' => 'Estimasi Delay ETA Warehouse',
             'attachment' => 'DOKUMEN PACKING LIST DAN MTC',
+            'packing_list' => 'Packing List',
+            'mtc' => 'MTC',
         ];
     }
 }

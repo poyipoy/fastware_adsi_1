@@ -50,12 +50,9 @@ class TcController extends Controller
     {
         $allowedPositions = $this->getAllowedJobPositions();
 
-        $technicalData = MstTc::with(['jobPosition'])->get()
-            ->unique(fn($item) => optional($item->jobPosition)->job_position);
-        $softSkillsData = MstSoftSkill::with(['jobPosition'])->get()
-            ->unique(fn($item) => optional($item->jobPosition)->job_position);
-        $additionalData = MstAdditionals::with(['jobPosition'])->get()
-            ->unique(fn($item) => optional($item->jobPosition)->job_position);
+        $technicalData = MstTc::with(['jobPosition'])->get();
+        $softSkillsData = MstSoftSkill::with(['jobPosition'])->get();
+        $additionalData = MstAdditionals::with(['jobPosition'])->get();
 
         if ($allowedPositions !== null) {
             $technicalData = $technicalData->filter(
@@ -69,15 +66,43 @@ class TcController extends Controller
             );
         }
 
+        $technicalData = $technicalData
+            ->filter(fn($item) => optional($item->jobPosition)->job_position !== null)
+            ->unique(fn($item) => optional($item->jobPosition)->job_position);
+        $softSkillsData = $softSkillsData
+            ->filter(fn($item) => optional($item->jobPosition)->job_position !== null)
+            ->unique(fn($item) => optional($item->jobPosition)->job_position);
+        $additionalData = $additionalData
+            ->filter(fn($item) => optional($item->jobPosition)->job_position !== null)
+            ->unique(fn($item) => optional($item->jobPosition)->job_position);
+
         return view('mst_tc.tc_index', compact('technicalData', 'softSkillsData', 'additionalData'));
     }
 
     public function createTC()
     {
         $uniquejobPositions = TcJobPosition::all();
-        $dataTc1 = PoinKategori::find(1);
-        $dataTc2 = PoinKategori::find(2);
-        $dataTc3 = PoinKategori::find(3);
+        $dataTc1 = PoinKategori::find(1) ?? (object) [
+            'judul_keterangan' => 'Technical Competency',
+            'deskripsi_1' => '',
+            'deskripsi_2' => '',
+            'deskripsi_3' => '',
+            'deskripsi_4' => '',
+        ];
+        $dataTc2 = PoinKategori::find(2) ?? (object) [
+            'judul_keterangan' => 'Soft Skills',
+            'deskripsi_1' => '',
+            'deskripsi_2' => '',
+            'deskripsi_3' => '',
+            'deskripsi_4' => '',
+        ];
+        $dataTc3 = PoinKategori::find(3) ?? (object) [
+            'judul_keterangan' => 'Additional',
+            'deskripsi_1' => '',
+            'deskripsi_2' => '',
+            'deskripsi_3' => '',
+            'deskripsi_4' => '',
+        ];
 
         $jobPositions = $uniquejobPositions->unique('job_position')->sortBy('job_position');
 
@@ -217,15 +242,27 @@ class TcController extends Controller
             }
 
             // Menyimpan data Additional untuk SEMUA job position records
-            foreach ($allJobPositionIds as $jpId) {
-                foreach ($data['additional']['keterangan_ad'] as $index => $keterangan_ad) {
-                    MstAdditionals::create([
-                        'id_job_position' => $jpId,
-                        'keterangan_ad' => $keterangan_ad,
-                        'deskripsi_ad' => $data['additional']['deskripsi_ad'][$index],
-                        'nilai' => $data['additional']['nilai'][$index],
-                        'id_poin_kategori' => $data['additional']['id_poin_kategori'][$index],
-                    ]);
+            // Pastikan struktur 'additional' ada sebelum mengaksesnya (form mungkin tidak mengirimkan additional)
+            if (!empty($data['additional']) && is_array($data['additional']) && !empty($data['additional']['keterangan_ad'] ?? null)) {
+                foreach ($allJobPositionIds as $jpId) {
+                    foreach ($data['additional']['keterangan_ad'] as $index => $keterangan_ad) {
+                        $deskripsi_ad = $data['additional']['deskripsi_ad'][$index] ?? null;
+                        $nilai_ad = $data['additional']['nilai'][$index] ?? null;
+                        $id_poin_ad = $data['additional']['id_poin_kategori'][$index] ?? null;
+
+                        // Lewati baris additional yang kosong sepenuhnya
+                        if (empty($keterangan_ad) && empty($deskripsi_ad) && empty($nilai_ad) && empty($id_poin_ad)) {
+                            continue;
+                        }
+
+                        MstAdditionals::create([
+                            'id_job_position' => $jpId,
+                            'keterangan_ad' => $keterangan_ad,
+                            'deskripsi_ad' => $deskripsi_ad,
+                            'nilai' => $nilai_ad === '' ? null : $nilai_ad,
+                            'id_poin_kategori' => $id_poin_ad === '' ? null : $id_poin_ad,
+                        ]);
+                    }
                 }
             }
 

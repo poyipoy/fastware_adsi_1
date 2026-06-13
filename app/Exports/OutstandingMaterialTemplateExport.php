@@ -6,6 +6,7 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -38,13 +39,14 @@ class OutstandingMaterialTemplateExport implements FromArray, WithHeadings, With
             'Keterangan',
             'Estimasi Delay ETA Port',
             'Estimasi Delay ETA Warehouse',
-            'DOKUMEN PACKING LIST DAN MTC',
         ];
     }
 
     public function styles(Worksheet $sheet): array
     {
-        $sheet->getStyle('A1:R1')->applyFromArray([
+        $lastColumn = Coordinate::stringFromColumnIndex(count($this->headings()));
+
+        $sheet->getStyle('A1:' . $lastColumn . '1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'],
@@ -90,7 +92,6 @@ class OutstandingMaterialTemplateExport implements FromArray, WithHeadings, With
             'O' => 18,
             'P' => 24,
             'Q' => 28,
-            'R' => 34,
         ];
     }
 }

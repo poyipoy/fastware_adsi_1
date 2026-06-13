@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\ItemCode;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
@@ -38,6 +39,13 @@ class ItemCodeExport implements FromCollection, WithHeadings, WithMapping, WithS
             'Average Price',
             '',
             'Latest Price',
+            'No Pengajuan',
+            'Tanggal',
+            'Nama',
+            'Supplier',
+            'QTY',
+            'Reason',
+            'Status',
         ];
     }
 
@@ -59,7 +67,23 @@ class ItemCodeExport implements FromCollection, WithHeadings, WithMapping, WithS
             0,
             $currency,
             0,
+            (string) ($item->nomor_pengajuan ?? ''),
+            optional($item->tanggal)->format('d-m-Y') ?: '',
+            (string) (optional($item->creator)->name ?? ''),
+            (string) ($item->supplier ?? ''),
+            $item->qty !== null ? (float) $item->qty : null,
+            (string) ($item->reason_new_price ?? ''),
+            $this->statusLabel($item->status ?? null),
         ];
+    }
+
+    private function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            ItemCode::STATUS_APPROVED_1 => 'Approved by Jessica',
+            ItemCode::STATUS_APPROVED_2 => 'Approved by Cahyo',
+            default => (string) ($status ?? ''),
+        };
     }
 
     public function styles(Worksheet $sheet): array
@@ -81,7 +105,7 @@ class ItemCodeExport implements FromCollection, WithHeadings, WithMapping, WithS
             ],
         ]);
 
-        $sheet->getStyle('B1:I1')->applyFromArray([
+        $sheet->getStyle('B1:P1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => '993300'],
@@ -107,7 +131,7 @@ class ItemCodeExport implements FromCollection, WithHeadings, WithMapping, WithS
                 ],
             ]);
 
-            $sheet->getStyle('B2:I' . $highestRow)->applyFromArray([
+            $sheet->getStyle('B2:P' . $highestRow)->applyFromArray([
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['rgb' => 'FFFFFF'],
@@ -129,9 +153,14 @@ class ItemCodeExport implements FromCollection, WithHeadings, WithMapping, WithS
                 ->getNumberFormat()
                 ->setFormatCode('0.00');
 
+            $sheet->getStyle('N2:N' . $highestRow)
+                ->getNumberFormat()
+                ->setFormatCode('0.00');
+
             $sheet->getStyle('C2:C' . $highestRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle('G2:G' . $highestRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle('I2:I' . $highestRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $sheet->getStyle('N2:N' . $highestRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
         $sheet->getDefaultRowDimension()->setRowHeight(22);
@@ -151,6 +180,13 @@ class ItemCodeExport implements FromCollection, WithHeadings, WithMapping, WithS
             'G' => 14,
             'H' => 8,
             'I' => 12,
+            'J' => 24,
+            'K' => 14,
+            'L' => 24,
+            'M' => 24,
+            'N' => 10,
+            'O' => 32,
+            'P' => 16,
         ];
     }
 }

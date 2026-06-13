@@ -345,6 +345,14 @@
     background-color: var(--om-primary-light) !important;
 }
 
+#modalMaterialsBody tr {
+    cursor: pointer;
+}
+
+#modalMaterialsBody tr.is-selected {
+    background-color: var(--om-primary-light) !important;
+}
+
 /* Zebra striping */
 .om-table tbody tr:nth-child(even) {
     background-color: var(--om-gray-50);
@@ -885,206 +893,345 @@
 @endpush
 
 @section('content')
-@php
-    $title = $isEdit ? 'Edit Outstanding Material' : 'Add Outstanding Material';
-    $action = $isEdit ? route('outstanding-materials.update', $material) : route('outstanding-materials.store');
-@endphp
-
 <main id="main" class="main">
     <div class="om-page-header pagetitle">
-        <h1>{{ $title }}</h1>
+        <h1>Outstanding Material By Invoice</h1>
         <nav>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item">Procurement</li>
                 <li class="breadcrumb-item"><a href="{{ route('outstanding-materials.index') }}">Outstanding Material</a></li>
-                <li class="breadcrumb-item active">{{ $isEdit ? 'Edit' : 'Create' }}</li>
+                <li class="breadcrumb-item active">Show Based on Invoice</li>
             </ol>
         </nav>
     </div>
 
     <section class="section">
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show om-alert" role="alert">
+                <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         @if ($errors->any())
-            <div class="alert alert-danger om-alert">
-                <i class="bi bi-exclamation-triangle me-2"></i>
+            <div class="alert alert-danger alert-dismissible fade show om-alert" role="alert">
                 <ul class="mb-0">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
 
         <div class="card om-card">
             <div class="card-body">
                 <div class="om-card-header">
-                    <h5 class="om-card-title">{{ $title }}</h5>
-                </div>
-
-                <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="om-form">
-                    @csrf
-                    @if ($isEdit)
-                        @method('PUT')
-                    @endif
-
-                    {{-- Section: Supplier & Material --}}
-                    <div class="om-fieldset">
-                        <div class="om-fieldset-title">
-                            <i class="bi bi-building"></i> Supplier & Material
+                    <h5 class="om-card-title">
+                        <i class="bi bi-receipt me-2"></i>Show Based on Invoice
+                    </h5>
+                    <div class="om-toolbar">
+                        <div class="input-group input-group-sm" style="width: 250px;">
+                            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-search"></i></span>
+                            <input type="text" id="invoiceSearch" class="form-control border-start-0 ps-0" placeholder="Search invoice..." style="box-shadow: none;">
                         </div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label for="supplier" class="form-label">Supplier <span class="text-danger">*</span></label>
-                                <input type="text" id="supplier" name="supplier" class="form-control" value="{{ old('supplier', $material->supplier) }}" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="type" class="form-label">TYPE <span class="text-danger">*</span></label>
-                                <input type="text" id="type" name="type" class="form-control" value="{{ old('type', $material->type) }}" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                                <select id="status" name="status" class="form-select" required>
-                                    <option value="">Pilih Status</option>
-                                    @foreach ($statusOptions as $status)
-                                        <option value="{{ $status }}" @selected(old('status', $material->status) === $status)>{{ $status }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Section: Dimensi --}}
-                    <div class="om-fieldset">
-                        <div class="om-fieldset-title">
-                            <i class="bi bi-rulers"></i> Dimensi
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label for="thickness" class="form-label">Thickness</label>
-                                <input type="number" step="0.01" id="thickness" name="thickness" class="form-control" value="{{ old('thickness', $material->thickness) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="width" class="form-label">Width</label>
-                                <input type="number" step="0.01" id="width" name="width" class="form-control" value="{{ old('width', $material->width) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="diameter" class="form-label">Diameter</label>
-                                <input type="number" step="0.01" id="diameter" name="diameter" class="form-control" value="{{ old('diameter', $material->diameter) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="length" class="form-label">Length</label>
-                                <input type="text" id="length" name="length" class="form-control" value="{{ old('length', $material->length) }}" placeholder="Contoh: 1000-2000 atau 1000~2000">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Section: Kuantitas & Invoice --}}
-                    <div class="om-fieldset">
-                        <div class="om-fieldset-title">
-                            <i class="bi bi-box-seam"></i> Kuantitas & Invoice
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label for="qty_pcs" class="form-label">QTY (PCS)</label>
-                                <input type="number" step="0.01" id="qty_pcs" name="qty_pcs" class="form-control" value="{{ old('qty_pcs', $material->qty_pcs) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="est_qty_kg" class="form-label">Est QTY (KG)</label>
-                                <input type="number" step="0.01" id="est_qty_kg" name="est_qty_kg" class="form-control" value="{{ old('est_qty_kg', $material->est_qty_kg) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="number_invoice" class="form-label">Number Invoice</label>
-                                <input type="text" id="number_invoice" name="number_invoice" class="form-control" value="{{ old('number_invoice', $material->number_invoice) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="estimasi_bulan_eta" class="form-label">Estimasi Bulan ETA</label>
-                                <input type="text" id="estimasi_bulan_eta" name="estimasi_bulan_eta" class="form-control" value="{{ old('estimasi_bulan_eta', $material->estimasi_bulan_eta) }}" placeholder="Contoh: May 2026">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Section: Schedule ETA --}}
-                    <div class="om-fieldset">
-                        <div class="om-fieldset-title">
-                            <i class="bi bi-calendar-event"></i> Schedule ETA
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label for="estimasi_eta_port" class="form-label">Estimasi ETA Port</label>
-                                <input type="date" id="estimasi_eta_port" name="estimasi_eta_port" class="form-control" value="{{ old('estimasi_eta_port', $material->estimasi_eta_port) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="estimasi_eta_warehouse" class="form-label">Estimasi ETA Warehouse</label>
-                                <input type="date" id="estimasi_eta_warehouse" name="estimasi_eta_warehouse" class="form-control" value="{{ old('estimasi_eta_warehouse', $material->estimasi_eta_warehouse) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="estimasi_delay_eta_port" class="form-label">Estimasi Delay ETA Port</label>
-                                <input type="date" id="estimasi_delay_eta_port" name="estimasi_delay_eta_port" class="form-control" value="{{ old('estimasi_delay_eta_port', $material->estimasi_delay_eta_port) }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="estimasi_delay_eta_warehouse" class="form-label">Estimasi Delay ETA Warehouse</label>
-                                <input type="date" id="estimasi_delay_eta_warehouse" name="estimasi_delay_eta_warehouse" class="form-control" value="{{ old('estimasi_delay_eta_warehouse', $material->estimasi_delay_eta_warehouse) }}">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Section: Dokumen & Keterangan --}}
-                    <div class="om-fieldset">
-                        <div class="om-fieldset-title">
-                            <i class="bi bi-file-earmark-text"></i> Dokumen & Keterangan
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label for="keterangan" class="form-label">Keterangan</label>
-                                <select id="keterangan" name="keterangan" class="form-select">
-                                    <option value="">Pilih Keterangan</option>
-                                    @foreach ($keteranganOptions as $keterangan)
-                                        <option value="{{ $keterangan }}" @selected(old('keterangan', $material->keterangan) === $keterangan)>{{ $keterangan }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="packing_list" class="form-label">Packing List</label>
-                                <input type="file" id="packing_list" name="packing_list" class="form-control" accept=".pdf,.xls,.xlsx,.doc,.docx,.jpg,.jpeg,.png">
-                                @if ($material->packing_list_path)
-                                    <div class="form-text">
-                                        <i class="bi bi-paperclip me-1"></i>File saat ini:
-                                        @if (str_starts_with($material->packing_list_path, 'outstanding-materials/'))
-                                            <a href="{{ route('outstanding-materials.attachment', ['outstandingMaterial' => $material, 'type' => 'packing-list']) }}" target="_blank" class="om-link">{{ basename($material->packing_list_path) }}</a>
-                                        @else
-                                            {{ $material->packing_list_path }}
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="col-md-4">
-                                <label for="mtc" class="form-label">MTC</label>
-                                <input type="file" id="mtc" name="mtc" class="form-control" accept=".pdf,.xls,.xlsx,.doc,.docx,.jpg,.jpeg,.png">
-                                @if ($material->mtc_path)
-                                    <div class="form-text">
-                                        <i class="bi bi-paperclip me-1"></i>File saat ini:
-                                        @if (str_starts_with($material->mtc_path, 'outstanding-materials/'))
-                                            <a href="{{ route('outstanding-materials.attachment', ['outstandingMaterial' => $material, 'type' => 'mtc']) }}" target="_blank" class="om-link">{{ basename($material->mtc_path) }}</a>
-                                        @else
-                                            {{ $material->mtc_path }}
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Form Footer --}}
-                    <div class="om-form-footer">
                         <a href="{{ route('outstanding-materials.index') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-1"></i>Back
                         </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg me-1"></i>Save
+                    </div>
+                </div>
+
+                <div class="om-table-wrap om-datatable-wrapper">
+                    <table id="outstandingInvoiceTable" class="om-table" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Number Invoice</th>
+                                <th>Supplier Sample</th>
+                                <th>Total Row</th>
+                                <th>Status</th>
+                                <th>Keterangan</th>
+                                <th>Latest ETA Warehouse</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- Invoice Update Modal -->
+        <div class="modal fade om-modal" id="invoiceUpdateModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form id="invoiceUpdateForm" class="modal-content">
+                    @csrf
+                    <input type="hidden" id="modalInvoiceNumber" name="invoice" value="">
+                    
+                    <div class="modal-header">
+                        <h5 class="modal-title">Update Materials untuk Invoice: <span id="modalInvoiceTitle" class="text-primary"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <!-- Loading State -->
+                        <div id="modalLoading" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-2 small">Memuat material...</p>
+                        </div>
+
+                        <!-- Materials Table -->
+                        <div id="modalMaterialsContainer" style="display: none;">
+                            <div class="table-responsive mb-3" style="max-height: 400px;">
+                                <table class="table table-sm table-bordered om-table">
+                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                                        <tr>
+                                            <th style="width: 40px; text-align: center;">
+                                                <input class="form-check-input" type="checkbox" id="checkAllMaterials">
+                                            </th>
+                                            <th>Supplier</th>
+                                            <th>Type</th>
+                                            <th>Dimensi</th>
+                                            <th>QTY</th>
+                                            <th>Status Saat Ini</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="modalMaterialsBody">
+                                        <!-- Rows will be populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="row g-3 bg-light p-3 rounded border">
+                                <div class="col-md-6">
+                                    <label for="modalStatus" class="form-label small fw-bold">Update Status Ke</label>
+                                    <select class="form-select form-select-sm" id="modalStatus" name="status">
+                                        <option value="">-- Biarkan (Tidak Diubah) --</option>
+                                        @foreach ($statusOptions ?? [] as $opt)
+                                            <option value="{{ $opt }}">{{ $opt }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="modalKeterangan" class="form-label small fw-bold">Update Keterangan Ke</label>
+                                    <select class="form-select form-select-sm" id="modalKeterangan" name="keterangan">
+                                        <option value="">-- Biarkan (Tidak Diubah) --</option>
+                                        @foreach ($keteranganOptions ?? [] as $opt)
+                                            <option value="{{ $opt }}">{{ $opt }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary" id="btnSaveInvoiceUpdate" disabled>
+                            <i class="bi bi-save me-1"></i> Update Selected Materials
                         </button>
                     </div>
                 </form>
             </div>
         </div>
+
     </section>
 </main>
 @endsection
+
+@push('scripts')
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.DataTable === 'undefined') {
+            console.error('DataTables plugin is not loaded.');
+            return;
+        }
+
+        const $ = window.jQuery;
+
+        const table = $('#outstandingInvoiceTable').DataTable({
+            processing: true,
+            serverSide: true,
+            searchDelay: 500,
+            scrollX: true,
+            ajax: {
+                url: '{{ route('outstanding-materials.invoice.data') }}',
+                type: 'GET',
+            },
+            columns: [
+                { data: 'number_invoice', name: 'number_invoice' },
+                { data: 'supplier', name: 'supplier_sample' },
+                { data: 'material_count', name: 'material_count', className: 'text-end' },
+                { data: 'status', name: 'status' },
+                { data: 'keterangan', name: 'keterangan' },
+                { data: 'latest_eta_warehouse', name: 'latest_eta_warehouse' },
+                { data: 'actions', orderable: false, searchable: false, className: 'text-center' },
+            ],
+            order: [[0, 'asc']],
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            language: {
+                processing: '<div class="d-flex align-items-center gap-2"><span class="spinner-border spinner-border-sm"></span> Memuat data...</div>',
+                lengthMenu: 'Tampilkan _MENU_ data per halaman',
+                zeroRecords: '<div class="om-empty-state"><i class="bi bi-inbox"></i>Data tidak ditemukan</div>',
+                info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ invoice',
+                infoEmpty: 'Tidak ada invoice yang tersedia',
+                infoFiltered: '(difilter dari _MAX_ total invoice)',
+                paginate: {
+                    first: '<i class="bi bi-chevron-double-left"></i>',
+                    last: '<i class="bi bi-chevron-double-right"></i>',
+                    next: '<i class="bi bi-chevron-right"></i>',
+                    previous: '<i class="bi bi-chevron-left"></i>',
+                },
+            },
+        });
+
+        $('#invoiceSearch').on('keyup', function () {
+            table.search(this.value).draw();
+        });
+
+        // Open Modal and Fetch Materials
+        const invoiceModal = new bootstrap.Modal(document.getElementById('invoiceUpdateModal'));
+
+        $(document).on('click', '.js-open-invoice-modal', function () {
+            const invoice = $(this).data('invoice');
+            
+            $('#modalInvoiceTitle').text(invoice);
+            $('#modalInvoiceNumber').val(invoice);
+            $('#modalStatus').val('');
+            $('#modalKeterangan').val('');
+            $('#checkAllMaterials').prop('checked', false);
+            $('#btnSaveInvoiceUpdate').prop('disabled', true);
+            
+            $('#modalLoading').show();
+            $('#modalMaterialsContainer').hide();
+            $('#modalMaterialsBody').empty();
+            
+            invoiceModal.show();
+
+            $.ajax({
+                url: '{{ route('outstanding-materials.invoice.materials') }}',
+                type: 'GET',
+                data: { invoice: invoice },
+                success: function(response) {
+                    let html = '';
+                    if (response.length === 0) {
+                        html = '<tr><td colspan="6" class="text-center text-muted">Tidak ada material ditemukan untuk invoice ini.</td></tr>';
+                    } else {
+                        response.forEach(function(mat) {
+                            const dim = [mat.thickness, mat.width, mat.length].filter(Boolean).join(' x ');
+                            const qty = mat.qty_pcs ? mat.qty_pcs + ' pcs' : (mat.est_qty_kg ? mat.est_qty_kg + ' kg' : '-');
+                            
+                            html += `
+                                <tr class="js-material-row">
+                                    <td class="text-center">
+                                        <input class="form-check-input mat-checkbox" type="checkbox" name="material_ids[]" value="${mat.id}">
+                                    </td>
+                                    <td>${mat.supplier || '-'}</td>
+                                    <td>${mat.type || '-'}</td>
+                                    <td>${dim || '-'}</td>
+                                    <td>${qty}</td>
+                                    <td>
+                                        <div class="d-flex flex-column gap-1">
+                                            <span class="badge bg-secondary">${mat.status || '-'}</span>
+                                            ${mat.keterangan ? `<span class="badge bg-light text-dark border">${mat.keterangan}</span>` : ''}
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    $('#modalMaterialsBody').html(html);
+                    $('#modalLoading').hide();
+                    $('#modalMaterialsContainer').show();
+                },
+                error: function() {
+                    $('#modalLoading').html('<div class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i> Gagal memuat data material.</div>');
+                }
+            });
+        });
+
+        // Handle Check All
+        $('#checkAllMaterials').on('change', function() {
+            const checked = $(this).prop('checked');
+            $('.mat-checkbox')
+                .prop('checked', checked)
+                .closest('tr')
+                .toggleClass('is-selected', checked);
+            toggleSaveButton();
+        });
+
+        // Toggle checkbox when clicking the material row.
+        $(document).on('click', '#modalMaterialsBody tr.js-material-row', function(event) {
+            if ($(event.target).closest('input, button, a, label, select, textarea').length) {
+                return;
+            }
+
+            const checkbox = $(this).find('.mat-checkbox');
+            checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+        });
+
+        // Handle Individual Checkbox
+        $(document).on('change', '.mat-checkbox', function() {
+            $(this).closest('tr').toggleClass('is-selected', $(this).prop('checked'));
+
+            const totalCheckboxes = $('.mat-checkbox').length;
+            const allChecked = totalCheckboxes > 0 && totalCheckboxes === $('.mat-checkbox:checked').length;
+            $('#checkAllMaterials').prop('checked', allChecked);
+            toggleSaveButton();
+        });
+
+        function toggleSaveButton() {
+            const checkedCount = $('.mat-checkbox:checked').length;
+            $('#btnSaveInvoiceUpdate').prop('disabled', checkedCount === 0);
+            $('#btnSaveInvoiceUpdate').html(`<i class="bi bi-save me-1"></i> Update Selected (${checkedCount})`);
+        }
+
+        // Handle Form Submission
+        $('#invoiceUpdateForm').on('submit', function (e) {
+            e.preventDefault();
+            
+            const form = $(this);
+            const submitBtn = $('#btnSaveInvoiceUpdate');
+            
+            if ($('.mat-checkbox:checked').length === 0) {
+                Swal.fire('Peringatan', 'Pilih minimal 1 material yang akan diupdate.', 'warning');
+                return;
+            }
+
+            const status = $('#modalStatus').val();
+            const ket = $('#modalKeterangan').val();
+            
+            if (!status && !ket) {
+                Swal.fire('Peringatan', 'Pilih minimal salah satu (Status atau Keterangan) untuk diupdate.', 'warning');
+                return;
+            }
+
+            submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
+
+            $.ajax({
+                url: '{{ route('outstanding-materials.invoice.update') }}',
+                type: 'POST',
+                data: form.serialize(),
+                success: function(response) {
+                    invoiceModal.hide();
+                    table.ajax.reload(null, false); // reload datatable without resetting pagination
+                    Swal.fire('Berhasil!', response.message, 'success');
+                },
+                error: function(xhr) {
+                    submitBtn.prop('disabled', false).html('<i class="bi bi-save me-1"></i> Update Selected');
+                    let msg = 'Terjadi kesalahan sistem.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    Swal.fire('Gagal!', msg, 'error');
+                }
+            });
+        });
+    });
+</script>
+@endpush

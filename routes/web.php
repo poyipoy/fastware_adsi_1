@@ -708,7 +708,13 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/export', [OutstandingMaterialController::class, 'export'])->name('export');
         Route::post('/import', [OutstandingMaterialController::class, 'import'])->name('import');
         Route::get('/template', [OutstandingMaterialController::class, 'template'])->name('template');
-        Route::get('/{outstandingMaterial}/attachment', [OutstandingMaterialController::class, 'attachment'])->name('attachment');
+        Route::get('/show-based-on-invoice', [OutstandingMaterialController::class, 'invoiceIndex'])->name('invoice.index');
+        Route::get('/show-based-on-invoice/data', [OutstandingMaterialController::class, 'invoiceData'])->name('invoice.data');
+        Route::get('/show-based-on-invoice/materials', [OutstandingMaterialController::class, 'invoiceMaterials'])->name('invoice.materials');
+        Route::post('/show-based-on-invoice/update', [OutstandingMaterialController::class, 'updateInvoiceFields'])->name('invoice.update');
+        Route::get('/{outstandingMaterial}/attachment/{type?}', [OutstandingMaterialController::class, 'attachment'])
+            ->whereIn('type', ['attachment', 'packing-list', 'mtc'])
+            ->name('attachment');
         Route::get('/{outstandingMaterial}', [OutstandingMaterialController::class, 'show'])->name('show');
         Route::get('/{outstandingMaterial}/edit', [OutstandingMaterialController::class, 'edit'])->name('edit');
         Route::put('/{outstandingMaterial}', [OutstandingMaterialController::class, 'update'])->name('update');

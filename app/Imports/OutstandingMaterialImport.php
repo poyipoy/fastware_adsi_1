@@ -60,7 +60,6 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
                 'keterangan' => $this->normalizeOption($this->valueAt($row, 14), OutstandingMaterial::keteranganOptions(), true),
                 'estimasi_delay_eta_port' => $this->normalizeDateText($this->valueAt($row, 15), $rowNumber, 'Estimasi Delay ETA Port'),
                 'estimasi_delay_eta_warehouse' => $this->normalizeDateText($this->valueAt($row, 16), $rowNumber, 'Estimasi Delay ETA Warehouse'),
-                'attachment_path' => $this->normalizeString($this->valueAt($row, 17)),
             ];
 
             $validator = Validator::make($payload, [
@@ -80,7 +79,6 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
                 'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
                 'estimasi_delay_eta_port' => 'nullable|string|max:100',
                 'estimasi_delay_eta_warehouse' => 'nullable|string|max:100',
-                'attachment_path' => 'nullable|string|max:255',
             ], [], $this->validationAttributes());
 
             if ($validator->fails()) {
@@ -118,7 +116,7 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
 
     private function isEmptyRow(array $row): bool
     {
-        for ($index = 1; $index <= 17; $index++) {
+        for ($index = 1; $index <= 19; $index++) {
             if ($this->normalizeString($this->valueAt($row, $index)) !== null) {
                 return false;
             }
@@ -148,7 +146,6 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
             14 => ['keterangan'],
             15 => ['estimasidelayetaport'],
             16 => ['estimasidelayetawarehouse'],
-            17 => ['dokumenpackinglistdanmtc', 'attachmentpath'],
         ];
 
         foreach ($headerMap as $index => $expectedValues) {
@@ -312,7 +309,6 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
             'keterangan' => 'Keterangan',
             'estimasi_delay_eta_port' => 'Estimasi Delay ETA Port',
             'estimasi_delay_eta_warehouse' => 'Estimasi Delay ETA Warehouse',
-            'attachment_path' => 'DOKUMEN PACKING LIST DAN MTC',
         ];
     }
 }

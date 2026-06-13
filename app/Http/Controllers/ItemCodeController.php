@@ -6,6 +6,7 @@ use App\Exports\ItemCodeExport;
 use App\Exports\ItemCodeImportTemplateExport;
 use App\Imports\ItemCodeImport;
 use App\Models\ItemCode;
+use App\Models\User;
 use App\Services\ItemCodeHistoryService;
 use App\Enums\ProcurementMenuAccessGroup;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,6 +33,7 @@ class ItemCodeController extends Controller
         $activeTab = $this->resolveActiveTab($request->query('tab'));
         $perPage = $this->resolvePerPage($request->query('per_page'));
         $filters = $this->resolveFilters($request);
+        $sorting = $this->resolveSorting($request);
         $statsByType = $this->buildStatsByType();
 
         $itemsQuery = ItemCode::with(['creator', 'approver', 'finisher'])
@@ -41,9 +43,10 @@ class ItemCodeController extends Controller
             ->where('type', $activeTab);
 
         $this->applyFilters($itemsQuery, $filters);
+        $itemsTotal = (clone $itemsQuery)->count();
+        $this->applySorting($itemsQuery, $sorting);
 
         $items = $itemsQuery
-            ->orderByDesc('id')
             ->simplePaginate($perPage)
             ->appends($request->query());
 
@@ -53,6 +56,9 @@ class ItemCodeController extends Controller
             'activeTab' => $activeTab,
             'perPage' => $perPage,
             'filters' => $filters,
+            'sorting' => $sorting,
+            'itemsTotal' => $itemsTotal,
+            'currencyOptions' => ItemCode::currencyList(),
             'statsByType' => $statsByType,
         ]);
     }
@@ -180,11 +186,21 @@ class ItemCodeController extends Controller
 
         $validated = $request->validate([
             'tab' => 'required|in:' . implode(',', ItemCode::typeList()),
+            'selected_ids' => 'nullable|array',
+            'selected_ids.*' => 'integer',
         ]);
 
         $tab = $this->resolveActiveTab($validated['tab']);
+        $selectedIds = array_values(array_unique(array_map('intval', $validated['selected_ids'] ?? [])));
+
+        if ($selectedIds === []) {
+            return redirect()
+                ->route('item-code.form', ['tab' => $tab])
+                ->with('warning', 'Pilih minimal 1 data Draft untuk disubmit.');
+        }
 
         $draftItems = ItemCode::query()
+            ->whereIn('id', $selectedIds)
             ->where('type', $tab)
             ->where('status', ItemCode::STATUS_DRAFT)
             ->orderBy('id')
@@ -193,7 +209,7 @@ class ItemCodeController extends Controller
         if ($draftItems->isEmpty()) {
             return redirect()
                 ->route('item-code.form', ['tab' => $tab])
-                ->with('warning', 'Tidak ada data Draft untuk disubmit pada tab ini.');
+                ->with('warning', 'Pilih minimal 1 data Draft yang valid untuk disubmit.');
         }
 
         DB::transaction(function () use ($draftItems) {
@@ -370,6 +386,7 @@ class ItemCodeController extends Controller
 
         $tab = $this->resolveActiveTab($request->query('tab'));
         $filters = $this->resolveFilters($request);
+        $sorting = $this->resolveSorting($request);
 
         $itemsQuery = ItemCode::with(['creator', 'approver', 'finisher'])
             ->withCount([
@@ -378,9 +395,9 @@ class ItemCodeController extends Controller
             ->where('type', $tab);
 
         $this->applyFilters($itemsQuery, $filters);
+        $this->applySorting($itemsQuery, $sorting);
 
         $items = $itemsQuery
-            ->orderByDesc('id')
             ->get();
 
         $fileName = sprintf(
@@ -471,7 +488,7 @@ class ItemCodeController extends Controller
             'description' => 'required|string|max:255',
             'qty' => 'required|integer|gt:0',
             'unit' => 'required|string|max:50',
-            'currency' => 'required|in:IDR,CNY,USD',
+            'currency' => 'required|' . ItemCode::currencyValidationRule(),
             'tanggal' => 'required|date',
             'tanggal_lama' => 'nullable|date|required_if:type,update_price',
             'price_per_pcs' => 'required|integer|min:0',
@@ -560,6 +577,64 @@ class ItemCodeController extends Controller
         return in_array($value, $allowed, true) ? $value : 20;
     }
 
+    private function resolveSorting(Request $request): array
+    {
+        $sort = $this->normalizeSingleSortingInput($request->query('sort'));
+        $direction = $this->normalizeSingleSortingInput($request->query('direction'));
+        $sortableColumns = $this->sortableColumns();
+
+        if ($sort === '' || !array_key_exists($sort, $sortableColumns)) {
+            return [
+                'sort' => null,
+                'direction' => 'desc',
+                'column' => 'id',
+            ];
+        }
+
+        if (!in_array($direction, ['asc', 'desc'], true)) {
+            $direction = 'asc';
+        }
+
+        return [
+            'sort' => $sort,
+            'direction' => $direction,
+            'column' => $sortableColumns[$sort],
+        ];
+    }
+
+    private function normalizeSingleSortingInput(mixed $value): string
+    {
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+
+        return strtolower(trim((string) $value));
+    }
+
+    private function sortableColumns(): array
+    {
+        return [
+            'no' => 'id',
+            'nomor_pengajuan' => 'nomor_pengajuan',
+            'tanggal' => 'tanggal',
+            'nama' => 'creator_name',
+            'material' => 'category',
+            'category' => 'category',
+            'supplier' => 'supplier',
+            'item_code' => 'product_code',
+            'item_name' => 'description',
+            'qty' => 'qty',
+            'unit' => 'unit',
+            'currency' => 'currency',
+            'price' => 'price_per_pcs',
+            'current_price' => 'price_per_pcs',
+            'new_price' => 'harga_baru',
+            'effective_date_current' => 'tanggal_lama',
+            'effective_date_new' => 'tanggal_harga_baru',
+            'reason' => 'reason_new_price',
+        ];
+    }
+
     private function applyFilters(Builder $query, array $filters): void
     {
         if (!empty($filters['status'])) {
@@ -590,6 +665,33 @@ class ItemCodeController extends Controller
                     });
             });
         }
+    }
+
+    private function applySorting(Builder $query, array $sorting): void
+    {
+        $sort = $sorting['sort'] ?? null;
+        $column = $sorting['column'] ?? 'id';
+        $direction = $sorting['direction'] ?? 'desc';
+
+        if ($sort === null) {
+            $query->orderByDesc('id');
+            return;
+        }
+
+        if ($column === 'creator_name') {
+            $query->orderBy(
+                User::query()
+                    ->select('name')
+                    ->whereColumn('users.id', 'item_codes.created_by')
+                    ->limit(1),
+                $direction
+            )->orderByDesc('id');
+
+            return;
+        }
+
+        $query->orderBy($column, $direction)
+            ->orderByDesc('id');
     }
 
     private function buildStatsByType(): array

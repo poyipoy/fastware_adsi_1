@@ -11,7 +11,22 @@ class TcJobPosition extends Model
 
     protected $table = 'tc_job_positions';
 
-    protected $fillable = ['id_user', 'id_role', 'job_position', 'status'];
+    protected $fillable = [
+        'id_user',
+        'id_role',
+        'job_position',
+        'status',
+        'department',
+        'section',
+        'department_head_name',
+        'section_head_name',
+    ];
+
+    // Added department/section mapping fields
+    // - department: top-level department name (e.g., Productions)
+    // - section: section name within department (e.g., Production Cutting)
+    // - department_head_name: name of departement head
+    // - section_head_name: name of section head
 
     public function user()
     {
