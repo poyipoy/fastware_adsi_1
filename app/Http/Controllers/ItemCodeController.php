@@ -38,7 +38,7 @@ class ItemCodeController extends Controller
 
         $itemsQuery = ItemCode::with(['creator', 'approver', 'finisher'])
             ->withCount([
-                'histories as rejected_histories_count' => fn (Builder $builder) => $builder->where('action', ItemCodeHistoryService::ACTION_REJECTED),
+                'histories as rejected_histories_count' => fn(Builder $builder) => $builder->where('action', ItemCodeHistoryService::ACTION_REJECTED),
             ])
             ->where('type', $activeTab);
 
@@ -162,7 +162,7 @@ class ItemCodeController extends Controller
         $statusFrom = $itemCode->status;
         DB::transaction(function () use ($itemCode, $statusFrom): void {
             $itemCode->update($this->buildSubmissionPayload($itemCode));
-            
+
             $itemCode->refresh();
 
             $this->historyService()->record(
@@ -309,7 +309,7 @@ class ItemCodeController extends Controller
                 'line' => $exception->getLine(),
                 'trace' => $exception->getTraceAsString(),
             ]);
-            
+
             return redirect()
                 ->route('item-code.form', ['tab' => $tab])
                 ->withErrors([
@@ -390,12 +390,16 @@ class ItemCodeController extends Controller
 
         $itemsQuery = ItemCode::with(['creator', 'approver', 'finisher'])
             ->withCount([
-                'histories as rejected_histories_count' => fn (Builder $builder) => $builder->where('action', ItemCodeHistoryService::ACTION_REJECTED),
+                'histories as rejected_histories_count' => fn(Builder $builder) => $builder->where('action', ItemCodeHistoryService::ACTION_REJECTED),
             ])
             ->where('type', $tab);
 
         $this->applyFilters($itemsQuery, $filters);
         $this->applySorting($itemsQuery, $sorting);
+
+        if ($request->has('selected_ids') && is_array($request->input('selected_ids'))) {
+            $itemsQuery->whereIn('id', $request->input('selected_ids'));
+        }
 
         $items = $itemsQuery
             ->get();
@@ -491,9 +495,9 @@ class ItemCodeController extends Controller
             'currency' => 'required|' . ItemCode::currencyValidationRule(),
             'tanggal' => 'required|date',
             'tanggal_lama' => 'nullable|date|required_if:type,update_price',
-            'price_per_pcs' => 'required|integer|min:0',
+            'price_per_pcs' => 'required|numeric|min:0',
             'tanggal_harga_baru' => 'nullable|date|required_if:type,update_price',
-            'harga_baru' => 'required_if:type,update_price|integer|min:0',
+            'harga_baru' => 'required_if:type,update_price|numeric|min:0',
             'reason_new_price' => 'nullable|string|max:2000|required_if:type,update_price',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png,xlsx|max:5120',
         ]);
@@ -512,9 +516,9 @@ class ItemCodeController extends Controller
             $existingItem?->id
         );
 
-        $data['price_per_pcs'] = (int) $data['price_per_pcs'];
+        $data['price_per_pcs'] = (float) $data['price_per_pcs'];
         if (array_key_exists('harga_baru', $data) && $data['harga_baru'] !== null) {
-            $data['harga_baru'] = (int) $data['harga_baru'];
+            $data['harga_baru'] = (float) $data['harga_baru'];
         }
 
         $currentAttachment = $existingItem?->attachment;
@@ -929,12 +933,14 @@ class ItemCodeController extends Controller
             return [];
         }
 
-        return [[
-            'field' => 'status',
-            'label' => 'Status',
-            'old' => $this->formatHistoryFieldValue('status', $statusFrom),
-            'new' => $this->formatHistoryFieldValue('status', $statusTo),
-        ]];
+        return [
+            [
+                'field' => 'status',
+                'label' => 'Status',
+                'old' => $this->formatHistoryFieldValue('status', $statusFrom),
+                'new' => $this->formatHistoryFieldValue('status', $statusTo),
+            ]
+        ];
     }
 
     private function buildHistoryDescription(string $summary, array $changeSet): string
@@ -1043,9 +1049,7 @@ class ItemCodeController extends Controller
         }
 
         if (in_array($field, $numericFields, true) && is_numeric($value)) {
-            $decimalPlaces = in_array($field, ['price_per_pcs', 'harga_baru'], true) ? 0 : 2;
-
-            return number_format((float) $value, $decimalPlaces, '.', '');
+            return number_format((float) $value, 2, '.', '');
         }
 
         return $this->sanitizeHistoryValue($value);

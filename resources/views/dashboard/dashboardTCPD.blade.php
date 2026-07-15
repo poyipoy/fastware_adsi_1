@@ -68,8 +68,12 @@
             font-size: 0.875rem;
         }
 
+        .dashboard-tcpd .company-chart {
+            height: 400px;
+        }
+
         .dashboard-tcpd .department-chart {
-            height: 340px;
+            height: 400px;
         }
 
         .dashboard-tcpd .department-grid__item--span-2 {
@@ -83,6 +87,111 @@
             .dashboard-tcpd .department-grid {
                 grid-template-columns: 1fr;
             }
+        }
+
+        /* Scorecards styling */
+        .scorecard {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .scorecard:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+
+        .scorecard-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .scorecard-content {
+            flex: 1;
+        }
+
+        .scorecard-title {
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .scorecard-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0;
+            line-height: 1.2;
+        }
+
+        .scorecard-subtitle {
+            font-size: 0.75rem;
+            color: #adb5bd;
+            margin-top: 0.25rem;
+        }
+
+        /* Modern Table styling */
+        .table-custom {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+        
+        .table-custom thead th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e9ecef;
+            padding: 1rem;
+        }
+
+        .table-custom tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f8f9fa;
+            color: #495057;
+        }
+
+        .table-custom tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+        
+        /* Global Filter Bar */
+        .global-filter-bar {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
     </style>
 
@@ -172,57 +281,265 @@
                     ];
 
                 @endphp
-                <div class="row g-3">
+                <!-- Global Filter Bar -->
+                <div class="global-filter-bar flex-column align-items-stretch">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-filter-square text-primary fs-5"></i>
+                            <h6 class="mb-0 fw-bold">Filter Dashboard</h6>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button id="btn-export-all" type="button" class="btn btn-sm btn-success rounded-pill px-3" title="Export semua data ke Excel (4 Sheet: Departemen, Area Dev, Top Jobs, Crit Focus)">
+                                <i class="bi bi-file-earmark-excel me-1"></i> Export Semua (4 Sheet)
+                            </button>
+                            <button id="btn-refresh-cache" type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" title="Hapus cache dan muat ulang data terbaru">
+                                <i class="bi bi-arrow-repeat me-1"></i> Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <!-- Company Filter Section -->
+                        <div class="col-lg-5">
+                            <div class="p-3 bg-light rounded-3 h-100">
+                                <label class="form-label small fw-bold text-muted mb-2">Periode TCPD (Company Level)</label>
+                                <form id="company-filter-form" class="d-flex align-items-center gap-2 flex-wrap">
+                                    <select id="company-year-from" name="company_year_from" class="form-select form-select-sm border-primary shadow-sm" style="width: auto;">
+                                        @foreach ($yearOptions as $year)
+                                            <option value="{{ $year }}" {{ (string) $year === (string) $companyYearFrom ? 'selected' : '' }}>{{ $year }}</option>
+                                        @endforeach
+                                    </select>
+                                    <span class="small text-muted fw-semibold">-</span>
+                                    <select id="company-year-to" name="company_year_to" class="form-select form-select-sm border-primary shadow-sm" style="width: auto;">
+                                        @foreach ($yearOptions as $year)
+                                            <option value="{{ $year }}" {{ (string) $year === (string) $companyYearTo ? 'selected' : '' }}>{{ $year }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="ms-auto d-flex gap-2">
+                                        <button type="button" id="company-filter-apply" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">Terapkan</button>
+                                        <button type="button" id="company-filter-reset" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Reset</button>
+                                        <button type="button" id="btn-export-company" class="btn btn-sm btn-outline-success rounded-pill px-3" title="Export data Company & Department ke Excel">
+                                            <i class="bi bi-file-earmark-excel me-1"></i> Export
+                                        </button>
+                                    </div>
+                                </form>
+
+                            </div>
+                        </div>
+
+                        <!-- Job Position Filter Section -->
+                        <div class="col-lg-7">
+                            <div class="p-3 bg-light rounded-3 h-100">
+                                <label class="form-label small fw-bold text-muted mb-2">Area Development (Job Position Level)</label>
+                                @if ($jobDepartmentOptions->isNotEmpty())
+                                    <form id="job-filter-form" class="d-flex align-items-center gap-2 flex-wrap">
+                                        <select id="job-department" name="department" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                                            @foreach ($jobDepartmentOptions as $departmentOption)
+                                                <option value="{{ $departmentOption['department'] }}" {{ $departmentOption['department'] === $selectedDepartment ? 'selected' : '' }}>
+                                                    {{ $departmentOption['department'] }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <select id="job_position_id" name="job_position_id" class="form-select form-select-sm" style="width: auto; min-width: 150px;">
+                                            @forelse ($jobPositions as $position)
+                                                <option value="{{ $position->id }}" {{ (int) $position->id === (int) $selectedJobPositionId ? 'selected' : '' }}>
+                                                    {{ $position->job_position }}
+                                                </option>
+                                            @empty
+                                                <option value="" disabled selected>Job position kosong</option>
+                                            @endforelse
+                                        </select>
+                                        <input type="date" id="job-date-from" class="form-control form-control-sm" value="{{ $jobDateFrom }}" style="width: auto;">
+                                        <span class="small text-muted fw-semibold">-</span>
+                                        <input type="date" id="job-date-to" class="form-control form-control-sm" value="{{ $jobDateTo }}" style="width: auto;">
+                                        <div class="ms-auto d-flex gap-2">
+                                            <button type="button" id="job-filter-apply" class="btn btn-sm btn-outline-primary rounded-pill px-3">Terapkan</button>
+                                            <button type="button" id="job-filter-reset" class="btn btn-sm btn-link text-decoration-none">Reset</button>
+                                        </div>
+                                    </form>
+                                @else
+                                    <div class="small text-muted">Data job position tidak tersedia.</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scorecards Row -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="scorecard">
+                            <div class="scorecard-icon bg-primary text-white bg-opacity-75">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </div>
+                            <div class="scorecard-content">
+                                <div class="scorecard-title">Rata-rata Perusahaan</div>
+                                <div class="scorecard-value fs-4" id="scorecard-average">-</div>
+                                <div class="scorecard-subtitle">Keseluruhan</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="scorecard">
+                            <div class="scorecard-icon bg-info text-white bg-opacity-75">
+                                <i class="bi bi-diagram-3"></i>
+                            </div>
+                            <div class="scorecard-content">
+                                <div class="scorecard-title">Dept. Dievaluasi</div>
+                                <div class="scorecard-value fs-4" id="scorecard-dept-count">-</div>
+                                <div class="scorecard-subtitle">Memiliki Data</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="scorecard">
+                            <div class="scorecard-icon bg-success text-white bg-opacity-75">
+                                <i class="bi bi-trophy"></i>
+                            </div>
+                            <div class="scorecard-content">
+                                <div class="scorecard-title">Dept. Tertinggi</div>
+                                <div class="scorecard-value fs-5" id="scorecard-top-dept">-</div>
+                                <div class="scorecard-subtitle" id="scorecard-top-val">Performance</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="scorecard">
+                            <div class="scorecard-icon bg-warning text-dark bg-opacity-75">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </div>
+                            <div class="scorecard-content">
+                                <div class="scorecard-title">Perlu Perhatian</div>
+                                <div class="scorecard-value fs-5" id="scorecard-lowest-dept">-</div>
+                                <div class="scorecard-subtitle" id="scorecard-lowest-val">Dept. Terendah</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Smart Insights Row -->
+                <div class="row g-3 mb-4" id="smart-insights-row" style="display: none;">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <h6 class="text-success fw-bold text-uppercase mb-0"><i class="bi bi-award-fill me-2"></i>Top 5 Job Positions</h6>
+                                    <button type="button" id="btn-export-top-jobs" class="btn btn-sm btn-outline-success rounded-pill px-2" title="Export Top Jobs ke Excel" style="font-size: 0.75rem;">
+                                        <i class="bi bi-file-earmark-excel me-1"></i> Export
+                                    </button>
+                                </div>
+                                <p class="small text-success text-opacity-75 mb-3" style="font-size: 0.8rem;">Job position dengan pencapaian tertinggi. <i class="bi bi-hand-index-thumb"></i> Klik untuk melihat detail karyawan.</p>
+                                <div id="insight-top-jobs" class="d-flex flex-column gap-2">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <h6 class="text-danger fw-bold text-uppercase mb-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>Critical Focus Area</h6>
+                                    <button type="button" id="btn-export-critical-focus" class="btn btn-sm btn-outline-danger rounded-pill px-2" title="Export Critical Focus Area ke Excel" style="font-size: 0.75rem;">
+                                        <i class="bi bi-file-earmark-excel me-1"></i> Export
+                                    </button>
+                                </div>
+                                <p class="small text-danger text-opacity-75 mb-3" style="font-size: 0.8rem;">Kompetensi dengan defisit terbanyak (min. 5 karyawan defisit). <i class="bi bi-hand-index-thumb"></i> Klik untuk melihat detail karyawan.</p>
+                                <div id="insight-critical-focus" class="d-flex flex-column gap-2">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Critical Focus Employee Detail -->
+                <div class="modal fade" id="criticalFocusModal" tabindex="-1" aria-labelledby="criticalFocusModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title fw-bold" id="criticalFocusModalLabel">
+                                    <i class="bi bi-people-fill me-2"></i><span id="cfm-title">Detail Karyawan</span>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="cfm-badge-row" class="d-flex gap-2 mb-3 flex-wrap"></div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-sm align-middle">
+                                        <thead class="table-danger">
+                                            <tr>
+                                                <th style="width:40px">No.</th>
+                                                <th>Nama Karyawan</th>
+                                                <th>Job Position</th>
+                                                <th style="width:110px">Nilai Aktual</th>
+                                                <th style="width:110px">Standar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cfm-tbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Top Jobs Employee Detail -->
+                <div class="modal fade" id="topJobsModal" tabindex="-1" aria-labelledby="topJobsModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title fw-bold" id="topJobsModalLabel">
+                                    <i class="bi bi-people-fill me-2"></i><span id="tjm-title">Detail Karyawan</span>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="tjm-badge-row" class="d-flex gap-2 mb-3 flex-wrap"></div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-sm align-middle">
+                                        <thead class="table-success text-dark">
+                                            <tr>
+                                                <th style="width:40px">No.</th>
+                                                <th>Nama Karyawan</th>
+                                                <th style="width:140px; text-align:center;">Technical</th>
+                                                <th style="width:140px; text-align:center;">Soft Skill</th>
+                                                <th style="width:140px; text-align:center;">Additional</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tjm-tbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
                     <div class="col-12">
                         <div class="card dashboard-card level-1 h-100">
                             <div class="card-body">
                                 <div class="d-flex flex-column gap-3">
                                     <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
                                         <div>
-                                            <h5 class="card-title mb-2">COMPANY</h5>
-                                            <p class="text-muted mb-0 small">   
-                                            </p>
+                                            <h5 class="card-title mb-2"><i class="bi bi-bar-chart-fill text-primary me-2"></i>COMPANY PERFORMANCE</h5>
+                                            <p class="text-muted mb-0 small">Rata-rata performa kompetensi untuk seluruh perusahaan</p>
                                         </div>
-                                        <form id="company-filter-form" class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                                            <div class="d-flex align-items-center gap-1">
-                                                <span class="year-filter-label mb-0">Year</span>
-                                                <select
-                                                    id="company-year-from"
-                                                    name="company_year_from"
-                                                    class="form-select form-select-sm year-filter-select"
-                                                >
-                                                    <option value="">All</option>
-                                                    @foreach ($yearOptions as $year)
-                                                        <option value="{{ $year }}" {{ (string) $year === (string) $companyYearFrom ? 'selected' : '' }}>
-                                                            {{ $year }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <span class="small text-muted">to</span>
-                                                <select
-                                                    id="company-year-to"
-                                                    name="company_year_to"
-                                                    class="form-select form-select-sm year-filter-select"
-                                                >
-                                                    <option value="">All</option>
-                                                    @foreach ($yearOptions as $year)
-                                                        <option value="{{ $year }}" {{ (string) $year === (string) $companyYearTo ? 'selected' : '' }}>
-                                                            {{ $year }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <button type="button" id="company-filter-apply" class="btn btn-sm btn-outline-primary">Apply</button>
-                                                <button type="button" id="company-filter-reset" class="btn btn-sm btn-link text-decoration-none">Reset</button>
-                                            </div>
-                                        </form>
+                                        <button type="button" id="btn-export-company" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Export data Departemen & Company ke Excel">
+                                            <i class="bi bi-file-earmark-excel me-1"></i> Export Departemen
+                                        </button>
                                     </div>
                                     <div class="mt-1">
                                         <div
                                             id="company-chart"
                                             class="w-100"
-                                            style="height: 320px;"
+                                            style="height: 400px;"
                                         ></div>
                                         <div
                                             id="company-chart-empty"
@@ -245,7 +562,39 @@
                         </div>
                     </div>
                 </div>
-
+                <!-- Key Position Stats Row (Modul 2.1) -->
+                <div class="row g-3 mb-4" id="key-position-row" style="display: none;">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <h6 class="text-primary fw-bold text-uppercase mb-0"><i class="bi bi-key-fill me-2"></i>Key Position Status</h6>
+                                    <span class="badge bg-primary text-white rounded-pill px-3 py-2 shadow-sm" style="font-weight: 600;" id="kp-total-badge">-</span>
+                                </div>
+                                <p class="small text-primary text-opacity-75 mb-3" style="font-size: 0.8rem;">Kompetensi karyawan pada posisi-posisi kunci (key position) perusahaan.</p>
+                                <div class="row g-2" id="key-position-stats">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Training Effectiveness Row -->
+                <div class="row g-3 mb-4" id="training-effectiveness-row" style="display: none;">
+                    <div class="col-12">
+                        <div class="card dashboard-card level-1 h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+                                    <div>
+                                        <h5 class="card-title mb-1"><i class="bi bi-currency-dollar text-success me-2"></i>TRAINING EFFECTIVENESS (ROI)</h5>
+                                        <p class="text-muted mb-0 small">Korelasi antara Biaya Training Disetujui (Rp) dan Rata-rata Pemenuhan Kompetensi (%) per Tahun</p>
+                                    </div>
+                                </div>
+                                <div id="effectiveness-chart" class="w-100" style="height: 350px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="mt-4">
                     <div class="department-section-header mb-3">
                         <div>
@@ -271,68 +620,12 @@
                                             Persentase pencapaian kompetensi berdasarkan standar TC, SK, dan AD pada job position terpilih.
                                         </p> --}}
                                     </div>
-                                    @if ($jobDepartmentOptions->isNotEmpty())
-                                        <form id="job-filter-form" class="d-flex align-items-end gap-3 flex-wrap justify-content-end">
-                                            <div class="d-flex flex-column">
-                                                <label for="job-department" class="form-label mb-1 small text-muted">Department</label>
-                                                <select
-                                                    id="job-department"
-                                                    name="department"
-                                                    class="form-select form-select-sm"
-                                                >
-                                                    @foreach ($jobDepartmentOptions as $departmentOption)
-                                                        <option value="{{ $departmentOption['department'] }}" {{ $departmentOption['department'] === $selectedDepartment ? 'selected' : '' }}>
-                                                            {{ $departmentOption['department'] }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="d-flex flex-column">
-                                                <label for="job_position_id" class="form-label mb-1 small text-muted">Job Position</label>
-                                                <select
-                                                    id="job_position_id"
-                                                    name="job_position_id"
-                                                    class="form-select form-select-sm"
-                                                >
-                                                    @forelse ($jobPositions as $position)
-                                                        <option value="{{ $position->id }}" {{ (int) $position->id === (int) $selectedJobPositionId ? 'selected' : '' }}>
-                                                            {{ $position->job_position }}
-                                                        </option>
-                                                    @empty
-                                                        <option value="" disabled selected>Job position belum tersedia</option>
-                                                    @endforelse
-                                                </select>
-                                            </div>
-                                            <div class="d-flex flex-column">
-                                                <label for="job-date-from" class="form-label mb-1 small text-muted">Tanggal Dari</label>
-                                                <input
-                                                    type="date"
-                                                    id="job-date-from"
-                                                    class="form-control form-control-sm"
-                                                    value="{{ $jobDateFrom }}"
-                                                >
-                                            </div>
-                                            <div class="d-flex flex-column">
-                                                <label for="job-date-to" class="form-label mb-1 small text-muted">Tanggal Sampai</label>
-                                                <input
-                                                    type="date"
-                                                    id="job-date-to"
-                                                    class="form-control form-control-sm"
-                                                    value="{{ $jobDateTo }}"
-                                                >
-                                            </div>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <button type="button" id="job-filter-apply" class="btn btn-sm btn-outline-primary">Apply</button>
-                                                <button type="button" id="job-filter-reset" class="btn btn-sm btn-link text-decoration-none">Reset</button>
-                                            </div>
-                                        </form>
-                                    @endif
                                 </div>
                                 <div class="mt-3 position-relative">
                                     <div
                                         id="job-position-chart"
                                         class="w-100"
-                                        style="height: 360px;"
+                                        style="height: 400px;"
                                     ></div>
                                     <div
                                         id="job-position-chart-empty"
@@ -357,22 +650,27 @@
                     <div class="col-12">
                         <div class="card dashboard-card level-4 h-100">
                             <div class="card-body">
-                                <div>
-                                    <h5 class="card-title mb-2">Area Development</h5>
-                                    {{-- <p class="text-muted mb-0 small">
-                                        Tabel ini menampilkan competency, standar, dan jumlah user yang berada di bawah standar pada job position terpilih.
-                                    </p> --}}
+                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+                                    <div>
+                                        <h5 class="card-title mb-2"><i class="bi bi-list-check text-primary me-2"></i>Area Development</h5>
+                                        <p class="text-muted mb-0 small">
+                                            Menampilkan competency, standar, dan jumlah user di bawah standar.
+                                        </p>
+                                    </div>
+                                    <button type="button" id="btn-export-competency" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Export data Area Development ke Excel">
+                                        <i class="bi bi-file-earmark-excel me-1"></i> Export Area Development
+                                    </button>
                                 </div>
 
                                 <div class="table-responsive mt-3">
-                                    <table class="table table-sm table-striped mb-0 align-middle">
+                                    <table class="table table-custom table-hover table-borderless align-middle mb-0">
                                         <thead class="table-light">
                                             <tr>
                                                 <th style="width: 60px;">No.</th>
+                                                <th>Nama Karyawan</th>
                                                 <th>Competency</th>
-                                                <th style="width: 120px;">Average</th>
+                                                <th style="width: 120px;">Aktual</th>
                                                 <th style="width: 120px;">Standard</th>
-                                                <th style="width: 140px;">Person (Below Std)</th>
                                             </tr>
                                         </thead>
                                         <tbody id="tcpd-competency-body">
@@ -383,6 +681,23 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {{-- Pagination Controls --}}
+                                <div id="tcpd-competency-pagination" class="d-flex align-items-center justify-content-between mt-3 d-none flex-wrap gap-2">
+                                    <div class="text-muted small" id="tcpd-competency-pagination-info"></div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <label class="text-muted small mb-0">Baris per halaman:</label>
+                                        <select id="tcpd-competency-per-page" class="form-select form-select-sm" style="width:auto;">
+                                            <option value="10" selected>10</option>
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                            <option value="0">Semua</option>
+                                        </select>
+                                        <nav>
+                                            <ul class="pagination pagination-sm mb-0" id="tcpd-competency-pages"></ul>
+                                        </nav>
+                                    </div>
                                 </div>
 
                                 <p
@@ -411,6 +726,133 @@
             }, function() {
                 $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
             });
+        });
+    </script>
+    <script>
+        // Refresh Data button — clears TCPD 60-minute cache then reloads the page.
+        document.addEventListener('DOMContentLoaded', function () {
+            const refreshBtn = document.getElementById('btn-refresh-cache');
+            if (!refreshBtn) return;
+
+            refreshBtn.addEventListener('click', function () {
+                const originalHtml = refreshBtn.innerHTML;
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Memperbarui...';
+
+                fetch('{{ route("dashboardTCPD.clearCache") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'Accept': 'application/json',
+                    },
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        refreshBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Berhasil!';
+                        setTimeout(() => window.location.reload(), 800);
+                    } else {
+                        refreshBtn.innerHTML = originalHtml;
+                        refreshBtn.disabled = false;
+                        alert('Gagal menghapus cache: ' + (data.message ?? ''));
+                    }
+                })
+                .catch(() => {
+                    refreshBtn.innerHTML = originalHtml;
+                    refreshBtn.disabled = false;
+                    alert('Koneksi gagal. Silakan coba lagi.');
+                });
+            });
+        });
+    </script>
+    <script>
+        /**
+         * TCPD Export Button Handlers
+         * Each button reads the currently active filter inputs and builds the export URL.
+         */
+        document.addEventListener('DOMContentLoaded', function () {
+
+            /**
+             * Collect current active filter params from the page DOM.
+             */
+            function getActiveFilters() {
+                const params = new URLSearchParams();
+
+                // Company year filters
+                const yearFrom = document.getElementById('company-year-from');
+                const yearTo   = document.getElementById('company-year-to');
+                if (yearFrom && yearFrom.value) params.set('company_year_from', yearFrom.value);
+                if (yearTo   && yearTo.value)   params.set('company_year_to',   yearTo.value);
+
+                // Also expose as year_from / year_to for company-export endpoint
+                if (yearFrom && yearFrom.value) params.set('year_from', yearFrom.value);
+                if (yearTo   && yearTo.value)   params.set('year_to',   yearTo.value);
+
+                // Job position filters
+                const dept       = document.getElementById('job-department');
+                const jobPos     = document.getElementById('job_position_id');
+                const dateFrom   = document.getElementById('job-date-from');
+                const dateTo     = document.getElementById('job-date-to');
+                if (dept     && dept.value)     params.set('department',       dept.value);
+                if (jobPos   && jobPos.value)   params.set('job_position_id',  jobPos.value);
+                if (dateFrom && dateFrom.value) params.set('date_from',        dateFrom.value);
+                if (dateTo   && dateTo.value)   params.set('date_to',          dateTo.value);
+
+                return params.toString();
+            }
+
+            function makeExportUrl(base) {
+                const qs = getActiveFilters();
+                return qs ? base + '?' + qs : base;
+            }
+
+            // Export Semua (4 Sheet)
+            const btnExportAll = document.getElementById('btn-export-all');
+            if (btnExportAll) {
+                btnExportAll.addEventListener('click', function () {
+                    window.location.href = makeExportUrl('{{ route("dashboardTCPD.exportAll") }}');
+                });
+            }
+
+            // Export Company & Department
+            const btnExportCompany = document.getElementById('btn-export-company');
+            if (btnExportCompany) {
+                btnExportCompany.addEventListener('click', function () {
+                    window.location.href = makeExportUrl('{{ route("dashboardTCPD.companyExport") }}');
+                });
+            }
+
+            // Export Area Development (Competency)
+            const btnExportCompetency = document.getElementById('btn-export-competency');
+            if (btnExportCompetency) {
+                btnExportCompetency.addEventListener('click', function () {
+                    window.location.href = makeExportUrl('{{ route("dashboardTCPD.export") }}');
+                });
+            }
+
+            // Export Top Jobs
+            const btnExportTopJobs = document.getElementById('btn-export-top-jobs');
+            if (btnExportTopJobs) {
+                btnExportTopJobs.addEventListener('click', function () {
+                    window.location.href = makeExportUrl('{{ route("dashboardTCPD.exportTopJobs") }}');
+                });
+            }
+
+            // Export Critical Focus Area
+            const btnExportCriticalFocus = document.getElementById('btn-export-critical-focus');
+            if (btnExportCriticalFocus) {
+                btnExportCriticalFocus.addEventListener('click', function () {
+                    window.location.href = makeExportUrl('{{ route("dashboardTCPD.exportCriticalFocus") }}');
+                });
+            }
+
+            // Export Employees (Combined fallback)
+            const btnExportEmployees = document.getElementById('btn-export-employees');
+            if (btnExportEmployees) {
+                btnExportEmployees.addEventListener('click', function () {
+                    window.location.href = makeExportUrl('{{ route("dashboardTCPD.exportEmployees") }}');
+                });
+            }
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
@@ -629,6 +1071,7 @@
                     const rawValue = typeof params.value === 'number'
                         ? params.value
                         : (params.data && typeof params.data.value === 'number' ? params.data.value : null);
+                    if (rawValue === null || rawValue === 0) return '';
                     return formatPercent(rawValue);
                 },
             });
@@ -674,7 +1117,7 @@
                                 </p>
                             </div>
                             <div class="mt-1">
-                                <div id="department-chart-${index}" class="w-100 department-chart"></div>
+                                <div id="department-chart-${index}" class="w-100 department-chart" style="height: 350px;"></div>
                                 <div id="department-chart-${index}-empty" class="text-center text-muted small py-4 d-none">
                                     Data departemen belum tersedia.
                                 </div>
@@ -749,6 +1192,11 @@
                 from: jobDateFromInput ? jobDateFromInput.value : '',
                 to: jobDateToInput ? jobDateToInput.value : '',
             };
+            const defaultCompanyYears = {
+                from: companyYearFromInput ? companyYearFromInput.value : '',
+                to: companyYearToInput ? companyYearToInput.value : '',
+            };
+
             let currentJobPositionName = (() => {
                 if (jobSelect) {
                     const option = jobSelect.options[jobSelect.selectedIndex];
@@ -868,28 +1316,217 @@
                 summaryEl.innerHTML = parts.join(' ');
             };
 
+            // ── Area Development Table dengan Pagination ─────────────────
+            const competencyPagination = {
+                data: [],
+                currentPage: 1,
+                perPage: 10,
+
+                init() {
+                    const perPageEl = document.getElementById('tcpd-competency-per-page');
+                    if (perPageEl) {
+                        perPageEl.addEventListener('change', () => {
+                            this.perPage = parseInt(perPageEl.value, 10);
+                            this.currentPage = 1;
+                            this.render();
+                        });
+                    }
+                },
+
+                setData(deficiencies) {
+                    this.data = deficiencies;
+                    this.currentPage = 1;
+                    this.render();
+                },
+
+                render() {
+                    const tbody = document.getElementById('tcpd-competency-body');
+                    const paginationEl = document.getElementById('tcpd-competency-pagination');
+                    const pagesEl = document.getElementById('tcpd-competency-pages');
+                    const infoEl = document.getElementById('tcpd-competency-pagination-info');
+                    if (!tbody) return;
+
+                    if (!this.data.length) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted small py-4">Semua karyawan memenuhi standar untuk filter ini.</td></tr>';
+                        if (paginationEl) paginationEl.classList.add('d-none');
+                        return;
+                    }
+
+                    const showAll = this.perPage === 0;
+                    const totalItems = this.data.length;
+                    const totalPages = showAll ? 1 : Math.ceil(totalItems / this.perPage);
+
+                    // Clamp current page
+                    if (this.currentPage > totalPages) this.currentPage = totalPages;
+
+                    const startIdx = showAll ? 0 : (this.currentPage - 1) * this.perPage;
+                    const endIdx   = showAll ? totalItems : Math.min(startIdx + this.perPage, totalItems);
+                    const pageData = this.data.slice(startIdx, endIdx);
+
+                    tbody.innerHTML = pageData.map((row, i) => {
+                        const globalIndex = startIdx + i + 1;
+                        let badgeClass = 'bg-secondary bg-opacity-10 text-secondary border border-secondary';
+                        let typeLabel = row.compType || '';
+                        if (row.compType === 'technical') {
+                            badgeClass = 'bg-primary bg-opacity-10 text-primary border border-primary';
+                            typeLabel = 'Technical';
+                        } else if (row.compType === 'soft_skill') {
+                            badgeClass = 'bg-success bg-opacity-10 text-success border border-success';
+                            typeLabel = 'Soft Skill';
+                        } else if (row.compType === 'additional') {
+                            badgeClass = 'bg-info bg-opacity-10 text-info border border-info';
+                            typeLabel = 'Additional';
+                        }
+
+                        // Exclude current employee from mentor list
+                        const validMentors = (row.mentors || []).filter(m => m.id != row.employeeId && m.name != row.employeeName);
+                        const maxDisplay = 5;
+                        const displayMentors = validMentors.slice(0, maxDisplay);
+                        const remainingCount = validMentors.length - displayMentors.length;
+
+                        let mentorHtml = '';
+                        if (validMentors.length > 0) {
+                            const badgesHtml = displayMentors.map(m => {
+                                const titleInfo = m.job_position ? `Jabatan: ${escapeHtml(m.job_position)} (Nilai: ${m.actual ?? '-'})` : `Nilai: ${m.actual ?? '-'}`;
+                                return `<span class="badge bg-white text-info border border-info me-1 mb-1 d-inline-flex align-items-center rounded-pill px-2 py-1 shadow-sm" title="${titleInfo}" style="font-size: 0.72rem; font-weight: 500;">
+                                    <i class="bi bi-person-check-fill text-info me-1"></i>${escapeHtml(m.name)}
+                                </span>`;
+                            }).join('');
+                            const mentorsJson = escapeHtml(JSON.stringify(validMentors));
+                            const extraBadge = remainingCount > 0 ? `<a href="javascript:void(0)" class="text-decoration-underline ms-1 text-primary view-all-mentors fw-medium" data-mentors="${mentorsJson}" style="font-size: 0.75rem;">Lihat ${remainingCount} mentor lainnya...</a>` : '';
+                            mentorHtml = `<div class="mt-2 pt-1 border-top border-light d-flex flex-wrap align-items-center">
+                                <span class="text-muted small me-2" style="font-size:0.75rem;"><i class="bi bi-lightbulb-fill text-warning me-1"></i>Saran Mentor:</span>
+                                ${badgesHtml}${extraBadge}
+                            </div>`;
+                        } else {
+                            mentorHtml = `<div class="mt-2 pt-1 border-top border-light">
+                                <span class="text-muted small fst-italic" style="font-size:0.75rem;"><i class="bi bi-lightbulb text-muted me-1"></i>Saran Mentor: Belum ada mentor memenuhi standar</span>
+                            </div>`;
+                        }
+
+                        return `
+                            <tr>
+                                <td>${globalIndex}</td>
+                                <td><i class="bi bi-person-fill text-muted me-1"></i><strong>${escapeHtml(row.employeeName)}</strong></td>
+                                <td>
+                                    <div>
+                                        <span class="badge ${badgeClass} me-2" style="font-size:0.65rem;text-transform:uppercase;">${typeLabel}</span>
+                                        <strong class="text-dark">${escapeHtml(row.compName)}</strong>
+                                    </div>
+                                    ${mentorHtml}
+                                </td>
+                                <td><span class="badge bg-warning text-dark">${row.actual !== null ? Number(row.actual).toFixed(2) : '-'}</span></td>
+                                <td><span class="badge bg-primary">${row.standard !== null ? Number(row.standard).toFixed(2) : '-'}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    // Bind event listeners for view all mentors modal
+                    tbody.querySelectorAll('.view-all-mentors').forEach(link => {
+                        link.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            try {
+                                const mentors = JSON.parse(this.dataset.mentors);
+                                showMentorsModal(mentors);
+                            } catch (err) {
+                                console.error('Error parsing mentors data', err);
+                            }
+                        });
+                    });
+
+                    if (infoEl) {
+                        if (showAll) {
+                            infoEl.textContent = `Menampilkan ${totalItems} dari ${totalItems} baris`;
+                        } else {
+                            infoEl.textContent = `Menampilkan ${startIdx + 1}–${endIdx} dari ${totalItems} baris`;
+                        }
+                    }
+
+                    if (pagesEl) {
+                        let pagesHtml = '';
+                        pagesHtml += `<li class="page-item ${this.currentPage === 1 ? 'disabled' : ''}">
+                            <button class="page-link" data-page="${this.currentPage - 1}">&laquo;</button>
+                        </li>`;
+
+                        const maxVisible = 5;
+                        let startPage = Math.max(1, this.currentPage - Math.floor(maxVisible / 2));
+                        let endPage   = Math.min(totalPages, startPage + maxVisible - 1);
+                        if (endPage - startPage < maxVisible - 1) {
+                            startPage = Math.max(1, endPage - maxVisible + 1);
+                        }
+
+                        if (startPage > 1) {
+                            pagesHtml += `<li class="page-item"><button class="page-link" data-page="1">1</button></li>`;
+                            if (startPage > 2) pagesHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                        }
+                        for (let p = startPage; p <= endPage; p++) {
+                            pagesHtml += `<li class="page-item ${p === this.currentPage ? 'active' : ''}">
+                                <button class="page-link" data-page="${p}">${p}</button>
+                            </li>`;
+                        }
+                        if (endPage < totalPages) {
+                            if (endPage < totalPages - 1) pagesHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                            pagesHtml += `<li class="page-item"><button class="page-link" data-page="${totalPages}">${totalPages}</button></li>`;
+                        }
+
+                        pagesHtml += `<li class="page-item ${this.currentPage === totalPages || totalPages <= 1 ? 'disabled' : ''}">
+                            <button class="page-link" data-page="${this.currentPage + 1}">&raquo;</button>
+                        </li>`;
+
+                        pagesEl.innerHTML = pagesHtml;
+
+                        pagesEl.querySelectorAll('button[data-page]').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const p = parseInt(btn.getAttribute('data-page'), 10);
+                                if (p >= 1 && p <= totalPages) {
+                                    this.currentPage = p;
+                                    this.render();
+                                }
+                            });
+                        });
+                    }
+
+                    if (paginationEl) {
+                        if (showAll || totalPages <= 1) {
+                            paginationEl.classList.toggle('d-none', totalItems <= 10 && showAll);
+                            paginationEl.classList.remove('d-none');
+                        } else {
+                            paginationEl.classList.remove('d-none');
+                        }
+                    }
+                },
+            };
+
+            competencyPagination.init();
+
             function updateCompetencyTable(competencies, tableBodyId = 'tcpd-competency-body') {
-                const tbody = document.getElementById(tableBodyId);
-                if (!tbody) return;
-
-                const filtered = Array.isArray(competencies)
-                    ? competencies.filter((row) => Number(row.qty) > 0)
-                    : [];
-
-                if (!filtered.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted small py-4">Semua competency memenuhi standar untuk filter ini.</td></tr>';
-                    return;
+                const deficiencies = [];
+                if (Array.isArray(competencies)) {
+                    competencies.forEach(comp => {
+                        if (Array.isArray(comp.employees)) {
+                            comp.employees.forEach(emp => {
+                                deficiencies.push({
+                                    employeeId: emp.id,
+                                    employeeName: emp.name,
+                                    compName: comp.name,
+                                    compType: comp.type,
+                                    actual: emp.actual,
+                                    standard: comp.standard,
+                                    mentors: comp.mentors || []
+                                });
+                            });
+                        }
+                    });
                 }
 
-                tbody.innerHTML = filtered.map((row, index) => `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${escapeHtml(row.name)}</td>
-                        <td>${formatNumber(row.average, 2)}</td>
-                        <td>${formatNumber(row.standard, 2)}</td>
-                        <td>${row.qty}</td>
-                    </tr>
-                `).join('');
+                deficiencies.sort((a, b) => {
+                    const nameComp = a.employeeName.localeCompare(b.employeeName);
+                    if (nameComp !== 0) return nameComp;
+                    return a.compName.localeCompare(b.compName);
+                });
+
+                competencyPagination.setData(deficiencies);
             }
 
             function updateJobSummary(data, jobPositionName = '') {
@@ -1137,35 +1774,36 @@
                         data,
                     });
                 }
-
-                const rotateLabels = categories.length > 6 ? 25 : 0;
+                
+                const rotateLabels = categories.length > 3 ? 30 : 0;
                 const legendLabels = series.map((serie) => serie.name);
                 const option = {
                     tooltip: {
                         trigger: 'axis',
                         axisPointer: { type: 'shadow' },
-                        formatter: (params) => params
-                            .map(p => `${p.marker}${p.seriesName}: ${formatPercent(p.value)}`)
-                            .join('<br/>'),
+                        formatter: (params) => {
+                            const label = params?.[0]?.axisValueLabel || params?.[0]?.name || '';
+                            const rows = params
+                                .map(p => `${p.marker}${p.seriesName}: ${formatPercent(p.value)}`)
+                                .join('<br/>');
+                            return `<strong>${escapeHtml(label)}</strong><br/>${rows}`;
+                        },
                     },
                     legend: { data: legendLabels, top: 0 },
                     grid: {
-                        top: '10%',
-                        left: '3%',
-                        right: '3%',
-                        bottom: rotateLabels ? '18%' : '10%',
+                        top: '12%',
+                        left: '4%',
+                        right: '4%',
+                        bottom: rotateLabels ? '22%' : '12%',
                         containLabel: true,
                     },
                     xAxis: {
                         type: 'category',
                         data: categories,
+                        axisLabel: { interval: 0, rotate: rotateLabels, hideOverlap: false },
                         axisTick: { alignWithLabel: true },
-                        axisLabel: {
-                            interval: 0,
-                            rotate: rotateLabels,
-                            hideOverlap: true,
-                        },
                     },
+
                     yAxis: {
                         type: 'value',
                         axisLabel: { formatter: '{value}%' },
@@ -1187,6 +1825,26 @@
                     categories,
                     colors: categoryColors,
                     seriesSnapshot,
+                });
+
+                // Interactive Drill-down
+                instance.off('click');
+                instance.on('click', function(params) {
+                    const deptName = params.name;
+                    if (deptName && deptName !== 'Company' && deptName !== 'Total' && deptName !== 'Overall') {
+                        const headers = document.querySelectorAll('.department-header h6');
+                        for (let i = 0; i < headers.length; i++) {
+                            if (headers[i].innerText.trim() === deptName) {
+                                const card = headers[i].closest('.card');
+                                if (card) {
+                                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    card.classList.add('border', 'border-primary', 'shadow-lg');
+                                    setTimeout(() => card.classList.remove('border', 'border-primary', 'shadow-lg'), 2000);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 });
             }
 
@@ -1359,16 +2017,20 @@
                         tooltip: {
                             trigger: 'axis',
                             axisPointer: { type: 'shadow' },
-                            formatter: (params) => params
-                                .map(p => `${p.marker}${p.name}: ${formatPercent(p.value)}`)
-                                .join('<br/>'),
+                            formatter: (params) => {
+                                const label = params?.[0]?.axisValueLabel || params?.[0]?.name || '';
+                                const rows = params
+                                    .map(p => `${p.marker}${p.seriesName}: ${formatPercent(p.value)}`)
+                                    .join('<br/>');
+                                return `<strong>${escapeHtml(label)}</strong><br/>${rows}`;
+                            },
                         },
                         legend: { show: false },
-                        grid: { top: '10%', left: '3%', right: '4%', bottom: hasYearMode ? '14%' : '12%', containLabel: true },
+                        grid: { top: '12%', left: '4%', right: '4%', bottom: categories.length > 4 ? '25%' : (hasYearMode ? '16%' : '14%'), containLabel: true },
                         xAxis: {
                             type: 'category',
                             data: categories,
-                            axisLabel: { interval: 0, rotate: hasYearMode ? 20 : 28, hideOverlap: true },
+                            axisLabel: { interval: 0, rotate: categories.length > 4 ? 30 : 0, hideOverlap: false },
                             axisTick: { alignWithLabel: true },
                         },
                         yAxis: { type: 'value', axisLabel: { formatter: '{value}%' }, max: 100 },
@@ -1500,8 +2162,8 @@
                         },
                     },
                     legend: { show: false },
-                    grid: { top: '16%', left: '3%', right: '4%', bottom: '10%', containLabel: true },
-                    xAxis: { type: 'category', data: categories, axisLabel: { interval: 0, rotate: 28, hideOverlap: true } },
+                    grid: { top: '18%', left: '4%', right: '4%', bottom: categories.length > 4 ? '25%' : '16%', containLabel: true },
+                    xAxis: { type: 'category', data: categories, axisLabel: { interval: 0, rotate: categories.length > 4 ? 30 : 0, hideOverlap: false } },
                     yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
                     series,
                 };
@@ -1533,6 +2195,234 @@
                 instance.on('click', instance.__tcpdJobClickHandler);
             }
 
+            function renderEffectivenessChart(effectivenessData, years, companyRows) {
+                const container = document.getElementById('effectiveness-chart');
+                if (!container) return;
+
+                let instance = echarts.getInstanceByDom(container);
+                if (instance) instance.dispose();
+                instance = echarts.init(container, null, { renderer: 'canvas' });
+
+                if (!years || years.length === 0) {
+                    container.innerHTML = '<div class="d-flex h-100 align-items-center justify-content-center text-muted">Data tahun tidak tersedia</div>';
+                    return;
+                }
+
+                // Prepare Data
+                const categories = years.map(String);
+                const costData = categories.map(y => Number(effectivenessData[y] || 0));
+                
+                // Get company average per year
+                const companyRow = companyRows.find(r => r.is_company);
+                const compData = categories.map(y => {
+                    const v = companyRow ? companyRow.values.find(val => val.key === String(y)) : null;
+                    return v ? Number(v.percentage || 0) : 0;
+                });
+
+                // Helper format currency short
+                const formatShortCurrency = (val) => {
+                    if (val >= 1000000000) return (val / 1000000000).toFixed(val % 1000000000 === 0 ? 0 : 1) + ' M';
+                    if (val >= 1000000) return (val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1) + ' Jt';
+                    if (val >= 1000) return (val / 1000).toFixed(0) + ' Rb';
+                    return val.toLocaleString('id-ID');
+                };
+
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { 
+                            type: 'shadow',
+                            shadowStyle: { color: 'rgba(16, 185, 129, 0.05)' }
+                        },
+                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                        borderColor: '#e2e8f0',
+                        borderWidth: 1,
+                        padding: [12, 16],
+                        textStyle: { color: '#1e293b', fontSize: 13 },
+                        extraCssText: 'box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border-radius: 8px;',
+                        formatter: function (params) {
+                            const dataIndex = params[0].dataIndex;
+                            const year = params[0].name;
+                            
+                            const cost = costData[dataIndex] || 0;
+                            const comp = compData[dataIndex] || 0;
+                            
+                            // YoY calculations
+                            let costYoYHtml = '';
+                            let compYoYHtml = '';
+                            if (dataIndex > 0) {
+                                const prevCost = costData[dataIndex - 1] || 0;
+                                const prevComp = compData[dataIndex - 1] || 0;
+                                
+                                if (prevCost > 0) {
+                                    const diffCost = ((cost - prevCost) / prevCost) * 100;
+                                    const sign = diffCost >= 0 ? '+' : '';
+                                    costYoYHtml = ` <span style="font-size:11px;color:${diffCost >= 0 ? '#64748b' : '#10b981'};">(${sign}${diffCost.toFixed(1)}% YoY)</span>`;
+                                }
+                                if (prevComp > 0) {
+                                    const diffComp = comp - prevComp;
+                                    const sign = diffComp >= 0 ? '+' : '';
+                                    compYoYHtml = ` <span style="font-size:11px;color:${diffComp >= 0 ? '#10b981' : '#ef4444'};">(${sign}${diffComp.toFixed(2)}% YoY)</span>`;
+                                }
+                            }
+                            
+                            // Cost per 1% competency
+                            let costPerCompHtml = '';
+                            if (comp > 0 && cost > 0) {
+                                const costPerOnePercent = cost / comp;
+                                costPerCompHtml = `
+                                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0; font-size: 12px; color: #475569;">
+                                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
+                                        <strong>Cost per 1% Competency:</strong> Rp ${formatShortCurrency(costPerOnePercent)}
+                                    </div>
+                                `;
+                            }
+
+                            return `
+                                <div style="font-weight: 700; margin-bottom: 8px; color: #0f172a; font-size: 14px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
+                                    Tahun ${year}
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 6px;">
+                                    <span>
+                                        <span style="display:inline-block;margin-right:6px;border-radius:50%;width:10px;height:10px;background-color:#10b981;"></span>
+                                        Total Biaya Training:
+                                    </span>
+                                    <strong>Rp ${cost.toLocaleString('id-ID')}${costYoYHtml}</strong>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+                                    <span>
+                                        <span style="display:inline-block;margin-right:6px;border-radius:50%;width:10px;height:10px;background-color:#3b82f6;"></span>
+                                        Pemenuhan Kompetensi:
+                                    </span>
+                                    <strong>${comp.toFixed(2)}%${compYoYHtml}</strong>
+                                </div>
+                                ${costPerCompHtml}
+                            `;
+                        }
+                    },
+                    legend: { 
+                        data: ['Total Biaya Training', 'Pemenuhan Kompetensi'],
+                        top: 0,
+                        textStyle: { color: '#475569', fontWeight: 600 }
+                    },
+                    grid: { top: '18%', left: '3%', right: '3%', bottom: '5%', containLabel: true },
+                    xAxis: {
+                        type: 'category',
+                        data: categories,
+                        axisLine: { lineStyle: { color: '#cbd5e1' } },
+                        axisLabel: { color: '#475569', fontWeight: 600, margin: 12 },
+                        axisPointer: { type: 'shadow' }
+                    },
+                    yAxis: [
+                        {
+                            type: 'value',
+                            name: 'Biaya Training (Rp)',
+                            nameTextStyle: { color: '#64748b', fontWeight: 600, padding: [0, 0, 0, 20] },
+                            alignTicks: true,
+                            splitLine: { 
+                                show: true, 
+                                lineStyle: { type: 'dashed', color: '#f1f5f9' } 
+                            },
+                            axisLine: { show: false },
+                            axisTick: { show: false },
+                            axisLabel: {
+                                color: '#64748b',
+                                formatter: formatShortCurrency
+                            }
+                        },
+                        {
+                            type: 'value',
+                            name: 'Kompetensi (%)',
+                            nameTextStyle: { color: '#64748b', fontWeight: 600, padding: [0, 20, 0, 0] },
+                            min: 0,
+                            max: 100,
+                            alignTicks: true,
+                            splitLine: { show: false },
+                            axisLine: { show: false },
+                            axisTick: { show: false },
+                            axisLabel: { 
+                                color: '#64748b',
+                                formatter: '{value}%' 
+                            }
+                        }
+                    ],
+                    series: [
+                        {
+                            name: 'Total Biaya Training',
+                            type: 'bar',
+                            yAxisIndex: 0,
+                            data: costData,
+                            barMaxWidth: 50,
+                            itemStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: '#34d399' }, // emerald-400
+                                    { offset: 0.5, color: '#10b981' }, // emerald-500
+                                    { offset: 1, color: '#059669' }  // emerald-600
+                                ]),
+                                borderRadius: [6, 6, 0, 0],
+                                shadowColor: 'rgba(16, 185, 129, 0.25)',
+                                shadowBlur: 8,
+                                shadowOffsetY: 4
+                            },
+                            label: {
+                                show: true,
+                                position: 'top',
+                                color: '#059669',
+                                fontWeight: 600,
+                                fontSize: 11,
+                                formatter: (params) => formatShortCurrency(params.value)
+                            }
+                        },
+                        {
+                            name: 'Pemenuhan Kompetensi',
+                            type: 'line',
+                            yAxisIndex: 1,
+                            data: compData,
+                            smooth: true,
+                            symbol: 'circle',
+                            symbolSize: 10,
+                            itemStyle: { 
+                                color: '#2563eb', // blue-600
+                                borderColor: '#ffffff',
+                                borderWidth: 2,
+                                shadowColor: 'rgba(37, 99, 235, 0.4)',
+                                shadowBlur: 6
+                            },
+                            lineStyle: { 
+                                width: 3.5, 
+                                color: '#3b82f6', // blue-500
+                                shadowColor: 'rgba(59, 130, 246, 0.35)', 
+                                shadowBlur: 10,
+                                shadowOffsetY: 4
+                            },
+                            areaStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: 'rgba(59, 130, 246, 0.25)' },
+                                    { offset: 0.8, color: 'rgba(59, 130, 246, 0.02)' },
+                                    { offset: 1, color: 'rgba(59, 130, 246, 0.0)' }
+                                ])
+                            },
+                            label: {
+                                show: true,
+                                position: 'top',
+                                distance: 8,
+                                color: '#1d4ed8', // blue-700
+                                fontWeight: 700,
+                                fontSize: 12,
+                                backgroundColor: 'rgba(239, 246, 255, 0.9)', // blue-50
+                                borderColor: '#bfdbfe', // blue-200
+                                borderWidth: 1,
+                                borderRadius: 4,
+                                padding: [2, 6],
+                                formatter: (params) => Number(params.value).toFixed(1) + '%'
+                            }
+                        }
+                    ]
+                };
+                
+                instance.setOption(option);
+            }
+
             const fetchCompanyData = () => {
                 if (isCompanyLoading) return;
                 setButtonLoading(companyApplyButton, true);
@@ -1541,8 +2431,10 @@
                 const url = new URL(endpoints.company);
                 url.searchParams.set('year_from', companyYearFromInput.value);
                 url.searchParams.set('year_to', companyYearToInput.value);
+                url.searchParams.set('_t', Date.now());
 
                 fetch(url)
+
                     .then(response => response.json())
                     .then(result => {
                         if (result.success && result.data) {
@@ -1556,9 +2448,267 @@
                                 mode: meta.company_chart_mode,
                             });
                             renderDepartmentGrid(currentDepartmentData);
+                            
+                            // Update Scorecards
+                            const formatNum = (val) => Number.isFinite(val) ? Number(val).toFixed(2) + '%' : 'N/A';
+                            document.getElementById('scorecard-average').innerText = formatNum(meta.company_average);
+                            document.getElementById('scorecard-dept-count').innerText = meta.company_department_count || '0';
+                            
+                            let topDept = { name: '-', val: null };
+                            let lowestDept = { name: '-', val: null };
+                            
+                            if (currentDepartmentData.length > 0) {
+                                let validDepts = currentDepartmentData.filter(d => d.overall !== null && isFinite(d.overall));
+                                if (validDepts.length > 0) {
+                                    validDepts.sort((a, b) => b.overall - a.overall);
+                                    topDept = { name: validDepts[0].department, val: validDepts[0].overall };
+                                    lowestDept = { name: validDepts[validDepts.length - 1].department, val: validDepts[validDepts.length - 1].overall };
+                                }
+                            }
+                            
+                            document.getElementById('scorecard-top-dept').innerText = topDept.name;
+                            document.getElementById('scorecard-top-val').innerText = topDept.val !== null ? formatNum(topDept.val) : 'N/A';
+                            document.getElementById('scorecard-lowest-dept').innerText = lowestDept.name;
+                            document.getElementById('scorecard-lowest-val').innerText = lowestDept.val !== null ? formatNum(lowestDept.val) : 'N/A';
+
+                            // Populate Smart Insights
+                            if (meta.insights) {
+                                document.getElementById('smart-insights-row').style.display = 'flex';
+                                
+                                const topJobsEl = document.getElementById('insight-top-jobs');
+                                if (meta.insights.top_jobs && meta.insights.top_jobs.length > 0) {
+                                    topJobsEl.innerHTML = meta.insights.top_jobs.map((job, idx) => {
+                                        const employeesJson = escapeHtml(JSON.stringify(job.employees || []));
+                                        const jobName = escapeHtml(job.job_position);
+                                        const percentage = Number(job.percentage).toFixed(2) + '%';
+                                        return `
+                                        <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-75 p-2 rounded shadow-sm top-job-item"
+                                             role="button" style="cursor:pointer;"
+                                             data-job-name="${jobName}" data-percentage="${percentage}"
+                                             data-employees="${employeesJson}">
+                                            <span class="text-dark fw-semibold"><span class="badge bg-success bg-opacity-25 text-success me-2">#${idx+1}</span>${jobName}</span>
+                                            <span class="badge bg-success rounded-pill px-3 py-2 fs-6 shadow-sm">${percentage}</span>
+                                        </div>`;
+                                    }).join('');
+
+                                    // Attach click handler for top jobs modal
+                                    topJobsEl.querySelectorAll('.top-job-item').forEach(item => {
+                                        item.addEventListener('click', () => {
+                                            const jobName = item.dataset.jobName;
+                                            const percentage = item.dataset.percentage;
+                                            const employees = JSON.parse(item.dataset.employees || '[]');
+
+                                            document.getElementById('tjm-title').textContent = jobName;
+                                            document.getElementById('tjm-badge-row').innerHTML =
+                                                `<span class="badge bg-success">Overall: ${percentage}</span>
+                                                 <span class="badge bg-secondary">${employees.length} karyawan</span>`;
+
+                                            const tbody = document.getElementById('tjm-tbody');
+                                            if (employees.length === 0) {
+                                                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Data karyawan tidak tersedia.</td></tr>';
+                                            } else {
+                                                tbody.innerHTML = employees.map((emp, idx) => {
+                                                    const name = escapeHtml(emp.name || '-');
+                                                    const tc = emp.tc !== null ? Number(emp.tc).toFixed(2) + '%' : '0.00%';
+                                                    const sk = emp.sk !== null ? Number(emp.sk).toFixed(2) + '%' : '0.00%';
+                                                    const ad = emp.ad !== null ? Number(emp.ad).toFixed(2) + '%' : '0.00%';
+                                                    return `
+                                                        <tr>
+                                                            <td>${idx + 1}</td>
+                                                            <td><i class="bi bi-person-fill text-success me-1"></i>${name}</td>
+                                                            <td style="text-align:center;"><span class="badge bg-primary rounded-pill px-2 py-1">${tc}</span></td>
+                                                            <td style="text-align:center;"><span class="badge bg-success rounded-pill px-2 py-1">${sk}</span></td>
+                                                            <td style="text-align:center;"><span class="badge bg-info rounded-pill px-2 py-1">${ad}</span></td>
+                                                        </tr>
+                                                    `;
+                                                }).join('');
+                                            }
+
+                                            const modal = new bootstrap.Modal(document.getElementById('topJobsModal'));
+                                            modal.show();
+                                        });
+                                    });
+                                } else {
+                                    topJobsEl.innerHTML = '<span class="text-muted small">Data tidak tersedia</span>';
+                                }
+                                
+                                const criticalFocusEl = document.getElementById('insight-critical-focus');
+                                if (meta.insights.critical_focus && meta.insights.critical_focus.length > 0) {
+                                    const cfItems = meta.insights.critical_focus;
+                                    const cfPerPage = 5;
+                                    let cfCurrentPage = 1;
+                                    const cfTotalPages = Math.ceil(cfItems.length / cfPerPage);
+
+                                    const renderCFPage = (page) => {
+                                        const start = (page - 1) * cfPerPage;
+                                        const end = start + cfPerPage;
+                                        const itemsToShow = cfItems.slice(start, end);
+
+                                        let html = itemsToShow.map((comp) => {
+                                            const employeesJson = escapeHtml(JSON.stringify(comp.employees || []));
+                                            const compName = escapeHtml(comp.name);
+                                            return `
+                                            <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-75 p-2 rounded border border-danger border-opacity-25 shadow-sm
+                                                         critical-focus-item" role="button" style="cursor:pointer;"
+                                                 data-comp-name="${compName}" data-comp-type="${escapeHtml(comp.type)}"
+                                                 data-employees="${employeesJson}">
+                                                <div class="text-dark fw-semibold text-truncate" style="max-width: 70%;" title="${compName}">
+                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary me-2" style="font-size:0.65rem;">${comp.type}</span>${compName}
+                                                </div>
+                                                <span class="badge bg-danger rounded-pill shadow-sm"><i class="bi bi-people-fill me-1"></i>${comp.qty}</span>
+                                            </div>`;
+                                        }).join('');
+
+                                        if (cfTotalPages > 1) {
+                                            html += `
+                                            <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-2 border-danger border-opacity-10">
+                                                <span class="small text-danger text-opacity-75">Halaman ${page} dari ${cfTotalPages}</span>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-danger cf-prev" ${page === 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
+                                                    <button class="btn btn-outline-danger cf-next" ${page === cfTotalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
+                                                </div>
+                                            </div>`;
+                                        }
+
+                                        criticalFocusEl.innerHTML = html;
+
+                                        criticalFocusEl.querySelectorAll('.critical-focus-item').forEach(item => {
+                                            item.addEventListener('click', () => {
+                                                const name = item.dataset.compName;
+                                                const type = item.dataset.compType;
+                                                const employees = JSON.parse(item.dataset.employees || '[]');
+
+                                                document.getElementById('cfm-title').textContent = name;
+                                                document.getElementById('cfm-badge-row').innerHTML =
+                                                    `<span class="badge bg-danger">${type}</span>
+                                                     <span class="badge bg-secondary">${employees.length} karyawan defisit</span>`;
+
+                                                const tbody = document.getElementById('cfm-tbody');
+                                                if (employees.length === 0) {
+                                                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Data karyawan tidak tersedia.</td></tr>';
+                                                } else {
+                                                    tbody.innerHTML = employees.map((emp, idx) => `
+                                                        <tr>
+                                                            <td>${idx + 1}</td>
+                                                            <td><i class="bi bi-person-fill text-danger me-1"></i>${escapeHtml(emp.name || '-')}</td>
+                                                            <td><span class="badge bg-light text-dark border">${escapeHtml(emp.job_position || '-')}</span></td>
+                                                            <td><span class="badge bg-warning text-dark">${emp.actual !== null ? Number(emp.actual).toFixed(2) : '-'}</span></td>
+                                                            <td><span class="badge bg-primary">${emp.standard !== null ? Number(emp.standard).toFixed(2) : '-'}</span></td>
+                                                        </tr>
+                                                    `).join('');
+                                                }
+
+                                                const modal = new bootstrap.Modal(document.getElementById('criticalFocusModal'));
+                                                modal.show();
+                                            });
+                                        });
+
+                                        const prevBtn = criticalFocusEl.querySelector('.cf-prev');
+                                        const nextBtn = criticalFocusEl.querySelector('.cf-next');
+                                        if (prevBtn) {
+                                            prevBtn.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                if (cfCurrentPage > 1) {
+                                                    cfCurrentPage--;
+                                                    renderCFPage(cfCurrentPage);
+                                                }
+                                            });
+                                        }
+                                        if (nextBtn) {
+                                            nextBtn.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                if (cfCurrentPage < cfTotalPages) {
+                                                    cfCurrentPage++;
+                                                    renderCFPage(cfCurrentPage);
+                                                }
+                                            });
+                                        }
+                                    };
+
+                                    renderCFPage(cfCurrentPage);
+                                } else {
+                                    criticalFocusEl.innerHTML = '<span class="text-muted small">Data tidak tersedia</span>';
+                                }
+
+                                // --- Modul 2.1: Key Position Stats ---
+                                const kpStatsEl = document.getElementById('key-position-stats');
+                                const kpRowEl = document.getElementById('key-position-row');
+                                const kpTotalBadge = document.getElementById('kp-total-badge');
+                                if (meta.insights.key_position_stats && meta.insights.key_position_stats.length > 0) {
+                                    kpRowEl.style.display = 'flex';
+                                    const stats = meta.insights.key_position_stats;
+                                    kpTotalBadge.textContent = stats.length + ' Key Position';
+                                    kpStatsEl.innerHTML = stats.map(kp => {
+                                        const name = escapeHtml(kp.job_position || '-');
+                                        const empCount = kp.employee_count || 0;
+                                        const strengthCount = kp.strength_count || 0;
+                                        const deficitCount = kp.deficit_count || 0;
+                                        const pct = empCount > 0 ? ((strengthCount / empCount) * 100).toFixed(1) : '0.0';
+                                        const barWidth = Math.min(100, parseFloat(pct));
+                                        const barColor = barWidth >= 70 ? '#198754' : barWidth >= 40 ? '#ffc107' : '#dc3545';
+                                        return `
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="bg-white rounded-3 p-3 shadow-sm h-100">
+                                                <div class="fw-semibold text-dark mb-2 text-wrap" style="font-size:0.85rem;line-height:1.4;word-break:break-word;white-space:normal;" title="${name}">
+                                                    <i class="bi bi-briefcase-fill text-primary me-1"></i>
+                                                    <span>${name}</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between small text-muted mb-1">
+                                                    <span><i class="bi bi-people me-1"></i>${empCount} karyawan</span>
+                                                    <span class="text-success"><i class="bi bi-check-circle me-1"></i>${strengthCount} terpenuhi</span>
+                                                    <span class="text-danger"><i class="bi bi-x-circle me-1"></i>${deficitCount} defisit</span>
+                                                </div>
+                                                <div class="progress" style="height:6px;border-radius:3px;">
+                                                    <div class="progress-bar" role="progressbar"
+                                                        style="width:${barWidth}%;background-color:${barColor};"
+                                                        aria-valuenow="${barWidth}" aria-valuemin="0" aria-valuemax="100">
+                                                    </div>
+                                                </div>
+                                                <div class="text-end small mt-1 fw-semibold" style="color:${barColor};">${pct}%</div>
+                                            </div>
+                                        </div>`;
+                                    }).join('');
+                                } else {
+                                    if (kpRowEl) kpRowEl.style.display = 'flex';
+                                    if (kpTotalBadge) kpTotalBadge.textContent = '0 Key Position';
+                                    if (kpStatsEl) kpStatsEl.innerHTML = '<div class="col-12"><div class="bg-white rounded-3 p-3 shadow-sm text-center text-muted small h-100 d-flex align-items-center justify-content-center">Data tidak tersedia</div></div>';
+                                }
+
+                            } else {
+                                document.getElementById('smart-insights-row').style.display = 'flex';
+                                document.getElementById('insight-top-jobs').innerHTML = '<span class="text-muted small">Data tidak tersedia</span>';
+                                document.getElementById('insight-critical-focus').innerHTML = '<span class="text-muted small">Data tidak tersedia</span>';
+                                
+                                const kpStatsEl = document.getElementById('key-position-stats');
+                                const kpRowEl = document.getElementById('key-position-row');
+                                const kpTotalBadge = document.getElementById('kp-total-badge');
+                                if (kpRowEl) kpRowEl.style.display = 'flex';
+                                if (kpTotalBadge) kpTotalBadge.textContent = '0 Key Position';
+                                if (kpStatsEl) kpStatsEl.innerHTML = '<div class="col-12"><div class="bg-white rounded-3 p-3 shadow-sm text-center text-muted small h-100 d-flex align-items-center justify-content-center">Data tidak tersedia</div></div>';
+                            }
+                            
+                            // Render Training Effectiveness Chart
+                            document.getElementById('training-effectiveness-row').style.display = 'flex';
+                            if (meta.training_effectiveness && Object.keys(meta.training_effectiveness).length > 0 && meta.company_years && meta.company_years.length > 0) {
+                                renderEffectivenessChart(meta.training_effectiveness, meta.company_years, company_chart_rows);
+                            } else {
+                                const chartContainer = document.getElementById('effectiveness-chart');
+                                if (chartContainer) {
+                                    let instance = echarts.getInstanceByDom(chartContainer);
+                                    if (instance) instance.clear();
+                                    chartContainer.innerHTML = '<div class="d-flex align-items-center justify-content-center w-100 h-100"><span class="text-muted small">Data tidak tersedia</span></div>';
+                                }
+                            }
+                            
                         } else {
                             currentDepartmentData = [];
                             renderDepartmentGrid([]);
+                            document.getElementById('scorecard-average').innerText = 'N/A';
+                            document.getElementById('scorecard-dept-count').innerText = '0';
+                            document.getElementById('scorecard-top-dept').innerText = '-';
+                            document.getElementById('scorecard-top-val').innerText = 'N/A';
+                            document.getElementById('scorecard-lowest-dept').innerText = '-';
+                            document.getElementById('scorecard-lowest-val').innerText = 'N/A';
                         }
                     })
                     .catch(error => {
@@ -1611,8 +2761,10 @@
                 if (jobDepartmentSelect) {
                     url.searchParams.set('department', jobDepartmentSelect.value || '');
                 }
+                url.searchParams.set('_t', Date.now());
 
                 fetch(url)
+
                     .then(response => response.json())
                     .then(result => {
                         if (result && result.success && result.data) {
@@ -1643,8 +2795,8 @@
 
             if (companyApplyButton) companyApplyButton.addEventListener('click', fetchCompanyData);
             if (companyResetButton) companyResetButton.addEventListener('click', () => {
-                if (companyYearFromInput) companyYearFromInput.value = '';
-                if (companyYearToInput) companyYearToInput.value = '';
+                companyYearFromInput.value = defaultCompanyYears.from || '';
+                companyYearToInput.value = defaultCompanyYears.to || '';
                 fetchCompanyData();
             });
             if (companyYearFromInput) companyYearFromInput.addEventListener('change', () => fetchCompanyData());
@@ -1697,6 +2849,98 @@
             if (prefetchFlags.job) {
                 fetchJobData();
             }
+
+            if (btnRefreshCache) {
+                btnRefreshCache.addEventListener('click', function () {
+                    const originalHtml = btnRefreshCache.innerHTML;
+                    btnRefreshCache.disabled = true;
+                    btnRefreshCache.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Membersihkan...';
+
+                    fetch('{{ route("dashboardTCPD.clearCache") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result && result.success) {
+                            window.location.reload();
+                        } else {
+                            btnRefreshCache.disabled = false;
+                            btnRefreshCache.innerHTML = originalHtml;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error clearing cache:', error);
+                        btnRefreshCache.disabled = false;
+                        btnRefreshCache.innerHTML = originalHtml;
+                    });
+                });
+            }
+
+            function showMentorsModal(mentors) {
+                const tbody = document.getElementById('mentors-modal-tbody');
+                if (!tbody) return;
+                
+                if (!mentors || mentors.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Data mentor tidak tersedia.</td></tr>';
+                } else {
+                    tbody.innerHTML = mentors.map((m, idx) => {
+                        const name = escapeHtml(m.name || '-');
+                        const job = escapeHtml(m.job_position || '-');
+                        const actual = m.actual !== null ? Number(m.actual).toFixed(2) : '-';
+                        return `
+                        <tr>
+                            <td class="text-center">${idx + 1}</td>
+                            <td><div class="fw-semibold text-primary"><i class="bi bi-person-check-fill me-2"></i>${name}</div></td>
+                            <td>${job}</td>
+                            <td class="text-center"><span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3">${actual}</span></td>
+                        </tr>`;
+                    }).join('');
+                }
+                
+                const modalEl = document.getElementById('all-mentors-modal');
+                if (modalEl) {
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                }
+            }
         });
     </script>
+
+    <!-- Modal Daftar Mentor -->
+    <div class="modal fade" id="all-mentors-modal" tabindex="-1" aria-labelledby="allMentorsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="allMentorsModalLabel"><i class="bi bi-people-fill me-2"></i>Daftar Saran Mentor</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-secondary">
+                                <tr>
+                                    <th class="text-center" width="5%">No</th>
+                                    <th width="40%">Nama Mentor</th>
+                                    <th width="35%">Jabatan</th>
+                                    <th class="text-center" width="20%">Nilai Aktual</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mentors-modal-tbody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
+

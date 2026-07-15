@@ -20,7 +20,7 @@
                         <div class="col-md-12">
                             <label for="seksi" class="form-label"><strong>Seksi</strong></label>
                             <input type="text" class="form-control" id="section" name="section"
-                                value="{{ $data->section }}" readonly>
+                                value="{{ $data->section->name ?? '-' }}" readonly>
                         </div>
                     </div>
                     <div class="row mb-3">

@@ -93,11 +93,10 @@
 
         /* Canvas */
         canvas {
-            width: 100%;
-            height: 500px !important;
-            /* max-width: 500%; */
-
-            /* Mengubah dari 500px ke 100% */
+            width: 100% !important;
+            max-width: 450px !important;
+            max-height: 450px !important;
+            margin: 0 auto;
         }
     </style>
 
@@ -109,8 +108,8 @@
                     <label for="options">Pilih Job Position:</label>
                     <select id="options" name="options" onchange="updateChart()">
                         <option value="">----- Pilih Position ------</option>
-                        @foreach ($jobPositions as $jobPosition)
-                            <option value="{{ $jobPosition }}">{{ $jobPosition }}</option>
+                        @foreach ($jobPositions as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -140,18 +139,40 @@
         <script>
             let charts = [];
 
-            function updateChart() {
-                const jobPosition = document.getElementById('options').value;
+            function formatRadarLabels(labels) {
+                return labels.map(label => {
+                    if (Array.isArray(label)) return label;
+                    if (!label) return '';
+                    const words = String(label).split(' ');
+                    let lines = [];
+                    let currentLine = '';
+                    words.forEach(word => {
+                        if ((currentLine + ' ' + word).trim().length > 16 && currentLine !== '') {
+                            lines.push(currentLine);
+                            currentLine = word;
+                        } else {
+                            currentLine = (currentLine + ' ' + word).trim();
+                        }
+                    });
+                    if (currentLine) lines.push(currentLine);
+                    return lines.length > 1 ? lines : label;
+                });
+            }
 
-                if (jobPosition) {
+            function updateChart() {
+                const jobPositionSelect = document.getElementById('options');
+                const jobPositionId = jobPositionSelect.value;
+
+                if (jobPositionId) {
                     $.ajax({
                         url: '{{ route('get-competency-data') }}',
                         type: 'GET',
                         data: {
-                            job_position: jobPosition
+                            job_position: jobPositionId
                         },
                         success: function(response) {
                             console.log('AJAX Response:', response);
+                            window.initialCompetencyUsers = response;
 
                             $('#radarChartContainer').empty();
                             charts.forEach(chart => chart.destroy());
@@ -162,27 +183,24 @@
                                 const chartsToDisplay = response.slice(0, maxCharts);
 
                                 chartsToDisplay.forEach((user, index) => {
-                                    const labels = [
-                                        'Total Nilai Technical Competency',
-                                        'Total Nilai Softskills',
-                                        'Total Nilai Additional'
-                                    ];
+                                    const labels = formatRadarLabels([
+                                        'Technical Competency',
+                                        'Softskills Competency',
+                                        'Additional Competency'
+                                    ]);
                                     const dataPoints = [
-                                        parseInt(user.total_nilai_tc) || 0,
-                                        parseInt(user.total_nilai_sk) || 0,
-                                        parseInt(user.total_nilai_ad) || 0,
+                                        parseFloat(user.total_nilai_tc) || 0,
+                                        parseFloat(user.total_nilai_sk) || 0,
+                                        parseFloat(user.total_nilai_ad) || 0,
                                     ];
                                     const standardDataPoints = [
-                                        parseInt(user.standar_nilai_tc) || 0,
-                                        parseInt(user.standar_nilai_sk) || 0,
-                                        parseInt(user.standar_nilai_ad) || 0,
+                                        parseFloat(user.standar_nilai_tc) || 0,
+                                        parseFloat(user.standar_nilai_sk) || 0,
+                                        parseFloat(user.standar_nilai_ad) || 0,
                                     ];
 
-                                    console.log('Standard Data Points:', standardDataPoints);
-
                                     const suggestedMax = 12;
-                                    const minDataPoint = Math.min(...dataPoints, ...standardDataPoints);
-                                    const suggestedMin = minDataPoint - 1 < 0 ? 0 : minDataPoint - 1;
+                                    const suggestedMin = 0;
 
                                     const canvasId = 'radarChart' + index;
                                     $('#radarChartContainer').append(
@@ -192,7 +210,7 @@
                                         '<div class="user-details">' +
                                         '<span class="user-name" data-user-id="' + user.id_user +
                                         '">Nama Pengguna : ' + user.name + '</span>' +
-                                        '<span class="user-job">Job Position : ' + jobPosition +
+                                        '<span class="user-job">Job Position : ' + (user.job_position_name || '') +
                                         '</span>' +
                                         '<input type="hidden" class="user-id-hidden" value="' + user
                                         .id_user + '">' +
@@ -212,7 +230,7 @@
                                         '<canvas id="' + canvasId +
                                         '" width="500" height="490"></canvas>' +
                                         '<button type="button" onclick="btnDsDetail(' + user.id_user +
-                                        ')" style="margin-top: 10px; width: 30%">Competency Employee</button>' +
+                                        ')" style="margin-top: 10px; width: 30%"><i class="bi bi-person-badge me-1"></i>Individual Profile</button>' +
                                         '</div>'
                                     );
 
@@ -224,28 +242,29 @@
                                             labels: labels,
                                             datasets: [{
                                                     label: 'Nilai Aktual',
-                                                    data: dataPoints, // Data nilai aktual
+                                                    data: dataPoints,
                                                     fill: true,
-                                                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                                                    borderColor: 'rgba(54, 162, 235, 1)',
-                                                    borderWidth: 3, // Garis lebih tebal untuk nilai aktual
-                                                    pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                                                    backgroundColor: 'rgba(37, 99, 235, 0.2)', // Royal blue transparan lembut
+                                                    borderColor: '#2563eb', // Blue-600
+                                                    borderWidth: 3,
+                                                    pointBackgroundColor: '#2563eb',
                                                     pointBorderColor: '#fff',
-                                                    pointHoverBackgroundColor: '#fff',
-                                                    pointHoverBorderColor: 'rgba(54, 162, 235, 1)',
+                                                    pointBorderWidth: 2,
+                                                    pointRadius: 4,
+                                                    pointHoverRadius: 6,
                                                 },
                                                 {
                                                     label: 'Nilai Standar',
-                                                    data: standardDataPoints, // Data nilai standar dari response
-                                                    fill: true,
-                                                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                                                    borderColor: 'rgba(255, 99, 132, 1)',
-                                                    borderWidth: 1.5, // Garis lebih tebal untuk nilai standar
+                                                    data: standardDataPoints,
+                                                    fill: false, // Tanpa fill agar tidak membuat grafik keruh!
+                                                    borderColor: '#f59e0b', // Amber/Gold putus-putus
+                                                    borderWidth: 2,
                                                     borderDash: [5, 5],
-                                                    pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                                                    pointBackgroundColor: '#f59e0b',
                                                     pointBorderColor: '#fff',
-                                                    pointHoverBackgroundColor: '#fff',
-                                                    pointHoverBorderColor: 'rgba(255, 99, 132, 1)',
+                                                    pointBorderWidth: 1.5,
+                                                    pointRadius: 3,
+                                                    pointHoverRadius: 5,
                                                 }
                                             ]
                                         },
@@ -255,47 +274,75 @@
                                             scales: {
                                                 r: {
                                                     angleLines: {
-                                                        display: true, // Menampilkan garis sudut
+                                                        display: true,
+                                                        color: '#cbd5e1', // Slate-300 lembut
+                                                        lineWidth: 1
                                                     },
-                                                    suggestedMin: suggestedMin, // Minimum skala
-                                                    suggestedMax: suggestedMax, // Maksimum skala
+                                                    grid: {
+                                                        color: '#e2e8f0', // Slate-200
+                                                        lineWidth: 1
+                                                    },
+                                                    suggestedMin: suggestedMin,
+                                                    suggestedMax: suggestedMax,
+                                                    min: 0,
+                                                    max: 12,
                                                     ticks: {
                                                         beginAtZero: true,
-                                                        stepSize: 2, // Jarak antar tick
-                                                        backdropPaddingX: 2, // Padding horizontal untuk ticks
-                                                        backdropPaddingY: 2, // Padding vertikal untuk ticks
-                                                        maxTicksLimit: 6, // Batas jumlah ticks
+                                                        stepSize: 2,
+                                                        backdropColor: 'transparent', // Bersih tanpa kotak putih
+                                                        color: '#64748b',
+                                                        font: {
+                                                            size: 10,
+                                                            weight: 'bold'
+                                                        }
                                                     },
                                                     pointLabels: {
                                                         font: {
-                                                            size: 16 // Ukuran font label titik
+                                                            size: 12,
+                                                            weight: '600'
                                                         },
-                                                        padding: 2 // Padding untuk label titik
+                                                        color: '#334155',
+                                                        padding: 8
                                                     }
                                                 }
                                             },
                                             layout: {
                                                 padding: {
-                                                    left: 20,
-                                                    right: 20,
-                                                    top: 20,
-                                                    bottom: 20
+                                                    left: 45,
+                                                    right: 45,
+                                                    top: 25,
+                                                    bottom: 25
                                                 }
                                             },
                                             plugins: {
                                                 legend: {
                                                     display: true,
+                                                    position: 'top',
                                                     labels: {
                                                         font: {
-                                                            size: 12 // Ukuran font legenda
-                                                        }
+                                                            size: 12,
+                                                            weight: '600'
+                                                        },
+                                                        color: '#475569',
+                                                        usePointStyle: true,
+                                                        padding: 15
                                                     }
                                                 },
                                                 tooltip: {
                                                     enabled: true,
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                                                    titleColor: '#0f172a',
+                                                    titleFont: { weight: 'bold', size: 13 },
+                                                    bodyColor: '#334155',
+                                                    bodyFont: { size: 13 },
+                                                    borderColor: '#e2e8f0',
+                                                    borderWidth: 1,
+                                                    padding: 10,
+                                                    boxPadding: 4,
+                                                    usePointStyle: true,
                                                     callbacks: {
                                                         label: function(tooltipItem) {
-                                                            return `Value: ${tooltipItem.raw}`;
+                                                            return `${tooltipItem.dataset.label}: ${tooltipItem.raw}`;
                                                         }
                                                     }
                                                 }
@@ -330,6 +377,33 @@
                 // Menampilkan id_user di console log
                 console.log('Selected user ID:', userId);
 
+                if (!selectedDataType || selectedDataType === '') {
+                    const chart = charts[index];
+                    const user = window.initialCompetencyUsers ? window.initialCompetencyUsers.find(u => u.id_user == userId) : null;
+                    if (user && chart) {
+                        chart.data.labels = formatRadarLabels([
+                            'Technical Competency',
+                            'Softskills Competency',
+                            'Additional Competency'
+                        ]);
+                        chart.data.datasets[0].data = [
+                            parseFloat(user.total_nilai_tc) || 0,
+                            parseFloat(user.total_nilai_sk) || 0,
+                            parseFloat(user.total_nilai_ad) || 0,
+                        ];
+                        chart.data.datasets[1].data = [
+                            parseFloat(user.standar_nilai_tc) || 0,
+                            parseFloat(user.standar_nilai_sk) || 0,
+                            parseFloat(user.standar_nilai_ad) || 0,
+                        ];
+                        chart.options.scales.r.max = 12;
+                        chart.options.scales.r.suggestedMax = 12;
+                        chart.options.scales.r.ticks.stepSize = 2;
+                        chart.update();
+                    }
+                    return;
+                }
+
                 $.ajax({
                     url: '{{ route('get-competency-filter') }}',
                     type: 'GET',
@@ -350,30 +424,33 @@
                         if (selectedDataType === 'total_nilai_tc') {
                             filteredResponse.forEach(item => {
                                 labels.push(item.keterangan_tc);
-                                dataPoints1.push(parseInt(item.total_nilai_tc) || 0);
-                                dataPoints2.push(parseInt(item.tc_nilai) ||
+                                dataPoints1.push(parseFloat(item.total_nilai_tc) || 0);
+                                dataPoints2.push(parseFloat(item.tc_nilai) ||
                                     0); // Compare with another value, e.g., max value
                             });
                         } else if (selectedDataType === 'total_nilai_sk') {
                             filteredResponse.forEach(item => {
                                 labels.push(item.keterangan_sk);
-                                dataPoints1.push(parseInt(item.total_nilai_sk) || 0);
-                                dataPoints2.push(parseInt(item.sk_nilai) ||
+                                dataPoints1.push(parseFloat(item.total_nilai_sk) || 0);
+                                dataPoints2.push(parseFloat(item.sk_nilai) ||
                                     0); // Compare with another value, e.g., max value
                             });
                         } else if (selectedDataType === 'total_nilai_ad') {
                             filteredResponse.forEach(item => {
                                 labels.push(item.keterangan_ad);
-                                dataPoints1.push(parseInt(item.total_nilai_ad) || 0);
-                                dataPoints2.push(parseInt(item.ad_nilai) ||
+                                dataPoints1.push(parseFloat(item.total_nilai_ad) || 0);
+                                dataPoints2.push(parseFloat(item.ad_nilai) ||
                                     0); // Compare with another value, e.g., max value
                             });
                         }
 
                         // Update chart with new labels and data points for the specific user
-                        chart.data.labels = labels;
+                        chart.data.labels = formatRadarLabels(labels);
                         chart.data.datasets[0].data = dataPoints1;
                         chart.data.datasets[1].data = dataPoints2; // Add the second dataset for comparison
+                        chart.options.scales.r.max = 4;
+                        chart.options.scales.r.suggestedMax = 4;
+                        chart.options.scales.r.ticks.stepSize = 1;
                         chart.update();
                     },
                     error: function(xhr, status, error) {

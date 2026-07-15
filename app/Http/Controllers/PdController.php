@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TcJobPosition;
+use App\Enums\TrainingStatus;
 use App\Models\TcPeopleDevelopment;
 use App\Models\TrsPenilaianTc;
 use App\Models\PoinKategori;
@@ -10,6 +10,10 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\BtnStatus;
 use App\Models\DetailTcPenilaian;
+use App\Models\MstPdActiveYear;
+use App\Services\HR\HRRoleAccessService;
+use App\Services\HR\JobPositionAccessService;
+use App\Services\HR\TrainingDevelopmentService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -22,66 +26,148 @@ use Illuminate\Support\Str;
 
 class PdController extends Controller
 {
+    public function __construct(
+        private JobPositionAccessService $jobPositionAccess,
+        private HRRoleAccessService $roleAccess,
+        private TrainingDevelopmentService $trainingService
+    )
+    {
+    }
+
     /**
      * Ambil daftar sections dari tc_job_positions secara dinamis, difilter per departemen.
      */
+    /**
+     * Ambil daftar sections (string nama) yang dapat diakses user.
+     * @deprecated Gunakan getSectionIdsForUser() atau getSectionObjectsForUser().
+     */
     private function getSectionsForUser(): array
     {
-        $roleId = auth()->user()->role_id;
-
-        // Ambil semua section unik dari tc_job_positions → user → section
-        $allSections = TcJobPosition::with('user')
-            ->get()
-            ->filter(fn($jp) => $jp->user && $jp->user->section)
-            ->pluck('user.section')
-            ->unique()
-            ->sort()
-            ->values()
-            ->toArray();
-
-        // Full access roles
-        if (in_array($roleId, [1, 3, 15])) {
-            return $allSections;
-        }
-
-        // Deteksi departemen dari section user yang login
-        $userSection = auth()->user()->section ?? '';
-
-        $deptPatterns = [
-            'finance_hr_it' => ['Finance', 'Accounting', 'Fin,', 'HRGA', 'HR,', 'HR ', 'PDCA', 'Procurement', 'Inventory'],
-            'production'    => ['Production', 'PPC', 'Technical Support', 'Machining'],
-            'sales'         => ['Sales'],
-            'logistics'     => ['Logistic', 'Delivery', 'Feeder', 'Cutting Sheet', 'Warehouse'],
-        ];
-
-        $userDept = null;
-        foreach ($deptPatterns as $dept => $keywords) {
-            foreach ($keywords as $kw) {
-                if (str_contains($userSection, $kw)) {
-                    $userDept = $dept;
-                    break 2;
-                }
-            }
-        }
-
-        if ($userDept) {
-            $keywords = $deptPatterns[$userDept];
-            return array_values(array_filter($allSections, function ($s) use ($keywords) {
-                foreach ($keywords as $kw) {
-                    if (str_contains($s, $kw)) return true;
-                }
-                return false;
-            }));
-        }
-
-        // Fallback: tampilkan section user sendiri
-        return $userSection ? [$userSection] : $allSections;
+        return $this->jobPositionAccess->getAccessibleSections(auth()->user(), false);
     }
 
-    //
+    /**
+     * Ambil daftar MstSection object (dengan id + name) untuk dropdown di form.
+     */
+    private function getSectionObjectsForUser()
+    {
+        return $this->jobPositionAccess->getAccessibleSectionObjects(auth()->user(), false);
+    }
+
+    /**
+     * Ambil array section_id (integer) yang dapat diakses user, untuk filter query DB.
+     */
+    private function getSectionIdsForUser(): array
+    {
+        return $this->jobPositionAccess->getAccessibleSectionIds(auth()->user(), false);
+    }
+
+    private function getJobPositionsForUser()
+    {
+        return $this->jobPositionAccess->getAccessibleJobPositionOptions(auth()->user(), false);
+    }
+
+    private function rejectInvalidJobPositions(Request $request, array $jobPositions)
+    {
+        $invalidJobPositions = $this->jobPositionAccess
+            ->getInvalidJobPositions(auth()->user(), $jobPositions);
+
+        if (empty($invalidJobPositions)) {
+            return null;
+        }
+
+        $message = 'Anda tidak memiliki akses untuk job position: ' . implode(', ', $invalidJobPositions);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['error' => $message], 403);
+        }
+
+        return redirect()->back()->withInput()->with('error', $message);
+    }
+
+    private function abortUnlessCanManageTraining(): void
+    {
+        abort_unless(
+            $this->roleAccess->canAccessTrainingDevelopment(auth()->user()),
+            403,
+            'Anda tidak memiliki akses untuk pengajuan training.'
+        );
+    }
+
+    private function abortUnlessCanApproveTraining(): void
+    {
+        abort_unless(
+            $this->roleAccess->canApproveTrainingDevelopment(auth()->user()),
+            403,
+            'Anda tidak memiliki akses untuk persetujuan training.'
+        );
+    }
+
+    /**
+     * Ambil daftar penilaian kompetensi yang sudah disetujui untuk user saat ini.
+     * Mendelegasikan logika ke TrainingDevelopmentService.
+     */
+    private function getApprovedCompetencyPenilaians()
+    {
+        $allowedJobs = $this->jobPositionAccess
+            ->getAccessibleJobPositions(auth()->user(), false)
+            ->pluck('id')
+            ->all();
+
+        return $this->trainingService->getApprovedCompetencyPenilaians($allowedJobs);
+    }
+
+    /**
+     * Validasi baris competency dari request dan kembalikan response error jika gagal.
+     * Mendelegasikan validasi ke TrainingDevelopmentService.
+     *
+     * @return \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse|null
+     */
+    private function rejectInvalidCompetencyRows(Request $request, array $data, string $prefix = '')
+    {
+        $penilaians = $this->getApprovedCompetencyPenilaians();
+        $errors     = $this->trainingService->validateCompetencyRows($penilaians, $data, $prefix);
+
+        if (empty($errors)) {
+            return null;
+        }
+
+        $message = implode(' ', $errors);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['error' => $message], 422);
+        }
+
+        return redirect()->back()->withInput()->with('error', $message);
+    }
+
+    /**
+     * Buat kunci lookup competency untuk validasi (delegate ke service).
+     */
+    private function competencyLookupKey($userId, string $jobPosition, string $category, string $competency): string
+    {
+        return $this->trainingService->competencyLookupKey($userId, $jobPosition, $category, $competency);
+    }
+
+    /**
+     * Format teks opsi competency untuk dropdown (delegate ke service).
+     */
+    private function formatCompetencyOption($keterangan, $nilaiStandard, $nilaiAktual): string
+    {
+        return $this->trainingService->formatCompetencyOption($keterangan, $nilaiStandard, $nilaiAktual);
+    }
+
+    /**
+     * Normalisasi kategori competency ke nilai standar (delegate ke service).
+     */
+    private function normalizeCompetencyCategory(?string $category): string
+    {
+        return $this->trainingService->normalizeCompetencyCategory($category);
+    }
 
     public function indexPD()
     {
+        $this->abortUnlessCanManageTraining();
 
         // Ambil ID peran pengguna yang login
         $loggedInUserRoleId = auth()->user()->role_id;
@@ -98,9 +184,10 @@ class PdController extends Controller
             $join->on('mst_pd_pengajuans.id', '=', 'sub.max_id');
         });
 
-        // Tambahkan filter untuk `modified_at` jika role_id bukan 1, 14, atau 15
-        if (!in_array($loggedInUserRoleId, [1, 14, 15])) {
-            // Filter data untuk user dengan role selain 1, 14, atau 15 berdasarkan `modified_at`
+        // Tambahkan filter untuk `modified_at` jika bukan HR/Admin full access
+        // Dan kita hapus hardcoding untuk list di indexPD agar semua job position yg dimanage bisa muncul
+        if (!$this->roleAccess->hasFullAccess(auth()->user())) {
+            // Jika dia Kasie atau Dept Head biasa, hanya lihat punya miliknya sendiri
             $query->where('mst_pd_pengajuans.modified_at', $loggedInUser);
         }
 
@@ -110,35 +197,72 @@ class PdController extends Controller
         // Ambil tahun_aktual dari data pertama (jika ada)
         $tahun_aktual = $data->first()->tahun_aktual ?? now()->year;
 
-        // Query untuk mendapatkan semua data dengan modified_at yang sama
-        $data2 = TcPeopleDevelopment::where('modified_at', $loggedInUser)->get();
+        // Query untuk KPI:
+        // - Admin/full-access: ambil SEMUA data (bukan hanya miliknya sendiri)
+        // - User biasa: hanya data dengan modified_at = nama user yang login
+        if ($this->roleAccess->hasFullAccess(auth()->user())) {
+            $data2 = TcPeopleDevelopment::get();
+        } else {
+            $data2 = TcPeopleDevelopment::where('modified_at', $loggedInUser)->get();
+        }
+
+        // Hitung metrik/KPI untuk ditampilkan di atas tabel
+        $kpiTotalProgram = $data2->pluck('program_training')->filter()->unique()->count();
+        $kpiTotalBiaya = $data2->sum('biaya');
+        $kpiTotalKaryawan = $data2->pluck('id_user')->filter()->unique()->count();
+        $kpiStatusDraft = $data->where('status_1', 1)->count();
+        $kpiStatusProses = $data->where('status_1', 2)->count();
+        $kpiStatusSelesai = $data->where('status_1', 3)->count();
+
+        // Kpi for status_2 (progress)
+        $kpiMencariVendor = $data2->where('status_2', \App\Enums\TrainingStatus::MENCARI_VENDOR)->count();
+        $kpiProsesPendaftaran = $data2->where('status_2', \App\Enums\TrainingStatus::PROSES_PENDAFTARAN)->count();
+        $kpiOnProgress = $data2->where('status_2', \App\Enums\TrainingStatus::ON_PROGRESS)->count();
+        $kpiDone = $data2->where('status_2', \App\Enums\TrainingStatus::DONE)->count();
+        $kpiPending = $data2->where('status_2', \App\Enums\TrainingStatus::PENDING)->count();
+        $kpiDitolak = $data2->where('status_2', \App\Enums\TrainingStatus::DITOLAK)->count();
 
         // Lakukan pengecekan terhadap kondisi: status_2 = 'Done' dan diketahui kosong
         $hasDoneStatus = $data2->contains(function ($item) {
             return $item->status_2 === 'Done' && empty($item->diketahui);
         });
 
+        $activeYear = \App\Models\MstPdActiveYear::getActiveYear();
 
         // Mengirim data ke view
         $buttonStatus = Storage::exists('button_status.txt') ? (int) Storage::get('button_status.txt') : 0;
-        return view('people_development.dept_develop_index', compact('data', 'tahun_aktual', 'hasDoneStatus', 'buttonStatus'));
+        return view('people_development.dept_develop_index', compact(
+            'data', 'tahun_aktual', 'hasDoneStatus', 'buttonStatus',
+            'kpiTotalProgram', 'kpiTotalBiaya', 'kpiTotalKaryawan',
+            'kpiStatusDraft', 'kpiStatusProses', 'kpiStatusSelesai',
+            'kpiMencariVendor', 'kpiProsesPendaftaran', 'kpiOnProgress',
+            'kpiDone', 'kpiPending', 'kpiDitolak', 'activeYear'
+        ));
     }
 
-    public function indexPD2()
+    public function indexPD2(Request $request)
     {
+        $this->abortUnlessCanApproveTraining();
+
         // Mendapatkan tahun saat ini
         $currentYear = Carbon::now()->year;
 
-        // Membuat array tahun dari tahun saat ini hingga 2 tahun ke depan
-        $years = [];
-        for ($i = 0; $i <= 2; $i++) {
-            $years[] = (string)($currentYear + $i);
+        // Rentang tahun tersedia: 5 tahun ke belakang s.d. 2 tahun ke depan
+        $availableYears = [];
+        for ($i = -5; $i <= 2; $i++) {
+            $availableYears[] = (string)($currentYear + $i);
         }
+
+        // Filter tahun dari request (jika ada), default tampilkan semua
+        $selectedYear = $request->query('year', ''); // '' = semua tahun
+
+        // Tentukan tahun yang dipakai di query
+        $filterYears = $selectedYear ? [$selectedYear] : $availableYears;
 
         // Subquery untuk mendapatkan id maksimum per tahun_aktual
         $subQuery = TcPeopleDevelopment::select('tahun_aktual', DB::raw('MAX(id) as max_id'))
             ->whereIn('status_1', [2, 3])
-            ->whereIn('tahun_aktual', $years)
+            ->whereIn('tahun_aktual', $filterYears)
             ->groupBy('tahun_aktual');
 
         // Mengambil data dari TcPeopleDevelopment beserta relasi Role
@@ -146,21 +270,40 @@ class PdController extends Controller
             ->joinSub($subQuery, 'sub', function ($join) {
                 $join->on('mst_pd_pengajuans.id', '=', 'sub.max_id');
             })
-            ->orderBy('mst_pd_pengajuans.tahun_aktual', 'asc') // Mengurutkan berdasarkan tahun_aktual secara ascending, pastikan menyebutkan nama tabel
+            ->orderBy('mst_pd_pengajuans.tahun_aktual', 'desc')
             ->get();
 
+        // Ambil semua data yang statusnya dikirim (2) atau disetujui (3) pada rentang tahun tersebut
+        $allHrgaData = TcPeopleDevelopment::whereIn('status_1', [2, 3])
+            ->whereIn('tahun_aktual', $filterYears)
+            ->get();
+
+        // Hitung metrik HRGA
+        $kpiTotalBiayaUsulan = $allHrgaData->sum('biaya');
+        $kpiTotalBiayaPlan = $allHrgaData->sum('biaya_plan');
+        $kpiTotalKaryawan = $allHrgaData->pluck('id_user')->filter()->unique()->count();
+        $kpiTotalDepartemen = $allHrgaData->pluck('section_id')->filter()->unique()->count();
+
+        $activeYear = \App\Models\MstPdActiveYear::getActiveYear();
+
         // Mengirim data ke view
-        return view('people_development.hrga_develop_index', compact('data'));
+        return view('people_development.hrga_develop_index', compact(
+            'data',
+            'kpiTotalBiayaUsulan', 'kpiTotalBiayaPlan', 'kpiTotalKaryawan', 'kpiTotalDepartemen',
+            'availableYears', 'selectedYear', 'activeYear'
+        ));
     }
 
     public function historiDevelop()
     {
-        $sections = $this->getSectionsForUser();
+        abort_unless($this->roleAccess->canAccessTrainingHistory(auth()->user()), 403);
 
-        // Query the TcPeopleDevelopment model based on sections
-        $dataTcPeopleDevelopment = TcPeopleDevelopment::whereIn('section', $sections)
+        $sectionIds = $this->getSectionIdsForUser();
+
+        // Query the TcPeopleDevelopment model based on section_id
+        $dataTcPeopleDevelopment = TcPeopleDevelopment::whereIn('section_id', $sectionIds)
             ->where('status_2', 'Done')
-            ->with('user')
+            ->with('user', 'section')
             ->get();
 
         return view('people_development.histori_develop', compact('dataTcPeopleDevelopment'));
@@ -168,6 +311,8 @@ class PdController extends Controller
 
     public function viewPD($modified_at, $tahun_aktual)
     {
+        $this->abortUnlessCanManageTraining();
+
         // Mengambil nama pengguna yang sedang login
         $userName = auth()->user()->name;
 
@@ -179,81 +324,41 @@ class PdController extends Controller
 
         // Ambil data berdasarkan modified_at dan id_user sesuai dengan nama pengguna
         $query = TcPeopleDevelopment::where('tahun_aktual', $tahun_aktual)
+            ->where('modified_at', $modified_at)
             ->with('role', 'user', 'jobPosition');
 
-        if (!in_array($roleId, [1, 3, 15])) {
-            // Jika role bukan 1, 14, atau 15, filter berdasarkan modified_at
-            $query->where('modified_at', $modified_at)->where('modified_at', $userId);
+        if (!$this->roleAccess->hasFullAccess(auth()->user())) {
+            // Jika role bukan 1, 14, atau 15, filter memastikan hanya bisa melihat miliknya sendiri
+            $query->where('modified_at', $userId);
         }
 
         $data = $query->get();
 
-        $sections = $this->getSectionsForUser();
+        $sections = $this->getSectionObjectsForUser();
 
         // Mengambil job positions beserta relasinya
-        $jobPositions = TcJobPosition::with('role', 'user')->get();
+        $jobPositions = $this->getJobPositionsForUser();
 
-        // Mengambil data TrsPenilaian dengan kategori Technical
-        $technicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_tcs as tc', 'p.id_tc', '=', 'tc.id')
-            ->select(
-                DB::raw("'Technical' as category"),
-                'tc.keterangan_tc as keterangan',
-                'tc.nilai as nilai_standard',
-                'p.nilai_tc as nilai_aktual',
-                'p.id_user',
-                'p.id_tc'
-            )
-            ->whereNotNull('p.id_tc')
-            ->get();
-
-        // Mengambil data TrsPenilaian dengan kategori Non-Technical
-        $nonTechnicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_soft_skills as sk', 'p.id_sk', '=', 'sk.id')
-            ->select(
-                DB::raw("'Non-Technical' as category"),
-                'sk.keterangan_sk as keterangan',
-                'sk.nilai as nilai_standard',
-                'p.nilai_sk as nilai_aktual',
-                'p.id_user',
-                'p.id_sk'
-            )
-            ->whereNotNull('p.id_sk')
-            ->get();
-
-        // Mengambil data TrsPenilaian dengan kategori Additional
-        $additionalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_additionals as ad', 'p.id_ad', '=', 'ad.id')
-            ->select(
-                DB::raw("'Additional' as category"),
-                'ad.keterangan_ad as keterangan',
-                'ad.nilai as nilai_standard',
-                'p.nilai_ad as nilai_aktual',
-                'p.id_user',
-                'p.id_ad'
-            )
-            ->whereNotNull('p.id_ad')
-            ->get();
-
-        // Gabungkan semua hasil penilaian
-        $penilaians = $technicalPenilaians->merge($nonTechnicalPenilaians)->merge($additionalPenilaians);
+        $penilaians = $this->getApprovedCompetencyPenilaians();
 
         // Mengambil data berdasarkan modified_at dan id_user sesuai dengan nama pengguna untuk filtering
         $filteredData = TcPeopleDevelopment::where('modified_at', $modified_at)
-            ->where('modified_at', $userId) // Mengambil data berdasarkan userId
             ->where('tahun_aktual', $tahun_aktual)
+            ->when(!$this->roleAccess->hasFullAccess(auth()->user()), function ($query) use ($userId) {
+                $query->where('modified_at', $userId);
+            })
             ->get();
 
         // Menghitung jumlah total data yang sudah difilter
         $totalRecords = $filteredData->count();
 
         // Menghitung jumlah data berdasarkan status sesuai dengan filtered data
-        $countStatusBlue = $filteredData->where('status_2', 'Mencari Vendor')->count();
-        $countStatusOrange = $filteredData->where('status_2', 'Proses Pendaftaran')->count();
-        $countStatusYellow = $filteredData->where('status_2', 'On Progress')->count();
-        $countStatusGreen = $filteredData->where('status_2', 'Done')->count();
-        $countStatusGray = $filteredData->where('status_2', 'Pending')->count();
-        $countStatusRed = $filteredData->where('status_2', 'Ditolak')->count();
+        $countStatusBlue = $filteredData->where('status_2', TrainingStatus::MENCARI_VENDOR)->count();
+        $countStatusOrange = $filteredData->where('status_2', TrainingStatus::PROSES_PENDAFTARAN)->count();
+        $countStatusYellow = $filteredData->where('status_2', TrainingStatus::ON_PROGRESS)->count();
+        $countStatusGreen = $filteredData->where('status_2', TrainingStatus::DONE)->count();
+        $countStatusGray = $filteredData->where('status_2', TrainingStatus::PENDING)->count();
+        $countStatusRed = $filteredData->where('status_2', TrainingStatus::DITOLAK)->count();
 
         // Menghitung persentase masing-masing status
         $percentageStatusBlue = $totalRecords > 0 ? ($countStatusBlue / $totalRecords) * 100 : 0;
@@ -287,14 +392,16 @@ class PdController extends Controller
 
     public function viewPD2($tahun_aktual)
     {
+        $this->abortUnlessCanApproveTraining();
+
         // Ambil data yang tidak memiliki tahun_usulan
-        $dataTanpaTahunUsulan = TcPeopleDevelopment::with('role', 'user', 'jobPosition')
+        $dataTanpaTahunUsulan = TcPeopleDevelopment::with('role', 'user', 'jobPosition', 'section')
             ->where('tahun_aktual', $tahun_aktual)
             ->whereNull('tahun_usulan')
             ->get();
 
         // Ambil data yang memiliki tahun_usulan
-        $dataDenganTahunUsulan = TcPeopleDevelopment::with('role', 'user', 'jobPosition')
+        $dataDenganTahunUsulan = TcPeopleDevelopment::with('role', 'user', 'jobPosition', 'section')
             ->where('tahun_aktual', $tahun_aktual)
             ->whereNotNull('tahun_usulan')
             ->get();
@@ -308,31 +415,14 @@ class PdController extends Controller
 
     public function createPD()
     {
-        $sections = $this->getSectionsForUser();
+        $this->abortUnlessCanManageTraining();
+
+        $sections = $this->getSectionObjectsForUser();
 
         // Fetch job positions with relationships to users
-        $jobPositions = TcJobPosition::with('user')->get();
+        $jobPositions = $this->getJobPositionsForUser();
 
-        // Fetch penilaian data (as per your original logic)
-        $technicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_tcs as tc', 'p.id_tc', '=', 'tc.id')
-            ->select(DB::raw("'Technical' as category"), 'tc.keterangan_tc as keterangan', 'tc.nilai as nilai_standard', 'p.nilai_tc as nilai_aktual', 'p.id_user', 'p.id_tc')
-            ->whereNotNull('p.id_tc')
-            ->get();
-
-        $nonTechnicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_soft_skills as sk', 'p.id_sk', '=', 'sk.id')
-            ->select(DB::raw("'Non-Technical' as category"), 'sk.keterangan_sk as keterangan', 'sk.nilai as nilai_standard', 'p.nilai_sk as nilai_aktual', 'p.id_user', 'p.id_sk')
-            ->whereNotNull('p.id_sk')
-            ->get();
-
-        $additionalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_additionals as ad', 'p.id_ad', '=', 'ad.id')
-            ->select(DB::raw("'Additional' as category"), 'ad.keterangan_ad as keterangan', 'ad.nilai as nilai_standard', 'p.nilai_ad as nilai_aktual', 'p.id_user', 'p.id_ad')
-            ->whereNotNull('p.id_ad')
-            ->get();
-
-        $penilaians = $technicalPenilaians->merge($nonTechnicalPenilaians)->merge($additionalPenilaians);
+        $penilaians = $this->getApprovedCompetencyPenilaians();
 
         // Pass sections and other data to the view
         return view('people_development.create_develop', compact('sections', 'jobPositions', 'penilaians'));
@@ -340,6 +430,8 @@ class PdController extends Controller
 
     public function savePdPengajuan(Request $request)
     {
+        $this->abortUnlessCanManageTraining();
+
         $data = $request->all();
         $userName = Auth::user()->name; // Mengambil nama user yang sedang login
 
@@ -349,86 +441,62 @@ class PdController extends Controller
             return redirect()->back()->with('error', 'Data id_user tidak ditemukan atau tidak valid.');
         }
 
+        if ($response = $this->rejectInvalidJobPositions($request, $data['id_job_position'] ?? [])) {
+            return $response;
+        }
+
+        if ($response = $this->rejectInvalidCompetencyRows($request, $data)) {
+            return $response;
+        }
+
         // Loop melalui setiap row dan simpan data
         foreach ($data['id_user'] as $key => $value) {
 
             $tahunAktual = date('Y') + 1; // Mendapatkan tahun depan
             TcPeopleDevelopment::create([
-                'section' => $data['section'][$key] ?? null,
-                'id_job_position' => $data['id_job_position'][$key] ?? null,
-                'id_user' => $data['id_user'][$key] ?? null,
-                'program_training' => $data['program_training'][$key] ?? null,
+                'section_id'          => $data['section_id'][$key] ?? null,
+                'id_job_position'     => $data['id_job_position'][$key] ?? null,
+                'id_user'             => $data['id_user'][$key] ?? null,
+                'program_training'    => $data['program_training'][$key] ?? null,
                 'kategori_competency' => $data['kategori_competency'][$key] ?? null,
-                'competency' => $data['competency'][$key] ?? null,
-                'due_date' => $data['due_date'][$key] ?? null,
-                'lembaga' => $data['lembaga'][$key] ?? null,
-                'keterangan_tujuan' => $data['keterangan_tujuan'][$key] ?? null,
-                'modified_at' => $userName, // Menambahkan modified_at dengan nama user yang login
-                'status_1' => 1,
-                'tahun_aktual' => $tahunAktual, // Simpan tahun depan di kolom tahun_aktual
-                // Tambahkan field lain jika perlu
+                'competency'          => $data['competency'][$key] ?? null,
+                'due_date'            => $data['due_date'][$key] ?? null,
+                'biaya'               => $data['biaya'][$key] ?? null,
+                'lembaga'             => $data['lembaga'][$key] ?? null,
+                'keterangan_tujuan'   => $data['keterangan_tujuan'][$key] ?? null,
+                'objective_learning'  => $data['objective_learning'][$key] ?? null, // Modul 4.4
+                'modified_at'         => $userName,
+                'status_1'            => 1,
+                'tahun_aktual'        => $tahunAktual,
             ]);
         }
 
         return redirect()->route('indexPD')->with('success', 'Data berhasil diperbarui');
     }
 
+    public function savePdPengajuanDept(Request $request)
+    {
+        return $this->savePdPengajuan($request);
+    }
+
     public function editPdPengajuan($modified_at, $tahun_aktual)
     {
-        $sections = $this->getSectionsForUser();
+        $this->abortUnlessCanManageTraining();
+
+        $sections = $this->getSectionObjectsForUser();
 
         // Fetch job positions along with their relations
-        $jobPositions = TcJobPosition::with('role', 'user')->get();
+        $jobPositions = $this->getJobPositionsForUser();
 
-        // Fetch TcPenilaian data based on the user for the Technical category
-        $technicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_tcs as tc', 'p.id_tc', '=', 'tc.id')
-            ->select(
-                DB::raw("'Technical' as category"),
-                'tc.keterangan_tc as keterangan',
-                'tc.nilai as nilai_standard',
-                'p.nilai_tc as nilai_aktual',
-                'p.id_user',
-                'p.id_tc'
-            )
-            ->whereNotNull('p.id_tc')
-            ->get();
-
-        // Fetch TcPenilaian data based on the user for the Non-Technical category
-        $nonTechnicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_soft_skills as sk', 'p.id_sk', '=', 'sk.id')
-            ->select(
-                DB::raw("'Non-Technical' as category"),
-                'sk.keterangan_sk as keterangan',
-                'sk.nilai as nilai_standard',
-                'p.nilai_sk as nilai_aktual',
-                'p.id_user',
-                'p.id_sk'
-            )
-            ->whereNotNull('p.id_sk')
-            ->get();
-
-        // Fetch TcPenilaian data based on the user for the Additional category
-        $additionalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_additionals as ad', 'p.id_ad', '=', 'ad.id')
-            ->select(
-                DB::raw("'Additional' as category"),
-                'ad.keterangan_ad as keterangan',
-                'ad.nilai as nilai_standard',
-                'p.nilai_ad as nilai_aktual',
-                'p.id_user',
-                'p.id_ad'
-            )
-            ->whereNotNull('p.id_ad')
-            ->get();
-
-        // Merge all evaluations into a single collection
-        $penilaians = $technicalPenilaians->merge($nonTechnicalPenilaians)->merge($additionalPenilaians);
+        $penilaians = $this->getApprovedCompetencyPenilaians();
 
         // Fetch TcPeopleDevelopment data based on the modified_at timestamp
         $data = TcPeopleDevelopment::where('modified_at', $modified_at)
             ->where('tahun_aktual', $tahun_aktual)
             ->with('user')
+            ->when(!$this->roleAccess->hasFullAccess(auth()->user()), function ($query) {
+                $query->where('modified_at', auth()->user()->name);
+            })
             ->get();
 
         // Pass data to the view, including sections, job positions, and evaluations
@@ -437,55 +505,14 @@ class PdController extends Controller
 
     public function editPdPengajuanHRGA($tahun_aktual)
     {
-        $sections = $this->getSectionsForUser();
+        $this->abortUnlessCanApproveTraining();
+
+        $sections = $this->getSectionObjectsForUser();
 
         // Mengambil job positions beserta relasinya
-        $jobPositions = TcJobPosition::with('role', 'user')->get();
+        $jobPositions = $this->getJobPositionsForUser();
 
-        // Mengambil data TrsPenilaian dengan kategori Technical
-        $technicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_tcs as tc', 'p.id_tc', '=', 'tc.id')
-            ->select(
-                DB::raw("'Technical' as category"),
-                'tc.keterangan_tc as keterangan',
-                'tc.nilai as nilai_standard',
-                'p.nilai_tc as nilai_aktual',
-                'p.id_user',
-                'p.id_tc'
-            )
-            ->whereNotNull('p.id_tc')
-            ->get();
-
-        // Mengambil data TrsPenilaian dengan kategori Non-Technical
-        $nonTechnicalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_soft_skills as sk', 'p.id_sk', '=', 'sk.id')
-            ->select(
-                DB::raw("'Non-Technical' as category"),
-                'sk.keterangan_sk as keterangan',
-                'sk.nilai as nilai_standard',
-                'p.nilai_sk as nilai_aktual',
-                'p.id_user',
-                'p.id_sk'
-            )
-            ->whereNotNull('p.id_sk')
-            ->get();
-
-        // Mengambil data TrsPenilaian dengan kategori Additional
-        $additionalPenilaians = DB::table('trs_penilaian_tcs as p')
-            ->join('mst_additionals as ad', 'p.id_ad', '=', 'ad.id')
-            ->select(
-                DB::raw("'Additional' as category"),
-                'ad.keterangan_ad as keterangan',
-                'ad.nilai as nilai_standard',
-                'p.nilai_ad as nilai_aktual',
-                'p.id_user',
-                'p.id_ad'
-            )
-            ->whereNotNull('p.id_ad')
-            ->get();
-
-        // Gabungkan semua hasil penilaian
-        $penilaians = $technicalPenilaians->merge($nonTechnicalPenilaians)->merge($additionalPenilaians);
+        $penilaians = $this->getApprovedCompetencyPenilaians();
 
         // Mengambil semua data TcPeopleDevelopment tanpa filter modified_at
         $data = TcPeopleDevelopment::with('user')->where('tahun_aktual', $tahun_aktual)->get();
@@ -494,12 +521,12 @@ class PdController extends Controller
         $totalRecords = $data->count();
 
         // Menghitung jumlah data berdasarkan status
-        $countStatusBlue = $data->where('status_2', 'Mencari Vendor')->count();
-        $countStatusOrange = $data->where('status_2', 'Proses Pendaftaran')->count();
-        $countStatusYellow = $data->where('status_2', 'On Progress')->count();
-        $countStatusGreen = $data->where('status_2', 'Done')->count();
-        $countStatusGray = $data->where('status_2', 'Pending')->count();
-        $countStatusRed = $data->where('status_2', 'Ditolak')->count();
+        $countStatusBlue = $data->where('status_2', TrainingStatus::MENCARI_VENDOR)->count();
+        $countStatusOrange = $data->where('status_2', TrainingStatus::PROSES_PENDAFTARAN)->count();
+        $countStatusYellow = $data->where('status_2', TrainingStatus::ON_PROGRESS)->count();
+        $countStatusGreen = $data->where('status_2', TrainingStatus::DONE)->count();
+        $countStatusGray = $data->where('status_2', TrainingStatus::PENDING)->count();
+        $countStatusRed = $data->where('status_2', TrainingStatus::DITOLAK)->count();
 
         // Menghitung persentase masing-masing status
         $percentageStatusBlue = $totalRecords > 0 ? ($countStatusBlue / $totalRecords) * 100 : 0;
@@ -510,11 +537,14 @@ class PdController extends Controller
         $percentageStatusRed = $totalRecords > 0 ? ($countStatusRed / $totalRecords) * 100 : 0;
 
         // Mengirimkan data ke view, menyertakan sections, job positions, dan penilaians
+        $activeYear = MstPdActiveYear::getActiveYear();
         return view('people_development.edit_develop_hrga', compact(
             'data',
             'sections',
             'jobPositions',
             'penilaians',
+            'tahun_aktual',
+            'activeYear',
             'totalRecords',
             'countStatusBlue',
             'countStatusOrange',
@@ -531,6 +561,41 @@ class PdController extends Controller
         ));
     }
 
+    /**
+     * Modul 4.2 — Set Tahun Aktif Pengajuan Training.
+     * Hanya HR / Administrator yang berhak mengubah.
+     */
+    public function setActiveYear(Request $request)
+    {
+        abort_unless(
+            $this->roleAccess->hasFullAccess(auth()->user()),
+            403,
+            'Hanya HR / Administrator yang dapat mengatur tahun aktif.'
+        );
+
+        $request->validate(['year' => 'required|integer|digits:4|min:2020|max:2050']);
+
+        MstPdActiveYear::setActiveYear((int) $request->year, auth()->id());
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tahun aktif berhasil diubah ke ' . $request->year,
+                'year'    => $request->year,
+            ]);
+        }
+
+        return back()->with('success', 'Tahun aktif pengajuan training berhasil diubah ke ' . $request->year . '.');
+    }
+
+    /**
+     * API: Ambil tahun aktif pengajuan training saat ini.
+     */
+    public function getActiveYear()
+    {
+        return response()->json(['year' => MstPdActiveYear::getActiveYear()]);
+    }
+
     public function editEvaluasi($id)
     {
         // Ambil data evaluasi beserta data user terkait
@@ -542,38 +607,57 @@ class PdController extends Controller
 
     public function update(Request $request)
     {
+        $this->abortUnlessCanManageTraining();
+
         $data = $request->all();
 
         // Ambil nama pengguna yang sedang login
         $userName = auth()->user()->name;
 
+        if ($response = $this->rejectInvalidJobPositions($request, $data['id_job_position'] ?? [])) {
+            return $response;
+        }
+
+        if ($response = $this->rejectInvalidCompetencyRows($request, $data)) {
+            return $response;
+        }
+
         // Ambil tahun depan
         $currentYear = date('Y');
         $nextYear = $currentYear + 1;
 
+        // Hapus data yang dihapus oleh user (ada di original_id tapi tidak ada di submitted id)
+        $originalIds = $request->input('original_id', []);
+        $submittedIds = array_filter($data['id'] ?? []);
+        $deletedIds = array_diff($originalIds, $submittedIds);
+        
+        if (!empty($deletedIds)) {
+            TcPeopleDevelopment::whereIn('id', $deletedIds)->delete();
+        }
+
         // Ambil jumlah baris data yang dikirimkan
-        $rowCount = count($data['id_user']);
+        $rowCount = count($data['id_user'] ?? []);
 
         // Loop melalui setiap baris data
         for ($index = 0; $index < $rowCount; $index++) {
             $id = $data['id'][$index] ?? null;
 
-            // Update atau tambahkan data
             TcPeopleDevelopment::updateOrCreate(
-                ['id' => $id], // Kriteria pencarian berdasarkan ID
-                [   // Data yang akan diupdate atau ditambahkan
-                    'section' => $data['section'][$index] ?? null,
-                    'id_job_position' => $data['id_job_position'][$index] ?? null,
-                    'id_user' => $data['id_user'][$index] ?? null,
-                    'program_training' => $data['program_training'][$index] ?? null,
+                ['id' => $id],
+                [
+                    'section_id'          => $data['section_id'][$index] ?? null,
+                    'id_job_position'     => $data['id_job_position'][$index] ?? null,
+                    'id_user'             => $data['id_user'][$index] ?? null,
+                    'program_training'    => $data['program_training'][$index] ?? null,
                     'kategori_competency' => $data['kategori_competency'][$index] ?? null,
-                    'competency' => $data['competency'][$index] ?? null,
-                    'due_date' => $data['due_date'][$index] ?? null,
-                    'lembaga' => $data['lembaga'][$index] ?? null,
-                    'keterangan_tujuan' => $data['keterangan_tujuan'][$index] ?? null,
-                    'modified_at' => $userName, // Nama pengguna yang mengubah
-                    'tahun_aktual' => $nextYear, // Tahun depan
-                    'status_1' => 1, // Status 1 diset ke 1
+                    'competency'          => $data['competency'][$index] ?? null,
+                    'due_date'            => $data['due_date'][$index] ?? null,
+                    'biaya'               => $data['biaya'][$index] ?? null,
+                    'lembaga'             => $data['lembaga'][$index] ?? null,
+                    'keterangan_tujuan'   => $data['keterangan_tujuan'][$index] ?? null,
+                    'modified_at'         => $userName,
+                    'tahun_aktual'        => $nextYear,
+                    'status_1'            => 1,
                 ]
             );
 
@@ -587,6 +671,7 @@ class PdController extends Controller
                     'kategori_competency' => $data['kategori_competency'][$index] ?? null,
                     'competency' => $data['competency'][$index] ?? null,
                     'due_date' => $data['due_date'][$index] ?? null,
+                    'biaya' => $data['biaya'][$index] ?? null,
                     'lembaga' => $data['lembaga'][$index] ?? null,
                     'keterangan_tujuan' => $data['keterangan_tujuan'][$index] ?? null,
                     'modified_at' => $userName,
@@ -616,42 +701,114 @@ class PdController extends Controller
                     continue;
                 }
 
-                $existingItem = TcPeopleDevelopment::find($item['id']);
+                $isNew = str_starts_with($item['id'], 'new_');
 
-                if ($existingItem) {
-                    // Proses update dengan handling nilai null/empty
-                    $updateData = [
-                        'due_date' => !empty($item['due_date']) ? $item['due_date'] : null,
-                        'biaya' => !empty($item['biaya']) ? $item['biaya'] : 0,
-                        'lembaga' => !empty($item['lembaga']) ? $item['lembaga'] : null,
-                        'keterangan_tujuan' => !empty($item['keterangan_tujuan']) ? $item['keterangan_tujuan'] : null,
-                        'program_training_plan' => !empty($item['program_training_plan']) ? $item['program_training_plan'] : null,
-                        'due_date_plan' => !empty($item['due_date_plan']) ? $item['due_date_plan'] : null,
-                        'biaya_plan' => !empty($item['biaya_plan']) ? $item['biaya_plan'] : 0,
-                        'lembaga_plan' => !empty($item['lembaga_plan']) ? $item['lembaga_plan'] : null,
-                        'keterangan_plan' => !empty($item['keterangan_plan']) ? $item['keterangan_plan'] : null,
-                        'status_2' => !empty($item['status_2']) ? $item['status_2'] : null
-                    ];
+                if ($isNew) {
+                    // Create new additional row
+                    $tcPeopleDevelopment = new TcPeopleDevelopment();
+                    $tcPeopleDevelopment->status_1 = 3; // Approved (finalized by HRGA directly)
+                    
+                    $tahunAktual = $request->input('tahun_aktual', date('Y') + 1);
+                    $tcPeopleDevelopment->tahun_aktual = $tahunAktual;
+                    $tcPeopleDevelopment->tahun_usulan = $tahunAktual - 1;
 
-                    // Filter out null values if you don't want to update those fields
-                    $updateData = array_filter($updateData, function ($value) {
-                        return $value !== null;
-                    });
+                    // Set proposal fields
+                    $tcPeopleDevelopment->section_id = $item['section_id'] ?? null;
+                    $tcPeopleDevelopment->id_job_position = $item['id_job_position'] ?? null;
+                    $tcPeopleDevelopment->id_user = $item['id_user'] ?? null;
+                    $tcPeopleDevelopment->program_training = $item['program_training'] ?? null;
+                    $tcPeopleDevelopment->kategori_competency = $item['kategori_competency'] ?? null;
+                    $tcPeopleDevelopment->competency = $item['competency'] ?? null;
+                    $tcPeopleDevelopment->due_date = !empty($item['due_date']) ? $item['due_date'] : null;
+                    $tcPeopleDevelopment->biaya = !empty($item['biaya']) ? $item['biaya'] : 0;
+                    $tcPeopleDevelopment->lembaga = !empty($item['lembaga']) ? $item['lembaga'] : null;
+                    $tcPeopleDevelopment->keterangan_tujuan = !empty($item['keterangan_tujuan']) ? $item['keterangan_tujuan'] : null;
 
-                    // Update only if we have valid data
-                    if (!empty($updateData)) {
-                        $existingItem->update($updateData);
+                    // Set actual plan fields
+                    $tcPeopleDevelopment->program_training_plan = !empty($item['program_training_plan']) ? $item['program_training_plan'] : null;
+                    $tcPeopleDevelopment->due_date_plan = !empty($item['due_date_plan']) ? $item['due_date_plan'] : null;
+                    $tcPeopleDevelopment->biaya_plan = !empty($item['biaya_plan']) ? $item['biaya_plan'] : 0;
+                    $tcPeopleDevelopment->lembaga_plan = !empty($item['lembaga_plan']) ? $item['lembaga_plan'] : null;
+                    $tcPeopleDevelopment->keterangan_plan = !empty($item['keterangan_plan']) ? $item['keterangan_plan'] : null;
+                    $tcPeopleDevelopment->status_2 = !empty($item['status_2']) ? $item['status_2'] : null;
+
+                    // Modul 4.1 — Tindak Lanjut Pasca Training
+                    $tcPeopleDevelopment->sharing_knowledge = !empty($item['sharing_knowledge']) ? $item['sharing_knowledge'] : null;
+                    $tcPeopleDevelopment->objective_learning = !empty($item['objective_learning']) ? $item['objective_learning'] : null;
+
+                    // Set modified_at based on job position or user
+                    $userName = auth()->user()->name;
+                    $jobPos = \App\Models\MstJobPosition::find($item['id_job_position']);
+                    if ($jobPos) {
+                        $approverPos = $jobPos->getApproverPosition(2);
+                        $deptHeadName = $approverPos
+                            ? $approverPos->activeUsers()->first()?->name
+                            : null;
+                        $tcPeopleDevelopment->modified_at = $deptHeadName ?: $userName;
+                    } else {
+                        $tcPeopleDevelopment->modified_at = $userName;
                     }
 
-                    // Handle file upload
+                    $tcPeopleDevelopment->save();
+
+                    // Handle file upload for the new row
                     if ($request->hasFile('file.' . $item['id'])) {
                         $file = $request->file('file.' . $item['id']);
                         $fileName = time() . '_' . $file->getClientOriginalName();
                         $file->move(public_path('uploads'), $fileName);
-                        // Save to existing columns: `file` and `file_name`
-                        $existingItem->file = $fileName;
-                        $existingItem->file_name = $file->getClientOriginalName();
-                        $existingItem->save();
+                        $tcPeopleDevelopment->file = $fileName;
+                        $tcPeopleDevelopment->file_name = $file->getClientOriginalName();
+                        $tcPeopleDevelopment->save();
+                    }
+                } else {
+                    $existingItem = TcPeopleDevelopment::find($item['id']);
+
+                    if ($existingItem) {
+                        // Proses update dengan handling nilai null/empty
+                        $updateData = [
+                            'due_date' => !empty($item['due_date']) ? $item['due_date'] : null,
+                            'biaya' => !empty($item['biaya']) ? $item['biaya'] : 0,
+                            'lembaga' => !empty($item['lembaga']) ? $item['lembaga'] : null,
+                            'keterangan_tujuan' => !empty($item['keterangan_tujuan']) ? $item['keterangan_tujuan'] : null,
+                            'program_training_plan' => !empty($item['program_training_plan']) ? $item['program_training_plan'] : null,
+                            'due_date_plan' => !empty($item['due_date_plan']) ? $item['due_date_plan'] : null,
+                            'biaya_plan' => !empty($item['biaya_plan']) ? $item['biaya_plan'] : 0,
+                            'lembaga_plan' => !empty($item['lembaga_plan']) ? $item['lembaga_plan'] : null,
+                            'keterangan_plan' => !empty($item['keterangan_plan']) ? $item['keterangan_plan'] : null,
+                            'status_2' => !empty($item['status_2']) ? $item['status_2'] : null,
+                            // Modul 4.1 — Tindak Lanjut Pasca Training
+                            'sharing_knowledge' => isset($item['sharing_knowledge']) ? ($item['sharing_knowledge'] ?: null) : null,
+                            'objective_learning' => isset($item['objective_learning']) ? ($item['objective_learning'] ?: null) : null,
+                        ];
+
+                        // Filter out null values if you don't want to update those fields
+                        $updateData = array_filter($updateData, function ($value) {
+                            return $value !== null;
+                        });
+
+                        // Modul 4.1: Ensure we can clear sharing_knowledge and objective_learning
+                        if (array_key_exists('sharing_knowledge', $item) && empty($item['sharing_knowledge'])) {
+                            $updateData['sharing_knowledge'] = null;
+                        }
+                        if (array_key_exists('objective_learning', $item) && empty($item['objective_learning'])) {
+                            $updateData['objective_learning'] = null;
+                        }
+
+                        // Update only if we have valid data
+                        if (!empty($updateData)) {
+                            $existingItem->update($updateData);
+                        }
+
+                        // Handle file upload
+                        if ($request->hasFile('file.' . $item['id'])) {
+                            $file = $request->file('file.' . $item['id']);
+                            $fileName = time() . '_' . $file->getClientOriginalName();
+                            $file->move(public_path('uploads'), $fileName);
+                            // Save to existing columns: `file` and `file_name`
+                            $existingItem->file = $fileName;
+                            $existingItem->file_name = $file->getClientOriginalName();
+                            $existingItem->save();
+                        }
                     }
                 }
             }
@@ -664,18 +821,28 @@ class PdController extends Controller
     }
     public function updatePdPlan2(Request $request)
     {
+        $this->abortUnlessCanApproveTraining();
+
         $data = $request->all();
         $userName = Auth::user()->name;
         $currentYear = date('Y');
 
         // Mengolah data baru
-        if (isset($data['new_section'])) {
-            foreach ($data['new_section'] as $index => $section) {
+        if (isset($data['new_section_id'])) {
+            if ($response = $this->rejectInvalidJobPositions($request, $data['new_id_job_position'] ?? [])) {
+                return $response;
+            }
+
+            if ($response = $this->rejectInvalidCompetencyRows($request, $data, 'new_')) {
+                return $response;
+            }
+
+            foreach ($data['new_section_id'] as $index => $sectionId) {
                 $tcPeopleDevelopment = new TcPeopleDevelopment();
                 $tcPeopleDevelopment->status_1 = 2;
                 $tcPeopleDevelopment->tahun_aktual = $currentYear + 1;
                 $tcPeopleDevelopment->tahun_usulan = $currentYear;
-                $tcPeopleDevelopment->section = $section;
+                $tcPeopleDevelopment->section_id = $sectionId;
                 $tcPeopleDevelopment->id_job_position = $data['new_id_job_position'][$index];
                 $tcPeopleDevelopment->id_user = $data['new_id_user'][$index];
                 $tcPeopleDevelopment->kategori_competency = $data['new_kategori_competency'][$index];
@@ -688,20 +855,18 @@ class PdController extends Controller
                 $tcPeopleDevelopment->lembaga = $data['new_lembaga'][$index] ?? null;
                 $tcPeopleDevelopment->keterangan_tujuan = $data['new_keterangan_tujuan'][$index] ?? null;
 
-                // Menyimpan modified_at berdasarkan section
-                if (in_array($section, ['Sales Region I', 'Sales Region II', 'Sales Region I, II'])) {
-                    $tcPeopleDevelopment->modified_at = 'YULMAI RIDO WINANDA';
-                } elseif (in_array($section, ['Sales Region III', 'Sales Region IV'])) {
-                    $tcPeopleDevelopment->modified_at = 'ANDIK TOTOK SISWOYO';
-                } elseif (in_array($section, ['Finance, Accounting', 'PDCA, HR, GA, Legal, Procurement, IT', 'HR, GA & Legal ', 'PDCA, Procurement, IT'])) {
-                    $tcPeopleDevelopment->modified_at = 'MARTINUS CAHYO RAHASTO';
-                } elseif ($section === 'Logistics') {
-                    $tcPeopleDevelopment->modified_at = 'VITRI HANDAYANI';
-                } elseif (in_array($section, ['PPC, Production CT', 'Production HT', 'Production MC & Machining Custom', 'Technical Support QC & Maintenance'])) {
-                    $tcPeopleDevelopment->modified_at = 'ARY RODJO PRASETYO';
+                // Mengambil department_head_name secara dinamis dari MstJobPosition
+                $jobPos = \App\Models\MstJobPosition::find($data['new_id_job_position'][$index]);
+                if ($jobPos) {
+                    // Ambil dept head name dari user yang menjabat posisi approval level 2
+                    $approverPos = $jobPos->getApproverPosition(2);
+                    $deptHeadName = $approverPos
+                        ? $approverPos->activeUsers()->first()?->name
+                        : null;
+                    $tcPeopleDevelopment->modified_at = $deptHeadName ?: $userName;
+                } else {
+                    $tcPeopleDevelopment->modified_at = $userName;
                 }
-
-                $tcPeopleDevelopment->modified_at = $userName;
                 $tcPeopleDevelopment->save();
             }
         }
@@ -768,6 +933,10 @@ class PdController extends Controller
     }
     public function updateBtn(Request $request)
     {
+        if (!$this->roleAccess->canManageTrainingConfig(auth()->user())) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 403);
+        }
+
         $status = $request->input('enabled') ? 1 : 0;
 
         // Simpan status ke file (persistent, tidak terpengaruh cache:clear)
@@ -789,6 +958,17 @@ class PdController extends Controller
                 return response()->json(['error' => 'Data not found'], 404);
             }
             return redirect()->back()->withErrors('Data not found');
+        }
+
+        // Authorization: hanya pemilik pengajuan (modified_at == nama user) atau user full-access (HRGA/Admin) yang boleh download
+        $isOwner     = $data->modified_at === auth()->user()->name;
+        $hasFullAccess = $this->roleAccess->hasFullAccess(auth()->user());
+
+        if (!$isOwner && !$hasFullAccess) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['error' => 'Anda tidak memiliki akses untuk mengunduh dokumen ini.'], 403);
+            }
+            return redirect()->back()->withErrors('Anda tidak memiliki akses untuk mengunduh dokumen ini.');
         }
 
         $candidates = [];
@@ -854,9 +1034,17 @@ class PdController extends Controller
 
     public function sendPD($modified_at, $tahun_aktual)
     {
-        // Mengupdate status menjadi 2 untuk semua entri dengan id_job_position yang sama
-        TcPeopleDevelopment::where('modified_at', $modified_at)
-            ->where('tahun_aktual', $tahun_aktual)
+        $this->abortUnlessCanManageTraining();
+
+        $query = TcPeopleDevelopment::where('modified_at', $modified_at)
+            ->where('tahun_aktual', $tahun_aktual);
+
+        if (!$this->roleAccess->hasFullAccess(auth()->user())) {
+            $query->where('modified_at', auth()->user()->name);
+        }
+
+        // Mengupdate status draft menjadi menunggu HRGA tanpa menghilangkan data dari list.
+        $query->where('status_1', 1)
             ->update(['status_1' => 2]);
 
         // Redirect atau kembali ke halaman yang diinginkan setelah update
@@ -865,75 +1053,70 @@ class PdController extends Controller
 
     public function sendPD2($tahun_aktual)
     {
-        // Mengupdate status menjadi 3 untuk semua entri dengan tahun_aktual yang sama
+        $this->abortUnlessCanApproveTraining();
+
+        // Mengupdate status pending HRGA menjadi disetujui tanpa mengubah draft lain di tahun yang sama.
         TcPeopleDevelopment::where('tahun_aktual', $tahun_aktual)
+            ->where('status_1', 2)
             ->update(['status_1' => 3]);
 
         // Redirect atau kembali ke halaman yang diinginkan setelah update
-        return redirect()->route('indexPD2')->with('success', 'Status telah diubah menjadi Menunggu Persetujuan HRGA.');
+        return redirect()->route('indexPD2')->with('success', 'Status telah diubah menjadi Disetujui HRGA.');
     }
 
     public function getFilteredData(Request $request)
     {
-        $sections = $this->getSectionsForUser();
+        $sectionIds = $this->getSectionIdsForUser();
         $yearEnd = $request->input('year', now()->year);
         $roleFilter = $request->input('role_id'); // department selector from UI
 
         // Base query: only completed (Done) records and eager-load user
-        $query = TcPeopleDevelopment::where('status_2', 'Done')
-            ->with('user');
+        $query = TcPeopleDevelopment::where('status_2', TrainingStatus::DONE)
+            ->with('user', 'section');
 
-        // Map UI role_id (department) to section keywords
-        $deptRoleMap = [
-            11 => ['Finance', 'Accounting', 'Fin,', 'HRGA', 'HR,', 'PDCA', 'Procurement', 'Inventory'],
-            2 => ['Sales'],
-            5 => ['Production', 'PPC', 'Technical Support', 'Machining'],
-            7 => ['Logistic', 'Delivery', 'Feeder', 'Cutting Sheet', 'Warehouse'],
-        ];
-
+        // Build department → section_id mapping using MstSection + MstDepartment
         if ($roleFilter) {
             $roleFilter = (int) $roleFilter;
+
+            // Map from UI role_id to department name keywords
+            $deptRoleMap = [
+                11 => ['Finance', 'Accounting', 'HRGA', 'HR', 'PDCA', 'Procurement', 'Inventory'],
+                2  => ['Sales'],
+                5  => ['Production', 'PPC', 'Technical Support', 'Machining'],
+                7  => ['Logistic', 'Delivery', 'Feeder', 'Cutting Sheet', 'Warehouse'],
+            ];
+
             $keywords = $deptRoleMap[$roleFilter] ?? null;
 
             if ($keywords) {
-                // get all sections from job positions
-                $allSections = TcJobPosition::with('user')
-                    ->get()
-                    ->filter(fn($jp) => $jp->user && $jp->user->section)
-                    ->pluck('user.section')
-                    ->unique()
-                    ->values()
+                // Find matching section IDs by section name containing keywords
+                $selectedSectionIds = \App\Models\MstSection::all()
+                    ->filter(function ($sec) use ($keywords) {
+                        foreach ($keywords as $kw) {
+                            if (\Illuminate\Support\Str::contains($sec->name, $kw)) return true;
+                        }
+                        return false;
+                    })
+                    ->pluck('id')
                     ->toArray();
 
-                // select sections that match any keyword
-                $selectedSections = array_values(array_filter($allSections, function ($s) use ($keywords) {
-                    foreach ($keywords as $kw) {
-                        if (Str::contains($s, $kw)) return true;
-                    }
-                    return false;
-                }));
+                // Intersect with user-allowed section IDs
+                $effectiveSectionIds = array_values(array_intersect($sectionIds, $selectedSectionIds));
 
-                // Respect user's allowed sections (permissions)
-                $effectiveSections = array_values(array_intersect($sections, $selectedSections));
-
-                // If user has admin-like roles, allow full selectedSections
-                if (empty($effectiveSections) && in_array(auth()->user()->role_id, [1, 3, 15])) {
-                    $effectiveSections = $selectedSections;
+                if (empty($effectiveSectionIds) && $this->jobPositionAccess->hasFullAccess(auth()->user())) {
+                    $effectiveSectionIds = $selectedSectionIds;
                 }
 
-                // If still empty, return empty result (no access or no matching sections)
-                if (empty($effectiveSections)) {
+                if (empty($effectiveSectionIds)) {
                     return response()->json([]);
                 }
 
-                $query->whereIn('section', $effectiveSections);
+                $query->whereIn('section_id', $effectiveSectionIds);
             } else {
-                // Unknown role filter — return empty
                 return response()->json([]);
             }
         } else {
-            // No department filter selected: apply user's allowed sections
-            $query->whereIn('section', $sections);
+            $query->whereIn('section_id', $sectionIds);
         }
 
         // Apply year range filter from 2000 to the selected year
@@ -945,4 +1128,6 @@ class PdController extends Controller
 
         return response()->json($dataTcPeopleDevelopment);
     }
+
+
 }

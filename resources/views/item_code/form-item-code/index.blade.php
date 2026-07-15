@@ -229,10 +229,10 @@
                                     Import
                                     </button>
 
-                                    <a href="{{ route('item-code.exportForm', $newFilterParams) }}"
+                                    <button type="button" onclick="exportItemCodeData('new_product', '{{ route('item-code.exportForm', $newFilterParams) }}')"
                                         class="btn btn-sm btn-outline-success">
                                         Export
-                                    </a>
+                                    </button>
 
                                     <form action="{{ route('item-code.submitAll') }}" method="POST" class="d-inline"
                                         data-submit-all-form
@@ -320,7 +320,7 @@
                                             <td class="text-end">{{ number_format((float) $item->qty, 0, '.', '') }}</td>
                                             <td>{{ $item->unit ?: '-' }}</td>
                                             <td>{{ $item->currency }}</td>                                           
-                                            <td class="text-end">{{ number_format((float) $item->price_per_pcs) }}</td>
+                                            <td class="text-end">{{ number_format((float) $item->price_per_pcs, 2) }}</td>
                                             <td>{{ $item->reason_new_price ?: '-' }}</td>
                                             <td>
                                                 @if (!empty($item->attachment))
@@ -345,14 +345,14 @@
                                                         'description' => $item->description,
                                                         'qty' => (int) round((float) $item->qty),
                                                         'unit' => $item->unit,
-                                                        'price_per_pcs' => (int) $item->price_per_pcs,
+                                                        'price_per_pcs' => (float) $item->price_per_pcs,
                                                         'currency' => $item->currency,
                                                         'tanggal' => optional($item->tanggal)->format('d-m-Y'),
                                                         'tanggal_lama' => optional($item->tanggal_lama)->format('d-m-Y'),
-                                                        'harga_baru' => $item->harga_baru !== null ? (int) $item->harga_baru : null,
+                                                        'harga_baru' => $item->harga_baru !== null ? (float) $item->harga_baru : null,
                                                         'reason_new_price' => $item->reason_new_price,
                                                         'attachment_url' => $item->attachment ? route('item-code.attachment', $item->id) : null,
-                                                        'selisih' => $item->selisih !== null ? (int) $item->selisih : null,
+                                                        'selisih' => $item->selisih !== null ? (float) $item->selisih : null,
                                                         'tanggal_harga_baru' => optional($item->tanggal_harga_baru)->format('d-m-Y'),
                                                         'status' => $statusLabel,
                                                         'status_raw' => $item->status,
@@ -519,10 +519,10 @@
                                     Import
                                 </button>
 
-                                <a href="{{ route('item-code.exportForm', $updateFilterParams) }}"
+                                <button type="button" onclick="exportItemCodeData('update_price', '{{ route('item-code.exportForm', $updateFilterParams) }}')"
                                     class="btn btn-sm btn-outline-success">
                                     Export
-                                </a>
+                                </button>
 
                                 <form action="{{ route('item-code.submitAll') }}" method="POST" class="d-inline"
                                     data-submit-all-form
@@ -620,9 +620,9 @@
                                             <td>{{ $item->unit ?: '-' }}</td>
                                             <td>{{ $item->currency }}</td>
                                             <td>{{ optional($item->tanggal_lama)->format('d-m-Y') ?: '-' }}</td>
-                                            <td class="text-end">{{ number_format((int) $item->price_per_pcs) }}</td>
+                                            <td class="text-end">{{ number_format((float) $item->price_per_pcs, 2) }}</td>
                                             <td>{{ optional($item->tanggal_harga_baru)->format('d-m-Y') ?: '-' }}</td>
-                                            <td class="text-end">{{ $hargaBaruValue !== null ? number_format($hargaBaruValue) : '-' }}</td>
+                                            <td class="text-end">{{ $hargaBaruValue !== null ? number_format($hargaBaruValue, 2) : '-' }}</td>
                                             <td>{{ $item->reason_new_price ?: '-' }}</td>
                                             <td>
                                                 @if (!empty($item->attachment))
@@ -631,7 +631,7 @@
                                                     -
                                                 @endif
                                             </td>
-                                            <td class="text-end">{{ $selisihValue !== null ? number_format($selisihValue) : '-' }}</td>
+                                            <td class="text-end">{{ $selisihValue !== null ? number_format($selisihValue, 2) : '-' }}</td>
                                             <td>
                                                 <span class="badge itemcode-status-badge bg-{{ $badgeClass }}">{!! $statusLabelHtml !!}</span>
                                             </td>
@@ -1396,6 +1396,39 @@
                     input.setAttribute('data-generated-selected-id', 'true');
                     form.appendChild(input);
                 });
+            }
+
+            function exportItemCodeData(scope, url) {
+                const selectedIds = getBulkSelectedIds(scope);
+                if (selectedIds.length === 0) {
+                    window.location.href = url;
+                    return;
+                }
+
+                const form = document.createElement('form');
+                form.method = 'GET';
+                form.action = url.split('?')[0];
+
+                const urlParams = new URLSearchParams(url.split('?')[1] || '');
+                for (const [key, value] of urlParams.entries()) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+
+                selectedIds.forEach((id) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_ids[]';
+                    input.value = id;
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
             }
 
             function syncBulkSelectAll(scope) {

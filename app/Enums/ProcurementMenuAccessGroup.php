@@ -129,7 +129,7 @@ enum ProcurementMenuAccessGroup: string
                 'MARTINUS CAHYO RAHASTO',
                 'YULMAI RIDO WINANDA',
                 'ADHI PRASETIYO',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
                 'ILHAM CHOLID',
                 'ABDUR RAHMAN AL FAAIZ',
             ],
@@ -138,7 +138,7 @@ enum ProcurementMenuAccessGroup: string
                 'ADHI PRASETIYO',
                 'JESSICA PAUNE',
                 'MARTINUS CAHYO RAHASTO',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
             ],
             self::PERSETUJUAN_PROCUREMENT_1, self::PERSETUJUAN_PROCUREMENT_2 => [
                 'ADMINSTRATOR',

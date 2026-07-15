@@ -27,7 +27,7 @@ enum CrpMenuAccessGroup: string
                 'ILHAM CHOLID',
                 'JUN JOHAMIN PD',
                 'RAGIL ISHA RAHMANTO',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
                 'VIVIAN ANGELIKA',
                 'ABDUR RAHMAN AL FAAIZ',
                 'FAJAR BAGASKARA',

@@ -38,10 +38,8 @@ class HRMenuComposer
             return;
         }
 
-        $userName = Auth::user()->name;
-        $hrMenu = $this->hrMenuService->getMenuStructure($userName);
+        $hrMenu = $this->hrMenuService->getMenuStructure(Auth::user());
 
         $view->with('hrMenu', $hrMenu);
     }
 }
-

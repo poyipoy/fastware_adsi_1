@@ -2,6 +2,9 @@
 
 namespace App\Enums;
 
+use App\Models\User;
+use App\Services\HR\HRRoleAccessService;
+
 enum HRMenuAccessGroup: string
 {
     case HR_MAIN = 'hr_main';
@@ -39,7 +42,7 @@ enum HRMenuAccessGroup: string
                 'JUN JOHAMIN PD',
                 'SITI MARIA ULFA',
                 'RAGIL ISHA RAHMANTO',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
                 'ABDUR RAHMAN AL FAAIZ',
             ],
             self::KNOWLEDGE_MANAGEMENT, self::KNOWLEDGE_APPROVAL => [
@@ -51,7 +54,7 @@ enum HRMenuAccessGroup: string
                 'JESSICA PAUNE',
                 'ADHI PRASETIYO',
                 'ANDIK TOTOK SISWOYO',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
             ],
             self::JOB_POSITION => [
                 'ADMINSTRATOR',
@@ -67,7 +70,7 @@ enum HRMenuAccessGroup: string
                 'JESSICA PAUNE',
                 'MARTINUS CAHYO RAHASTO',
                 'SITI MARIA ULFA',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
                 'MUGI PRAMONO',
                 'ABDUR RAHMAN AL FAAIZ',
                 'RAGIL ISHA RAHMANTO',
@@ -86,7 +89,7 @@ enum HRMenuAccessGroup: string
                 'MARTINUS CAHYO RAHASTO',
                 'SITI MARIA ULFA',
                 'RAGIL ISHA RAHMANTO',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
                 'ABDUR RAHMAN AL FAAIZ',
             ],
             self::TRAINING_DEVELOPMENT => [
@@ -98,7 +101,7 @@ enum HRMenuAccessGroup: string
                 'JESSICA PAUNE',
                 'MARTINUS CAHYO RAHASTO',
                 'SITI MARIA ULFA',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
                 'ADHI PRASETYO',
             ],
             self::TRAINING_APPROVAL => [
@@ -120,7 +123,7 @@ enum HRMenuAccessGroup: string
                 'MARTINUS CAHYO RAHASTO',
                 'SITI MARIA ULFA',
                 'RAGIL ISHA RAHMANTO',
-                'RICHARDUS',
+                'RICHARDUS CHRISTIAN',
                 'ABDUR RAHMAN AL FAAIZ',
             ],
         };
@@ -136,5 +139,42 @@ enum HRMenuAccessGroup: string
     {
         return in_array($userName, $this->getAllowedUsers());
     }
-}
 
+    public function hasAccessForUser(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($this->hasAccess($user->name)) {
+            return true;
+        }
+
+        $roleAccess = app(HRRoleAccessService::class);
+        $hasFullAccess = $roleAccess->hasFullAccess($user);
+
+        // Helper to check if user has a specific level
+        $isKaSie = $roleAccess->isKaSie($user);
+        $isKaDept = $roleAccess->isKaDept($user);
+        $isDivHead = $roleAccess->isDivHead($user);
+        $isAnyHead = $isKaSie || $isKaDept || $isDivHead;
+
+        return match ($this) {
+            self::HR_MAIN,
+            self::KNOWLEDGE_MANAGEMENT,
+            self::KNOWLEDGE_APPROVAL,
+            self::TECHNICAL_COMPETENCY,
+            self::SUMMARY_COMPETENCY => $hasFullAccess || $isAnyHead,
+
+            self::JOB_POSITION => $hasFullAccess,
+
+            self::COMPETENCY_KASIE => $roleAccess->canAccessCompetencyLevel($user, 'kasie'),
+            self::COMPETENCY_KADEPT => $roleAccess->canAccessCompetencyLevel($user, 'kadept'),
+            self::COMPETENCY_HR => $roleAccess->canAccessCompetencyLevel($user, 'hr'),
+
+            self::TRAINING_DEVELOPMENT => $hasFullAccess || $isKaDept || $isDivHead,
+            self::TRAINING_APPROVAL => $hasFullAccess,
+            self::TRAINING_HISTORY => $hasFullAccess || $isAnyHead,
+        };
+    }
+}

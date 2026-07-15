@@ -19,10 +19,11 @@ class Role extends Model
         return $this->hasMany(User::class, 'role_id');
     }
 
-    public function jobPositions()
-    {
-        return $this->hasMany(TcJobPosition::class, 'id_role');
-    }
+    // DISABLED - LEGACY RELATION
+    // public function jobPositions()
+    // {
+    //     return $this->hasMany(TcJobPosition::class, 'id_role');
+    // }
 
     // Relasi ke TcPeopleDevelopment
     public function peopleDevelopments()

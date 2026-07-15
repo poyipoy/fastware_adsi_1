@@ -99,9 +99,9 @@ class User extends Authenticatable
         return $this->hasMany(Insight::class, 'id_user');
     }
 
-    public function jobPositions()
+    public function userJobPositions()
     {
-        return $this->hasMany(TcJobPosition::class, 'id_user');
+        return $this->hasMany(UserJobPosition::class, 'user_id');
     }
 
     // Relasi ke model TrsPenilaianTcs

@@ -317,6 +317,29 @@
                 </div>
             </div>
 
+            {{-- ===== STRENGTH TABLE (Modul 1.2) ===== --}}
+            <div class="card mt-3">
+                <div class="card-header" style="background-color: #198754; color: white;">
+                    <i class="bi bi-star-fill me-1"></i> Strength (Kompetensi Terpenuhi)
+                </div>
+                <div style="overflow-x: auto; white-space: nowrap;">
+                    <table border="1" cellpadding="5" cellspacing="0" class="table table-bordered mt-0">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Tipe</th>
+                                <th>Nama Kompetensi</th>
+                                <th>Nilai Standar</th>
+                                <th>Nilai Aktual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="strengthTableBody">
+                            <tr><td colspan="4" class="text-center text-muted">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- ===== AREA DEVELOPMENT TABLE (existing) ===== --}}
             <div class="card mt-3">
                 <div class="card-header">
                     Area Development
@@ -341,6 +364,31 @@
                 </div>
             </div>
 
+            {{-- ===== WORKING EXPERIENCE TABLE (Modul 1.1) ===== --}}
+            <div class="card mt-3">
+                <div class="card-header" style="background-color: #6f42c1; color: white;">
+                    <i class="bi bi-briefcase-fill me-1"></i> Working Experience (Riwayat Jabatan)
+                </div>
+                <div style="overflow-x: auto; white-space: nowrap;">
+                    <table border="1" cellpadding="5" cellspacing="0" class="table table-bordered mt-0">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>Tahun Mulai</th>
+                                <th>Tahun Selesai</th>
+                                <th>Jabatan</th>
+                                <th>Section</th>
+                                <th>Departemen</th>
+                                <th>Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="workingExpTableBody">
+                            <tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- ===== HISTORI DEVELOPMENT TABLE (existing) ===== --}}
             <div class="card mt-3">
                 <div class="card-header">
                     <div style=" justify-content: space-between; align-items: center;">
@@ -399,14 +447,18 @@
                     .then(response => response.json())
                     .then(data => {
                         console.log('Data fetched:', data);
-                        updateProfileDetails(data.tc_data); // Update profile dengan data dari tc_data
+                        updateProfileDetails(data); // Pass full data object instead of just tc_data
                         updateCharts(data);
                     })
                     .catch(error => console.error('Error fetching data:', error));
             }
 
-            function updateProfileDetails(tcData) {
-                const user = tcData[0];
+            function updateProfileDetails(data) {
+                // Try to get user info from any available dataset
+                const user = (data.tc_data && data.tc_data.length > 0) ? data.tc_data[0] : 
+                             (data.sk_data && data.sk_data.length > 0) ? data.sk_data[0] : 
+                             (data.ad_data && data.ad_data.length > 0) ? data.ad_data[0] : null;
+
                 if (!user) {
                     console.error('User data is not available.');
                     return;
@@ -421,7 +473,7 @@
 
                 const userJobElement = document.querySelector('.user-job');
                 if (userJobElement) {
-                    userJobElement.textContent = `Job Position : ${user.id_job_position}`;
+                    userJobElement.textContent = `Job Position : ${user.job_position_name || user.id_job_position}`;
                 } else {
                     console.error('.user-job element not found.');
                 }
@@ -477,23 +529,30 @@
                 canvas.style.height = '490px';
                 ctx.scale(dpr, dpr);
 
-                // Modifikasi labels untuk menambahkan baris baru setelah 2 kata
+                // Modifikasi labels agar dibungkus seimbang (max 16 karakter per baris)
                 const labels = chartData.map(item => {
-                    const label = item[labelKey] || chartLabel;
-                    const words = label.split(' ');
-                    if (words.length > 2) {
-                        const firstLine = words.slice(0, 2).join(' ');
-                        const secondLine = words.slice(2).join(' ');
-                        return firstLine + '\n' + secondLine;
-                    }
-                    return label;
+                    const label = item[labelKey] || chartLabel || '';
+                    if (Array.isArray(label)) return label;
+                    if (!label) return '';
+                    const words = String(label).split(' ');
+                    let lines = [];
+                    let currentLine = '';
+                    words.forEach(word => {
+                        if ((currentLine + ' ' + word).trim().length > 16 && currentLine !== '') {
+                            lines.push(currentLine);
+                            currentLine = word;
+                        } else {
+                            currentLine = (currentLine + ' ' + word).trim();
+                        }
+                    });
+                    if (currentLine) lines.push(currentLine);
+                    return lines.length > 1 ? lines : label;
                 });
 
-                const dataPoints = chartData.map(item => parseInt(item[dataKey]) || 0);
-                const comparisonDataPoints = chartData.map(item => parseInt(item[comparisonKey]) || 0);
-                const suggestedMax = 5;
-                const minDataPoint = Math.min(...dataPoints);
-                const suggestedMin = minDataPoint - 1 < 0 ? 0 : minDataPoint - 3;
+                const dataPoints = chartData.map(item => parseFloat(item[dataKey]) || 0);
+                const comparisonDataPoints = chartData.map(item => parseFloat(item[comparisonKey]) || 0);
+                const suggestedMax = 4;
+                const suggestedMin = 0;
                 const chart = new Chart(ctx, {
                     type: 'radar',
                     data: {
@@ -501,27 +560,28 @@
                         datasets: [{
                                 label: 'Nilai Standar',
                                 data: comparisonDataPoints,
-                                fill: true,
-                                backgroundColor: 'rgba(255, 99, 132, 0.2)', // Area transparan
-                                borderColor: 'rgba(255, 99, 132, 1)', // Warna merah
-                                borderWidth: 1, // Garis luar lebih tipis
-                                borderDash: [5, 5], // Garis putus-putus (opsional)
-                                pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                                fill: false, // Tanpa fill agar tidak keruh
+                                borderColor: '#f59e0b', // Amber/Gold putus-putus
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointBackgroundColor: '#f59e0b',
                                 pointBorderColor: '#fff',
-                                pointHoverBackgroundColor: '#fff',
-                                pointHoverBorderColor: 'rgba(255, 99, 132, 1)',
+                                pointBorderWidth: 1.5,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
                             },
                             {
                                 label: 'Nilai Aktual',
                                 data: dataPoints,
                                 fill: true,
-                                backgroundColor: 'rgba(54, 162, 235, 0.2)', // Area transparan
-                                borderColor: 'rgba(54, 162, 235, 1)', // Warna biru
-                                borderWidth: 3.5, // Garis lebih tebal
-                                pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                                backgroundColor: 'rgba(37, 99, 235, 0.2)', // Royal blue transparan
+                                borderColor: '#2563eb', // Blue-600
+                                borderWidth: 3,
+                                pointBackgroundColor: '#2563eb',
                                 pointBorderColor: '#fff',
-                                pointHoverBackgroundColor: '#fff',
-                                pointHoverBorderColor: 'rgba(54, 162, 235, 1)',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
                             }
                         ]
                     },
@@ -532,42 +592,76 @@
                             r: {
                                 angleLines: {
                                     display: true,
-                                    color: 'rgba(0, 0, 0, 0.8)', // Warna garis sudut (lebih redup jika diperlukan)
-                                    lineWidth: 1.5 // Ketebalan garis sudut
+                                    color: '#cbd5e1', // Slate-300 lembut
+                                    lineWidth: 1
                                 },
                                 grid: {
-                                    color: 'rgba(0, 0, 0, 0.3)', // Warna grid lebih transparan
-                                    lineWidth: 0.5 // Ketebalan garis grid
+                                    color: '#e2e8f0', // Slate-200
+                                    lineWidth: 1
                                 },
                                 suggestedMin: suggestedMin,
                                 suggestedMax: suggestedMax,
+                                min: 0,
+                                max: 4,
                                 ticks: {
-                                    beginAtZero: true
+                                    beginAtZero: true,
+                                    stepSize: 1,
+                                    backdropColor: 'transparent', // Bersih tanpa kotak putih
+                                    color: '#64748b',
+                                    font: {
+                                        size: 10,
+                                        weight: 'bold'
+                                    }
                                 },
                                 pointLabels: {
                                     font: {
-                                        size: 14
+                                        size: 12,
+                                        weight: '600'
                                     },
-                                    callback: function(value) {
-                                        if (value.includes(' ')) {
-                                            const words = value.split(' ');
-                                            return words.join('\n'); // Setiap kata akan berada di baris baru
-                                        }
-                                        return value;
-                                    }
+                                    color: '#334155',
+                                    padding: 8
                                 }
                             }
                         },
+                        layout: {
+                            padding: {
+                                left: 45,
+                                right: 45,
+                                top: 25,
+                                bottom: 25
+                            }
+                        },
                         plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    label: function(tooltipItem) {
-                                        return `Value: ${tooltipItem.raw}`;
-                                    }
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    },
+                                    color: '#475569',
+                                    usePointStyle: true,
+                                    padding: 15
                                 }
                             },
-                            legend: {
-                                display: true
+                            tooltip: {
+                                enabled: true,
+                                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                                titleColor: '#0f172a',
+                                titleFont: { weight: 'bold', size: 13 },
+                                bodyColor: '#334155',
+                                bodyFont: { size: 13 },
+                                borderColor: '#e2e8f0',
+                                borderWidth: 1,
+                                padding: 10,
+                                boxPadding: 4,
+                                usePointStyle: true,
+                                callbacks: {
+                                    label: function(tooltipItem) {
+                                        return `${tooltipItem.dataset.label}: ${tooltipItem.raw}`;
+                                    }
+                                }
                             }
                         }
                     }
@@ -586,6 +680,8 @@
                     loadCompetencyData(userId);
                     loadCompetencyDataViewOnly(userId);
                     loadTabelDataView(userId);
+                    loadStrengthData(userId);          // Modul 1.2
+                    loadWorkingExperienceData(userId); // Modul 1.1
                 } else {
                     console.error('id_user parameter is missing in the URL.');
                 }
@@ -902,6 +998,34 @@
                                     rowHtmlViewOnly += '</tr>';
                                     $('#penilaianTableBodyViewOnly').append(rowHtmlViewOnly);
                                 }
+
+                                // --- Modul 2.3: Mentor Badges ---
+                                var mentorBadges = data.mentor_badges || {};
+                                var totalCols = 1 + tcHeadersViewOnly.length + skHeadersViewOnly.length + adHeadersViewOnly.length;
+
+                                function renderMentorRow(headerType, headers) {
+                                    headers.forEach(function(header) {
+                                        var key = headerType + '_' + header.id;
+                                        var mentors = mentorBadges[key] || [];
+                                        if (mentors.length > 0) {
+                                            var gap = totalCols - 1; // columns minus the mentor label column
+                                            var badgeHtml = mentors.map(function(m) {
+                                                return '<span class="badge bg-info text-dark me-1" title="Dapat menjadi mentor ' + header.keterangan + '">' +
+                                                    '<i class="bi bi-person-check me-1"></i>' + m.name +
+                                                    '</span>';
+                                            }).join('');
+                                            var mentorRow = '<tr class="table-light" style="font-size:0.85em;">' +
+                                                '<td class="text-muted fst-italic ps-2">Mentor tersedia: ' + badgeHtml + '</td>' +
+                                                '<td colspan="' + gap + '"></td>' +
+                                                '</tr>';
+                                            $('#penilaianTableBodyViewOnly').append(mentorRow);
+                                        }
+                                    });
+                                }
+                                renderMentorRow('tc', tcHeadersViewOnly);
+                                renderMentorRow('sk', skHeadersViewOnly);
+                                renderMentorRow('ad', adHeadersViewOnly);
+
                             } else {
                                 var noDataRowViewOnly =
                                     '<tr><td colspan="4">No data found for the given user.</td></tr>';
@@ -916,15 +1040,7 @@
             }
 
 
-            $(document).on('change', '.data-select', function() {
-                const index = $(this).attr('id').split('-')[2];
-                const userId = $(this).closest('.inner-card').find('.user-name').data('user-id');
-                updateChartData(index, userId);
-            });
 
-            $(document).ready(function() {
-                updateChart();
-            });
 
             function loadTabelDataView(userId) {
                 $(document).ready(function() {
@@ -978,6 +1094,76 @@
                 var downloadPdfUrl = "{{ route('download.pdf', ['id' => ':id']) }}";
                 var url = downloadPdfUrl.replace(':id', id);
                 window.location.href = url; // Redirect to the download URL
+            }
+
+            // ===== Modul 1.2: Strength Table =====
+            function loadStrengthData(userId) {
+                $.ajax({
+                    url: `{{ route('get-detail-filter') }}?id_user=${userId}`,
+                    type: 'GET',
+                    success: function(data) {
+                        var tbody = $('#strengthTableBody');
+                        tbody.empty();
+                        var strengthData = data.strength_data || [];
+
+                        if (strengthData.length === 0) {
+                            tbody.append('<tr><td colspan="4" class="text-center text-muted">Belum ada kompetensi yang terpenuhi.</td></tr>');
+                            return;
+                        }
+
+                        var typeLabels = { tc: 'Technical Competency', sk: 'Soft Skills', ad: 'Additional' };
+                        strengthData.forEach(function(item) {
+                            var typeLabel = typeLabels[item.type] || item.type;
+                            var gap = item.actual - item.standard;
+                            var html = '<tr class="table-success">' +
+                                '<td><span class="badge bg-success">' + typeLabel + '</span></td>' +
+                                '<td class="text-start">' + item.name + '</td>' +
+                                '<td>' + item.standard + '</td>' +
+                                '<td><strong>' + item.actual + '</strong>' +
+                                ' <span class="text-success">(+' + gap.toFixed(1) + ')</span></td>' +
+                                '</tr>';
+                            tbody.append(html);
+                        });
+                    },
+                    error: function() {
+                        $('#strengthTableBody').html('<tr><td colspan="4" class="text-danger text-center">Gagal memuat data.</td></tr>');
+                    }
+                });
+            }
+
+            // ===== Modul 1.1: Working Experience Table =====
+            function loadWorkingExperienceData(userId) {
+                $.ajax({
+                    url: `{{ route('get-detail-filter') }}?id_user=${userId}`,
+                    type: 'GET',
+                    success: function(data) {
+                        var tbody = $('#workingExpTableBody');
+                        tbody.empty();
+                        var weData = data.working_experience_data || [];
+
+                        if (weData.length === 0) {
+                            tbody.append('<tr><td colspan="6" class="text-center text-muted">Belum ada riwayat jabatan.</td></tr>');
+                            return;
+                        }
+
+                        weData.forEach(function(item) {
+                            var yearEndLabel = item.year_end_label || item.year_end || 'Present';
+                            var isPresent = !item.year_end;
+                            var html = '<tr' + (isPresent ? ' class="table-primary fw-semibold"' : '') + '>' +
+                                '<td>' + item.year_start + '</td>' +
+                                '<td>' + (isPresent ? '<span class="badge bg-primary">Present</span>' : yearEndLabel) + '</td>' +
+                                '<td class="text-start">' + (item.job_position || '-') + '</td>' +
+                                '<td>' + (item.section || '-') + '</td>' +
+                                '<td>' + (item.departemen || '-') + '</td>' +
+                                '<td class="text-start">' + (item.keterangan || '-') + '</td>' +
+                                '</tr>';
+                            tbody.append(html);
+                        });
+                    },
+                    error: function() {
+                        $('#workingExpTableBody').html('<tr><td colspan="6" class="text-danger text-center">Gagal memuat data.</td></tr>');
+                    }
+                });
             }
         </script>
     </main>

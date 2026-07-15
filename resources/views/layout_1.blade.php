@@ -195,7 +195,7 @@
                                         'NUR DWITA SURA WIJAYA',
                                         'PUTRI ANINDIA',
                                         'RAGIL ISHA RAHMANTO',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'RISFAN FAISAL',
                                         'SENDY PRABOWO',
                                         'SITI MARIA ULFA',
@@ -298,7 +298,7 @@
                                         'PUTRI ANINDIA',
                                         'RAGIL ISHA RAHMANTO',
                                         'RIADUS SOLIHIN',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'RISFAN FAISAL',
                                         'RUSLAN M.ALI',
                                         'SENDY PRABOWO',
@@ -438,7 +438,7 @@
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
                                                 'RIADUS SOLIHIN',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'RISFAN FAISAL',
                                                 'RUSLAN M.ALI',
                                                 'SENDY PRABOWO',
@@ -476,7 +476,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'RISFAN FAISAL',
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
@@ -513,7 +513,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'RISFAN FAISAL',
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
@@ -551,7 +551,7 @@
                                         'MARTINUS CAHYO RAHASTO',
                                         'NUR DWITA SURA WIJAYA',
                                         'PUTRI ANINDIA',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'RISFAN FAISAL',
                                         'SENDY PRABOWO',
                                         'WULYO EKO PRASETYO',
@@ -738,7 +738,7 @@
                                                 'JUN JOHAMIN PD',
                                                 'KUSTIONO',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'SITI MARIA ULFA',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ];
@@ -755,7 +755,7 @@
                                                 'JUN JOHAMIN PD',
                                                 'KUSTIONO',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'SITI MARIA ULFA',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ];
@@ -842,7 +842,7 @@
                                             'KUSTIONO',
                                             'MARTINUS CAHYO RAHASTO',
                                             'RAGIL ISHA RAHMANTO',
-                                            'RICHARDUS',
+                                            'RICHARDUS CHRISTIAN',
                                             'SITI MARIA ULFA',
                                             'YULMAI RIDO WINANDA',
                                             'ABDUR RAHMAN AL FAAIZ',
@@ -860,7 +860,7 @@
                                             'JUN JOHAMIN PD',
                                             'KUSTIONO',
                                             'RAGIL ISHA RAHMANTO',
-                                            'RICHARDUS',
+                                            'RICHARDUS CHRISTIAN',
                                             'SITI MARIA ULFA',
                                             'ABDUR RAHMAN AL FAAIZ',
                                         ];
@@ -893,7 +893,7 @@
                                         'JUN JOHAMIN PD',
                                         'KUSTIONO',
                                         'RAGIL ISHA RAHMANTO',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'SITI MARIA ULFA',
                                         'ABDUR RAHMAN AL FAAIZ',
                                     ];
@@ -947,7 +947,7 @@
                                         'MUHAMMAD DINAR FARISI',
                                         'PUTRI ANINDIA',
                                         'RAGIL ISHA RAHMANTO',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'RISFAN FAISAL',
                                         'SENDY PRABOWO',
                                         'SITI MARIA ULFA',
@@ -994,7 +994,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'YULMAI RIDO WINANDA',
                                                 'ADHI PRASETIYO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ILHAM CHOLID',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
@@ -1006,7 +1006,7 @@
                                                 'ADHI PRASETIYO',
                                                 'JESSICA PAUNE',
                                                 'MARTINUS CAHYO RAHASTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                             ]))
                                             <li><a class="dropdown-item"
                                                     href="{{ route('index.PO.finance') }}">Finance Section</a></li>
@@ -1191,7 +1191,7 @@
                                                 'JESSICA PAUNE',
                                                 'ADHI PRASETIYO',
                                                 'ANDIK TOTOK SISWOYO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                             ]))
                                             <li><a class="dropdown-item" href="{{ route('pengajuanKM') }}">Form
                                                     Knowledge Management</a></li>
@@ -1222,7 +1222,7 @@
                                                 'JESSICA PAUNE',
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'MUGI PRAMONO',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                                 'RAGIL ISHA RAHMANTO',
@@ -1245,7 +1245,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
                                             <li><a class="dropdown-item"
@@ -1267,7 +1267,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
                                             <li><a class="dropdown-item"
@@ -1289,7 +1289,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
                                             <li><a class="dropdown-item"
@@ -1311,7 +1311,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
                                             <li><a class="dropdown-item"
@@ -1401,7 +1401,7 @@
                                                 <!--'PUTRI ANINDIA',-->
                                                 <!--'RAGIL ISHA RAHMANTO',-->
                                                 <!--'RIADUS SOLIHIN',-->
-                                                <!--'RICHARDUS',-->
+                                                <!--'RICHARDUS CHRISTIAN',-->
                                                 <!--'RISFAN FAISAL',-->
                                                 <!--'RUSLAN M.ALI',-->
                                                 <!--'SENDY PRABOWO',-->
@@ -1426,7 +1426,7 @@
                                                 'JESSICA PAUNE',
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ADHI PRASETYO',
                                             ]))
                                             <li><a class="dropdown-item" href="{{ route('indexPD') }}">Form Pengajuan
@@ -1452,7 +1452,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
                                             <li><a class="dropdown-item"
@@ -1563,7 +1563,7 @@
                                         'PUTRI ANINDIA',
                                         'RAGIL ISHA RAHMANTO',
                                         'RIADUS SOLIHIN',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'RISFAN FAISAL',
                                         'RUSLAN M.ALI',
                                         'SENDY PRABOWO',
@@ -1617,7 +1617,7 @@
                                                 'JUN JOHAMIN PD',
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'SITI MARIA ULFA',
                                                 'YUDHI PRASETYO RAHMAWANTO',
                                                 'ABDUR RAHMAN AL FAAIZ',
@@ -1633,7 +1633,7 @@
                                                 'JESSICA PAUNE',
                                                 'JUN JOHAMIN PD',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'SITI MARIA ULFA',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ];

@@ -572,7 +572,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    @if (in_array(Auth::user()->role_id, $deptHeadRoles) || in_array(Auth::user()->role_id, $hrgarole))
+                    @php
+                        $roleAccess = app(\App\Services\HR\HRRoleAccessService::class);
+                        $isKasieOrKadept = Auth::check() ? ($roleAccess->isKaSie(Auth::user()) || $roleAccess->isKaDept(Auth::user())) : false;
+                    @endphp
+                    @if (in_array(Auth::user()->role_id ?? 0, $deptHeadRoles) || in_array(Auth::user()->role_id ?? 0, $hrgarole) || in_array(Auth::user()->role_id ?? 0, $secHeadRoles) || $isKasieOrKadept)
                     <a class="nav-link collapsed" data-bs-toggle="collapse" href="#formSubsectionOne">
                         <i class="bi bi-file-earmark-text fs-6"></i>
                         <span>Forms Pengajuan Competency</span>
@@ -581,7 +585,7 @@
                     @endif
 
                     <ul id="formSubsectionOne" class="nav-content collapse" data-bs-parent="#nav-tech-competency">
-                        @if (in_array(Auth::user()->role_id, $hrgarole))
+                        @if (in_array(Auth::user()->role_id ?? 0, $hrgarole))
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('jobShow') }}">
                                 <i class="bi bi-briefcase fs-6"></i>
@@ -589,7 +593,7 @@
                             </a>
                         </li>
                         @endif
-                        @if (in_array(Auth::user()->role_id, $deptHeadRoles))
+                        @if (in_array(Auth::user()->role_id ?? 0, $deptHeadRoles) || in_array(Auth::user()->role_id ?? 0, $secHeadRoles) || in_array(Auth::user()->role_id ?? 0, $hrgarole) || $isKasieOrKadept)
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('tcShow') }}">
                                 <i class="bi bi-check2-circle fs-6"></i>

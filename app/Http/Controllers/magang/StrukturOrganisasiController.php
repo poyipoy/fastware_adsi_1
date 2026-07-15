@@ -5,7 +5,7 @@ namespace App\Http\Controllers\magang;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
-use App\Models\TcJobPosition;
+// use App\Models\TcJobPosition; // DISABLED
 use App\Models\User;
 
 class StrukturOrganisasiController extends Controller
@@ -18,10 +18,11 @@ class StrukturOrganisasiController extends Controller
         // Hitung jumlah karyawan per departemen
         $employeeCounts = [];
         foreach ($departmentDefinitions as $department => $jobPositions) {
-            $userIds = TcJobPosition::whereIn('job_position', $jobPositions)
-                ->whereNotNull('id_user')
+            $userIds = \Illuminate\Support\Facades\DB::table('user_job_positions')
+                ->join('mst_job_positions', 'user_job_positions.mst_job_position_id', '=', 'mst_job_positions.id')
+                ->whereIn('mst_job_positions.position_name', $jobPositions)
                 ->distinct()
-                ->pluck('id_user')
+                ->pluck('user_job_positions.user_id')
                 ->toArray();
 
             $employeeCounts[$department] = count($userIds);

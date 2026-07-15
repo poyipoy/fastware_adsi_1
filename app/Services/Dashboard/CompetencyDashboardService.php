@@ -31,11 +31,13 @@ class CompetencyDashboardService
     {
         $currentUserRoleId = Auth::user()->role_id;
 
-        // Role 1 and 15 can see all
         if (in_array($currentUserRoleId, [1, 15])) {
-            return TrsPenilaianTc::where('status', 3)
+            $ids = TrsPenilaianTc::whereIn('status', [3, 4])
                 ->distinct()
                 ->pluck('id_job_position');
+                
+            return \App\Models\MstJobPosition::whereIn('id', $ids)
+                ->pluck('position_name', 'id');
         }
 
         // Filter based on role
@@ -46,10 +48,13 @@ class CompetencyDashboardService
             return collect();
         }
 
-        return TrsPenilaianTc::where('status', 3)
+        $ids = TrsPenilaianTc::whereIn('status', [3, 4])
             ->whereIn('modified_at', $modifiedAtValues)
             ->distinct()
             ->pluck('id_job_position');
+            
+        return \App\Models\MstJobPosition::whereIn('id', $ids)
+            ->pluck('position_name', 'id');
     }
 
     /**

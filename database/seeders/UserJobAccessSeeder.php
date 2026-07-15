@@ -15,6 +15,11 @@ class UserJobAccessSeeder extends Seeder
      */
     public function run(): void
     {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('tc_user_job_accesses')) {
+            $this->command->warn("Tabel tc_user_job_accesses tidak aktif / diganti. Lewati seeding.");
+            return;
+        }
+
         // ================================================================
         // USER-BASED ACCESS (untuk indexTrs, tcShow, createTC, createPenilaian)
         // ================================================================

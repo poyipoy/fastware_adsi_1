@@ -122,7 +122,7 @@ class PenilaianTCController extends Controller
                         'Inventory Section Head',
                     ]);
                 });
-            } elseif ($userName == 'ADHI PRASETIYO' ||  $userName == 'RICHARDUS') {
+            } elseif ($userName == 'ADHI PRASETIYO' ||  $userName == 'RICHARDUS CHRISTIAN') {
                 $penilaianData = $penilaianData->filter(function ($item) {
                     return in_array($item->id_job_position, [
                         'Finance & Accounting Sec. Head',
@@ -487,7 +487,7 @@ class PenilaianTCController extends Controller
                     'PPIC Staff',
                     'Operator CT',
                 ])->get();
-            } elseif ($userName == 'ADHI PRASETIYO' ||  $userName == 'RICHARDUS') {
+            } elseif ($userName == 'ADHI PRASETIYO' ||  $userName == 'RICHARDUS CHRISTIAN') {
                 $jobPositions = $jobPositionsQuery->whereIn('job_position', [
                     'Finance & Accounting Sec. Head',
                         'Finance & Treasury Sec. Head',

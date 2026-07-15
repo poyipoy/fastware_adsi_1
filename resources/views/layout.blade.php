@@ -193,7 +193,7 @@
                                 'NUR DWITA SURA WIJAYA',
                                 'PUTRI ANINDIA',
                                 'RAGIL ISHA RAHMANTO',
-                                'RICHARDUS',                                
+                                'RICHARDUS CHRISTIAN',                                
                                 'SENDY PRABOWO',
                                 'SITI MARIA ULFA',
                                 'WULYO EKO PRASETYO',
@@ -236,7 +236,7 @@
                                             'NUR DWITA SURA WIJAYA',
                                             'PUTRI ANINDIA',
                                             'RAGIL ISHA RAHMANTO',
-                                            'RICHARDUS',
+                                            'RICHARDUS CHRISTIAN',
                                             'SENDY PRABOWO',
                                             'SITI MARIA ULFA',
                                             'WULYO EKO PRASETYO',
@@ -339,7 +339,7 @@
                                             'PUTRI ANINDIA',
                                             'RAGIL ISHA RAHMANTO',
                                             'RIADUS SOLIHIN',
-                                            'RICHARDUS',
+                                            'RICHARDUS CHRISTIAN',
                                             'RUSLAN M.ALI',
                                             'SENDY PRABOWO',
                                             'SETIYAWAN',
@@ -502,7 +502,7 @@
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
                                                 'RIADUS SOLIHIN',
-                                                'RICHARDUS',                                                
+                                                'RICHARDUS CHRISTIAN',                                                
                                                 'RUSLAN M.ALI',
                                                 'SENDY PRABOWO',
                                                 
@@ -540,7 +540,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
-                                                'RICHARDUS',                                                
+                                                'RICHARDUS CHRISTIAN',                                                
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
@@ -576,7 +576,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'NUR DWITA SURA WIJAYA',
                                                 'PUTRI ANINDIA',
-                                                'RICHARDUS',                                                
+                                                'RICHARDUS CHRISTIAN',                                                
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
@@ -613,7 +613,7 @@
                                         'MARTINUS CAHYO RAHASTO',
                                         'NUR DWITA SURA WIJAYA',
                                         'PUTRI ANINDIA',
-                                        'RICHARDUS',                                        
+                                        'RICHARDUS CHRISTIAN',                                        
                                         'SENDY PRABOWO',
                                         'WULYO EKO PRASETYO',
                                         'YAN WELEM MANGINSELA',
@@ -882,7 +882,7 @@
                                                 'JUN JOHAMIN PD',
                                                 'KUSTIONO',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'SITI MARIA ULFA',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ];
@@ -898,7 +898,7 @@
                                                 'JUN JOHAMIN PD',
                                                 'KUSTIONO',
                                                 'RAGIL ISHA RAHMANTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'SITI MARIA ULFA',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ];
@@ -983,7 +983,7 @@
                                             'KUSTIONO',
                                             'MARTINUS CAHYO RAHASTO',
                                             'RAGIL ISHA RAHMANTO',
-                                            'RICHARDUS',
+                                            'RICHARDUS CHRISTIAN',
                                             'SITI MARIA ULFA',
                                             'YULMAI RIDO WINANDA',
                                             'ABDUR RAHMAN AL FAAIZ',
@@ -1000,7 +1000,7 @@
                                             'JUN JOHAMIN PD',
                                             'KUSTIONO',
                                             'RAGIL ISHA RAHMANTO',
-                                            'RICHARDUS',
+                                            'RICHARDUS CHRISTIAN',
                                             'SITI MARIA ULFA',
                                             'ABDUR RAHMAN AL FAAIZ',
                                         ];
@@ -1033,7 +1033,7 @@
                                         'JUN JOHAMIN PD',
                                         'KUSTIONO',
                                         'RAGIL ISHA RAHMANTO',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'SITI MARIA ULFA',
                                         'ABDUR RAHMAN AL FAAIZ',
                                     ];
@@ -1087,7 +1087,7 @@
                                         // 'MUHAMMAD DINAR FARISI',
                                         // 'PUTRI ANINDIA',
                                         // 'RAGIL ISHA RAHMANTO',
-                                        // 'RICHARDUS',
+                                        // 'RICHARDUS CHRISTIAN',
                                         // 
                                         // 'SENDY PRABOWO',
                                         // 'SITI MARIA ULFA',
@@ -1135,7 +1135,7 @@
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'YULMAI RIDO WINANDA',
                                                 'ADHI PRASETIYO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                                 'ILHAM CHOLID',
                                                 'ABDUR RAHMAN AL FAAIZ',
                                             ]))
@@ -1147,7 +1147,7 @@
                                                 'ADHI PRASETIYO',
                                                 'JESSICA PAUNE',
                                                 'MARTINUS CAHYO RAHASTO',
-                                                'RICHARDUS',
+                                                'RICHARDUS CHRISTIAN',
                                             ]))
                                             <li><a class="dropdown-item"
                                                     href="{{ route('index.PO.finance') }}">Finance Section</a></li>
@@ -1380,24 +1380,11 @@
                         </li>
 
                         <!-- Dropdown Human Resource -->
-                        @if (in_array(auth()->user()->name, [
-                                'ADMINSTRATOR',
-                                'JESSICA PAUNE',
-                                'HARDI SAPUTRA',
-                                'MARTINUS CAHYO RAHASTO',
-                                'YULMAI RIDO WINANDA',
-                                'ANDIK TOTOK SISWOYO',
-                                'ARY RODJO PRASETYO',
-                                'MUGI PRAMONO',
-                                'ADHI PRASETIYO',
-                                'ILHAM CHOLID',
-                                'JUN JOHAMIN PD',
-                                'SITI MARIA ULFA',
-                                'RAGIL ISHA RAHMANTO',
-                                'RICHARDUS',
-                                'ABDUR RAHMAN AL FAAIZ',
-                                'DANIA ISNAWATI'
-                            ]))
+                        @php
+                            $hrRoleAccess = app(\App\Services\HR\HRRoleAccessService::class);
+                            $hrUser = auth()->user();
+                        @endphp
+                        @if (($hrMenu['show_main_menu'] ?? false) || $hrRoleAccess->canAccessTrainingHistory($hrUser))
 
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown"
@@ -1412,22 +1399,14 @@
                                             Pengajuan Form Knowledge Management
                                         </a>
                                         <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'MUGI PRAMONO',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'JESSICA PAUNE',
-                                                    'ADHI PRASETIYO',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'RICHARDUS',
-                                                ]))
+                                            @if ($hrMenu['knowledge_management']['show_form'] ?? false)
                                                 <li><a class="dropdown-item" href="{{ route('pengajuanKM') }}">Form
-                                                        Knowledge Management</a></li>
+                                                         Knowledge Management</a></li>
+                                            @endif
+                                            @if ($hrMenu['knowledge_management']['show_approval'] ?? false)
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('persetujuanKM') }}">Persetujuan Knowledge
-                                                        Management</a></li>
+                                                         href="{{ route('persetujuanKM') }}">Persetujuan Knowledge
+                                                         Management</a></li>
                                             @endif
                                         </ul>
                                     </li>
@@ -1438,120 +1417,47 @@
                                             Base Competency
                                         </a>
                                         <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                            @if (in_array(auth()->user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'SITI MARIA ULFA']))
-                                                <li><a class="dropdown-item" href="{{ route('jobShow') }}">Form Job
-                                                        Position</a></li>
+                                            @if ($hrRoleAccess->hasFullAccess($hrUser))
+                                                 <li><a class="dropdown-item" href="{{ route('mst-job-position.index') }}">
+                                                         Master Job Position</a></li>
+                                                 <li><a class="dropdown-item" href="{{ route('user-job-position.index') }}">
+                                                         Mapping Karyawan</a></li>
                                             @endif
 
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'ARY RODJO PRASETYO',
-                                                    'HARDI SAPUTRA',
-                                                    'JESSICA PAUNE',
-                                                    'ILHAM CHOLID',
-                                                    'JUN JOHAMIN PD',
-                                                    'DANIA ISNAWATI',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'RICHARDUS',
-                                                    'MUGI PRAMONO',
-                                                    'ABDUR RAHMAN AL FAAIZ',
-                                                    'RAGIL ISHA RAHMANTO',
-                                                ]))
+                                            @if (\App\Enums\HRMenuAccessGroup::TECHNICAL_COMPETENCY->hasAccessForUser($hrUser))
                                                 <li><a class="dropdown-item" href="{{ route('tcShow') }}">Form
-                                                        Pengajuan
-                                                        Competency</a></li>
+                                                         Pengajuan
+                                                         Competency</a></li>
                                             @endif
 
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'MUGI PRAMONO',
-                                                    'ADHI PRASETIYO',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'ARY RODJO PRASETYO',
-                                                    'HARDI SAPUTRA',
-                                                    'ILHAM CHOLID',
-                                                    'JESSICA PAUNE',
-                                                    'DANIA ISNAWATI',
-                                                    'JUN JOHAMIN PD',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'RAGIL ISHA RAHMANTO',
-                                                    'RICHARDUS',
-                                                    'ABDUR RAHMAN AL FAAIZ',
-                                                ]))
+                                            @if ($hrRoleAccess->canAccessCompetencyLevel($hrUser, 'kasie'))
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('penilaian.index') }}">Penilaian Technical
-                                                        Competency Ka. Sie</a></li>
+                                                         href="{{ route('penilaian.index') }}">Penilaian Technical
+                                                         Competency Ka. Sie</a></li>
                                             @endif
 
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'MUGI PRAMONO',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'ADHI PRASETIYO',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'ARY RODJO PRASETYO',
-                                                    'HARDI SAPUTRA',
-                                                    'ILHAM CHOLID',
-                                                    'JESSICA PAUNE',
-                                                    'JUN JOHAMIN PD',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'RAGIL ISHA RAHMANTO',
-                                                    'RICHARDUS',
-                                                    'ABDUR RAHMAN AL FAAIZ',
-                                                ]))
+                                            @if ($hrRoleAccess->canAccessCompetencyLevel($hrUser, 'kadept'))
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('penilaian.index2') }}">Penilaian Technical
-                                                        Competency Ka. Dept</a></li>
+                                                         href="{{ route('penilaian.index2') }}">Penilaian Technical
+                                                         Competency Ka. Dept</a></li>
                                             @endif
 
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'MUGI PRAMONO',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'ADHI PRASETIYO',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'ARY RODJO PRASETYO',
-                                                    'HARDI SAPUTRA',
-                                                    'ILHAM CHOLID',
-                                                    'JESSICA PAUNE',
-                                                    'JUN JOHAMIN PD',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'RAGIL ISHA RAHMANTO',
-                                                    'RICHARDUS',
-                                                    'ABDUR RAHMAN AL FAAIZ',
-                                                ]))
+                                            @if ($hrRoleAccess->canAccessCompetencyLevel($hrUser, 'divhead'))
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('penilaian.index3') }}">Penilaian Technical
-                                                        Competency HR</a></li>
+                                                         href="{{ route('penilaian.index4') }}">Penilaian Technical
+                                                         Competency Div. Head</a></li>
                                             @endif
 
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'MUGI PRAMONO',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'ADHI PRASETIYO',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'ARY RODJO PRASETYO',
-                                                    'HARDI SAPUTRA',
-                                                    'ILHAM CHOLID',
-                                                    'JESSICA PAUNE',
-                                                    'JUN JOHAMIN PD',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'RAGIL ISHA RAHMANTO',
-                                                    'RICHARDUS',
-                                                    'ABDUR RAHMAN AL FAAIZ',
-                                                ]))
+                                            @if ($hrRoleAccess->canAccessCompetencyLevel($hrUser, 'hr'))
                                                 <li><a class="dropdown-item"
-                                                        href="{{ route('job.positions.index') }}">Summary
-                                                        Competency</a>
+                                                         href="{{ route('penilaian.index3') }}">Penilaian Technical
+                                                         Competency HR</a></li>
+                                            @endif
+
+                                            @if (\App\Enums\HRMenuAccessGroup::SUMMARY_COMPETENCY->hasAccessForUser($hrUser))
+                                                <li><a class="dropdown-item"
+                                                         href="{{ route('job.positions.index') }}">Summary
+                                                         Competency</a>
                                                 </li>
                                             @endif
                                         </ul>
@@ -1637,7 +1543,7 @@
                                     <!--'PUTRI ANINDIA',-->
                                     <!--'RAGIL ISHA RAHMANTO',-->
                                     <!--'RIADUS SOLIHIN',-->
-                                    <!--'RICHARDUS',-->
+                                    <!--'RICHARDUS CHRISTIAN',-->
                                     <!---->
                                     <!--'RUSLAN M.ALI',-->
                                     <!--'SENDY PRABOWO',-->
@@ -1653,46 +1559,19 @@
                                             Training Development
                                         </a>
                                         <ul class="dropdown-menu" aria-labelledby="childDropdown">
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'ARY RODJO PRASETYO',
-                                                    'HARDI SAPUTRA',
-                                                    'JESSICA PAUNE',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'RICHARDUS',
-                                                    'ADHI PRASETYO',
-                                                ]))
+                                            @if ($hrRoleAccess->canAccessTrainingDevelopment($hrUser))
                                                 <li><a class="dropdown-item" href="{{ route('indexPD') }}">Form
                                                         Pengajuan
                                                         Training</a></li>
                                             @endif
 
-                                            @if (in_array(auth()->user()->name, ['ADMINSTRATOR', 'JESSICA PAUNE', 'SITI MARIA ULFA']))
+                                            @if ($hrRoleAccess->canApproveTrainingDevelopment($hrUser))
                                                 <li><a class="dropdown-item"
                                                         href="{{ route('indexPD2') }}">Persetujuan
                                                         Development</a></li>
                                             @endif
 
-                                            @if (in_array(auth()->user()->name, [
-                                                    'ADMINSTRATOR',
-                                                    'MUGI PRAMONO',
-                                                    'YULMAI RIDO WINANDA',
-                                                    'ADHI PRASETIYO',
-                                                    'ANDIK TOTOK SISWOYO',
-                                                    'ARY RODJO PRASETYO',
-                                                    'HARDI SAPUTRA',
-                                                    'ILHAM CHOLID',
-                                                    'JESSICA PAUNE',
-                                                    'JUN JOHAMIN PD',
-                                                    'MARTINUS CAHYO RAHASTO',
-                                                    'SITI MARIA ULFA',
-                                                    'RAGIL ISHA RAHMANTO',
-                                                    'RICHARDUS',
-                                                    'ABDUR RAHMAN AL FAAIZ',
-                                                ]))
+                                            @if ($hrRoleAccess->canAccessTrainingHistory($hrUser))
                                                 <li><a class="dropdown-item"
                                                         href="{{ route('historiDept') }}">History Development</a>
                                                 </li>
@@ -1717,7 +1596,7 @@
                                 'ILHAM CHOLID',
                                 'JUN JOHAMIN PD',
                                 'RAGIL ISHA RAHMANTO',
-                                'RICHARDUS',
+                                'RICHARDUS CHRISTIAN',
                                 'VIVIAN ANGELIKA',
                                 'ABDUR RAHMAN AL FAAIZ',
                                 'FAJAR BAGASKARA'
@@ -1821,7 +1700,7 @@
                                         'PUTRI ANINDIA',
                                         'RAGIL ISHA RAHMANTO',
                                         'RIADUS SOLIHIN',
-                                        'RICHARDUS',                                        
+                                        'RICHARDUS CHRISTIAN',                                        
                                         'RUSLAN M.ALI',
                                         'SENDY PRABOWO',
                                         'SETIYAWAN',
@@ -1866,7 +1745,7 @@
                                         'ILHAM CHOLID',
                                         'JUN JOHAMIN PD',
                                         'RAGIL ISHA RAHMANTO',
-                                        'RICHARDUS',
+                                        'RICHARDUS CHRISTIAN',
                                         'SITI MARIA ULFA',
                                         'ABDUR RAHMAN AL FAAIZ',
                                     ]))
@@ -1887,7 +1766,7 @@
                                                     'ILHAM CHOLID',
                                                     'JUN JOHAMIN PD',
                                                     'RAGIL ISHA RAHMANTO',
-                                                    'RICHARDUS',
+                                                    'RICHARDUS CHRISTIAN',
                                                     'SITI MARIA ULFA',
                                                     'ABDUR RAHMAN AL FAAIZ',
                                                 ];

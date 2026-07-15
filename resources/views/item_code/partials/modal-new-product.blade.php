@@ -87,7 +87,7 @@
 
                         <div class="col-12 itemcode-field-wrap">
                             <label for="itemcode_new_price_per_pcs" class="form-label">Price</label>
-                            <input type="number" step="1" min="0" class="form-control fw-semibold" id="itemcode_new_price_per_pcs" name="price_per_pcs" required>
+                            <input type="number" step="0.01" min="0" class="form-control fw-semibold" id="itemcode_new_price_per_pcs" name="price_per_pcs" required>
                         </div>
 
                         <div class="col-12 itemcode-section-title">

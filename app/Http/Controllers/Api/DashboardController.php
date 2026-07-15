@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\DashboardController as WebDashboardController;
-use App\Models\TcJobPosition;
+// use App\Models\TcJobPosition; // DISABLED
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,10 +60,10 @@ class DashboardController extends WebDashboardController
 
         $normalizeName = static fn ($value) => mb_strtolower(trim((string) $value));
 
-        $rawJobPositions = TcJobPosition::query()
-            ->select(DB::raw('MIN(id) as id'), 'job_position')
-            ->groupBy('job_position')
-            ->orderBy('job_position')
+        $rawJobPositions = \App\Models\MstJobPosition::query()
+            ->select(DB::raw('MIN(id) as id'), 'position_name as job_position')
+            ->groupBy('position_name')
+            ->orderBy('position_name')
             ->get()
             ->map(function ($row) {
                 $row->job_position = trim((string) $row->job_position);

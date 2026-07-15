@@ -29,6 +29,8 @@ use App\Http\Controllers\ImportAdministrationController;
 use App\Http\Controllers\LayoutMenuController;
 use App\Http\Controllers\LayoutEditorController;
 use App\Http\Controllers\EntertainController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\CheckSeedController;
 use App\Http\Controllers\BopmController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\ItemCodeController;
@@ -74,21 +76,24 @@ Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
 
 // Public debug route (no auth) - temporary
 Route::get('debug-visits-public', function () {
-    $rows = App\Models\LogbookVisits::with('user')->limit(10)->get()->map(function($v){
-        return [
-            'id' => $v->id,
-            'id_user' => $v->id_user,
-            'user_name' => $v->user ? $v->user->name : null,
-            'customer' => $v->customer_name,
-            'visit_date' => (string)$v->visit_date,
-        ];
-    });
-    return response()->json(['data' => $rows]);
+    $approvals = \App\Models\MstPositionApproval::where('approver_position_id', 65)
+        ->orWhere('position_id', 65)
+        ->get();
+    
+    $allApprovals = \App\Models\MstPositionApproval::all();
+    
+    return response()->json([
+        'approvals_for_dept_head_65' => $approvals,
+        'all_approvals_count' => $allApprovals->count(),
+        'all_approvals' => $allApprovals
+    ]);
 });
 
 Route::post('/login', [AuthController::class, 'login'])->name('login_post');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('full-calender', [EventController::class, 'blokMaintanence'])->name('blokMaintanence');
@@ -461,17 +466,19 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/insights/add', [KmPengajuanController::class, 'addInsight'])->name('insights.add');
 
     // // tc
-    Route::get('/job', [TcJobController::class, 'jobShow'])->name('jobShow');
+    // Route::get('/job', [TcJobController::class, 'jobShow'])->name('jobShow');
     Route::get('/tcShow', [TcController::class, 'tcShow'])->name('tcShow');
     Route::get('/tcCreate', [TcController::class, 'createTC'])->name('tcCreate');
     Route::post('/mst_tc/store', [TcController::class, 'storeTC'])->name('mst_tc.store');
 
     Route::get('mst_tc/{id}/edit', [TcController::class, 'edit'])->name('mst_tc.edit');
+    Route::get('mst_tc/{id}/edit-all', [TcController::class, 'editAll'])->name('mst_tc.edit_all');
+    Route::put('mst_tc/{id}/update-all', [TcController::class, 'updateAll'])->name('mst_tc.update_all');
     Route::get('mst_sk/{id}/editSoftSKills', [TcController::class, 'editSoftSKills'])->name('mst_sk.editSoftSKills');
     Route::get('mst_ad/{id}/editAdditionals', [TcController::class, 'editAdditional'])->name('mst_ad.editAdditionals');
-    Route::get('/job-position/{id}/edit', [TcJobController::class, 'getJobPositionData'])->name('getJobPosition');
+    // Route::get('/job-position/{id}/edit', [TcJobController::class, 'getJobPositionData'])->name('getJobPosition');
 
-    Route::delete('/job-positions/delete-row', [TcJobController::class, 'deleteRow'])->name('jobPositions.deleteRow');
+    // Route::delete('/job-positions/delete-row', [TcJobController::class, 'deleteRow'])->name('jobPositions.deleteRow');
 
     Route::put('mst_tc/{id}', [TcController::class, 'update'])->name('mst_tc.update');
     Route::put('mst_sk/{id}/updateSoftSkills', [TcController::class, 'updateSoftSkills'])->name('mst_sk.updateSoftSkills');
@@ -483,10 +490,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/job/positions/details2/{job_position}', [TcController::class, 'fetchDetails2'])->name('job.positions.details2');
 
 
-    Route::get('/users/{userId}/role', [TcJobController::class, 'getUserRole'])->name('users.role');
-    Route::post('/job-positions', [TcJobController::class, 'store'])->name('jobPositions.store');
-    Route::put('/job-positions/{id}', [TcJobController::class, 'updateJob'])->name('jobPositions.update');
-    Route::delete('/job-positions/{id}', [TcJobController::class, 'deleteRow'])->name('jobPositions.destroy');
+    // Route::get('/users/{userId}/role', [TcJobController::class, 'getUserRole'])->name('users.role');
+    // Route::post('/job-positions', [TcJobController::class, 'store'])->name('jobPositions.store');
+    // Route::put('/job-positions/{id}', [TcJobController::class, 'updateJob'])->name('jobPositions.update');
+    // Route::delete('/job-positions/{id}', [TcJobController::class, 'deleteRow'])->name('jobPositions.destroy');
     Route::delete('/delete-tc-row/{id}', [TcController::class, 'deleteTcRow'])->name('tc.deleteRow');
     Route::delete('/delete-sk-row/{id}', [TcController::class, 'deleteSkRow'])->name('sk.deleteRow');
     Route::delete('/delete-ad-row/{id}', [TcController::class, 'deleteAdRow'])->name('ad.deleteRow');
@@ -495,6 +502,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/penilaian', [PenilaianTCController::class, 'indexTrs'])->name('penilaian.index');
     Route::get('/penilaian-dept', [PenilaianTCController::class, 'indexTrs2'])->name('penilaian.index2');
     Route::get('/penilaian-hr', [PenilaianTCController::class, 'indexTrs3'])->name('penilaian.index3');
+    Route::get('/penilaian-divhead', [PenilaianTCController::class, 'indexTrs4'])->name('penilaian.index4');
     Route::get('/dashboard-competency', [PenilaianTCController::class, 'dsCompetency'])->name('dsCompetency');
     Route::get('/dashboard-detail-competency', [PenilaianTCController::class, 'dsDetailCompetency'])->name('dsDetailCompetency');
 
@@ -525,6 +533,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/updated-pd-hrga2', [PdController::class, 'updatePdPlan2'])->name('updatePdPlan2');
     Route::post('/update-status/{id_job_position}', [PenilaianTCController::class, 'kirimSC'])->name('update.status');
     Route::post('/update-status-dept/{id_job_position}', [PenilaianTCController::class, 'kirimDept'])->name('update.status2');
+    Route::post('/update-status-div/{id_job_position}', [PenilaianTCController::class, 'kirimDiv'])->name('update.status3');
 
     Route::get('/editPdPengajuan/{modified_at}/{tahun_aktual}', [PdController::class, 'editPdPengajuan'])->name('editPdPengajuan');
     Route::get('/editPdPengajuan-HRGA/{tahun_aktual}', [PdController::class, 'editPdPengajuanHRGA'])->name('editPdPengajuanHRGA');
@@ -541,6 +550,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     Route::get('/trs/edit-penilaian/{id_job_position}', [PenilaianTCController::class, 'editTrs'])->name('penilaian.edit');
     Route::get('/trs/edit-dept/{id_job_position}', [PenilaianTCController::class, 'editTrs2'])->name('penilaian.edit2');
+    Route::get('/trs/edit-div/{id_job_position}', [PenilaianTCController::class, 'editTrs3'])->name('penilaian.edit3');
     Route::get('/trs/view-penilaian/{id_job_position}', [PenilaianTCController::class, 'viewTrs'])->name('penilaian.view');
     Route::get('/trs/preview-penilaian/{id_job_position}', [PenilaianTCController::class, 'previewTrs'])->name('penilaian.preview');
 
@@ -548,11 +558,31 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     Route::put('/penilaian/update/{id}', [PenilaianTCController::class, 'updateTrs'])->name('updatePenilaian');
     Route::put('/penilaian/dept/{id}', [PenilaianTCController::class, 'updateTrs2'])->name('updateDept');
+    Route::put('/penilaian/div/{id}', [PenilaianTCController::class, 'updateTrs3'])->name('updateDiv');
 
     Route::put('/update-catatan/{id}', [PenilaianTCController::class, 'updateCatatan'])->name('updateCatatan');
 
     Route::put('/penilaian/{id}', [PenilaianTCController::class, 'update'])->name('penilaian.update');
     Route::delete('/penilaian/{id}', [PenilaianTCController::class, 'destroy'])->name('penilaian.destroy');
+
+    // [1] Job Position Approval Routes
+    // Route::post('/job-positions/{id}/approve', [TcJobController::class, 'approveJobPosition'])->name('jobPositions.approve');
+    // Route::get('/job-positions/approvers', [TcJobController::class, 'getApprovers'])->name('jobPositions.approvers');
+
+    // [4] Pengajuan — Submit Draft
+    Route::post('/penilaian/submit-draft/{id_job_position}', [PenilaianTCController::class, 'submitDraft'])->name('penilaian.submitDraft');
+
+    // [3] Penilaian — Koreksi post-approval
+    Route::put('/penilaian/correct/{id_job_position}', [PenilaianTCController::class, 'correctPenilaian'])->name('penilaian.correct');
+
+    // [3] Penilaian — View history per tahun
+    Route::get('/penilaian/history/{id_job_position}/{year}', [PenilaianTCController::class, 'yearlyHistory'])->name('penilaian.yearlyHistory');
+
+    // [4] Monitoring admin/HR
+    Route::get('/penilaian/monitoring', [PenilaianTCController::class, 'monitoringIndex'])->name('penilaian.monitoring');
+
+    // [3] Summary with averages
+    Route::get('/penilaian/summary-averages', [PenilaianTCController::class, 'getSummaryWithAverage'])->name('penilaian.summaryAverages');
 
     Route::get('/download-pdf/{id}', [PdController::class, 'downloadPDF'])->name('download.pdf');
     Route::post('/update-button-status', [PdController::class, 'updateBtn'])->name('updateButtonStatus');
@@ -764,6 +794,11 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/dashboard-tcpd/company-data', [DashboardController::class, 'getTcpdCompanyData'])->name('dashboardTCPD.companyData');
     Route::get('/dashboard-tcpd/export', [DashboardController::class, 'exportTcpdCompetencyData'])->name('dashboardTCPD.export');
     Route::get('/dashboard-tcpd/company-export', [DashboardController::class, 'exportTcpdCompanyData'])->name('dashboardTCPD.companyExport');
+    Route::get('/dashboard-tcpd/export-all', [DashboardController::class, 'exportTcpdAll'])->name('dashboardTCPD.exportAll');
+    Route::get('/dashboard-tcpd/export-employees', [DashboardController::class, 'exportTcpdEmployeesData'])->name('dashboardTCPD.exportEmployees');
+    Route::get('/dashboard-tcpd/export-top-jobs', [DashboardController::class, 'exportTcpdTopJobs'])->name('dashboardTCPD.exportTopJobs');
+    Route::get('/dashboard-tcpd/export-critical-focus', [DashboardController::class, 'exportTcpdCriticalFocus'])->name('dashboardTCPD.exportCriticalFocus');
+    Route::post('/dashboard-tcpd/clear-cache', [DashboardController::class, 'clearTcpdCache'])->name('dashboardTCPD.clearCache');
     
     // BOPM Dashboard
     Route::get('/dashboard-bopm', [BOPMController::class, 'index'])->name('bopm.dashboard.index');
@@ -843,4 +878,41 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/sales-visit/dashboard/data', [\App\Http\Controllers\SalesVisitController::class, 'getDashboardData'])->name('salesvisit.dashboard.data');
     Route::get('/sales-visit/dashboard/detail-data', [\App\Http\Controllers\SalesVisitController::class, 'getDetailData'])->name('salesvisit.dashboard.detail-data');
     Route::get('/sales-visit/dashboard/export', [\App\Http\Controllers\SalesVisitController::class, 'exportExcel'])->name('salesvisit.dashboard.export');
+
+    // ===== HR Base Competency — Master Job Position =====
+    Route::prefix('hr')->name('mst-job-position.')->group(function () {
+        Route::get('/master-job-position', [\App\Http\Controllers\MstJobPositionController::class, 'index'])->name('index');
+        Route::get('/master-job-position/create', [\App\Http\Controllers\MstJobPositionController::class, 'create'])->name('create');
+        Route::post('/master-job-position', [\App\Http\Controllers\MstJobPositionController::class, 'store'])->name('store');
+        Route::get('/master-job-position/{mstJobPosition}/edit', [\App\Http\Controllers\MstJobPositionController::class, 'edit'])->name('edit');
+        Route::put('/master-job-position/{mstJobPosition}', [\App\Http\Controllers\MstJobPositionController::class, 'update'])->name('update');
+        Route::patch('/master-job-position/{mstJobPosition}/toggle-active', [\App\Http\Controllers\MstJobPositionController::class, 'toggleActive'])->name('toggle-active');
+        Route::delete('/master-job-position/{mstJobPosition}', [\App\Http\Controllers\MstJobPositionController::class, 'destroy'])->name('destroy');
+
+        // AJAX – tambah departemen / section dari modal "+"
+        Route::post('/master-job-position/ajax/store-department', [\App\Http\Controllers\MstJobPositionController::class, 'storeDepartment'])->name('ajax.store-department');
+        Route::post('/master-job-position/ajax/store-section', [\App\Http\Controllers\MstJobPositionController::class, 'storeSection'])->name('ajax.store-section');
+        Route::get('/master-job-position/ajax/sections/{mstDepartment}', [\App\Http\Controllers\MstJobPositionController::class, 'getSectionsByDepartment'])->name('ajax.sections-by-dept');
+        Route::get('/master-job-position/ajax/departments', [\App\Http\Controllers\MstJobPositionController::class, 'getDepartments'])->name('ajax.departments');
+    });
+
+    // ===== HR Base Competency — Mapping Karyawan ke Posisi =====
+    Route::prefix('hr')->name('user-job-position.')->group(function () {
+        Route::get('/user-job-position', [\App\Http\Controllers\UserJobPositionController::class, 'index'])->name('index');
+        Route::post('/user-job-position', [\App\Http\Controllers\UserJobPositionController::class, 'store'])->name('store');
+        Route::put('/user-job-position/{userJobPosition}', [\App\Http\Controllers\UserJobPositionController::class, 'update'])->name('update');
+        Route::patch('/user-job-position/{userJobPosition}/toggle-active', [\App\Http\Controllers\UserJobPositionController::class, 'toggleActive'])->name('toggle-active');
+        Route::delete('/user-job-position/{userJobPosition}', [\App\Http\Controllers\UserJobPositionController::class, 'destroy'])->name('destroy');
+        Route::get('/user-job-position/api/by-user', [\App\Http\Controllers\UserJobPositionController::class, 'getPositionsByUser'])->name('api.by-user');
+
+        // Modul 3.1 — Working Experience CRUD API
+        Route::get('/user-job-position/api/working-experience', [\App\Http\Controllers\UserJobPositionController::class, 'getWorkingExperiences'])->name('api.working-experience.index');
+        Route::post('/user-job-position/api/working-experience', [\App\Http\Controllers\UserJobPositionController::class, 'storeWorkingExperience'])->name('api.working-experience.store');
+        Route::put('/user-job-position/api/working-experience/{workingExperience}', [\App\Http\Controllers\UserJobPositionController::class, 'updateWorkingExperience'])->name('api.working-experience.update');
+        Route::delete('/user-job-position/api/working-experience/{workingExperience}', [\App\Http\Controllers\UserJobPositionController::class, 'destroyWorkingExperience'])->name('api.working-experience.destroy');
+    });
+
+    // Modul 4.2 — Year Management API (HR & Administrator only)
+    Route::post('/pd/active-year', [\App\Http\Controllers\PdController::class, 'setActiveYear'])->name('pd.active-year.set');
+    Route::get('/pd/active-year', [\App\Http\Controllers\PdController::class, 'getActiveYear'])->name('pd.active-year.get');
 });

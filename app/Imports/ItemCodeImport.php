@@ -144,13 +144,13 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 'unit' => $this->normalizeString($row['unit'] ?? null),
                 'currency' => $this->normalizeCurrency($row['currency'] ?? null),
                 'price_per_pcs' => $this->importType === 'update_price'
-                    ? $this->normalizeInteger($row['current_price'] ?? null)
-                    : $this->normalizeInteger($row['price'] ?? null),
+                    ? $this->normalizeNumber($row['current_price'] ?? null)
+                    : $this->normalizeNumber($row['price'] ?? null),
                 'tanggal_lama' => $this->importType === 'update_price'
                     ? $this->normalizeDate($row['effective_date_current'] ?? null)
                     : null,
                 'harga_baru' => $this->importType === 'update_price'
-                    ? $this->normalizeInteger($row['new_price'] ?? null)
+                    ? $this->normalizeNumber($row['new_price'] ?? null)
                     : null,
                 'tanggal_harga_baru' => $this->importType === 'update_price'
                     ? $this->normalizeDate($row['effective_date_new'] ?? null)
@@ -173,18 +173,18 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 'qty' => 'required|integer|gt:0',
                 'unit' => 'required|string|max:50',
                 'currency' => 'required|' . ItemCode::currencyValidationRule(),
-                'price_per_pcs' => 'required|integer|min:0',
+                'price_per_pcs' => 'required|numeric|min:0',
             ];
 
             if ($this->importType === 'update_price') {
                 $rules['tanggal_lama'] = 'required|date';
-                $rules['harga_baru'] = 'required|integer|min:0';
+                $rules['harga_baru'] = 'required|numeric|min:0';
                 $rules['tanggal_harga_baru'] = 'required|date';
                 $rules['reason_new_price'] = 'required|string|max:2000';
                 $rules['selisih_input'] = 'nullable|numeric';
             } else {
                 $rules['tanggal_lama'] = 'nullable|date';
-                $rules['harga_baru'] = 'nullable|integer|min:0';
+                $rules['harga_baru'] = 'nullable|numeric|min:0';
                 $rules['tanggal_harga_baru'] = 'nullable|date';
                 $rules['reason_new_price'] = 'nullable|string|max:2000';
                 $rules['selisih_input'] = 'nullable';
@@ -291,11 +291,13 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
 
     private function normalizeNumber(mixed $value): ?float
     {
+        $raw = $value;
         if ($value === null || $value === '') {
             return null;
         }
 
         if (is_int($value) || is_float($value)) {
+            \Log::info('normalizeNumber numeric', ['raw' => $raw, 'result' => (float) $value]);
             return (float) $value;
         }
 
@@ -321,7 +323,9 @@ class ItemCodeImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
             }
         }
 
-        return is_numeric($value) ? (float) $value : null;
+        $result = is_numeric($value) ? (float) $value : null;
+        \Log::info('normalizeNumber', ['raw' => $raw, 'result' => $result]);
+        return $result;
     }
 
     private function normalizeInteger(mixed $value): ?int

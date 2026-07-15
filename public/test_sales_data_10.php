@@ -1,0 +1,11 @@
+<?php
+require __DIR__.'/../vendor/autoload.php';
+$app = require_once __DIR__.'/../bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+
+$departments = \App\Models\MstDepartment::where('is_active', true)->get();
+echo "Blade Departments:\n";
+foreach($departments as $index => $department) {
+    echo "Index " . $index . ": " . $department->name . "\n";
+}

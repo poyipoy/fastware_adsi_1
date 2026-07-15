@@ -1,0 +1,382 @@
+{
+  "source_file": "OK-ADASI_Mapping_JobPosition_Section_Dept.xlsx",
+  "total_karyawan": 94,
+  "karyawan": [
+    {
+      "nama_karyawan": "ADHI PRASETIYO",
+      "job_position": "Finance Accounting Sec Head"
+    },
+    {
+      "nama_karyawan": "DINA NIMAS AYU NAWAWULAN PRIHANTINI",
+      "job_position": "Accounting Staff"
+    },
+    {
+      "nama_karyawan": "RICHARDUS CHRISTIAN",
+      "job_position": "Finance Sec Head"
+    },
+    {
+      "nama_karyawan": "AHMAD RIDWAN",
+      "job_position": "Finance Staff"
+    },
+    {
+      "nama_karyawan": "NUR DWITA SURA WIJAYA",
+      "job_position": "Finance Staff"
+    },
+    {
+      "nama_karyawan": "RAIHAN GILANG RAMADHAN",
+      "job_position": "Accounting Staff"
+    },
+    {
+      "nama_karyawan": "MARTINUS CAHYO RAHASTO",
+      "job_position": "Finance, Accounting & HRGA Dept.Head"
+    },
+    {
+      "nama_karyawan": "MUHAMMAD DINAR FARISI",
+      "job_position": "HRGA Staff"
+    },
+    {
+      "nama_karyawan": "SITI MARIA ULFA",
+      "job_position": "HRGA & Legal Staff"
+    },
+    {
+      "nama_karyawan": "MEDI KRISNANTO",
+      "job_position": "IT Staff"
+    },
+    {
+      "nama_karyawan": "VIVIAN ANGELIKA",
+      "job_position": "Procurement Staff"
+    },
+    {
+      "nama_karyawan": "ILYAS NOOR FIRDAUS",
+      "job_position": "Inventory Staff"
+    },
+    {
+      "nama_karyawan": "JESSICA PAUNE",
+      "job_position": "PDCA Proc Inv IT Dept Head"
+    },
+    {
+      "nama_karyawan": "AWING",
+      "job_position": "Feeder Operator"
+    },
+    {
+      "nama_karyawan": "ELI HANDOYO",
+      "job_position": "Delivery Staff"
+    },
+    {
+      "nama_karyawan": "FATUL MUKMIN",
+      "job_position": "Delivery Staff"
+    },
+    {
+      "nama_karyawan": "HAERUL IKHSAN",
+      "job_position": "Feeder Operator"
+    },
+    {
+      "nama_karyawan": "LUKMAN AHMAD",
+      "job_position": "Feeder Operator"
+    },
+    {
+      "nama_karyawan": "ARRY SOEBHEKTI",
+      "job_position": "Admin Cutting Sheet (ACS)"
+    },
+    {
+      "nama_karyawan": "MAMIK ABIDIN",
+      "job_position": "Logistic & Warehouse Foreman"
+    },
+    {
+      "nama_karyawan": "NURSALIM",
+      "job_position": "Warehouse Staff"
+    },
+    {
+      "nama_karyawan": "R.WAWAN HIMAWAN",
+      "job_position": "Admin Cutting Sheet (ACS)"
+    },
+    {
+      "nama_karyawan": "ABDUR RAHMAN AL FAAIZ",
+      "job_position": "Logistic & Warehouse  Sec Head"
+    },
+    {
+      "nama_karyawan": "RAGIL ISHA RAHMANTO",
+      "job_position": "Machining & MC Custom Sec Head"
+    },
+    {
+      "nama_karyawan": "CECEP ISKANDAR",
+      "job_position": "Bubut Operator"
+    },
+    {
+      "nama_karyawan": "ILHAM SETIA DHARMA",
+      "job_position": "MC Custom Staff"
+    },
+    {
+      "nama_karyawan": "IMAM PRASETYO",
+      "job_position": "MC Custom Operator"
+    },
+    {
+      "nama_karyawan": "IMAM SOPYAN",
+      "job_position": "Bubut Operator"
+    },
+    {
+      "nama_karyawan": "JEFRY WASTON E",
+      "job_position": "MC Custom Leader"
+    },
+    {
+      "nama_karyawan": "M. RIDWAN GUNAWAN",
+      "job_position": "MC Custom Operator"
+    },
+    {
+      "nama_karyawan": "MOCHAMMAD ANDRIANSYAH",
+      "job_position": "MC Custom Operator"
+    },
+    {
+      "nama_karyawan": "SETIYAWAN",
+      "job_position": "MC Custom Operator"
+    },
+    {
+      "nama_karyawan": "YANUARDIN SALEH SIREGAR",
+      "job_position": "Bubut Operator"
+    },
+    {
+      "nama_karyawan": "JAKARIA",
+      "job_position": "MC Operator"
+    },
+    {
+      "nama_karyawan": "KARYA WIJAYA",
+      "job_position": "MC Operator"
+    },
+    {
+      "nama_karyawan": "RAHMAT NUGROHO",
+      "job_position": "MC Operator"
+    },
+    {
+      "nama_karyawan": "SABAR WASIRAN",
+      "job_position": "MC Operator"
+    },
+    {
+      "nama_karyawan": "UMAR HADI",
+      "job_position": "MC Operator"
+    },
+    {
+      "nama_karyawan": "YUSUF SYAFAAT",
+      "job_position": "MC Leader"
+    },
+    {
+      "nama_karyawan": "MUHAMMAD MAHBUB",
+      "job_position": "Heat Treatment Operator"
+    },
+    {
+      "nama_karyawan": "ARY RODJO PRASETYO",
+      "job_position": "Production Dept Head"
+    },
+    {
+      "nama_karyawan": "MUGI PRAMONO",
+      "job_position": "Production Cutting Sect. Head; Production Heat Treatment  Sect. Head; Technical Support QC & Maintenance  Sect. Head"
+    },
+    {
+      "nama_karyawan": "RIZKY ANDREA RAHMAWAN",
+      "job_position": "Heat Treatment Operator"
+    },
+    {
+      "nama_karyawan": "AFILIANDI",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "AGUNG PANGESTU YUSUF",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "AGUS PRIYANTO",
+      "job_position": "Heat Treatment Operator"
+    },
+    {
+      "nama_karyawan": "AGUS ROSIDIN",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "ANDI SANTOSO",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "DASUKI",
+      "job_position": "Cutting Leader"
+    },
+    {
+      "nama_karyawan": "DIAMAN DARMAWINATA",
+      "job_position": "PPC Staff"
+    },
+    {
+      "nama_karyawan": "FAIZAL AFDAU",
+      "job_position": "PPC Staff"
+    },
+    {
+      "nama_karyawan": "HENDRIO",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "JAKA RARA SUKMA",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "MIFTAKHUROHMAN",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "NUR SUPRIYANTO",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "NURSAID",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "RUKMAN",
+      "job_position": "Cutting Operator"
+    },
+    {
+      "nama_karyawan": "RUSITO",
+      "job_position": "Cutting Foreman"
+    },
+    {
+      "nama_karyawan": "SEPTIADI PRATOMO",
+      "job_position": "Cutting Leader"
+    },
+    {
+      "nama_karyawan": "SUDIYATNO",
+      "job_position": "QC Operator"
+    },
+    {
+      "nama_karyawan": "ANDI SIMPONI",
+      "job_position": "Maintenance Operator"
+    },
+    {
+      "nama_karyawan": "AVI SHENNA",
+      "job_position": "HT Operator"
+    },
+    {
+      "nama_karyawan": "BANGUN SUTOPO",
+      "job_position": "HT Leader"
+    },
+    {
+      "nama_karyawan": "FIKRI SYAHBANA",
+      "job_position": "HT Operator"
+    },
+    {
+      "nama_karyawan": "GUNAWAN",
+      "job_position": "HT Admin"
+    },
+    {
+      "nama_karyawan": "JONI SETIAWAN",
+      "job_position": "HT Admin"
+    },
+    {
+      "nama_karyawan": "KUSTIONO",
+      "job_position": "Maintenance Operator"
+    },
+    {
+      "nama_karyawan": "MOHAMMAD FATKHURROHMAN",
+      "job_position": "HT Operator"
+    },
+    {
+      "nama_karyawan": "RIADUS SOLIHIN",
+      "job_position": "HT Operator"
+    },
+    {
+      "nama_karyawan": "RUSLAN",
+      "job_position": "HT Operator"
+    },
+    {
+      "nama_karyawan": "ZAENAL ARIFIN",
+      "job_position": "HT Leader"
+    },
+    {
+      "nama_karyawan": "HARDI SAPUTRA",
+      "job_position": "Sales Div Head; Logistic & Warehouses Dept Head"
+    },
+    {
+      "nama_karyawan": "JUN JOHAMIN PD",
+      "job_position": "Sales Office Head Region 1"
+    },
+    {
+      "nama_karyawan": "YULMAI RIDO WINANDA",
+      "job_position": "Sales Dept Head Region 1&2"
+    },
+    {
+      "nama_karyawan": "ILHAM CHOLID",
+      "job_position": "Sales Office Head Region 2"
+    },
+    {
+      "nama_karyawan": "DANIA ISNAWATI",
+      "job_position": "Sales Engineer Region 3"
+    },
+    {
+      "nama_karyawan": "ANDIK TOTOK SISWOYO",
+      "job_position": "Sales Dept. Head Region 3&4"
+    },
+    {
+      "nama_karyawan": "LINA UNIARSIH",
+      "job_position": "Sales Admin"
+    },
+    {
+      "nama_karyawan": "DIMAS ADITYA PRIANDANA",
+      "job_position": "Sales Engineer Region 2"
+    },
+    {
+      "nama_karyawan": "HERY HERMAWAN",
+      "job_position": "Sales Engineer Region 2"
+    },
+    {
+      "nama_karyawan": "SENDY PRABOWO",
+      "job_position": "Sales Engineer Region 1"
+    },
+    {
+      "nama_karyawan": "HARRY SUPRIYADI",
+      "job_position": "Sales Admin"
+    },
+    {
+      "nama_karyawan": "HERLIANA",
+      "job_position": "Sales Admin"
+    },
+    {
+      "nama_karyawan": "FRISILIA CLAUDIA HUTAMA",
+      "job_position": "Sales Admin"
+    },
+    {
+      "nama_karyawan": "SONY STIAWAN",
+      "job_position": "Sales Engineer Region 2"
+    },
+    {
+      "nama_karyawan": "WULYO EKO PRASETYO",
+      "job_position": "Sales Engineer Region 1"
+    },
+    {
+      "nama_karyawan": "PUTRI ANINDIA",
+      "job_position": "Sales Admin"
+    },
+    {
+      "nama_karyawan": "YAN WELEM MANGINSELA",
+      "job_position": "Sales Engineer Region 1"
+    },
+    {
+      "nama_karyawan": "SARAH EGA BUDI ASTUTI",
+      "job_position": "Sales Engineer Region 2"
+    },
+    {
+      "nama_karyawan": "YAN WELEM MANGINSELA",
+      "job_position": "Sales Engineer Region 1"
+    },
+    {
+      "nama_karyawan": "DWI KUNTORO",
+      "job_position": "Sales Engineer Region 4"
+    },
+    {
+      "nama_karyawan": "RIFQI RAHMAT DZATNIKA",
+      "job_position": "Sales Engineer Region 2"
+    },
+    {
+      "nama_karyawan": "YUNASIS PALGUNADI",
+      "job_position": "Sales Engineer Region 4"
+    },
+    {
+      "nama_karyawan": "FISKA CHRISMAS YUDHA",
+      "job_position": "Sales Engineer Region 3"
+    }
+  ]
+}

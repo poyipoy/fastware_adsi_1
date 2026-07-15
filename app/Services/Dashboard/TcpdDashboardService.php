@@ -3,20 +3,25 @@
 namespace App\Services\Dashboard;
 
 use App\Enums\TcpdDepartment;
-use App\Enums\TcpdUserAccess;
+use App\Services\Dashboard\TcpdAccessResolver;
+use App\Services\Competency\CompetencyAssessmentService;
 use App\Models\MstAdditionals;
 use App\Models\MstSoftSkill;
 use App\Models\MstTc;
-use App\Models\TcJobPosition;
+// use App\Models\TcJobPosition; // DISABLED
 use App\Models\TrsPenilaianTc;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
+
+/** Cache TTL for TCPD snapshot calculations (in seconds). */
+const TCPD_CACHE_TTL = 3600; // 60 minutes
 
 class TcpdDashboardService
 {
@@ -48,9 +53,9 @@ class TcpdDashboardService
         $jobDateToInput = $request->input('job_date_to');
 
         if (empty($jobDateFromInput) && empty($jobDateToInput)) {
-            $now = Carbon::now();
-            $jobDateFromInput = $now->copy()->startOfYear()->format('Y-m-d');
-            $jobDateToInput = $now->copy()->endOfYear()->format('Y-m-d');
+            $defaultYear = !empty($yearOptions) ? (int) end($yearOptions) : Carbon::now()->year;
+            $jobDateFromInput = Carbon::create($defaultYear, 1, 1, 0, 0, 0)->startOfDay()->format('Y-m-d');
+            $jobDateToInput = Carbon::create($defaultYear, 12, 31, 23, 59, 59)->endOfDay()->format('Y-m-d');
         }
 
         [$jobStartDate, $jobEndDate] = $this->resolveDateRange($jobDateFromInput, $jobDateToInput);
@@ -63,10 +68,16 @@ class TcpdDashboardService
 
         $normalizeName = static fn ($value) => strtolower(trim((string) $value));
 
-        $rawJobPositions = TcJobPosition::query()
-            ->select(DB::raw('MIN(id) as id'), 'job_position')
-            ->groupBy('job_position')
-            ->orderBy('job_position')
+        $rawJobPositions = \App\Models\MstJobPosition::query()
+            ->leftJoin('mst_departments', 'mst_job_positions.department_id', '=', 'mst_departments.id')
+            ->whereRaw('LOWER(mst_job_positions.position_name) NOT LIKE ?', ['%head%'])
+            ->select(
+                DB::raw('MIN(mst_job_positions.id) as id'),
+                'mst_job_positions.position_name as job_position',
+                DB::raw('MAX(mst_departments.name) as department')
+            )
+            ->groupBy('mst_job_positions.position_name')
+            ->orderBy('mst_job_positions.position_name')
             ->get()
             ->map(function ($row) {
                 $row->job_position = trim((string) $row->job_position);
@@ -116,26 +127,18 @@ class TcpdDashboardService
             ];
         }
 
-        $departmentDefinitions = $this->departmentDefinitions();
-        $jobPositionsByName = $rawJobPositions->keyBy(fn ($row) => $normalizeName($row->job_position));
-
         $jobDepartments = collect();
-        foreach ($departmentDefinitions as $departmentName => $jobNames) {
-            $options = collect($jobNames)
-                ->map(function ($jobName) use ($jobPositionsByName, $normalizeName) {
-                    $normalized = $normalizeName($jobName);
-                    $matched = $jobPositionsByName->get($normalized);
-                    if (!$matched) {
-                        return null;
-                    }
+        $grouped = $rawJobPositions->groupBy(function($row) {
+             return $row->department ?: 'Uncategorized';
+        });
 
-                    return [
-                        'id' => (int) $matched->id,
-                        'name' => $matched->job_position,
-                    ];
-                })
-                ->filter()
-                ->values();
+        foreach ($grouped as $departmentName => $jobs) {
+            $options = $jobs->map(function ($row) {
+                return [
+                    'id' => (int) $row->id,
+                    'name' => $row->job_position,
+                ];
+            })->values();
 
             if ($options->isNotEmpty()) {
                 $jobDepartments->push([
@@ -277,15 +280,25 @@ class TcpdDashboardService
     public function getCompetencyPayload(Request $request): array
     {
         $jobPositionId = (int) $request->input('job_position_id');
-        $jobPosition = TcJobPosition::select('job_position')->find($jobPositionId);
+        $jobPosition = \App\Models\MstJobPosition::select('position_name as job_position')->find($jobPositionId);
 
         if (!$jobPosition) {
-            throw (new ModelNotFoundException('Job position not found.'))->setModel(TcJobPosition::class, $jobPositionId);
+            throw (new ModelNotFoundException('Job position not found.'))->setModel(\App\Models\MstJobPosition::class, $jobPositionId);
         }
 
         $departmentFilter = $request->input('department');
         if ($departmentFilter) {
-            $departmentDefinitions = $this->departmentDefinitions();
+            $dbMappings = \App\Models\MstJobPosition::query()
+                ->leftJoin('mst_departments', 'mst_job_positions.department_id', '=', 'mst_departments.id')
+                ->whereRaw('LOWER(mst_job_positions.position_name) NOT LIKE ?', ['%head%'])
+                ->select('mst_job_positions.position_name as job_position', 'mst_departments.name as department')
+                ->distinct()
+                ->get();
+            $departmentDefinitions = [];
+            foreach ($dbMappings as $mapping) {
+                $dept = $mapping->department ?: 'Uncategorized';
+                $departmentDefinitions[$dept][] = trim((string)$mapping->job_position);
+            }
             if (array_key_exists($departmentFilter, $departmentDefinitions)) {
                 $normalize = static fn ($value) => strtolower(trim((string) $value));
                 $allowedJobs = collect($departmentDefinitions[$departmentFilter] ?? [])
@@ -329,55 +342,256 @@ class TcpdDashboardService
             $endDate = Carbon::create($defaultYear, 12, 31, 23, 59, 59)->endOfDay();
         }
 
-        $departmentDefinitions = $this->departmentDefinitions();
+        // Build a cache key scoped to this user's access level and date range.
+        $userId = $user ? $user->id : 'public';
+        $fromKey = $startDate ? $startDate->format('Ymd') : 'all';
+        $toKey   = $endDate   ? $endDate->format('Ymd')   : 'all';
+        $companyCacheKey = "tcpd_company_{$userId}_{$fromKey}_{$toKey}";
 
-        $allowedJobNames = $this->resolveAllowedJobNames($user);
-        if (is_array($allowedJobNames)) {
-            $allowedJobNamesSet = array_map(static fn ($value) => strtolower(trim((string) $value)), $allowedJobNames);
-            $filteredDepartmentDefinitions = [];
-            foreach ($departmentDefinitions as $deptName => $jobNames) {
-                $filteredJobs = collect($jobNames)->filter(function ($jobName) use ($allowedJobNamesSet) {
-                    return in_array(strtolower(trim((string) $jobName)), $allowedJobNamesSet, true);
-                })->values()->all();
-                if (!empty($filteredJobs)) {
-                    $filteredDepartmentDefinitions[$deptName] = $filteredJobs;
+        return Cache::remember($companyCacheKey, TCPD_CACHE_TTL, function () use ($startDate, $endDate, $user) {
+            $dbMappings = \App\Models\MstJobPosition::query()
+                ->leftJoin('mst_departments', 'mst_job_positions.department_id', '=', 'mst_departments.id')
+                ->whereRaw('LOWER(mst_job_positions.position_name) NOT LIKE ?', ['%head%'])
+                ->select('mst_job_positions.position_name as job_position', 'mst_departments.name as department')
+                ->distinct()
+                ->get();
+            $departmentDefinitions = [];
+            foreach ($dbMappings as $mapping) {
+                if (empty($mapping->department)) {
+                    continue;
                 }
+                $dept = $mapping->department;
+                $departmentDefinitions[$dept][] = trim((string)$mapping->job_position);
             }
-        } else {
-            $filteredDepartmentDefinitions = $departmentDefinitions;
-        }
 
-        $allJobNames = collect($filteredDepartmentDefinitions)
-            ->flatten()
-            ->map(fn ($name) => trim((string) $name))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+            $allowedJobNames = $this->resolveAllowedJobNames($user);
+            if (is_array($allowedJobNames)) {
+                $allowedJobNamesSet = array_map(static fn ($value) => strtolower(trim((string) $value)), $allowedJobNames);
+                $filteredDepartmentDefinitions = [];
+                foreach ($departmentDefinitions as $deptName => $jobNames) {
+                    $filteredJobs = collect($jobNames)->filter(function ($jobName) use ($allowedJobNamesSet) {
+                        return in_array(strtolower(trim((string) $jobName)), $allowedJobNamesSet, true);
+                    })->values()->all();
+                    if (!empty($filteredJobs)) {
+                        $filteredDepartmentDefinitions[$deptName] = $filteredJobs;
+                    }
+                }
+            } else {
+                $filteredDepartmentDefinitions = $departmentDefinitions;
+            }
 
-        $jobSnapshotData = $this->buildTcpdJobData($allJobNames, $startDate, $endDate);
-        $departmentSummaries = $this->buildDepartmentSummaries($filteredDepartmentDefinitions, $jobSnapshotData);
-        $companyOverview = $this->buildCompanyOverview($departmentSummaries, $jobSnapshotData['years'] ?? []);
+            $allJobNames = collect($filteredDepartmentDefinitions)
+                ->flatten()
+                ->map(fn ($name) => trim((string) $name))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
 
-        return [
-            'company_chart_rows' => $companyOverview['chartRows'],
-            'company_average' => $companyOverview['average'],
-            'company_years' => $companyOverview['years'],
-            'company_chart_mode' => $companyOverview['mode'],
-            'company_has_data' => $companyOverview['hasData'],
-            'company_department_count' => $companyOverview['departmentCount'],
-            'department_summaries' => $departmentSummaries,
-        ];
+            $jobSnapshotData = $this->buildTcpdJobData($allJobNames, $startDate, $endDate);
+            $departmentSummaries = $this->buildDepartmentSummaries($filteredDepartmentDefinitions, $jobSnapshotData);
+            $companyOverview = $this->buildCompanyOverview($departmentSummaries, $jobSnapshotData['years'] ?? []);
+            
+            $insights = $this->buildCompanyInsights($allJobNames, $jobSnapshotData);
+            $trainingEffectiveness = $this->buildTrainingEffectiveness($allJobNames, $jobSnapshotData['years'] ?? []);
+
+            return [
+                'company_chart_rows' => $companyOverview['chartRows'],
+                'company_average' => $companyOverview['average'],
+                'company_years' => $companyOverview['years'],
+                'company_chart_mode' => $companyOverview['mode'],
+                'company_has_data' => $companyOverview['hasData'],
+                'company_department_count' => $companyOverview['departmentCount'],
+                'department_summaries' => $departmentSummaries,
+                'insights' => $insights,
+                'training_effectiveness' => $trainingEffectiveness,
+            ];
+        });
+    }
+
+    /**
+     * Flush all TCPD-related cache entries.
+     * Call this after a new assessment is saved so that the next dashboard load is fresh.
+     */
+    public function clearTcpdCache(): void
+    {
+        // Flush all keys matching the tcpd_ prefix via cache tags (Redis) or a manual pattern (file).
+        // We use a tag-less approach here for maximum driver compatibility.
+        Cache::flush(); // Flushes all app cache. Suitable for apps using a dedicated cache store for TCPD.
     }
 
     private function resolveAllowedJobNames(?User $user): ?array
     {
-        if (!$user || in_array((int) $user->role_id, [1], true)) {
-            return null;
+        return TcpdAccessResolver::resolve($user);
+    }
+
+    /**
+     * Modul 2.1 — Hitung matriks persentase kompetensi untuk Key Positions.
+     * Delegasikan ke CompetencyAssessmentService agar logic tidak duplikat.
+     */
+    public function getKeyPositionStats(): array
+    {
+        $keyPositions = DB::table('mst_job_positions')
+            ->where('is_key_position', true)
+            ->get();
+
+        if ($keyPositions->isEmpty()) {
+            return [];
         }
 
-        $access = TcpdUserAccess::resolve($user->name ?? '');
-        return $access ? $access->jobPositions() : [];
+        $service = app(CompetencyAssessmentService::class);
+        $results = [];
+
+        foreach ($keyPositions as $kp) {
+            $userIds = DB::table('user_job_positions')
+                ->where('mst_job_position_id', $kp->id)
+                ->where('is_active', true)
+                ->pluck('user_id');
+            
+            $empCount = $userIds->count();
+            // Optional: Skip if no employees? For now, include it to show the key position exists
+            if ($empCount === 0) {
+                $results[] = [
+                    'job_position' => $kp->position_name,
+                    'employee_count' => 0,
+                    'strength_count' => 0,
+                    'deficit_count' => 0,
+                ];
+                continue;
+            }
+
+            $strengthCount = 0;
+            $deficitCount = 0;
+
+            foreach ($userIds as $uid) {
+                $strengthCount += count($service->getStrengthCompetencies($uid));
+                $deficitCount += count($service->getAreaDevelopmentCompetencies($uid));
+            }
+
+            $results[] = [
+                'job_position' => $kp->position_name,
+                'employee_count' => $empCount,
+                'strength_count' => $strengthCount,
+                'deficit_count' => $deficitCount,
+            ];
+        }
+
+        // Sort by strength percentage descending
+        usort($results, function($a, $b) {
+            $pctA = $a['employee_count'] > 0 ? ($a['strength_count'] / $a['employee_count']) : 0;
+            $pctB = $b['employee_count'] > 0 ? ($b['strength_count'] / $b['employee_count']) : 0;
+            return $pctB <=> $pctA;
+        });
+
+        return $results;
+    }
+
+    private function buildCompanyInsights(array $allJobNames, array $jobSnapshotData): array
+    {
+        $jobRankings = [];
+        $competencyIssues = [];
+
+        foreach ($allJobNames as $jobName) {
+            $snapshot = $jobSnapshotData['aggregate'][$jobName] ?? null;
+            if (!$snapshot || !($snapshot['hasTotalPercentage'] ?? false)) {
+                continue;
+            }
+
+            $users = [];
+            if (isset($snapshot['userSummaries']) && is_array($snapshot['userSummaries'])) {
+                foreach ($snapshot['userSummaries'] as $summary) {
+                    if (empty($summary['id']) || $summary['id'] === 'average') {
+                        continue;
+                    }
+                    $users[] = [
+                        'id'   => $summary['id'],
+                        'name' => $summary['name'],
+                        'tc'   => $summary['tc_percentage'],
+                        'sk'   => $summary['sk_percentage'],
+                        'ad'   => $summary['ad_percentage'],
+                    ];
+                }
+            }
+            usort($users, fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
+
+            $jobRankings[] = [
+                'job_position' => $jobName,
+                'percentage'   => $snapshot['totalPercentage'],
+                'employees'    => $users,
+            ];
+
+            foreach ($snapshot['competencies'] ?? [] as $comp) {
+                if (($comp['qty'] ?? 0) > 0) {
+                    $id = $comp['type'] . '_' . $comp['id'];
+                    if (!isset($competencyIssues[$id])) {
+                        $competencyIssues[$id] = [
+                            'name'      => $comp['name'],
+                            'type'      => $comp['type'],
+                            'qty'       => 0,
+                            'employees' => [],
+                        ];
+                    }
+                    $competencyIssues[$id]['qty'] += $comp['qty'];
+                    // Aggregate employee detail across job positions
+                    foreach ($comp['employees'] ?? [] as $emp) {
+                        $uid = (int) ($emp['id'] ?? 0);
+                        if (!isset($competencyIssues[$id]['employees'][$uid])) {
+                            $competencyIssues[$id]['employees'][$uid] = $emp;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Re-index employees arrays
+        foreach ($competencyIssues as &$issue) {
+            $issue['employees'] = array_values($issue['employees']);
+            usort($issue['employees'], fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
+        }
+        unset($issue);
+
+        usort($jobRankings, fn ($a, $b) => $b['percentage'] <=> $a['percentage']);
+        $topJobs = array_slice($jobRankings, 0, 5);
+
+        // --- Modul 2.2: Terapkan threshold >= 5 defisit & tambahkan pagination info ---
+        usort($competencyIssues, fn ($a, $b) => $b['qty'] <=> $a['qty']);
+        // Filter: hanya tampilkan kompetensi dengan jumlah defisit >= 5
+        $criticalFocus = array_values(
+            array_filter($competencyIssues, fn($item) => ($item['qty'] ?? 0) >= 5)
+        );
+
+        return [
+            'top_jobs'           => $topJobs,
+            'critical_focus'     => $criticalFocus,
+            'key_position_stats' => $this->getKeyPositionStats(),
+        ];
+    }
+
+    private function buildTrainingEffectiveness(array $allJobNames, array $years): array
+    {
+        if (empty($years) || empty($allJobNames)) {
+            return [];
+        }
+
+        $jobPositionIds = \App\Models\MstJobPosition::whereIn('position_name', $allJobNames)->pluck('id')->toArray();
+        if (empty($jobPositionIds)) {
+            return [];
+        }
+
+        $costData = \App\Models\TcPeopleDevelopment::whereIn('tahun_aktual', $years)
+            ->whereIn('status_1', [2, 3]) // Proses or Disetujui
+            ->whereIn('id_job_position', $jobPositionIds)
+            ->select('tahun_aktual', \Illuminate\Support\Facades\DB::raw('SUM(biaya) as total_biaya'))
+            ->groupBy('tahun_aktual')
+            ->get();
+
+        $trainingCosts = [];
+        foreach ($years as $year) {
+            $found = $costData->first(fn($item) => (int)$item->tahun_aktual === (int)$year);
+            $trainingCosts[(string)$year] = $found ? (float)$found->total_biaya : 0.0;
+        }
+
+        return $trainingCosts;
     }
 
     private function resolveDateRange(?string $from, ?string $to): array
@@ -470,10 +684,25 @@ class TcpdDashboardService
             return;
         }
 
+        $table = (new TrsPenilaianTc())->getTable();
+        if (Schema::hasColumn($table, 'tahun_penilaian')) {
+            // Check if the range represents a whole calendar year (Jan 1 to Dec 31)
+            $isWholeYear = false;
+            if ($startDate && $endDate) {
+                $isWholeYear = $startDate->month === 1 && $startDate->day === 1 && $endDate->month === 12 && $endDate->day === 31;
+            }
+
+            if ($isWholeYear) {
+                $startYear = $startDate->year;
+                $endYear = $endDate->year;
+                $query->whereBetween('tahun_penilaian', [$startYear, $endYear]);
+                return;
+            }
+        }
+
         static $dateColumns = null;
 
         if ($dateColumns === null) {
-            $table = (new TrsPenilaianTc())->getTable();
             $dateColumns = collect(['created_at', 'modified_updated'])
                 ->filter(fn ($column) => Schema::hasColumn($table, $column))
                 ->values()
@@ -505,21 +734,30 @@ class TcpdDashboardService
         $table = (new TrsPenilaianTc())->getTable();
         $years = collect();
 
-        if (Schema::hasColumn($table, 'created_at')) {
+        if (Schema::hasColumn($table, 'tahun_penilaian')) {
             $years = $years->merge(
-                TrsPenilaianTc::selectRaw('DISTINCT YEAR(created_at) as year')
-                    ->whereNotNull('created_at')
+                TrsPenilaianTc::selectRaw('DISTINCT tahun_penilaian as year')
+                    ->whereNotNull('tahun_penilaian')
                     ->pluck('year')
             );
+        } else {
+            if (Schema::hasColumn($table, 'created_at')) {
+                $years = $years->merge(
+                    TrsPenilaianTc::selectRaw('DISTINCT YEAR(created_at) as year')
+                        ->whereNotNull('created_at')
+                        ->pluck('year')
+                );
+            }
+
+            if (Schema::hasColumn($table, 'modified_updated')) {
+                $years = $years->merge(
+                    TrsPenilaianTc::selectRaw('DISTINCT YEAR(modified_updated) as year')
+                        ->whereNotNull('modified_updated')
+                        ->pluck('year')
+                );
+            }
         }
 
-        if (Schema::hasColumn($table, 'modified_updated')) {
-            $years = $years->merge(
-                TrsPenilaianTc::selectRaw('DISTINCT YEAR(modified_updated) as year')
-                    ->whereNotNull('modified_updated')
-                    ->pluck('year')
-            );
-        }
 
         $cleanYears = $years
             ->filter(fn ($year) => $year !== null)
@@ -666,7 +904,19 @@ class TcpdDashboardService
 
     private function buildTcpdSnapshot(string $jobPositionName, ?Carbon $startDate = null, ?Carbon $endDate = null): array
     {
-        $jobPositionIds = TcJobPosition::where('job_position', $jobPositionName)->pluck('id');
+        // Build a deterministic cache key from the job position name and date range.
+        $fromKey = $startDate ? $startDate->format('Ymd') : 'all';
+        $toKey   = $endDate   ? $endDate->format('Ymd')   : 'all';
+        $cacheKey = 'tcpd_snapshot_' . md5($jobPositionName) . "_{$fromKey}_{$toKey}";
+
+        return Cache::remember($cacheKey, TCPD_CACHE_TTL, function () use ($jobPositionName, $startDate, $endDate) {
+            return $this->buildTcpdSnapshotInner($jobPositionName, $startDate, $endDate);
+        });
+    }
+
+    private function buildTcpdSnapshotInner(string $jobPositionName, ?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $jobPositionIds = \App\Models\MstJobPosition::where('position_name', $jobPositionName)->pluck('id');
 
         if ($jobPositionIds->isEmpty()) {
             return [
@@ -675,8 +925,12 @@ class TcpdDashboardService
             ];
         }
 
-        $userIds = TcJobPosition::where('job_position', $jobPositionName)
-            ->whereNotNull('id_user')->distinct()->pluck('id_user')->values();
+        $userIds = \Illuminate\Support\Facades\DB::table('user_job_positions')
+            ->join('mst_job_positions', 'user_job_positions.mst_job_position_id', '=', 'mst_job_positions.id')
+            ->where('mst_job_positions.position_name', $jobPositionName)
+            ->distinct()
+            ->pluck('user_job_positions.user_id')
+            ->values();
 
         $userCount = $userIds->count();
         $userLookup = $userIds->isEmpty()
@@ -750,7 +1004,8 @@ class TcpdDashboardService
         $userSummaries = $userIds->map(function ($userId) use ($userTotals, $userLookup, $technicalStandardsSum, $softSkillStandardsSum, $additionalStandardsSum) {
             $totals = $userTotals[(int) $userId] ?? ['technical' => 0.0, 'soft_skill' => 0.0, 'additional' => 0.0];
 
-            $calcPercentage = fn ($total, $standardSum) => $standardSum > 0 ? round(($total / $standardSum) * 100, 2) : null;
+            // Cap at 100%: nilai aktual tidak boleh melebihi standar dalam hitungan persentase
+            $calcPercentage = fn ($total, $standardSum) => $standardSum > 0 ? min(100.0, round(($total / $standardSum) * 100, 2)) : null;
 
             return [
                 'id' => (int) $userId,
@@ -776,8 +1031,14 @@ class TcpdDashboardService
             ]);
         }
 
+        // Hitung totalPercentage hanya dari baris user nyata (bukan baris 'average' yang di-prepend)
+        // agar tidak terjadi double-counting nilai rata-rata.
         $allPercentages = [];
         foreach ($userSummaries as $summary) {
+            // Lewati baris average (id = 'average') yang sudah di-prepend
+            if (($summary['id'] ?? null) === 'average') {
+                continue;
+            }
             if ($summary['tc_percentage'] !== null) {
                 $allPercentages[] = $summary['tc_percentage'];
             }
@@ -789,7 +1050,8 @@ class TcpdDashboardService
             }
         }
 
-        $totalPercentage = !empty($allPercentages) ? round(array_sum($allPercentages) / count($allPercentages), 2) : 0.0;
+        // totalPercentage = rata-rata dari semua persentase per user per kategori, max 100%
+        $totalPercentage = !empty($allPercentages) ? min(100.0, round(array_sum($allPercentages) / count($allPercentages), 2)) : 0.0;
 
         $technicalStandards = $technical->mapWithKeys(fn ($r) => [$r['id'] => $r['standard']])->all();
         $softSkillStandards = $softSkills->mapWithKeys(fn ($r) => [$r['id'] => $r['standard']])->all();
@@ -797,6 +1059,9 @@ class TcpdDashboardService
 
         $belowStandardUsers = ['technical' => [], 'soft_skill' => [], 'additional' => []];
         $userScoresPerCompetency = [];
+
+        // Per-user scores per competency (for employee detail in Area Development)
+        $userScoresMapPerCompetency = ['technical' => [], 'soft_skill' => [], 'additional' => []];
 
         foreach ($scoreRows as $scoreRow) {
             $userId = (int) $scoreRow->id_user;
@@ -808,6 +1073,11 @@ class TcpdDashboardService
                     $belowStandardUsers['technical'][$compId][$userId] = true;
                 }
                 $userScoresPerCompetency['technical'][$compId][] = $value;
+                // Track per-user score for detail
+                if (!isset($userScoresMapPerCompetency['technical'][$compId][$userId])) {
+                    $userScoresMapPerCompetency['technical'][$compId][$userId] = [];
+                }
+                $userScoresMapPerCompetency['technical'][$compId][$userId][] = $value;
             }
             if ($scoreRow->id_sk !== null && isset($softSkillSet[$scoreRow->id_sk]) && is_numeric($scoreRow->nilai_sk)) {
                 $value = (float) $scoreRow->nilai_sk;
@@ -817,6 +1087,10 @@ class TcpdDashboardService
                     $belowStandardUsers['soft_skill'][$compId][$userId] = true;
                 }
                 $userScoresPerCompetency['soft_skill'][$compId][] = $value;
+                if (!isset($userScoresMapPerCompetency['soft_skill'][$compId][$userId])) {
+                    $userScoresMapPerCompetency['soft_skill'][$compId][$userId] = [];
+                }
+                $userScoresMapPerCompetency['soft_skill'][$compId][$userId][] = $value;
             }
             if ($scoreRow->id_ad !== null && isset($additionalSet[$scoreRow->id_ad]) && is_numeric($scoreRow->nilai_ad)) {
                 $value = (float) $scoreRow->nilai_ad;
@@ -826,20 +1100,45 @@ class TcpdDashboardService
                     $belowStandardUsers['additional'][$compId][$userId] = true;
                 }
                 $userScoresPerCompetency['additional'][$compId][] = $value;
+                if (!isset($userScoresMapPerCompetency['additional'][$compId][$userId])) {
+                    $userScoresMapPerCompetency['additional'][$compId][$userId] = [];
+                }
+                $userScoresMapPerCompetency['additional'][$compId][$userId][] = $value;
             }
         }
 
-        $rows = $competencies->map(function (array $row) use ($userScoresPerCompetency, $belowStandardUsers) {
+        $rows = $competencies->map(function (array $row) use ($userScoresPerCompetency, $belowStandardUsers, $userScoresMapPerCompetency, $userLookup, $jobPositionName) {
             $scores = $userScoresPerCompetency[$row['type']][$row['id']] ?? [];
             $average = !empty($scores) ? round(array_sum($scores) / count($scores), 2) : null;
 
+            // Build employees list: users below standard for this competency
+            $belowUserIds = array_keys($belowStandardUsers[$row['type']][$row['id']] ?? []);
+            $employees = [];
+            foreach ($belowUserIds as $uid) {
+                $uid = (int) $uid;
+                $userScores = $userScoresMapPerCompetency[$row['type']][$row['id']][$uid] ?? [];
+                $actualVal = !empty($userScores) ? round(array_sum($userScores) / count($userScores), 2) : null;
+                $employees[] = [
+                    'id'           => $uid,
+                    'name'         => optional($userLookup->get($uid))->name ?? ('User ' . $uid),
+                    'job_position' => $jobPositionName,
+                    'actual'       => $actualVal,
+                    'standard'     => $row['standard'],
+                ];
+            }
+            usort($employees, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+            $mentors = app(\App\Services\Competency\CompetencyAssessmentService::class)->getEmployeesMeetingStandard($row['type'], (int) $row['id']);
+
             return [
-                'id' => $row['id'],
-                'name' => $row['name'],
-                'type' => $row['type'],
-                'standard' => $row['standard'],
-                'average' => $average,
-                'qty' => count($belowStandardUsers[$row['type']][$row['id']] ?? []),
+                'id'        => $row['id'],
+                'name'      => $row['name'],
+                'type'      => $row['type'],
+                'standard'  => $row['standard'],
+                'average'   => $average,
+                'qty'       => count($belowUserIds),
+                'employees' => $employees,
+                'mentors'   => $mentors,
             ];
         })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
 
@@ -873,10 +1172,10 @@ class TcpdDashboardService
 
     private function buildTcpdJobData(array $jobNames, ?Carbon $startDate = null, ?Carbon $endDate = null): array
     {
-        $availableJobPositions = TcJobPosition::query()
-            ->where('status', 1)
+        $availableJobPositions = \App\Models\MstJobPosition::query()
+            ->where('is_active', true)
             ->distinct()
-            ->pluck('job_position')
+            ->pluck('position_name')
             ->map(fn ($name) => trim((string) $name))
             ->filter()
             ->unique()

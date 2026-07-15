@@ -64,8 +64,47 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [ServerDrivenController::class, 'logout']);
 
     // Rute user standar (opsional, tapi sering berguna)
-    Route::get('user', function (Request $request) {
+    Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
         return $request->user();
+    });
+
+    Route::get('/check-seed-data', function() {
+        $jsonPath = 'C:\\laragon\\www\\fastware_adsi_1\\karyawan_job_position_seed (1).json';
+        if (!file_exists($jsonPath)) return response()->json(['error' => 'JSON not found']);
+        $jsonData = json_decode(file_get_contents($jsonPath), true);
+        $karyawanList = $jsonData['karyawan'];
+
+        $users = \App\Models\User::all()->pluck('name')->toArray();
+        $usersLower = array_map('strtolower', $users);
+
+        $positions = \App\Models\MstJobPosition::all()->pluck('position_name')->toArray();
+        $positionsLower = array_map('strtolower', $positions);
+
+        $missingUsers = [];
+        $missingPositions = [];
+
+        foreach ($karyawanList as $k) {
+            $name = trim($k['nama_karyawan']);
+            $job = trim($k['job_position']);
+
+            if (!in_array(strtolower($name), $usersLower)) {
+                if (!in_array($name, $missingUsers)) {
+                    $missingUsers[] = $name;
+                }
+            }
+
+            if (!in_array(strtolower($job), $positionsLower)) {
+                if (!in_array($job, $missingPositions)) {
+                    $missingPositions[] = $job;
+                }
+            }
+        }
+
+        return response()->json([
+            'total_json_records' => count($karyawanList),
+            'missing_users' => $missingUsers,
+            'missing_positions' => $missingPositions
+        ]);
     });
 
     // Update FCM Token

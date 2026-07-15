@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use App\Models\Role;
+use App\Models\User;
 use App\Services\HRMenuService;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\TestCase;
@@ -201,6 +203,32 @@ class HRMenuServiceTest extends TestCase
         $this->assertGreaterThanOrEqual(0, $kmVisibleCount);
     }
 
+    public function test_section_head_menu_only_shows_kasie_penilaian(): void
+    {
+        $menu = $this->service->getMenuStructure($this->userWithRole('MUGI PRAMONO', 'SC Logistics & QC Sec Head', 17));
+        $visibleLabels = collect($menu['base_competency']['items'])
+            ->filter(fn($item) => $item['visible'])
+            ->pluck('label')
+            ->all();
+
+        $this->assertContains('Penilaian Technical Competency Ka. Sie', $visibleLabels);
+        $this->assertNotContains('Penilaian Technical Competency Ka. Dept', $visibleLabels);
+        $this->assertNotContains('Penilaian Technical Competency HR', $visibleLabels);
+    }
+
+    public function test_department_head_menu_only_shows_kadept_penilaian(): void
+    {
+        $menu = $this->service->getMenuStructure($this->userWithRole('ARY RODJO PRASETYO', 'DH Production Dept Head', 4));
+        $visibleLabels = collect($menu['base_competency']['items'])
+            ->filter(fn($item) => $item['visible'])
+            ->pluck('label')
+            ->all();
+
+        $this->assertNotContains('Penilaian Technical Competency Ka. Sie', $visibleLabels);
+        $this->assertContains('Penilaian Technical Competency Ka. Dept', $visibleLabels);
+        $this->assertNotContains('Penilaian Technical Competency HR', $visibleLabels);
+    }
+
     /**
      * Test menu structure consistency for different users
      */
@@ -270,5 +298,12 @@ class HRMenuServiceTest extends TestCase
 
         $this->assertEquals($menu1->toArray(), $menu2->toArray());
     }
-}
 
+    private function userWithRole(string $name, string $roleName, int $roleId): User
+    {
+        $user = new User(['name' => $name, 'role_id' => $roleId]);
+        $user->setRelation('roles', new Role(['role' => $roleName]));
+
+        return $user;
+    }
+}

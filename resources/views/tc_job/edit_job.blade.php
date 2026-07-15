@@ -1,3 +1,4 @@
+<!-- File ini sudah tidak digunakan lagi, karena sudah di ganti/dipecah menjadi folder mst_job_position dan user_job_position -->
 @extends('layout')
 
 @section('content')
@@ -25,56 +26,125 @@
                                 @csrf
                                 @method('PUT')
 
-                                <div class="form-group">
-                                    <label for="job_position">Job Position</label>
-                                    <input type="text" id="job_position" class="form-control" name="job_position"
-                                        value="{{ $jobPosition->job_position }}" required>
-                                    <input type="hidden" id="id_job_position" class="form-control" name="job_position_id"
-                                        value="{{ $jobPosition->id }}">
-                                </div>
-
-
-                                <div id="dynamicRowsContainer" class="mt-3">
-                                    @foreach ($relatedUsers as $user)
-                                        <div class="row dynamic-row mb-2" data-job-position-id="{{ $jobPosition->id }}"
-                                            data-job-position-name="{{ $jobPosition->job_position }}">
-                                            <div class="col-md-10">
-                                                <div class="form-group">
-                                                    <label>Nama Karyawan</label>
-                                                    <input type="text" class="form-control user-search"
-                                                        placeholder="Search user...">
-                                                    <select class="form-control user-dropdown" name="id_user[]">
-                                                        @foreach ($allUsers as $allUser)
-                                                            <option value="{{ $allUser->id }}"
-                                                                data-job-position-ids="{{ json_encode($jobPositionIds) }}"
-                                                                {{ $user->id == $allUser->id ? 'selected' : '' }}>
-                                                                {{ $allUser->name }}
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2 d-flex align-items-center">
-                                                <button type="button" class="btn btn-danger"
-                                                    onclick="removeField(this)">-</button>
-                                            </div>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" id="job_position" class="form-control" name="job_position" value="{{ $jobPosition->job_position }}" placeholder="Job Position" required>
+                                            <label for="job_position">Job Position</label>
+                                            <input type="hidden" id="id_job_position" class="form-control" name="job_position_id" value="{{ $jobPosition->id }}">
                                         </div>
-                                    @endforeach
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input class="form-control" list="departmentOptions" id="department" name="department" value="{{ $jobPosition->department }}" placeholder="Pilih atau ketik nama departemen..." required>
+                                            <label for="department">Department</label>
+                                            <datalist id="departmentOptions">
+                                                @foreach($departments as $dept)
+                                                    <option value="{{ $dept }}">
+                                                @endforeach
+                                            </datalist>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="form-floating">
+                                            <input class="form-control" list="sectionOptions" type="text" id="section" name="section" value="{{ $jobPosition->section }}" placeholder="Contoh: PDCA, Procurement, IT" required>
+                                            <label for="section">Section (Mapping) <span class="text-danger">*</span></label>
+                                            <datalist id="sectionOptions">
+                                                @foreach($sections as $sec)
+                                                    <option value="{{ $sec }}">
+                                                @endforeach
+                                            </datalist>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-floating">
+                                            <select class="form-select shadow-none" id="section_head_name" name="section_head_name" required>
+                                                <option value="" disabled>Pilih Section Head...</option>
+                                                @foreach($jobPositions as $jp)
+                                                    <option value="{{ $jp->job_position }}" {{ $jobPosition->section_head_name == $jp->job_position ? 'selected' : '' }}>{{ $jp->job_position }}</option>
+                                                @endforeach
+                                            </select>
+                                            <label for="section_head_name">Section Head <span class="text-danger">*</span></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-floating">
+                                            <select class="form-select shadow-none" id="department_head_name" name="department_head_name" required>
+                                                <option value="" disabled>Pilih Dept Head...</option>
+                                                @foreach($jobPositions as $jp)
+                                                    <option value="{{ $jp->job_position }}" {{ $jobPosition->department_head_name == $jp->job_position ? 'selected' : '' }}>{{ $jp->job_position }}</option>
+                                                @endforeach
+                                            </select>
+                                            <label for="department_head_name">Department Head <span class="text-danger">*</span></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-floating">
+                                            <select class="form-select shadow-none" id="div_head_name" name="div_head_name">
+                                                <option value="" {{ empty($jobPosition->div_head_name) ? 'selected' : '' }}>Tidak Ada (Opsional)</option>
+                                                @foreach($jobPositions as $jp)
+                                                    <option value="{{ $jp->job_position }}" {{ $jobPosition->div_head_name == $jp->job_position ? 'selected' : '' }}>{{ $jp->job_position }}</option>
+                                                @endforeach
+                                            </select>
+                                            <label for="div_head_name">Div Head (Opsional)</label>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="d-flex justify-content-end mt-2">
-                                    <button type="button" class="btn btn-secondary" id="addRowBtn">
-                                        <i class="fas fa-plus"></i> Tambah Baris
-                                    </button>
+                                <div class="card mb-4 bg-light shadow-sm border-0">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="fw-bold m-0 text-primary">Daftar Karyawan Terhubung</h6>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="addRowBtn">
+                                                <i class="fas fa-plus"></i> Tambah Karyawan
+                                            </button>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-hover bg-white" id="dynamicTable">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Nama Karyawan</th>
+                                                        <th class="text-center" style="width: 100px;">Aksi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="dynamicRowsContainer">
+                                                    @foreach ($relatedUsers as $user)
+                                                        <tr class="dynamic-row" data-job-position-id="{{ $jobPosition->id }}" data-job-position-name="{{ $jobPosition->job_position }}">
+                                                            <td>
+                                                                <div class="d-flex gap-2">
+                                                                    <input type="text" class="form-control user-search w-50" placeholder="Search user...">
+                                                                    <select class="form-select user-dropdown w-50" name="id_user[]">
+                                                                        @foreach ($allUsers as $allUser)
+                                                                            <option value="{{ $allUser->id }}"
+                                                                                data-job-position-ids="{{ json_encode($jobPositionIds) }}"
+                                                                                {{ $user->id == $allUser->id ? 'selected' : '' }}>
+                                                                                {{ $allUser->name }}
+                                                                            </option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </div>
+                                                            </td>
+                                                            <td class="text-center align-middle">
+                                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeField(this)">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="mt-3">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> Update
-                                    </button>
-                                    <a href="{{ route('jobShow') }}" class="btn btn-secondary">
-                                        <i class="fas fa-arrow-left"></i> Kembali
+                                <!-- Sticky Footer Actions -->
+                                <div class="position-sticky bg-white p-3 shadow-lg z-3 border-top rounded-top-4 mt-5 d-flex justify-content-end gap-2" style="bottom: 60px;">
+                                    <a href="{{ route('jobShow') }}" class="btn btn-secondary rounded-pill px-4">
+                                        <i class="fas fa-arrow-left me-1"></i> Kembali
                                     </a>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                        <i class="fas fa-save me-1"></i> Update
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -94,8 +164,36 @@
                                 }, function() {
                                     $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
                                 });
+
+                                // [1] Dynamic Approver Loading
+                                $('#department, #section').on('change', function() {
+                                    let dept = $('#department').val();
+                                    let sec = $('#section').val();
+                                    
+                                    $.ajax({
+                                        url: '{{ route("jobPositions.approvers") }}',
+                                        type: 'GET',
+                                        data: { department: dept, section: sec },
+                                        success: function(res) {
+                                            function populateSelect(id, data, emptyText) {
+                                                let select = $(id);
+                                                let currentVal = select.val();
+                                                select.empty();
+                                                select.append(`<option value="" selected>${emptyText}</option>`);
+                                                data.forEach(pos => {
+                                                    let selected = (currentVal === pos) ? 'selected' : '';
+                                                    select.append(`<option value="${pos}" ${selected}>${pos}</option>`);
+                                                });
+                                            }
+                                            
+                                            populateSelect('#section_head_name', res.section_heads, 'Pilih Posisi Section Head...');
+                                            populateSelect('#department_head_name', res.dept_heads, 'Pilih Posisi Dept Head...');
+                                            populateSelect('#div_head_name', res.div_heads, 'Tidak Ada (Opsional)');
+                                        }
+                                    });
+                                });
                             });
-                            </script>
+                        </script>
         <!-- jQuery -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -118,22 +216,23 @@
                 // Add Row Functionality
                 addRowBtn.addEventListener('click', function() {
                     const newRow = `
-                        <div class="row dynamic-row mb-2">
-                            <div class="col-md-10">
-                                <div class="form-group">
-                                    <label>User</label>
-                                    <input type="text" class="form-control user-search" placeholder="Search user...">
-                                    <select class="form-control user-dropdown" name="id_user[]">
+                        <tr class="dynamic-row">
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <input type="text" class="form-control user-search w-50" placeholder="Search user...">
+                                    <select class="form-select user-dropdown w-50" name="id_user[]">
                                         @foreach ($allUsers as $user)
                                             <option value="{{ $user->id }}">{{ $user->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                            </div>
-                            <div class="col-md-2 d-flex align-items-center">
-                                <button type="button" class="btn btn-danger btn-sm removeRowBtn">-</button>
-                            </div>
-                        </div>
+                            </td>
+                            <td class="text-center align-middle">
+                                <button type="button" class="btn btn-sm btn-outline-danger removeRowBtn" onclick="removeField(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
                     `;
                     dynamicRowsContainer.insertAdjacentHTML('beforeend', newRow);
                 });

@@ -12,7 +12,7 @@ use App\Models\MstPoPengajuan;
 use App\Models\TrsPoPengajuan;
 use App\Models\InquirySales;
 use App\Models\MstDboCrp;
-use App\Models\TcJobPosition;
+// use App\Models\TcJobPosition; // DISABLED
 use App\Models\MstTc;
 use App\Models\MstSoftSkill;
 use App\Models\MstAdditionals;
@@ -24,6 +24,15 @@ use App\Services\Dashboard\LeadTimeDashboardService;
 use App\Services\Dashboard\InquiryDashboardService;
 use App\Services\Dashboard\CrpDashboardService;
 use App\Services\Dashboard\TcpdDashboardService;
+use App\Services\Competency\CompetencyAssessmentService;
+use App\Enums\HRMenuAccessGroup;
+use App\Exports\TcpdCompanyExport;
+use App\Exports\TcpdCompetencyExport;
+use App\Exports\TcpdEmployeesExport;
+use App\Exports\TcpdFullWorkbookExport;
+use App\Exports\TcpdTopJobsExport;
+use App\Exports\TcpdCriticalFocusExport;
+use Maatwebsite\Excel\Facades\Excel;
 use InvalidArgumentException;
 
 class DashboardController extends Controller
@@ -116,56 +125,37 @@ class DashboardController extends Controller
     {
         $payload = $this->tcpdDashboardService->buildDashboardData($request, Auth::user());
 
+        // Modul 2.1 — Key Position stats
+        $payload['key_position_stats'] = $this->tcpdDashboardService->getKeyPositionStats();
+
         return view('dashboard.dashboardTCPD', $payload);
     }
 
-public function getTcpdCompetencyData(Request $request)
+    public function getTcpdCompetencyData(Request $request)
     {
-        $jobPositionId = (int) $request->input('job_position_id');
-        $jobPosition = TcJobPosition::select('job_position')->find($jobPositionId);
-
-        if (!$jobPosition) {
+        try {
+            $payload = $this->tcpdDashboardService->getCompetencyPayload($request);
+            return response()->json([
+                'success' => true,
+                'data' => $payload,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Job position not found.',
             ], 404);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $exception) {
+            Log::error('Error in getTcpdCompetencyData: ' . $exception->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data kompetensi.',
+            ], 500);
         }
-
-        $departmentFilter = $request->input('department');
-        if ($departmentFilter) {
-            $departmentDefinitions = $this->departmentDefinitions();
-            if (array_key_exists($departmentFilter, $departmentDefinitions)) {
-                $normalize = static fn ($value) => strtolower(trim((string) $value));
-                $allowedJobs = collect($departmentDefinitions[$departmentFilter] ?? [])
-                    ->map($normalize)
-                    ->filter()
-                    ->values();
-                if ($allowedJobs->isNotEmpty() && !$allowedJobs->contains($normalize($jobPosition->job_position))) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Job position tidak sesuai dengan departemen yang dipilih.',
-                    ], 422);
-                }
-            }
-        }
-
-        [$startDate, $endDate] = $this->resolveDateRange(
-            $request->input('date_from'),
-            $request->input('date_to')
-        );
-
-        $snapshot = $this->buildTcpdSnapshot($jobPosition->job_position, $startDate, $endDate);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'job_position' => $jobPosition->job_position,
-                'qty' => $snapshot['qty'],
-                'competencies' => $snapshot['competencies'],
-                'user_summaries' => $snapshot['userSummaries'],
-                'total_percentage' => $snapshot['totalPercentage'],
-            ],
-        ]);
     }
 
     public function getTcpdCompanyData(Request $request)
@@ -183,6 +173,261 @@ public function getTcpdCompetencyData(Request $request)
                 'message' => 'Gagal memuat data TCPD company.',
             ], 500);
         }
+    }
+
+    /**
+     * Clear the 60-minute TCPD calculation cache so the next request recomputes fresh data.
+     */
+    public function clearTcpdCache()
+    {
+        try {
+            $this->tcpdDashboardService->clearTcpdCache();
+            return response()->json(['success' => true]);
+        } catch (\Throwable $exception) {
+            Log::error('Error clearing TCPD cache: ' . $exception->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $exception->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Build metadata array for Excel export Title Blocks.
+     */
+    protected function buildExportMeta(Request $request): array
+    {
+        $yearFrom = $request->input('company_year_from', $request->input('year_from', Carbon::now()->year));
+        $yearTo   = $request->input('company_year_to', $request->input('year_to', $yearFrom));
+        $dept     = $request->input('department', 'All');
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        $jobPosId = $request->input('job_position_id');
+        $jobPosName = 'Semua Job Position';
+        if ($jobPosId) {
+            $jobPos = \App\Models\MstJobPosition::find($jobPosId);
+            if ($jobPos) {
+                $jobPosName = $jobPos->position_name;
+            }
+        }
+
+        return [
+            'period'       => "{$yearFrom} - {$yearTo}",
+            'department'   => $dept ?: 'All',
+            'job_position' => $jobPosName,
+            'date_range'   => ($dateFrom && $dateTo) ? "{$dateFrom} s/d {$dateTo}" : 'Semua Periode',
+            'export_date'  => now()->format('d/m/Y H:i'),
+        ];
+    }
+
+    /**
+     * Export all TCPD data as a 3-sheet Excel workbook.
+     * Respects all active filters passed via query parameters.
+     */
+    public function exportTcpdAll(Request $request)
+    {
+        try {
+            $meta = $this->buildExportMeta($request);
+            $companyRows = $this->buildExportCompanyRows($request);
+            $competencyRows = $this->buildExportCompetencyRows($request);
+            [$topJobs, $criticalFocus] = $this->buildExportEmployeesData($request);
+
+            $yearFrom = $request->input('company_year_from', Carbon::now()->year);
+            $yearTo   = $request->input('company_year_to', $yearFrom);
+            $fileName = 'TCPD_Export_' . $yearFrom . '-' . $yearTo . '_' . now()->format('Ymd_His') . '.xlsx';
+
+            return Excel::download(
+                new TcpdFullWorkbookExport($companyRows, $competencyRows, $topJobs, $criticalFocus, $meta),
+                $fileName
+            );
+        } catch (\Throwable $e) {
+            Log::error('TCPD Export All Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengekspor data.'], 500);
+        }
+    }
+
+    /**
+     * Export Company & Department Overview sheet only.
+     */
+    public function exportTcpdCompanyData(Request $request)
+    {
+        try {
+            $meta = $this->buildExportMeta($request);
+            $rows = $this->buildExportCompanyRows($request);
+            $yearFrom = $request->input('year_from', $request->input('company_year_from', Carbon::now()->year));
+            $yearTo   = $request->input('year_to', $request->input('company_year_to', $yearFrom));
+            $fileName = 'TCPD_Company_' . $yearFrom . '-' . $yearTo . '_' . now()->format('Ymd_His') . '.xlsx';
+
+            return Excel::download(new TcpdCompanyExport($rows, $meta), $fileName);
+        } catch (\Throwable $e) {
+            Log::error('TCPD Company Export Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengekspor data company.'], 500);
+        }
+    }
+
+    /**
+     * Export Area Development (competency rows per job position) sheet only.
+     */
+    public function exportTcpdCompetencyData(Request $request)
+    {
+        try {
+            $meta = $this->buildExportMeta($request);
+            $rows = $this->buildExportCompetencyRows($request);
+            $fileName = 'TCPD_AreaDevelopment_' . now()->format('Ymd_His') . '.xlsx';
+
+            return Excel::download(new TcpdCompetencyExport($rows, $meta), $fileName);
+        } catch (\Throwable $e) {
+            Log::error('TCPD Competency Export Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengekspor data area development.'], 500);
+        }
+    }
+
+    /**
+     * Export Top Jobs & Critical Focus employees sheet only.
+     */
+    public function exportTcpdEmployeesData(Request $request)
+    {
+        try {
+            $meta = $this->buildExportMeta($request);
+            [$topJobs, $criticalFocus] = $this->buildExportEmployeesData($request);
+            $fileName = 'TCPD_Employees_' . now()->format('Ymd_His') . '.xlsx';
+
+            return Excel::download(new TcpdEmployeesExport($topJobs, $criticalFocus, $meta), $fileName);
+        } catch (\Throwable $e) {
+            Log::error('TCPD Employees Export Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengekspor data karyawan.'], 500);
+        }
+    }
+
+    /**
+     * Export Top Jobs sheet only.
+     */
+    public function exportTcpdTopJobs(Request $request)
+    {
+        try {
+            $meta = $this->buildExportMeta($request);
+            [$topJobs, $criticalFocus] = $this->buildExportEmployeesData($request);
+            $fileName = 'TCPD_TopJobs_' . now()->format('Ymd_His') . '.xlsx';
+
+            return Excel::download(new TcpdTopJobsExport($topJobs, $meta), $fileName);
+        } catch (\Throwable $e) {
+            Log::error('TCPD Top Jobs Export Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengekspor data Top Jobs.'], 500);
+        }
+    }
+
+    /**
+     * Export Critical Focus Area sheet only.
+     */
+    public function exportTcpdCriticalFocus(Request $request)
+    {
+        try {
+            $meta = $this->buildExportMeta($request);
+            [$topJobs, $criticalFocus] = $this->buildExportEmployeesData($request);
+            $fileName = 'TCPD_CriticalFocus_' . now()->format('Ymd_His') . '.xlsx';
+
+            return Excel::download(new TcpdCriticalFocusExport($criticalFocus, $meta), $fileName);
+        } catch (\Throwable $e) {
+            Log::error('TCPD Critical Focus Export Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengekspor data Critical Focus.'], 500);
+        }
+    }
+
+    /**
+     * Build flat row array for Company & Department export.
+     */
+    protected function buildExportCompanyRows(Request $request): array
+    {
+        $companyPayload = $this->tcpdDashboardService->getCompanyPayload($request, Auth::user());
+        $chartRows = $companyPayload['company_chart_rows'] ?? [];
+        $years = $companyPayload['company_years'] ?? [];
+
+        $exportRows = [];
+        foreach ($chartRows as $row) {
+            $label = $row['label'] ?? '';
+            $isCompany = $row['is_company'] ?? false;
+            $values = $row['values'] ?? [];
+
+            if (empty($values)) {
+                $exportRows[] = [
+                    'department'  => $isCompany ? 'Company' : $label,
+                    'job_position' => $isCompany ? '' : '',
+                    'average'     => $row['percentage'] ?? null,
+                    'year'        => 'All',
+                    'percentage'  => $row['percentage'] ?? null,
+                ];
+            } else {
+                foreach ($values as $value) {
+                    $exportRows[] = [
+                        'department'   => $isCompany ? 'Company' : $label,
+                        'job_position' => '',
+                        'average'      => $row['percentage'] ?? null,
+                        'year'         => $value['label'] ?? ($value['year'] ?? 'All'),
+                        'percentage'   => $value['percentage'] ?? null,
+                    ];
+                }
+            }
+        }
+
+        return $exportRows;
+    }
+
+    /**
+     * Build flat row array for Area Development (competency) export.
+     */
+    protected function buildExportCompetencyRows(Request $request): array
+    {
+        $jobPositionId = $request->input('job_position_id');
+        if (!$jobPositionId) {
+            return [];
+        }
+
+        try {
+            $payload = $this->tcpdDashboardService->getCompetencyPayload($request);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $jobPosition = $payload['job_position'] ?? '';
+        $competencies = $payload['competencies'] ?? [];
+
+        $exportRows = [];
+        foreach ($competencies as $comp) {
+            foreach ($comp['employees'] ?? [] as $emp) {
+                $exportRows[] = [
+                    'department'   => '',
+                    'section'      => '',
+                    'job_position' => $jobPosition,
+                    'user'         => $emp['name'] ?? '',
+                    'competency'   => $comp['name'] ?? '',
+                    'actual'       => $emp['actual'] ?? null,
+                    'standard'     => $comp['standard'] ?? null,
+                    'average'      => $comp['average'] ?? null,
+                ];
+            }
+        }
+
+        return $exportRows;
+    }
+
+    /**
+     * Build top_jobs and critical_focus arrays for employees export.
+     * @return array{0: array, 1: array}
+     */
+    protected function buildExportEmployeesData(Request $request): array
+    {
+        try {
+            $payload = $this->tcpdDashboardService->getCompanyPayload($request, Auth::user());
+            $insights = $payload['insights'] ?? [];
+            $topJobs = $insights['top_jobs'] ?? [];
+            $criticalFocus = $insights['critical_focus'] ?? [];
+        } catch (\Throwable $e) {
+            $topJobs = [];
+            $criticalFocus = [];
+        }
+
+        return [$topJobs, $criticalFocus];
     }
 
     protected function resolveDateRange(?string $from, ?string $to): array
@@ -275,10 +520,25 @@ public function getTcpdCompetencyData(Request $request)
             return;
         }
 
+        $table = (new TrsPenilaianTc())->getTable();
+        if (Schema::hasColumn($table, 'tahun_penilaian')) {
+            // Check if the range represents a whole calendar year (Jan 1 to Dec 31)
+            $isWholeYear = false;
+            if ($startDate && $endDate) {
+                $isWholeYear = $startDate->month === 1 && $startDate->day === 1 && $endDate->month === 12 && $endDate->day === 31;
+            }
+
+            if ($isWholeYear) {
+                $startYear = $startDate->year;
+                $endYear = $endDate->year;
+                $query->whereBetween('tahun_penilaian', [$startYear, $endYear]);
+                return;
+            }
+        }
+
         static $dateColumns = null;
 
         if ($dateColumns === null) {
-            $table = (new TrsPenilaianTc())->getTable();
             $dateColumns = collect(['created_at', 'modified_updated'])
                 ->filter(fn ($column) => Schema::hasColumn($table, $column))
                 ->values()
@@ -310,21 +570,30 @@ public function getTcpdCompetencyData(Request $request)
         $table = (new TrsPenilaianTc())->getTable();
         $years = collect();
 
-        if (Schema::hasColumn($table, 'created_at')) {
+        if (Schema::hasColumn($table, 'tahun_penilaian')) {
             $years = $years->merge(
-                TrsPenilaianTc::selectRaw('DISTINCT YEAR(created_at) as year')
-                    ->whereNotNull('created_at')
+                TrsPenilaianTc::selectRaw('DISTINCT tahun_penilaian as year')
+                    ->whereNotNull('tahun_penilaian')
                     ->pluck('year')
             );
+        } else {
+            if (Schema::hasColumn($table, 'created_at')) {
+                $years = $years->merge(
+                    TrsPenilaianTc::selectRaw('DISTINCT YEAR(created_at) as year')
+                        ->whereNotNull('created_at')
+                        ->pluck('year')
+                );
+            }
+
+            if (Schema::hasColumn($table, 'modified_updated')) {
+                $years = $years->merge(
+                    TrsPenilaianTc::selectRaw('DISTINCT YEAR(modified_updated) as year')
+                        ->whereNotNull('modified_updated')
+                        ->pluck('year')
+                );
+            }
         }
 
-        if (Schema::hasColumn($table, 'modified_updated')) {
-            $years = $years->merge(
-                TrsPenilaianTc::selectRaw('DISTINCT YEAR(modified_updated) as year')
-                    ->whereNotNull('modified_updated')
-                    ->pluck('year')
-            );
-        }
 
         $cleanYears = $years
             ->filter(fn ($year) => $year !== null)
@@ -472,7 +741,7 @@ public function getTcpdCompetencyData(Request $request)
 
     protected function buildTcpdSnapshot(string $jobPositionName, ?Carbon $startDate = null, ?Carbon $endDate = null): array
     {
-        $jobPositionIds = TcJobPosition::where('job_position', $jobPositionName)->pluck('id');
+        $jobPositionIds = \App\Models\MstJobPosition::where('position_name', $jobPositionName)->pluck('id');
 
         if ($jobPositionIds->isEmpty()) {
             return [
@@ -481,8 +750,12 @@ public function getTcpdCompetencyData(Request $request)
             ];
         }
 
-        $userIds = TcJobPosition::where('job_position', $jobPositionName)
-            ->whereNotNull('id_user')->distinct()->pluck('id_user')->values();
+        $userIds = \Illuminate\Support\Facades\DB::table('user_job_positions')
+            ->join('mst_job_positions', 'user_job_positions.mst_job_position_id', '=', 'mst_job_positions.id')
+            ->where('mst_job_positions.position_name', $jobPositionName)
+            ->distinct()
+            ->pluck('user_job_positions.user_id')
+            ->values();
 
         $userCount = $userIds->count();
         $userLookup = $userIds->isEmpty()
@@ -558,7 +831,8 @@ public function getTcpdCompetencyData(Request $request)
         $userSummaries = $userIds->map(function ($userId) use ($userTotals, $userLookup, $technicalStandardsSum, $softSkillStandardsSum, $additionalStandardsSum) {
             $totals = $userTotals[(int) $userId] ?? ['technical' => 0.0, 'soft_skill' => 0.0, 'additional' => 0.0];
             
-            $calcPercentage = fn ($total, $standardSum) => $standardSum > 0 ? round(($total / $standardSum) * 100, 2) : null;
+            // Cap at 100%: nilai aktual tidak boleh melebihi standar
+            $calcPercentage = fn ($total, $standardSum) => $standardSum > 0 ? min(100.0, round(($total / $standardSum) * 100, 2)) : null;
 
             return [
                 'id' => (int) $userId,
@@ -584,14 +858,16 @@ public function getTcpdCompetencyData(Request $request)
             ]);
         }
 
+        // Hitung totalPercentage hanya dari baris user nyata (bukan baris 'average')
         $allPercentages = [];
         foreach ($userSummaries as $summary) {
+            if (($summary['id'] ?? null) === 'average') continue;
             if ($summary['tc_percentage'] !== null) $allPercentages[] = $summary['tc_percentage'];
             if ($summary['sk_percentage'] !== null) $allPercentages[] = $summary['sk_percentage'];
             if ($summary['ad_percentage'] !== null) $allPercentages[] = $summary['ad_percentage'];
         }
         
-        $totalPercentage = !empty($allPercentages) ? round(array_sum($allPercentages) / count($allPercentages), 2) : 0.0;
+        $totalPercentage = !empty($allPercentages) ? min(100.0, round(array_sum($allPercentages) / count($allPercentages), 2)) : 0.0;
 
         $technicalStandards = $technical->mapWithKeys(fn ($r) => [$r['id'] => $r['standard']])->all();
         $softSkillStandards = $softSkills->mapWithKeys(fn ($r) => [$r['id'] => $r['standard']])->all();
@@ -599,6 +875,7 @@ public function getTcpdCompetencyData(Request $request)
 
         $belowStandardUsers = ['technical' => [], 'soft_skill' => [], 'additional' => []];
         $userScoresPerCompetency = [];
+        $userScoresMapPerCompetency = ['technical' => [], 'soft_skill' => [], 'additional' => []];
 
         foreach ($scoreRows as $scoreRow) {
             $userId = (int) $scoreRow->id_user;
@@ -610,6 +887,7 @@ public function getTcpdCompetencyData(Request $request)
                     $belowStandardUsers['technical'][$compId][$userId] = true;
                 }
                 $userScoresPerCompetency['technical'][$compId][] = $value;
+                $userScoresMapPerCompetency['technical'][$compId][$userId][] = $value;
             }
             if ($scoreRow->id_sk !== null && isset($softSkillSet[$scoreRow->id_sk]) && is_numeric($scoreRow->nilai_sk)) {
                 $value = (float) $scoreRow->nilai_sk;
@@ -619,6 +897,7 @@ public function getTcpdCompetencyData(Request $request)
                     $belowStandardUsers['soft_skill'][$compId][$userId] = true;
                 }
                 $userScoresPerCompetency['soft_skill'][$compId][] = $value;
+                $userScoresMapPerCompetency['soft_skill'][$compId][$userId][] = $value;
             }
             if ($scoreRow->id_ad !== null && isset($additionalSet[$scoreRow->id_ad]) && is_numeric($scoreRow->nilai_ad)) {
                 $value = (float) $scoreRow->nilai_ad;
@@ -628,20 +907,39 @@ public function getTcpdCompetencyData(Request $request)
                     $belowStandardUsers['additional'][$compId][$userId] = true;
                 }
                 $userScoresPerCompetency['additional'][$compId][] = $value;
+                $userScoresMapPerCompetency['additional'][$compId][$userId][] = $value;
             }
         }
 
-        $rows = $competencies->map(function (array $row) use ($userScoresPerCompetency, $belowStandardUsers) {
+        $rows = $competencies->map(function (array $row) use ($userScoresPerCompetency, $belowStandardUsers, $userScoresMapPerCompetency, $userLookup, $jobPositionName) {
             $scores = $userScoresPerCompetency[$row['type']][$row['id']] ?? [];
             $average = !empty($scores) ? round(array_sum($scores) / count($scores), 2) : null;
-            
+
+            // Build employees list: users below standard for this competency
+            $belowUserIds = array_keys($belowStandardUsers[$row['type']][$row['id']] ?? []);
+            $employees = [];
+            foreach ($belowUserIds as $uid) {
+                $uid = (int) $uid;
+                $userScores = $userScoresMapPerCompetency[$row['type']][$row['id']][$uid] ?? [];
+                $actualVal = !empty($userScores) ? round(array_sum($userScores) / count($userScores), 2) : null;
+                $employees[] = [
+                    'id'           => $uid,
+                    'name'         => optional($userLookup->get($uid))->name ?? ('User ' . $uid),
+                    'job_position' => $jobPositionName,
+                    'actual'       => $actualVal,
+                    'standard'     => $row['standard'],
+                ];
+            }
+            usort($employees, fn($a, $b) => strcmp($a['name'], $b['name']));
+
             return [
-                'id' => $row['id'],
-                'name' => $row['name'],
-                'type' => $row['type'],
-                'standard' => $row['standard'],
-                'average' => $average,
-                'qty' => count($belowStandardUsers[$row['type']][$row['id']] ?? []),
+                'id'        => $row['id'],
+                'name'      => $row['name'],
+                'type'      => $row['type'],
+                'standard'  => $row['standard'],
+                'average'   => $average,
+                'qty'       => count($belowUserIds),
+                'employees' => $employees,
             ];
         })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
 
@@ -676,10 +974,10 @@ public function getTcpdCompetencyData(Request $request)
 
     protected function buildTcpdJobData(array $jobNames, ?Carbon $startDate = null, ?Carbon $endDate = null): array
     {
-        $availableJobPositions = TcJobPosition::query()
-            ->where('status', 1)
+        $availableJobPositions = \App\Models\MstJobPosition::query()
+            ->where('is_active', true)
             ->distinct()
-            ->pluck('job_position')
+            ->pluck('position_name')
             ->map(fn ($name) => trim((string) $name))
             ->filter()
             ->unique()

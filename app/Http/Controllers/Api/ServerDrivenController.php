@@ -564,9 +564,35 @@ class ServerDrivenController extends Controller
             }
         }
 
+        if (isset($permissions['role_prefixes'])) {
+            if (! $user) {
+                return false;
+            }
+
+            $roleName = mb_strtoupper(trim((string) optional($user->roles)->role));
+            $prefixes = array_map(fn($prefix) => mb_strtoupper(trim((string) $prefix)), (array) $permissions['role_prefixes']);
+            $matchesPrefix = collect($prefixes)->contains(function ($prefix) use ($roleName) {
+                return $roleName === $prefix || str_starts_with($roleName, $prefix . ' ');
+            });
+
+            if (! $matchesPrefix && isset($permissions['usernames'])) {
+                $allowed = array_map('mb_strtoupper', (array) $permissions['usernames']);
+                $current = mb_strtoupper((string) $user->name);
+                $matchesPrefix = in_array($current, $allowed, true);
+            }
+
+            if (! $matchesPrefix) {
+                return false;
+            }
+        }
+
         if (isset($permissions['usernames'])) {
             if (! $user) {
                 return false;
+            }
+
+            if (isset($permissions['role_prefixes'])) {
+                return true;
             }
 
             $allowed = array_map('mb_strtoupper', (array) $permissions['usernames']);
