@@ -309,6 +309,14 @@
                                         <label>Keterangan Tujuan</label>
                                     </div>
                                 </div>
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-secondary"><i class="bi bi-bullseye me-1"></i> Objective Learning (Hasil yang Diharapkan)</label>
+                                        <textarea class="form-control" name="objective_learning[]" id="objective_learning_${newId}"
+                                            placeholder="Peserta mampu menerapkan............"
+                                            style="min-height: 90px;">${item.objective_learning || ''}</textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     `;

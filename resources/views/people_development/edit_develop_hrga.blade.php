@@ -33,47 +33,90 @@
             label {
                 font-weight: bold;
             }
-
             .styled-table {
                 width: 100%;
-                border-collapse: collapse;
+                border-collapse: separate;
+                border-spacing: 0;
                 margin: 25px 0;
                 font-size: 14px;
                 text-align: left;
-                box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                border-radius: 8px;
+                overflow: hidden;
+                border: 1px solid #e2e8f0;
             }
 
-            .styled-table thead tr {
-                background-color: #1072a0;
-                color: #ffffff;
+            .styled-table thead tr:first-child th {
+                border-top: none;
+            }
+
+            .styled-table thead th {
+                background-color: #e2e8f0;
+                color: #334155;
                 text-align: left;
+                font-weight: 600;
+                padding: 14px 16px;
+                border-bottom: 2px solid #e2e8f0;
+                border-right: 1px solid #edf2f7;
+            }
+            .styled-table thead th:last-child {
+                border-right: none;
             }
 
-            .styled-table th,
-            .styled-table td {
-                padding: 12px 15px;
+            .styled-table tbody td {
+                padding: 14px 16px;
+                border-bottom: 1px solid #edf2f7;
+                border-right: 1px solid #edf2f7;
+                vertical-align: middle;
+            }
+            .styled-table tbody td:last-child {
+                border-right: none;
             }
 
             .styled-table tbody tr {
-                border-bottom: 1px solid #dddddd;
+                transition: background-color 0.2s ease;
+                background-color: #ffffff;
             }
 
-            .styled-table tbody tr:nth-of-type(even) {
-                background-color: #f3f3f3;
+            .styled-table tbody tr:hover {
+                background-color: #f1f5f9;
             }
 
-            .styled-table tbody tr:last-of-type {
-                border-bottom: 2px solid #009879;
+            .styled-table tbody tr:last-of-type td {
+                border-bottom: none;
             }
 
             .styled-table tbody tr.active-row {
                 font-weight: bold;
-                color: #009879;
+                color: #0d6efd;
+            }
+
+            /* Divider for Aktual columns */
+            .styled-table th.col-aktual-start,
+            .styled-table td.col-aktual-start {
+                border-left: 2px solid #cbd5e1 !important;
+            }
+
+            /* Accent for Aktual header group */
+            .styled-table th.aktual-group-header {
+                border-top: 3px solid #64748b !important;
+                background-color: #cbd5e1; /* Slightly darker gray for the group header */
+            }
+
+            /* Form inputs in table */
+            .styled-table .form-control-sm,
+            .styled-table .form-select-sm {
+                border-radius: 6px;
+                border: 1px solid #cbd5e1;
+            }
+            .styled-table .form-control-sm:focus,
+            .styled-table .form-select-sm:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
             }
 
             select.status-dropdown {
                 color: white;
-                /* Default text color */
             }
             .status-dropdown option {
                 background-color: #ffffff !important;
@@ -127,7 +170,7 @@
                                 <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Cari Nama Karyawan atau Program...">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <select id="statusFilter" class="form-select">
                                 <option value="">Semua Status</option>
                                 <option value="Mencari Vendor">Mencari Vendor</option>
@@ -138,13 +181,73 @@
                                 <option value="Ditolak">Ditolak</option>
                             </select>
                         </div>
-                        <div class="col-md-2 text-end">
+                        <div class="col-md-2 d-flex gap-2 align-items-center">
+                            <!-- Toggle View Buttons -->
+                            <div class="btn-group" role="group" aria-label="View mode">
+                                <button type="button" id="btn-table-view" class="btn btn-primary btn-sm" title="Tampilan Tabel Ringkasan">
+                                    <i class="bi bi-table"></i> Tabel
+                                </button>
+                                <button type="button" id="btn-card-view" class="btn btn-outline-secondary btn-sm" title="Tampilan Card Detail">
+                                    <i class="bi bi-card-list"></i> Card
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-1 text-end">
                             <span class="badge bg-primary rounded-pill p-2" id="filterCount">Loading...</span>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- ===== TABEL RINGKASAN (Table View) ===== -->
+            <div id="table-summary-section" class="card mb-4 shadow-sm border-0" style="display: none;">
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table id="summary-table" class="styled-table" style="width:100%; min-width: 1400px; margin: 0;">
+                            <thead>
+                                <tr>
+                                    <th scope="col" rowspan="2" style="min-width:40px;">No</th>
+                                    <th scope="col" rowspan="2" style="min-width:100px;">Section</th>
+                                    <th scope="col" rowspan="2" style="min-width:130px;">Job Position</th>
+                                    <th scope="col" rowspan="2" style="min-width:130px;">Nama Karyawan</th>
+                                    <th scope="col" rowspan="2" style="min-width:160px;">Program Training</th>
+                                    <th scope="col" rowspan="2" style="min-width:130px;">Kategori Usulan</th>
+                                    <th scope="col" rowspan="2" style="min-width:140px;">Kategori Competency</th>
+                                    <th scope="col" rowspan="2" style="min-width:150px;">Competency</th>
+                                    <th scope="col" rowspan="2" style="min-width:100px;">Due Date</th>
+                                    <th scope="col" rowspan="2" style="min-width:110px;">Budget Usulan</th>
+                                    <th scope="col" rowspan="2" style="min-width:110px;">Lembaga</th>
+                                    <th scope="col" rowspan="2" style="min-width:150px;">Keterangan Tujuan</th>
+                                    <th scope="col" rowspan="2" style="min-width:150px;">Objective Learning</th>
+                                    <!-- Kolom Aktual (header baris ke-2) -->
+                                    <th scope="col" colspan="7" class="aktual-group-header col-aktual-start" style="text-align:center;">Tindak Lanjut Aktual</th>
+                                    <th scope="col" rowspan="2" style="min-width:80px; text-align:center;">Aksi</th>
+                                </tr>
+                                <tr>
+                                    <th scope="col" class="col-aktual-start" style="min-width:160px;">Nama Program Aktual</th>
+                                    <th scope="col" style="min-width:100px;">Date Aktual</th>
+                                    <th scope="col" style="min-width:120px;">Biaya Aktual</th>
+                                    <th scope="col" style="min-width:110px;">Lembaga Aktual</th>
+                                    <th scope="col" style="min-width:150px;">Keterangan</th>
+                                    <th scope="col" style="min-width:150px;">Objective Learning Aktual</th>
+                                    <th scope="col" style="min-width:160px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summary-table-body">
+                                <!-- Akan diisi oleh JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-3 bg-light border-top">
+                        <button type="button" id="add-additional-btn-table" class="btn btn-success rounded-pill px-4" onclick="addAdditionalInlineRow()">
+                            <i class="fas fa-plus-circle me-1"></i> Tambah Baris Additional
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== CARD VIEW (Card Detail Mode) ===== -->
+            <div id="card-view-section" style="display: none;">
             <!-- Formulir Data -->
             <div class="card border-0 bg-transparent">
                 <!-- Tabel untuk edit data -->
@@ -241,93 +344,89 @@
                             </div>
                         @endif
 
-                        <!-- Sticky Footer Actions -->
-                        <div class="position-sticky bg-white p-3 shadow-lg z-3 border-top rounded-top-4 mt-5 d-flex justify-content-between align-items-center" style="bottom: 33px;">
-                            <div>
-                                <h6 class="fw-bold mb-1 text-primary">Total Biaya Plan: Rp {{ number_format($totalBiayaPlan, 0, ',', '.') }}</h6>
-                                <h4 class="fw-bold m-0 text-success">Total Biaya Aktual: Rp {{ number_format($totalBiayaPlan2, 0, ',', '.') }}</h4>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('indexPD2') }}" class="btn btn-secondary rounded-pill px-4"><i class="fas fa-arrow-left me-1"></i> Kembali</a>
-                                <button type="button" class="btn btn-primary rounded-pill px-4" id="save-button" data-action="save">
-                                    <i class="fas fa-save me-1"></i> Simpan Data
-                                </button>
-                                <button type="button" class="btn btn-success rounded-pill px-4" id="approve-button" data-action="approve">
-                                    <i class="fas fa-check me-1"></i> Approve
-                                </button>
-                            </div>
-                        </div>
-
                     </form>
                 </div>
             </div>
+            </div>{{-- end card-view-section --}}
+
+            <!-- Sticky Footer Actions (Visible in both views) -->
+            <div class="position-sticky bg-white p-3 shadow-lg z-3 border-top rounded-top-4 mt-5 d-flex justify-content-between align-items-center" style="bottom: 33px;">
+                <div>
+                    <h6 class="fw-bold mb-1 text-primary">Total Biaya Plan: Rp {{ number_format($totalBiayaPlan, 0, ',', '.') }}</h6>
+                    <h4 class="fw-bold m-0 text-success">Total Biaya Aktual: Rp {{ number_format($totalBiayaPlan2, 0, ',', '.') }}</h4>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('indexPD2') }}" class="btn btn-secondary rounded-pill px-4"><i class="fas fa-arrow-left me-1"></i> Kembali</a>
+                    <button type="button" class="btn btn-primary rounded-pill px-4" id="save-button" data-action="save">
+                        <i class="fas fa-save me-1"></i> Simpan Data
+                    </button>
+                    @if ($data->where('status_1', '!=', 3)->count() > 0)
+                        <button type="button" class="btn btn-success rounded-pill px-4" id="approve-button" data-action="approve">
+                            <i class="fas fa-check me-1"></i> Approve
+                        </button>
+                    @endif
+                </div>
+            </div>
+
         </section>
                 {{-- status color --}}
-                <div style="margin-top: 20px;">
-                    <strong>Keterangan Status:</strong>
-                    <ul
-                        style="list-style-type: none; padding-left: 0; margin-top: 10px; display: flex; flex-direction: column; gap: 15px;">
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: blue; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Biru</b>
-                                </span> - Mencari Vendor =
-                                <span id="status-blue-percentage">{{ number_format($percentageStatusBlue, 2) }}%
-                                    ({{ $countStatusBlue }} dari {{ $totalRecords }})</span>
+                <div class="mt-4 mb-4">
+                    <h6 class="fw-bold mb-3" style="font-weight: 600;"><i class="fas fa-chart-pie me-2 text-secondary"></i> Ringkasan Status</h6>
+                    <div class="d-flex flex-wrap" style="gap: 12px;">
+                        <!-- Biru: Mencari Vendor -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; border: 1px solid rgba(13, 110, 253, 0.2); font-size: 13px; font-weight: 600;">
+                            Mencari Vendor
+                            <span class="mx-2 text-primary" style="opacity: 0.3;">|</span>
+                            <span id="status-blue-percentage">
+                                {{ $countStatusBlue }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusBlue, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: orange; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Orange</b>
-                                </span> - Proses Pendaftaran =
-                                <span id="status-orange-percentage">{{ number_format($percentageStatusOrange, 2) }}%
-                                    ({{ $countStatusOrange }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Orange: Proses Pendaftaran -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(253, 126, 20, 0.1); color: #fd7e14; border: 1px solid rgba(253, 126, 20, 0.2); font-size: 13px; font-weight: 600;">
+                            Proses Pendaftaran
+                            <span class="mx-2" style="opacity: 0.3; color: #fd7e14;">|</span>
+                            <span id="status-orange-percentage">
+                                {{ $countStatusOrange }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusOrange, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: yellow; color: black; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Kuning</b>
-                                </span> - On Progress =
-                                <span id="status-yellow-percentage">{{ number_format($percentageStatusYellow, 2) }}%
-                                    ({{ $countStatusYellow }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Kuning: On Progress -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(255, 193, 7, 0.15); color: #d39e00; border: 1px solid rgba(255, 193, 7, 0.3); font-size: 13px; font-weight: 600;">
+                            On Progress
+                            <span class="mx-2" style="opacity: 0.3; color: #d39e00;">|</span>
+                            <span id="status-yellow-percentage">
+                                {{ $countStatusYellow }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusYellow, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: green; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Hijau</b>
-                                </span> - Done =
-                                <span id="status-green-percentage">{{ number_format($percentageStatusGreen, 2) }}%
-                                    ({{ $countStatusGreen }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Hijau: Done -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(25, 135, 84, 0.1); color: #198754; border: 1px solid rgba(25, 135, 84, 0.2); font-size: 13px; font-weight: 600;">
+                            Done
+                            <span class="mx-2" style="opacity: 0.3; color: #198754;">|</span>
+                            <span id="status-green-percentage">
+                                {{ $countStatusGreen }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusGreen, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: rgb(154, 150, 150); color: rgb(251, 251, 251); padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Abu</b>
-                                </span> - Pending =
-                                <span id="status-gray-percentage">{{ number_format($percentageStatusGray, 2) }}%
-                                    ({{ $countStatusGray }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Abu: Pending -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(108, 117, 125, 0.1); color: #6c757d; border: 1px solid rgba(108, 117, 125, 0.2); font-size: 13px; font-weight: 600;">
+                            Pending
+                            <span class="mx-2" style="opacity: 0.3; color: #6c757d;">|</span>
+                            <span id="status-gray-percentage">
+                                {{ $countStatusGray }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusGray, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: red; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Merah</b>
-                                </span> - Ditolak =
-                                <span id="status-red-percentage">{{ number_format($percentageStatusRed, 2) }}%
-                                    ({{ $countStatusRed }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Merah: Ditolak -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); font-size: 13px; font-weight: 600;">
+                            Ditolak
+                            <span class="mx-2" style="opacity: 0.3; color: #dc3545;">|</span>
+                            <span id="status-red-percentage">
+                                {{ $countStatusRed }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusRed, 0) }}%)</span>
                             </span>
-                        </li>
-                    </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -341,10 +440,15 @@
 
         <!-- SimpleDataTables JS -->
         <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
+        
+        <!-- TomSelect CSS & JS -->
+        <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 
         <script>
             var existingData = @json($data);
             var jobPositions = @json($jobPositions);
+            const masterCompetencies = @json($masterCompetencies);
 
             // view tabel 1
             const activeYear = '{{ \App\Models\MstPdActiveYear::getActiveYear() }}';
@@ -482,6 +586,12 @@
                                                     <label>Keterangan Tujuan</label>
                                                 </div>
                                             </div>
+                                            <div class="col-12">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold text-secondary">Objective Learning</label>
+                                                    <textarea class="form-control" id="objective_learning_${item.id}" name="objective_learning[]" placeholder="Peserta mampu menerapkan............" style="height:80px;" disabled>${item.objective_learning || ''}</textarea>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -541,7 +651,7 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-floating">
-                                                    <select name="status_2[]" class="form-select status-dropdown border-${borderClass.replace('border-', '')}" onchange="updateDropdownColor(this); toggleFileUpload(this);" style="background-color: ${getStatusColor(item.status_2)}; color: ${getTextColor(item.status_2)};">
+                                                    <select id="status_2_${item.id}" name="status_2[]" class="form-select status-dropdown border-${borderClass.replace('border-', '')}" onchange="updateDropdownColor(this); toggleFileUpload(this);" style="background-color: ${getStatusColor(item.status_2)}; color: ${getTextColor(item.status_2)};">
                                                         <option value=""> ----- Pilih Status ----- </option>
                                                         <option value="Mencari Vendor" ${item.status_2 == 'Mencari Vendor' ? 'selected' : ''}>Mencari Vendor</option>
                                                         <option value="Proses Pendaftaran" ${item.status_2 == 'Proses Pendaftaran' ? 'selected' : ''}>Proses Pendaftaran</option>
@@ -557,26 +667,14 @@
                                                 <label class="form-label d-block text-muted small mb-1">Upload File (PDF)</label>
                                                 <input type="file" class="form-control form-control-sm" name="file[${item.id}]" accept=".pdf" ${item.status_2 !== 'Done' ? 'disabled' : ''}>
                                             </div>
-                                            {{-- Modul 4.1: Sharing Knowledge & Objective Learning --}}
+                                            {{-- Objective Learning Aktual (menggantikan Tindak Lanjut Pasca Training) --}}
                                             <div class="col-12">
-                                                <div class="card border-0 bg-light rounded-3 mt-2">
-                                                    <div class="card-body p-2">
-                                                        <h6 class="small fw-bold text-muted mb-2"><i class="bi bi-lightbulb-fill me-1 text-warning"></i>Tindak Lanjut Pasca Training</h6>
-                                                        <div class="row g-2">
-                                                            <div class="col-md-6">
-                                                                <div class="form-floating">
-                                                                    <textarea class="form-control form-control-sm" id="sharing_knowledge_${item.id}" name="sharing_knowledge[]" placeholder="Sharing Knowledge" style="height:80px;">${item.sharing_knowledge || ''}</textarea>
-                                                                    <label class="small"><i class="bi bi-people me-1"></i>Sharing Knowledge</label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <div class="form-floating">
-                                                                    <textarea class="form-control form-control-sm" id="objective_learning_${item.id}" name="objective_learning[]" placeholder="Objective Learning" style="height:80px;">${item.objective_learning || ''}</textarea>
-                                                                    <label class="small"><i class="bi bi-bullseye me-1"></i>Objective Learning</label>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                <div class="input-group">
+                                                    <div class="form-floating flex-grow-1">
+                                                        <textarea class="form-control" id="objective_learning_aktual_${item.id}" name="objective_learning_aktual[]" placeholder="Objective Learning Aktual" style="height:80px;">${item.objective_learning_aktual || ''}</textarea>
+                                                        <label>Objective Learning Aktual</label>
                                                     </div>
+                                                    <button type="button" class="btn btn-outline-secondary" onclick="copyToAktual('${item.id}', 'objective_learning')" title="Salin dari Usulan (Objective Learning)"><i class="fas fa-copy"></i></button>
                                                 </div>
                                             </div>
                                             <div class="col-12 mt-3 d-flex justify-content-end gap-2">
@@ -726,7 +824,16 @@
                                     <div class="col-lg-6 mb-4 mb-lg-0">
                                         <h6 class="text-secondary border-bottom pb-2 mb-3"><i class="fas fa-file-alt me-1"></i> 1. Data Usulan</h6>
                                         <div class="row g-2">
-                                            <div class="col-md-6">
+                                            <div class="col-12">
+                                                <div class="form-floating">
+                                                    <select class="form-select" name="kategori_usulan[]" disabled>
+                                                        <option value="0" ${!item.is_sharing_knowledge ? 'selected' : ''}>Training</option>
+                                                        <option value="1" ${item.is_sharing_knowledge ? 'selected' : ''}>Sharing Knowledge</option>
+                                                    </select>
+                                                    <label>Kategori Usulan</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6" style="${item.is_sharing_knowledge ? 'display:none;' : ''}">
                                                 <div class="form-floating">
                                                     <select class="form-select employee-section-dropdown" name="section_id[]" disabled>
                                                         <option value="">---- Pilih Section ----</option>
@@ -737,7 +844,7 @@
                                                     <label>Section</label>
                                                 </div>
                                             </div>
-                                            <div class="col-md-6">
+                                            <div class="col-md-6" style="${item.is_sharing_knowledge ? 'display:none;' : ''}">
                                                 <div class="form-floating">
                                                     <select class="form-select employee-job-position-dropdown" name="id_job_position[]" disabled>
                                                         <option value="">---- Pilih Job Position ----</option>
@@ -803,6 +910,12 @@
                                                     <label>Keterangan Tujuan</label>
                                                 </div>
                                             </div>
+                                            <div class="col-12">
+                                                <div class="form-floating">
+                                                    <textarea class="form-control" id="objective_learning_${item.id}" name="objective_learning[]" placeholder="Peserta mampu menerapkan............" style="height:80px;" disabled>${item.objective_learning || ''}</textarea>
+                                                    <label>Objective Learning</label>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -862,7 +975,7 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-floating">
-                                                    <select name="status_2[]" class="form-select status-dropdown border-${borderClass.replace('border-', '')}" onchange="updateDropdownColor(this); toggleFileUpload(this);" style="background-color: ${getStatusColor(item.status_2)}; color: ${getTextColor(item.status_2)};">
+                                                    <select id="status_2_${item.id}" name="status_2[]" class="form-select status-dropdown border-${borderClass.replace('border-', '')}" onchange="updateDropdownColor(this); toggleFileUpload(this);" style="background-color: ${getStatusColor(item.status_2)}; color: ${getTextColor(item.status_2)};">
                                                         <option value=""> ----- Pilih Status ----- </option>
                                                         <option value="Mencari Vendor" ${item.status_2 == 'Mencari Vendor' ? 'selected' : ''}>Mencari Vendor</option>
                                                         <option value="Proses Pendaftaran" ${item.status_2 == 'Proses Pendaftaran' ? 'selected' : ''}>Proses Pendaftaran</option>
@@ -878,6 +991,21 @@
                                                 <label class="form-label d-block text-muted small mb-1">Upload File (PDF)</label>
                                                 <input type="file" class="form-control form-control-sm" name="file[${item.id}]" accept=".pdf" ${item.status_2 !== 'Done' ? 'disabled' : ''}>
                                             </div>
+                                             <div class="col-12">
+                                                 <div class="card border-0 bg-light rounded-3 mt-2">
+                                                     <div class="card-body p-2">
+                                                         <h6 class="small fw-bold text-muted mb-2"><i class="bi bi-lightbulb-fill me-1 text-warning"></i>Tindak Lanjut Pasca Training</h6>
+                                                         <div class="row g-2">
+                                                             <div class="col-12">
+                                                                 <div class="form-floating">
+                                                                     <textarea class="form-control form-control-sm" id="objective_learning_aktual_${item.id}" name="objective_learning_aktual[]" placeholder="Objective Learning Aktual" style="height:80px;">${item.objective_learning_aktual || ''}</textarea>
+                                                                     <label class="small"><i class="bi bi-people me-1"></i>Sharing Knowledge</label>
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                             </div>
                                             <div class="col-12 mt-3 d-flex justify-content-end gap-2">
                                                 ${item.file ? `<button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="downloadPdf(${item.id})"><i class="bi bi-filetype-pdf"></i> Download File</button>` : ''}
                                                 ${item.status_2 === 'Done' ? `<a href="${updateEvaluasiRoute.replace(':id', item.id)}" class="btn btn-sm rounded-pill ${item.diketahui ? 'btn-success' : 'btn-danger'}"><i class="fas fa-eye"></i> Evaluasi</a>` : ''}
@@ -978,7 +1106,7 @@
                     newEmployeeRow.innerHTML = `
                         <div class="card-header bg-light d-flex justify-content-between align-items-center border-bottom-0 pt-3 pb-0">
                             <h5 class="m-0 fw-bold text-success"><i class="fas fa-plus me-2"></i>Usulan Tambahan Baru (Additional)</h5>
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="$('#row-${tempId}').remove()"><i class="bi bi-trash"></i> Hapus</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="removeNewRow('${tempId}')"><i class="bi bi-trash"></i> Hapus</button>
                         </div>
                         <div class="card-body">
                             <input type="hidden" name="modified_at" value="" />
@@ -989,7 +1117,16 @@
                                 <div class="col-lg-6 mb-4 mb-lg-0">
                                     <h6 class="text-secondary border-bottom pb-2 mb-3"><i class="fas fa-file-alt me-1"></i> 1. Data Usulan</h6>
                                     <div class="row g-2">
-                                        <div class="col-md-6">
+                                        <div class="col-12">
+                                            <div class="form-floating">
+                                                <select class="form-select kategori-usulan-dropdown" name="kategori_usulan[]" id="kategori_usulan_${tempId}" required>
+                                                    <option value="0" selected>Training</option>
+                                                    <option value="1">Sharing Knowledge</option>
+                                                </select>
+                                                <label>Kategori Usulan</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6" id="wrapper_section_${tempId}">
                                             <div class="form-floating">
                                                 <select class="form-select employee-section-dropdown" name="section_id[]" id="section_id_${tempId}" required>
                                                     ${sectionOptions}
@@ -997,7 +1134,7 @@
                                                 <label>Section</label>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
+                                        <div class="col-md-6" id="wrapper_job_${tempId}">
                                             <div class="form-floating">
                                                 <select class="form-select employee-job-position-dropdown" name="id_job_position[]" id="id_job_position_${tempId}" required>
                                                     <option value="">---- Pilih Job Position ----</option>
@@ -1032,11 +1169,11 @@
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="form-floating">
-                                                <select name="competency[]" class="form-select employee-competency-dropdown" id="competency_${tempId}" required>
+                                            <div class="mb-2">
+                                                <label style="font-size: 0.85rem; color: rgba(var(--bs-body-color-rgb), .65);">Competency</label>
+                                                <select name="competency[]" class="form-select employee-competency-dropdown" id="competency_${tempId}" required style="width: 100%;">
                                                     <option value="additional" selected>Additional</option>
                                                 </select>
-                                                <label>Competency</label>
                                             </div>
                                         </div>
                                         <div class="col-md-4">
@@ -1061,6 +1198,12 @@
                                             <div class="form-floating">
                                                 <input type="text" class="form-control" name="keterangan_tujuan[]" id="keterangan_tujuan_${tempId}" placeholder="Keterangan Tujuan">
                                                 <label>Keterangan Tujuan</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold text-secondary">Objective Learning</label>
+                                                <textarea class="form-control" name="objective_learning[]" id="objective_learning_${tempId}" placeholder="Peserta mampu menerapkan............" style="height:80px;"></textarea>
                                             </div>
                                         </div>
                                     </div>
@@ -1122,7 +1265,7 @@
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-floating">
-                                                <select name="status_2[]" class="form-select status-dropdown" onchange="updateDropdownColor(this); toggleFileUpload(this);">
+                                                <select id="status_2_${tempId}" name="status_2[]" class="form-select status-dropdown" onchange="updateDropdownColor(this); toggleFileUpload(this);">
                                                     <option value=""> ----- Pilih Status ----- </option>
                                                     <option value="Mencari Vendor">Mencari Vendor</option>
                                                     <option value="Proses Pendaftaran">Proses Pendaftaran</option>
@@ -1137,6 +1280,16 @@
                                         <div class="col-md-6">
                                             <label class="form-label d-block text-muted small mb-1">Upload File (PDF)</label>
                                             <input type="file" class="form-control form-control-sm" name="file[${tempId}]" accept=".pdf" disabled>
+                                        </div>
+                                        {{-- Objective Learning Aktual (menggantikan Tindak Lanjut Pasca Training) --}}
+                                        <div class="col-12">
+                                            <div class="input-group">
+                                                <div class="form-floating flex-grow-1">
+                                                    <textarea class="form-control" id="objective_learning_aktual_${tempId}" name="objective_learning_aktual[]" placeholder="Objective Learning Aktual" style="height:80px;"></textarea>
+                                                    <label><i class="bi bi-journal-check me-1"></i>Objective Learning Aktual</label>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-secondary" onclick="copyToAktual('${tempId}', 'objective_learning')" title="Salin dari Usulan (Objective Learning)"><i class="fas fa-copy"></i></button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1194,7 +1347,93 @@
                             }
                         });
                     });
+
+                    var kategoriUsulanDropdown = newEmployeeRow.querySelector('.kategori-usulan-dropdown');
+                    var wrapperSection = newEmployeeRow.querySelector('#wrapper_section_' + tempId);
+                    var wrapperJob = newEmployeeRow.querySelector('#wrapper_job_' + tempId);
+
+                    kategoriUsulanDropdown.addEventListener('change', function() {
+                        if (this.value == '1') {
+                            // Sharing Knowledge
+                            wrapperSection.style.display = 'none';
+                            wrapperJob.style.display = 'none';
+                            sectionDropdown.removeAttribute('required');
+                            jobPositionDropdown.removeAttribute('required');
+                            sectionDropdown.value = '';
+                            jobPositionDropdown.value = '';
+                            
+                            // Populate users with ALL active users
+                            userDropdown.innerHTML = '<option value="">---- Pilih Karyawan ----</option>';
+                            var uniqueUserIds = [];
+                            jobPositions.forEach(function(jp) {
+                                if (jp.active_users) {
+                                    jp.active_users.forEach(function(u) {
+                                        if (!uniqueUserIds.includes(u.id)) {
+                                            uniqueUserIds.push(u.id);
+                                            var option = document.createElement('option');
+                                            option.value = u.id;
+                                            option.text = u.name;
+                                            userDropdown.appendChild(option);
+                                        }
+                                    });
+                                }
+                            });
+                        } else {
+                            // Training
+                            wrapperSection.style.display = '';
+                            wrapperJob.style.display = '';
+                            sectionDropdown.setAttribute('required', 'required');
+                            jobPositionDropdown.setAttribute('required', 'required');
+                            
+                            // Reset users because section & job are empty now
+                            userDropdown.innerHTML = '<option value="">---- Pilih Karyawan ----</option>';
+                        }
+                    });
+
+                    var kategoriCompDropdown = newEmployeeRow.querySelector('.employee-competency-category-dropdown');
+                    var compDropdown = newEmployeeRow.querySelector('.employee-competency-dropdown');
+
+                    kategoriCompDropdown.addEventListener('change', function() {
+                        var selectedKategori = this.value;
+                        
+                        // If TomSelect is initialized, we must clear options and add new ones via its API
+                        if (compDropdown.tomselect) {
+                            compDropdown.tomselect.clearOptions();
+                            compDropdown.tomselect.addOption({value: "", text: "---- Pilih Competency ----"});
+                            if (selectedKategori && masterCompetencies[selectedKategori]) {
+                                masterCompetencies[selectedKategori].forEach(function(comp) {
+                                    compDropdown.tomselect.addOption({value: comp, text: comp});
+                                });
+                            }
+                            compDropdown.tomselect.refreshOptions(false);
+                        } else {
+                            compDropdown.innerHTML = '<option value="">---- Pilih Competency ----</option>';
+                            if (selectedKategori && masterCompetencies[selectedKategori]) {
+                                masterCompetencies[selectedKategori].forEach(function(comp) {
+                                    var option = document.createElement('option');
+                                    option.value = comp;
+                                    option.text = comp;
+                                    compDropdown.appendChild(option);
+                                });
+                            }
+                        }
+                    });
+
+                    // Trigger change to populate default 'additional' competencies
+                    kategoriCompDropdown.dispatchEvent(new Event('change'));
+
+                    // Initialize TomSelect on the new competency dropdown
+                    new TomSelect(compDropdown, {
+                        create: false,
+                        sortField: {
+                            field: "text",
+                            direction: "asc"
+                        },
+                        placeholder: "---- Pilih Competency ----"
+                    });
                 }
+                
+                window.addAdditionalRow = addAdditionalRow; // Expose globally
 
                 var addAdditionalBtn = document.getElementById('add-additional-btn');
                 if (addAdditionalBtn) {
@@ -1203,6 +1442,397 @@
                     });
                 }
             });
+
+
+            // ====================================================================
+            // REVISI 07: Tabel Ringkasan (Table View Toggle)
+            // ====================================================================
+            function getStatusBadge(status) {
+                var colorMap = {
+                    'Mencari Vendor': 'background:#1d6ae5;color:#fff;',
+                    'Proses Pendaftaran': 'background:#fd7e14;color:#fff;',
+                    'On Progress': 'background:#ffc107;color:#212529;',
+                    'Done': 'background:#198754;color:#fff;',
+                    'Pending': 'background:#6c757d;color:#fff;',
+                    'Ditolak': 'background:#dc3545;color:#fff;',
+                };
+                var style = colorMap[status] || 'background:#dee2e6;color:#212529;';
+                return '<span style="display:inline-block;padding:3px 10px;border-radius:5px;font-size:12px;' + style + '">' + (status || '-') + '</span>';
+            }
+
+            function formatRupiah(val) {
+                if (!val) return '-';
+                var num = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+                if (isNaN(num)) return '-';
+                return 'Rp ' + num.toLocaleString('id-ID');
+            }
+
+            window.syncToCard = function(id, fieldName, value) {
+                var input = document.getElementById(fieldName + '_' + id);
+                if (input) {
+                    input.value = value;
+                    if (fieldName === 'status_2') {
+                        updateDropdownColor(input);
+                        toggleFileUpload(input);
+                    }
+                }
+            };
+
+            function renderSummaryTable() {
+                var tbody = document.getElementById('summary-table-body');
+                if (!tbody) return;
+
+                var html = '';
+                var no = 0;
+                
+                // --- First Group: Table 1 (Usulan Biasa) ---
+                var cardsTable1 = $('#table-body .dynamic-card');
+                cardsTable1.each(function() {
+                    no++;
+                    var card = $(this);
+                    var id = card.find('input[name="id[]"]').val();
+                    
+                    var sectionName = card.find('select[name="section_id[]"] option:selected').text().trim() || '-';
+                    if (sectionName.includes('---- Pilih')) sectionName = '-';
+                    
+                    var jobPosName = card.find('select[name="id_job_position[]"] option:selected').text().trim() || '-';
+                    if (jobPosName.includes('---- Pilih')) jobPosName = '-';
+                    
+                    var userName = card.find('select[name="id_user[]"] option:selected').text().trim() || '-';
+                    if (userName.includes('---- Pilih')) userName = '-';
+                    
+                    var progTrain = card.find('input[name="program_training[]"]').val() || '-';
+                    
+                    var katComp = card.find('select[name="kategori_competency[]"] option:selected').text().trim() || '-';
+                    if (katComp.includes('---- Pilih')) katComp = '-';
+                    
+                    var comp = card.find('select[name="competency[]"] option:selected').text().trim() || '-';
+                    if (comp.includes('---- Pilih')) comp = '-';
+                    
+                    var dueDate = card.find('input[name="due_date[]"]').val() || '-';
+                    var biaya = card.find('input[name="biaya[]"]').val() || '';
+                    var lembaga = card.find('input[name="lembaga[]"]').val() || '-';
+                    var ketTujuan = card.find('input[name="keterangan_tujuan[]"]').val() || '-';
+                    var objLearning = card.find('textarea[name="objective_learning[]"]').val() || '-';
+                    
+                    var planProg = card.find('input[name="program_training_plan[]"]').val() || '';
+                    var planDate = card.find('input[name="due_date_plan[]"]').val() || '';
+                    var planBiaya = card.find('input[name="biaya_plan[]"]').val() || '';
+                    var planLembaga = card.find('input[name="lembaga_plan[]"]').val() || '';
+                    var planKet = card.find('input[name="keterangan_plan[]"]').val() || '';
+                    var planObjLearning = card.find('textarea[name="objective_learning_aktual[]"]').val() || '';
+                    var planStatus = card.find('select[name="status_2[]"]').val() || '';
+
+                    // For Table 1, it's always Training (unless there is a select input)
+                    var katUsulanSel = card.find('select[name="kategori_usulan[]"]');
+                    var katUsulan = katUsulanSel.length > 0 ? (katUsulanSel.find('option:selected').text().trim() || 'Training') : 'Training';
+
+                    html += '<tr>';
+                    html += '<td>' + no + '</td>';
+                    html += '<td>' + sectionName + '</td>';
+                    html += '<td>' + jobPosName + '</td>';
+                    html += '<td>' + userName + '</td>';
+                    html += '<td>' + progTrain + '</td>';
+                    html += '<td><span class="badge bg-secondary">' + katUsulan + '</span></td>';
+                    html += '<td>' + katComp + '</td>';
+                    html += '<td>' + comp + '</td>';
+                    html += '<td>' + dueDate + '</td>';
+                    html += '<td>' + formatRupiah(biaya) + '</td>';
+                    html += '<td>' + lembaga + '</td>';
+                    html += '<td style="max-width:150px;white-space:pre-wrap;font-size:12px;">' + ketTujuan + '</td>';
+                    html += '<td style="max-width:150px;white-space:pre-wrap;font-size:12px;">' + objLearning + '</td>';
+                    
+                    // Aktual (Editable Inputs) — col pertama include tombol Salin
+                    html += '<td class="col-aktual-start"><div class="input-group input-group-sm">' +
+                            '<input type="text" class="form-control form-control-sm" value="' + planProg.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'program_training_plan\', this.value)">' +
+                            '<button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="copyAllToAktualTable(\'' + id + '\')" title="Salin semua data Usulan ke Aktual"><i class=\"fas fa-copy\"></i></button>' +
+                            '</div></td>';
+                    html += '<td><input type="date" class="form-control form-control-sm" value="' + planDate + '" oninput="syncToCard(\'' + id + '\', \'due_date_plan\', this.value)"></td>';
+                    html += '<td><input type="text" class="form-control form-control-sm" value="' + planBiaya.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'biaya_plan\', this.value)"></td>';
+                    html += '<td><input type="text" class="form-control form-control-sm" value="' + planLembaga.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'lembaga_plan\', this.value)"></td>';
+                    html += '<td><input type="text" class="form-control form-control-sm" value="' + planKet.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'keterangan_plan\', this.value)"></td>';
+                    html += '<td><input type="text" class="form-control form-control-sm" value="' + planObjLearning.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'objective_learning_aktual\', this.value)"></td>';
+                    
+                    html += '<td>' + 
+                            '<select class="form-select form-select-sm" onchange="syncToCard(\'' + id + '\', \'status_2\', this.value)">' +
+                            '<option value="">-</option>' +
+                            '<option value="Mencari Vendor" ' + (planStatus === 'Mencari Vendor' ? 'selected' : '') + '>Mencari Vendor</option>' +
+                            '<option value="Proses Pendaftaran" ' + (planStatus === 'Proses Pendaftaran' ? 'selected' : '') + '>Proses Pendaftaran</option>' +
+                            '<option value="On Progress" ' + (planStatus === 'On Progress' ? 'selected' : '') + '>On progress</option>' +
+                            '<option value="Done" ' + (planStatus === 'Done' ? 'selected' : '') + '>Done</option>' +
+                            '<option value="Pending" ' + (planStatus === 'Pending' ? 'selected' : '') + '>Pending</option>' +
+                            '<option value="Ditolak" ' + (planStatus === 'Ditolak' ? 'selected' : '') + '>Ditolak</option>' +
+                            '</select>' +
+                            '</td>';
+                    
+                    // Tombol Jump
+                    html += '<td><button type="button" class="btn btn-sm btn-outline-info" onclick="jumpToCard(\'row-' + id + '\')" title="Buka Detail di Card (Upload & Sharing)"><i class="bi bi-card-heading"></i></button></td>';
+                    html += '</tr>';
+                });
+                
+                // --- Second Group: Table 2 (Additional Rows) ---
+                var hasAdditionalDivider = false;
+                var cardsTable2 = $('#table-body2 .dynamic-card');
+                var newRowIds = []; // Track IDs yang perlu di-attach cascading logic
+                
+                cardsTable2.each(function() {
+                    if (!hasAdditionalDivider) {
+                        hasAdditionalDivider = true;
+                        html += '<tr style="background:#e8f5e9;">' +
+                                '<td colspan="19" style="font-weight:bold;padding:8px 15px;">' +
+                                '<i class="fas fa-plus-circle me-1 text-success"></i> ADDITIONAL' +
+                                '</td></tr>';
+                        no = 0;
+                    }
+                    no++;
+                    
+                    var card = $(this);
+                    var id = card.find('input[name="id[]"]').val();
+                    var isNewRow = String(id).indexOf('new_') === 0;
+                    
+                    // Ambil values dari card (sumber kebenaran)
+                    var sectionVal = card.find('select[name="section_id[]"]').val() || '';
+                    var sectionName = card.find('select[name="section_id[]"] option:selected').text().trim() || '-';
+                    if (sectionName.includes('---- Pilih')) sectionName = '-';
+                    
+                    var jobPosVal = card.find('select[name="id_job_position[]"]').val() || '';
+                    var jobPosName = card.find('select[name="id_job_position[]"] option:selected').text().trim() || '-';
+                    if (jobPosName.includes('---- Pilih')) jobPosName = '-';
+                    
+                    var userVal = card.find('select[name="id_user[]"]').val() || '';
+                    var userName = card.find('select[name="id_user[]"] option:selected').text().trim() || '-';
+                    if (userName.includes('---- Pilih')) userName = '-';
+                    
+                    var progTrain = card.find('input[name="program_training[]"]').val() || '';
+                    
+                    var katCompVal = card.find('select[name="kategori_competency[]"]').val() || '';
+                    var katComp = card.find('select[name="kategori_competency[]"] option:selected').text().trim() || '-';
+                    if (katComp.includes('---- Pilih')) katComp = '-';
+                    
+                    var compVal = card.find('select[name="competency[]"]').val() || '';
+                    var comp = card.find('select[name="competency[]"] option:selected').text().trim() || '-';
+                    if (comp.includes('---- Pilih')) comp = '-';
+                    
+                    var dueDate = card.find('input[name="due_date[]"]').val() || '';
+                    var biaya = card.find('input[name="biaya[]"]').val() || '';
+                    var lembaga = card.find('input[name="lembaga[]"]').val() || '';
+                    var ketTujuan = card.find('input[name="keterangan_tujuan[]"]').val() || '';
+                    var objLearning = card.find('textarea[name="objective_learning[]"]').val() || '';
+                    
+                    var planProg = card.find('input[name="program_training_plan[]"]').val() || '';
+                    var planDate = card.find('input[name="due_date_plan[]"]').val() || '';
+                    var planBiaya = card.find('input[name="biaya_plan[]"]').val() || '';
+                    var planLembaga = card.find('input[name="lembaga_plan[]"]').val() || '';
+                    var planKet = card.find('input[name="keterangan_plan[]"]').val() || '';
+                    var planObjLearning = card.find('textarea[name="objective_learning_aktual[]"]').val() || '';
+                    var planStatus = card.find('select[name="status_2[]"]').val() || '';
+
+                    var katUsulanSel = card.find('select[name="kategori_usulan[]"]');
+                    var katUsulanVal = katUsulanSel.length > 0 ? katUsulanSel.val() : '0';
+                    var katUsulan = katUsulanSel.length > 0 ? (katUsulanSel.find('option:selected').text().trim() || 'Training') : 'Training';
+                    var isSharing = (katUsulanVal == '1');
+
+                    if (isNewRow) {
+                        // ====== INLINE EDITABLE ROW ======
+                        newRowIds.push(id);
+                        html += '<tr style="background:#fffde7;">';
+                        html += '<td>' + no + '</td>';
+                        
+                        // Section (inline dropdown)
+                        html += '<td id="tbl_section_td_' + id + '"><select id="tbl_section_' + id + '" class="form-select form-select-sm" onchange="handleInlineSectionChange(\'' + id + '\')">' + buildSectionOptions(sectionVal) + '</select></td>';
+                        
+                        // Job Position (inline dropdown)
+                        html += '<td id="tbl_job_td_' + id + '"><select id="tbl_job_pos_' + id + '" class="form-select form-select-sm" onchange="handleInlineJobChange(\'' + id + '\')">' + buildJobPositionOptions(sectionVal, jobPosVal) + '</select></td>';
+                        
+                        // User (inline dropdown)
+                        html += '<td><select id="tbl_user_' + id + '" class="form-select form-select-sm" onchange="syncToCard(\'' + id + '\', \'id_user\', this.value)">' + buildUserOptions(sectionVal, jobPosVal, userVal, isSharing) + '</select></td>';
+                        
+                        // Program Training (inline input)
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + (progTrain || '').replace(/"/g, '&quot;') + '" placeholder="Program Training" oninput="syncToCard(\'' + id + '\', \'program_training\', this.value)"></td>';
+                        
+                        // Kategori Usulan (inline dropdown)
+                        html += '<td><select id="tbl_kat_usulan_' + id + '" class="form-select form-select-sm" onchange="syncToCard(\'' + id + '\', \'kategori_usulan\', this.value)">' +
+                                '<option value="0"' + (katUsulanVal == '0' ? ' selected' : '') + '>Training</option>' +
+                                '<option value="1"' + (katUsulanVal == '1' ? ' selected' : '') + '>Sharing Knowledge</option>' +
+                                '</select></td>';
+                        
+                        // Kategori Competency (inline dropdown)
+                        html += '<td><select id="tbl_kat_comp_' + id + '" class="form-select form-select-sm">' +
+                                '<option value="">-- Pilih --</option>' +
+                                '<option value="technical"' + (katCompVal === 'technical' ? ' selected' : '') + '>Technical Competency</option>' +
+                                '<option value="softskill"' + (katCompVal === 'softskill' ? ' selected' : '') + '>Soft Skill</option>' +
+                                '<option value="additional"' + (katCompVal === 'additional' ? ' selected' : '') + '>Additional</option>' +
+                                '<option value="Others"' + (katCompVal === 'Others' ? ' selected' : '') + '>Others</option>' +
+                                '</select></td>';
+                        
+                        // Competency (inline dropdown)
+                        html += '<td><select id="tbl_comp_' + id + '" class="form-select form-select-sm">' + buildCompetencyOptions(katCompVal, compVal) + '</select></td>';
+                        
+                        // Due Date (inline input)
+                        html += '<td><input type="date" class="form-control form-control-sm" value="' + dueDate + '" min="' + activeYear + '-01-01" max="' + activeYear + '-12-31" oninput="syncToCard(\'' + id + '\', \'due_date\', this.value)"></td>';
+                        
+                        // Biaya (inline input)
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + (biaya || '').replace(/"/g, '&quot;') + '" placeholder="Budget" oninput="syncToCard(\'' + id + '\', \'biaya\', this.value)"></td>';
+                        
+                        // Lembaga (inline input)
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + (lembaga || '').replace(/"/g, '&quot;') + '" placeholder="Lembaga" oninput="syncToCard(\'' + id + '\', \'lembaga\', this.value)"></td>';
+                        
+                        // Keterangan Tujuan (inline input)
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + (ketTujuan || '').replace(/"/g, '&quot;') + '" placeholder="Keterangan Tujuan" oninput="syncToCard(\'' + id + '\', \'keterangan_tujuan\', this.value)" style="min-width:120px;"></td>';
+                        
+                        // Objective Learning (inline input)
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + (objLearning || '').replace(/"/g, '&quot;') + '" placeholder="Objective" oninput="syncToCard(\'' + id + '\', \'objective_learning\', this.value)" style="min-width:120px;"></td>';
+                        
+                        // Aktual (Editable Inputs) — col pertama include tombol Salin
+                        html += '<td class="col-aktual-start"><div class="input-group input-group-sm">' +
+                                '<input type="text" class="form-control form-control-sm" value="' + planProg.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'program_training_plan\', this.value)">' +
+                                '<button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="copyAllToAktualTable(\'' + id + '\')" title="Salin semua data Usulan ke Aktual"><i class=\"fas fa-copy\"></i></button>' +
+                                '</div></td>';
+                        html += '<td><input type="date" class="form-control form-control-sm" value="' + planDate + '" oninput="syncToCard(\'' + id + '\', \'due_date_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planBiaya.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'biaya_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planLembaga.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'lembaga_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planKet.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'keterangan_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planObjLearning.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'objective_learning_aktual\', this.value)"></td>';
+                        
+                        html += '<td>' + 
+                                '<select class="form-select form-select-sm" onchange="syncToCard(\'' + id + '\', \'status_2\', this.value)">' +
+                                '<option value="">-</option>' +
+                                '<option value="Mencari Vendor" ' + (planStatus === 'Mencari Vendor' ? 'selected' : '') + '>Mencari Vendor</option>' +
+                                '<option value="Proses Pendaftaran" ' + (planStatus === 'Proses Pendaftaran' ? 'selected' : '') + '>Proses Pendaftaran</option>' +
+                                '<option value="On Progress" ' + (planStatus === 'On Progress' ? 'selected' : '') + '>On progress</option>' +
+                                '<option value="Done" ' + (planStatus === 'Done' ? 'selected' : '') + '>Done</option>' +
+                                '<option value="Pending" ' + (planStatus === 'Pending' ? 'selected' : '') + '>Pending</option>' +
+                                '<option value="Ditolak" ' + (planStatus === 'Ditolak' ? 'selected' : '') + '>Ditolak</option>' +
+                                '</select>' +
+                                '</td>';
+                        
+                        // Aksi (Jump to card + Hapus)
+                        html += '<td>' + 
+                                '<button type="button" class="btn btn-sm btn-outline-info me-1" onclick="jumpToCard(\'row-' + id + '\')" title="Buka Detail di Card"><i class="bi bi-card-heading"></i></button>' +
+                                '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeNewRow(\'' + id + '\')" title="Hapus Baris"><i class="bi bi-trash"></i></button>' +
+                                '</td>';
+                        html += '</tr>';
+                        
+                    } else {
+                        // ====== READ-ONLY ROW (existing saved data) ======
+                        var katUsulanBadge = katUsulan.includes('Sharing') ? 'bg-primary' : 'bg-secondary';
+                        
+                        html += '<tr>';
+                        html += '<td>' + no + '</td>';
+                        html += '<td>' + sectionName + '</td>';
+                        html += '<td>' + jobPosName + '</td>';
+                        html += '<td>' + userName + '</td>';
+                        html += '<td>' + (progTrain || '-') + '</td>';
+                        html += '<td><span class="badge ' + katUsulanBadge + '">' + katUsulan + '</span></td>';
+                        html += '<td>' + katComp + '</td>';
+                        html += '<td>' + comp + '</td>';
+                        html += '<td>' + (dueDate || '-') + '</td>';
+                        html += '<td>' + formatRupiah(biaya) + '</td>';
+                        html += '<td>' + (lembaga || '-') + '</td>';
+                        html += '<td style="max-width:150px;white-space:pre-wrap;font-size:12px;">' + (ketTujuan || '-') + '</td>';
+                        html += '<td style="max-width:150px;white-space:pre-wrap;font-size:12px;">' + (objLearning || '-') + '</td>';
+                        
+                        // Aktual (Editable Inputs) — col pertama include tombol Salin
+                        html += '<td class="col-aktual-start"><div class="input-group input-group-sm">' +
+                                '<input type="text" class="form-control form-control-sm" value="' + planProg.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'program_training_plan\', this.value)">' +
+                                '<button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="copyAllToAktualTable(\'' + id + '\')" title="Salin semua data Usulan ke Aktual"><i class=\"fas fa-copy\"></i></button>' +
+                                '</div></td>';
+                        html += '<td><input type="date" class="form-control form-control-sm" value="' + planDate + '" oninput="syncToCard(\'' + id + '\', \'due_date_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planBiaya.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'biaya_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planLembaga.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'lembaga_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planKet.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'keterangan_plan\', this.value)"></td>';
+                        html += '<td><input type="text" class="form-control form-control-sm" value="' + planObjLearning.replace(/"/g, '&quot;') + '" oninput="syncToCard(\'' + id + '\', \'objective_learning_aktual\', this.value)"></td>';
+                        
+                        html += '<td>' + 
+                                '<select class="form-select form-select-sm" onchange="syncToCard(\'' + id + '\', \'status_2\', this.value)">' +
+                                '<option value="">-</option>' +
+                                '<option value="Mencari Vendor" ' + (planStatus === 'Mencari Vendor' ? 'selected' : '') + '>Mencari Vendor</option>' +
+                                '<option value="Proses Pendaftaran" ' + (planStatus === 'Proses Pendaftaran' ? 'selected' : '') + '>Proses Pendaftaran</option>' +
+                                '<option value="On Progress" ' + (planStatus === 'On Progress' ? 'selected' : '') + '>On progress</option>' +
+                                '<option value="Done" ' + (planStatus === 'Done' ? 'selected' : '') + '>Done</option>' +
+                                '<option value="Pending" ' + (planStatus === 'Pending' ? 'selected' : '') + '>Pending</option>' +
+                                '<option value="Ditolak" ' + (planStatus === 'Ditolak' ? 'selected' : '') + '>Ditolak</option>' +
+                                '</select>' +
+                                '</td>';
+                        
+                        // Tombol Jump
+                        html += '<td><button type="button" class="btn btn-sm btn-outline-info" onclick="jumpToCard(\'row-' + id + '\')" title="Buka Detail di Card (Upload & Sharing)"><i class="bi bi-card-heading"></i></button></td>';
+                        html += '</tr>';
+                    }
+                });
+
+                if (html === '') {
+                    html = '<tr><td colspan="19" class="text-center text-muted py-4">Belum ada data pengajuan.</td></tr>';
+                }
+
+                tbody.innerHTML = html;
+                
+                // Attach cascading logic untuk baris baru
+                newRowIds.forEach(function(rowId) {
+                    attachInlineCascadingLogic(rowId);
+                });
+            }
+
+            function jumpToCard(rowId) {
+                // Switch ke Card view
+                switchToCardView();
+                // Scroll ke card tersebut
+                setTimeout(function() {
+                    var el = document.getElementById(rowId);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('border-warning');
+                        setTimeout(function() { el.classList.remove('border-warning'); }, 2000);
+                    }
+                }, 300);
+            }
+
+            // Fungsi untuk menghapus baris additional yang baru (sebelum di-save)
+            window.removeNewRow = function(id) {
+                Swal.fire({
+                    title: 'Apakah Anda yakin ingin menghapus baris usulan tambahan ini?',
+                    text: 'Tindakan ini tidak dapat dibatalkan!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        var el = document.getElementById('row-' + id);
+                        if (el) {
+                            el.remove();
+                            // Re-render table agar baris tersebut hilang dari tampilan tabel
+                            if (document.getElementById('table-summary-section').style.display !== 'none') {
+                                renderSummaryTable();
+                            }
+                        }
+                    }
+                });
+            };
+
+            function switchToTableView() {
+                document.getElementById('table-summary-section').style.display = 'block';
+                document.getElementById('card-view-section').style.display = 'none';
+                document.getElementById('btn-table-view').classList.remove('btn-outline-secondary');
+                document.getElementById('btn-table-view').classList.add('btn-primary');
+                document.getElementById('btn-card-view').classList.remove('btn-primary');
+                document.getElementById('btn-card-view').classList.add('btn-outline-secondary');
+                renderSummaryTable();
+            }
+
+            function switchToCardView() {
+                document.getElementById('table-summary-section').style.display = 'none';
+                document.getElementById('card-view-section').style.display = 'block';
+                document.getElementById('btn-card-view').classList.remove('btn-outline-secondary');
+                document.getElementById('btn-card-view').classList.add('btn-primary');
+                document.getElementById('btn-table-view').classList.remove('btn-primary');
+                document.getElementById('btn-table-view').classList.add('btn-outline-secondary');
+            }
+
+            document.getElementById('btn-table-view').addEventListener('click', switchToTableView);
+            document.getElementById('btn-card-view').addEventListener('click', switchToCardView);
 
 
             // ====================================================================
@@ -1225,7 +1855,9 @@
                         biaya_plan: row.find('input[name="biaya_plan[]"]').val().trim() || '0',
                         lembaga_plan: row.find('input[name="lembaga_plan[]"]').val().trim(),
                         keterangan_plan: row.find('input[name="keterangan_plan[]"]').val().trim(),
-                        status_2: row.find('select[name="status_2[]"]').val()
+                        status_2: row.find('select[name="status_2[]"]').val(),
+                        objective_learning_aktual: row.find('textarea[name="objective_learning_aktual[]"]').val() || '',
+                        objective_learning: row.find('textarea[name="objective_learning[]"]').val() || ''
                     });
                 });
 
@@ -1249,7 +1881,10 @@
                         biaya_plan: row.find('input[name="biaya_plan[]"]').val().trim() || '0',
                         lembaga_plan: row.find('input[name="lembaga_plan[]"]').val().trim(),
                         keterangan_plan: row.find('input[name="keterangan_plan[]"]').val().trim(),
-                        status_2: row.find('select[name="status_2[]"]').val()
+                        status_2: row.find('select[name="status_2[]"]').val(),
+                        objective_learning_aktual: row.find('textarea[name="objective_learning_aktual[]"]').val() || '',
+                        objective_learning: row.find('textarea[name="objective_learning[]"]').val() || '',
+                        is_sharing_knowledge: row.find('select[name="kategori_usulan[]"]').val() || '0'
                     });
                 });
 
@@ -1274,6 +1909,7 @@
                 formDataObject.append('_token', $('meta[name="csrf-token"]').attr('content'));
                 formDataObject.append('data', JSON.stringify(formData));
                 formDataObject.append('tahun_aktual', '{{ $tahun_aktual }}');
+                formDataObject.append('action', action); // Tambahkan action ke request
 
                 // Append files from both tables
                 $('#table-body .dynamic-card, #table-body2 .dynamic-card').each(function() {
@@ -1468,21 +2104,38 @@
             }
 
             // Fungsi menyalin satu field usulan ke aktual
+            // Mapping khusus:
+            //   keterangan_tujuan -> keterangan_plan
+            //   objective_learning -> objective_learning_aktual (kolom "Objective Learning Aktual")
+            //   lainnya: field -> field_plan
             function copyToAktual(id, field) {
                 const sourceInput = document.getElementById(`${field}_${id}`);
-                const targetField = field === 'keterangan_tujuan' ? 'keterangan' : field;
-                const targetInput = document.getElementById(`${targetField}_plan_${id}`);
+                let targetInput;
+                if (field === 'keterangan_tujuan') {
+                    targetInput = document.getElementById(`keterangan_plan_${id}`);
+                } else if (field === 'objective_learning') {
+                    targetInput = document.getElementById(`objective_learning_aktual_${id}`);
+                } else {
+                    targetInput = document.getElementById(`${field}_plan_${id}`);
+                }
                 if (sourceInput && targetInput) {
                     targetInput.value = sourceInput.value;
                 }
             }
 
-            // Fungsi menyalin semua usulan ke aktual untuk satu id
+            // Fungsi menyalin semua usulan ke aktual untuk satu id (Card View)
             function copyAllToAktual(id) {
-                const fields = ['program_training', 'due_date', 'biaya', 'lembaga', 'keterangan_tujuan'];
+                const fields = ['program_training', 'due_date', 'biaya', 'lembaga', 'keterangan_tujuan', 'objective_learning'];
                 fields.forEach(field => copyToAktual(id, field));
-                alert('Semua data usulan telah disalin ke aktual.');
             }
+
+            // Fungsi menyalin semua usulan ke aktual dari Table View
+            // Menyalin ke hidden card lalu re-render tabel agar perubahan langsung terlihat
+            window.copyAllToAktualTable = function(id) {
+                var fields = ['program_training', 'due_date', 'biaya', 'lembaga', 'keterangan_tujuan', 'objective_learning'];
+                fields.forEach(function(field) { copyToAktual(id, field); });
+                renderSummaryTable();
+            };
 
             // Filter & Search Logic
             function applyFilters() {
@@ -1518,7 +2171,11 @@
                 if (statusFilter) statusFilter.addEventListener('change', applyFilters);
 
                 // Initial count delay untuk memastikan element di-render dari JSON template
-                setTimeout(applyFilters, 500);
+                setTimeout(function() {
+                    applyFilters();
+                    // Default: tampilkan tabel ringkasan
+                    switchToTableView();
+                }, 600);
             });
 
             // ===== Modul 4.2: Year Management JS =====
@@ -1556,6 +2213,215 @@
                     .catch(function() { alert('Koneksi gagal. Silakan coba lagi.'); });
                 });
             })();
+
+            // ===== Inline Tambah Additional di Table View =====
+            // Sections data dari Blade (dibutuhkan untuk inline dropdown)
+            var inlineSections = @json($sections->map(function($s) { return ['id' => $s->id, 'name' => $s->name]; }));
+
+            function addAdditionalInlineRow() {
+                // 1. Buat card tersembunyi di table-body2 (data backend)
+                window.addAdditionalRow();
+                // 2. Re-render tabel ringkasan (baris baru akan di-render sebagai inline editable)
+                renderSummaryTable();
+                // 3. Scroll ke baris baru
+                setTimeout(function() {
+                    var lastRow = document.querySelector('#summary-table-body tr:last-child');
+                    if (lastRow) {
+                        lastRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        lastRow.style.backgroundColor = '#fff9c4';
+                        setTimeout(function() { lastRow.style.backgroundColor = ''; }, 2000);
+                    }
+                }, 100);
+            }
+
+            // Fungsi untuk generate section options HTML
+            function buildSectionOptions(selectedVal) {
+                var html = '<option value="">-- Pilih --</option>';
+                inlineSections.forEach(function(s) {
+                    html += '<option value="' + s.id + '"' + (s.id == selectedVal ? ' selected' : '') + '>' + s.name + '</option>';
+                });
+                return html;
+            }
+
+            // Fungsi untuk generate job position options HTML
+            function buildJobPositionOptions(sectionId, selectedVal) {
+                var html = '<option value="">-- Pilih --</option>';
+                if (!sectionId) return html;
+                var uniqueJobs = [];
+                jobPositions.forEach(function(jp) {
+                    if (jp.section_id == sectionId && !uniqueJobs.includes(jp.job_position)) {
+                        uniqueJobs.push(jp.job_position);
+                        html += '<option value="' + jp.id + '"' + (jp.id == selectedVal ? ' selected' : '') + '>' + jp.job_position + '</option>';
+                    }
+                });
+                return html;
+            }
+
+            // Fungsi untuk generate user options HTML
+            function buildUserOptions(sectionId, jobPosId, selectedVal, isSharing) {
+                var html = '<option value="">-- Pilih --</option>';
+                var uniqueUserIds = [];
+                if (isSharing) {
+                    // All users
+                    jobPositions.forEach(function(jp) {
+                        if (jp.active_users) {
+                            jp.active_users.forEach(function(u) {
+                                if (!uniqueUserIds.includes(u.id)) {
+                                    uniqueUserIds.push(u.id);
+                                    html += '<option value="' + u.id + '"' + (u.id == selectedVal ? ' selected' : '') + '>' + u.name + '</option>';
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    jobPositions.forEach(function(jp) {
+                        if (jp.section_id == sectionId && jp.id == jobPosId) {
+                            if (jp.active_users) {
+                                jp.active_users.forEach(function(u) {
+                                    if (!uniqueUserIds.includes(u.id)) {
+                                        uniqueUserIds.push(u.id);
+                                        html += '<option value="' + u.id + '"' + (u.id == selectedVal ? ' selected' : '') + '>' + u.name + '</option>';
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                return html;
+            }
+
+            // Fungsi untuk generate competency options HTML
+            function buildCompetencyOptions(kategori, selectedVal) {
+                var html = '<option value="">-- Pilih --</option>';
+                if (kategori && masterCompetencies[kategori]) {
+                    masterCompetencies[kategori].forEach(function(comp) {
+                        html += '<option value="' + comp + '"' + (comp == selectedVal ? ' selected' : '') + '>' + comp + '</option>';
+                    });
+                }
+                return html;
+            }
+
+            // Attach cascading logic ke baris inline baru setelah DOM diisi
+            function attachInlineCascadingLogic(id) {
+                var katUsulanSel = document.getElementById('tbl_kat_usulan_' + id);
+                var sectionSel = document.getElementById('tbl_section_' + id);
+                var jobPosSel = document.getElementById('tbl_job_pos_' + id);
+                var userSel = document.getElementById('tbl_user_' + id);
+                var katCompSel = document.getElementById('tbl_kat_comp_' + id);
+                var compSel = document.getElementById('tbl_comp_' + id);
+
+                var sectionTd = document.getElementById('tbl_section_td_' + id);
+                var jobPosTd = document.getElementById('tbl_job_td_' + id);
+
+                if (!katUsulanSel) return;
+
+                // Kategori Usulan → toggle Section/Job + populate users
+                katUsulanSel.addEventListener('change', function() {
+                    syncToCard(id, 'kategori_usulan', this.value);
+                    // Trigger card change event
+                    var cardKat = document.getElementById('kategori_usulan_' + id);
+                    if (cardKat) { cardKat.value = this.value; cardKat.dispatchEvent(new Event('change')); }
+
+                    if (this.value == '1') {
+                        // Sharing Knowledge: sembunyikan section & job, tampilkan semua user
+                        if (sectionTd) sectionTd.innerHTML = '<span class="text-muted">-</span>';
+                        if (jobPosTd) jobPosTd.innerHTML = '<span class="text-muted">-</span>';
+                        if (userSel) userSel.innerHTML = buildUserOptions(null, null, '', true);
+                    } else {
+                        // Training: tampilkan section & job dropdown
+                        if (sectionTd) sectionTd.innerHTML = '<select id="tbl_section_' + id + '" class="form-select form-select-sm" onchange="handleInlineSectionChange(\'' + id + '\')">' + buildSectionOptions('') + '</select>';
+                        if (jobPosTd) jobPosTd.innerHTML = '<select id="tbl_job_pos_' + id + '" class="form-select form-select-sm" onchange="handleInlineJobChange(\'' + id + '\')">' + buildJobPositionOptions('', '') + '</select>';
+                        if (userSel) userSel.innerHTML = buildUserOptions('', '', '', false);
+                    }
+                });
+
+                // Section → populate Job Positions
+                if (sectionSel) {
+                    sectionSel.addEventListener('change', function() {
+                        handleInlineSectionChange(id);
+                    });
+                }
+
+                // Job Position → populate Users
+                if (jobPosSel) {
+                    jobPosSel.addEventListener('change', function() {
+                        handleInlineJobChange(id);
+                    });
+                }
+
+                // User → sync to card
+                if (userSel) {
+                    userSel.addEventListener('change', function() {
+                        syncToCard(id, 'id_user', this.value);
+                    });
+                }
+
+                // Kategori Competency → populate Competency
+                if (katCompSel) {
+                    katCompSel.addEventListener('change', function() {
+                        syncToCard(id, 'kategori_competency', this.value);
+                        // Juga trigger change di card untuk TomSelect
+                        var cardKatComp = document.getElementById('kategori_competency_' + id);
+                        if (cardKatComp) { cardKatComp.value = this.value; cardKatComp.dispatchEvent(new Event('change')); }
+                        if (compSel) {
+                            compSel.innerHTML = buildCompetencyOptions(this.value, '');
+                        }
+                    });
+                }
+
+                // Competency → sync to card
+                if (compSel) {
+                    compSel.addEventListener('change', function() {
+                        syncToCard(id, 'competency', this.value);
+                        // Also sync via TomSelect if available
+                        var cardComp = document.getElementById('competency_' + id);
+                        if (cardComp && cardComp.tomselect) {
+                            cardComp.tomselect.setValue(this.value);
+                        } else if (cardComp) {
+                            cardComp.value = this.value;
+                        }
+                    });
+                }
+            }
+
+            // Handler global untuk perubahan Section di tabel inline
+            window.handleInlineSectionChange = function(id) {
+                var sectionSel = document.getElementById('tbl_section_' + id);
+                var jobPosTd = document.getElementById('tbl_job_td_' + id);
+                var userSel = document.getElementById('tbl_user_' + id);
+
+                if (!sectionSel) return;
+                var sectionId = sectionSel.value;
+                syncToCard(id, 'section_id', sectionId);
+                // Trigger card section change
+                var cardSection = document.getElementById('section_id_' + id);
+                if (cardSection) { cardSection.value = sectionId; cardSection.dispatchEvent(new Event('change')); }
+
+                // Rebuild job pos dropdown
+                if (jobPosTd) {
+                    jobPosTd.innerHTML = '<select id="tbl_job_pos_' + id + '" class="form-select form-select-sm" onchange="handleInlineJobChange(\'' + id + '\')">' + buildJobPositionOptions(sectionId, '') + '</select>';
+                }
+                // Reset users
+                if (userSel) { userSel.innerHTML = buildUserOptions(sectionId, '', '', false); }
+            };
+
+            // Handler global untuk perubahan Job Position di tabel inline
+            window.handleInlineJobChange = function(id) {
+                var sectionSel = document.getElementById('tbl_section_' + id);
+                var jobPosSel = document.getElementById('tbl_job_pos_' + id);
+                var userSel = document.getElementById('tbl_user_' + id);
+
+                if (!jobPosSel) return;
+                var sectionId = sectionSel ? sectionSel.value : '';
+                var jobPosId = jobPosSel.value;
+                syncToCard(id, 'id_job_position', jobPosId);
+                // Trigger card job change
+                var cardJob = document.getElementById('id_job_position_' + id);
+                if (cardJob) { cardJob.value = jobPosId; cardJob.dispatchEvent(new Event('change')); }
+
+                // Rebuild users
+                if (userSel) { userSel.innerHTML = buildUserOptions(sectionId, jobPosId, '', false); }
+            };
 
         </script>
     </main><!-- End #main -->

@@ -107,6 +107,7 @@
                                 <th scope="col" rowspan="2" style="width: 10%">Budget</th>
                                 <th scope="col" rowspan="2">Lembaga</th>
                                 <th scope="col" rowspan="2">Keterangan Tujuan</th>
+                                <th scope="col" rowspan="2" style="min-width:150px; white-space:normal;">Objective Learning</th>
                             </tr>
                             <tr style="background-color: #f0ad4e;">
                                 <th scope="col">Nama Program</th>
@@ -114,6 +115,7 @@
                                 <th scope="col" style="width: 15%">Biaya Actual</th>
                                 <th scope="col">Lembaga</th>
                                 <th scope="col">Keterangan</th>
+                                <th scope="col" style="min-width:150px;">Sharing Knowledge</th>
                                 <th scope="col">Status</th>
                             </tr>
                         </thead>
@@ -135,6 +137,9 @@
                                         </td>
                                         <td>{{ $item->lembaga ?? '-' }}</td>
                                         <td>{{ $item->keterangan_tujuan ?? '-' }}</td>
+                                        <td style="min-width:150px;">
+                                            <textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>{{ $item->objective_learning ?? '-' }}</textarea>
+                                        </td>
                                         <td>{{ $item->program_training_plan ?? '-' }}</td>
                                         <td>{{ $item->due_date_plan ?? '-' }}</td>
                                         <td>
@@ -142,6 +147,9 @@
                                         </td>
                                         <td>{{ $item->lembaga_plan ?? '-' }}</td>
                                         <td>{{ $item->keterangan_plan ?? '-' }}</td>
+                                        <td style="min-width:150px;">
+                                            <textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>{{ $item->objective_learning_aktual ?? '-' }}</textarea>
+                                        </td>
                                         <td>
                                             @php
                                                 $statusColor = '';
@@ -206,7 +214,7 @@
 
                             <!-- Tampilkan judul "ADDITIONAL" sebelum data yang memiliki tahun_usulan -->
                             <tr>
-                                <td colspan="17" style="text-align:left; font-weight:bold;">
+                                <td colspan="18" style="text-align:left; font-weight:bold;">
                                     <h3><b>ADDITIONAL</b> <i class="fas fa-chevron-down"></i></h3>
                                 </td>
                             </tr>
@@ -228,6 +236,9 @@
                                         </td>
                                         <td>{{ !empty($item->lembaga) ? $item->lembaga : '-' }}</td>
                                         <td>{{ !empty($item->keterangan_tujuan) ? $item->keterangan_tujuan : '-' }}</td>
+                                        <td style="min-width:150px;">
+                                            <textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>{{ $item->objective_learning ?? '-' }}</textarea>
+                                        </td>
                                         <td>{{ !empty($item->program_training_plan) ? $item->program_training_plan : '-' }}
                                         </td>
                                         <td>{{ !empty($item->due_date_plan) ? $item->due_date_plan : '-' }}</td>
@@ -235,6 +246,9 @@
                                         </td>
                                         <td>{{ !empty($item->lembaga_plan) ? $item->lembaga_plan : '-' }}</td>
                                         <td>{{ !empty($item->keterangan_plan) ? $item->keterangan_plan : '-' }}</td>
+                                        <td style="min-width:150px;">
+                                            <textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>{{ $item->objective_learning_aktual ?? '-' }}</textarea>
+                                        </td>
                                         <td>
                                             @php
                                                 $statusColor = '';
@@ -326,47 +340,69 @@
                         </tbody>
                     </table>
                 </div>
-                <div style="margin-top: 20px;">
-                    <strong>Keterangan Status:</strong>
-                    <ul
-                        style="list-style-type: none; padding-left: 0; margin-top: 10px; display: flex; gap: 15px; align-items: center;">
-                        <li style="display: flex; align-items: center;">
-                            <span
-                                style="background-color: blue; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;"><b>Biru</b></span>
-                            - Mencari Vendor
-                        </li>
-                        <li style="display: flex; align-items: center;">
-                            <span
-                                style="background-color: orange; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;"><b>Orange</b></span>
-                            - Proses Pendaftaran
-                        </li>
-                        <li style="display: flex; align-items: center;">
-                            <span
-                                style="background-color: yellow; color: black; padding: 5px 15px; border-radius: 5px; margin-right: 5px;"><b>Kuning</b></span>
-                            - On Progress
-                        </li>
-                        <li style="display: flex; align-items: center;">
-                            <span
-                                style="background-color: green; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;"><b>Hijau</b></span>
-                            - Done
-                        </li>
-                        <li style="display: flex; align-items: center;">
-                            <span
-                                style="background-color: rgb(154, 150, 150); color: rgb(251, 251, 251); padding: 5px 15px; border-radius: 5px; margin-right: 5px;"><b>Abu</b></span>
-                            - Pending
-                        </li>
-                        <li style="display: flex; align-items: center;">
-                            <span
-                                style="background-color: red; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;"><b>Merah</b></span>
-                            - Ditolak
-                        </li>
-                    </ul>
+                <div class="mt-4 mb-4">
+                    <h6 class="fw-bold mb-3" style="font-weight: 600;"><i class="fas fa-chart-pie me-2 text-secondary"></i> Ringkasan Status</h6>
+                    <div class="d-flex flex-wrap" style="gap: 12px;">
+                        <!-- Biru: Mencari Vendor -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; border: 1px solid rgba(13, 110, 253, 0.2); font-size: 13px; font-weight: 600;">
+                            Mencari Vendor
+                            <span class="mx-2 text-primary" style="opacity: 0.3;">|</span>
+                            <span id="status-blue-percentage">
+                                {{ $countStatusBlue }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusBlue, 0) }}%)</span>
+                            </span>
+                        </div>
+
+                        <!-- Orange: Proses Pendaftaran -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(253, 126, 20, 0.1); color: #fd7e14; border: 1px solid rgba(253, 126, 20, 0.2); font-size: 13px; font-weight: 600;">
+                            Proses Pendaftaran
+                            <span class="mx-2" style="opacity: 0.3; color: #fd7e14;">|</span>
+                            <span id="status-orange-percentage">
+                                {{ $countStatusOrange }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusOrange, 0) }}%)</span>
+                            </span>
+                        </div>
+
+                        <!-- Kuning: On Progress -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(255, 193, 7, 0.15); color: #d39e00; border: 1px solid rgba(255, 193, 7, 0.3); font-size: 13px; font-weight: 600;">
+                            On Progress
+                            <span class="mx-2" style="opacity: 0.3; color: #d39e00;">|</span>
+                            <span id="status-yellow-percentage">
+                                {{ $countStatusYellow }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusYellow, 0) }}%)</span>
+                            </span>
+                        </div>
+
+                        <!-- Hijau: Done -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(25, 135, 84, 0.1); color: #198754; border: 1px solid rgba(25, 135, 84, 0.2); font-size: 13px; font-weight: 600;">
+                            Done
+                            <span class="mx-2" style="opacity: 0.3; color: #198754;">|</span>
+                            <span id="status-green-percentage">
+                                {{ $countStatusGreen }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusGreen, 0) }}%)</span>
+                            </span>
+                        </div>
+
+                        <!-- Abu: Pending -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(108, 117, 125, 0.1); color: #6c757d; border: 1px solid rgba(108, 117, 125, 0.2); font-size: 13px; font-weight: 600;">
+                            Pending
+                            <span class="mx-2" style="opacity: 0.3; color: #6c757d;">|</span>
+                            <span id="status-gray-percentage">
+                                {{ $countStatusGray }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusGray, 0) }}%)</span>
+                            </span>
+                        </div>
+
+                        <!-- Merah: Ditolak -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); font-size: 13px; font-weight: 600;">
+                            Ditolak
+                            <span class="mx-2" style="opacity: 0.3; color: #dc3545;">|</span>
+                            <span id="status-red-percentage">
+                                {{ $countStatusRed }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusRed, 0) }}%)</span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 <div style="margin-top: 3%">
                     <a href="{{ route('indexPD2') }}" class="btn btn-secondary">Close</a>
-                    <button onclick="exportExcel()" class="btn btn-primary">
+                    <a href="{{ route('exportPD2', $data->first()->tahun_aktual ?? request()->segment(2) ?? date('Y')) }}" class="btn btn-primary">
                         <i class="bi bi-printer-fill"></i>Export Excel
-                    </button>
+                    </a>
                 </div>
             </div>
         </section>
@@ -395,49 +431,7 @@
         <!-- SimpleDataTables JS -->
         <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <script>
-            function exportExcel() {
-                // Dapatkan elemen tabel
-                var table = document.getElementById("table");
 
-                // Buat elemen dengan tag <table> sebagai string
-                var html = table.outerHTML;
-
-                // Buat URI untuk format data Excel
-                var uri = 'data:application/vnd.ms-excel;base64,';
-
-                // Fungsi untuk encoding string ke base64
-                function base64(s) {
-                    return window.btoa(unescape(encodeURIComponent(s)));
-                }
-
-                // Format sederhana untuk file Excel
-                var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
-                    'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
-                    'xmlns="http://www.w3.org/TR/REC-html40"><head>' +
-                    '<meta charset="UTF-8"><style>table, td {border: 1px solid black;}</style></head><body>' +
-                    '<table>{table}</table></body></html>';
-
-                // Gantikan placeholder dengan isi tabel
-                var excelHtml = template.replace(/{table}/g, html);
-
-                // Buat elemen <a> untuk download
-                var downloadLink = document.createElement("a");
-
-                // Buat nama file untuk Excel
-                var fileName = "Report_People Development.xls";
-
-                // Buat link download
-                downloadLink.href = uri + base64(excelHtml);
-
-                // Set nama file yang akan didownload
-                downloadLink.download = fileName;
-
-                // Simulasikan klik untuk mulai download
-                downloadLink.click();
-            }
-        </script>
 
     </main><!-- End #main -->
 @endsection

@@ -20,7 +20,7 @@ class CompetencyAssessmentService
      * @param int $userId
      * @return array  Array of ['type', 'id', 'name', 'standard', 'actual']
      */
-    public function getStrengthCompetencies(int $userId): array
+    public function getStrengthCompetencies(int $userId, ?string $tahun = null): array
     {
         $result = [];
 
@@ -35,6 +35,9 @@ class CompetencyAssessmentService
                 DB::raw('AVG(tpt.nilai_tc) as actual')
             )
             ->where('tpt.id_user', $userId)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_tc')
             ->groupBy('tpt.id_tc', 'tc.id', 'tc.keterangan_tc')
             ->havingRaw('AVG(tpt.nilai_tc) >= MAX(tc.nilai)')
@@ -51,6 +54,9 @@ class CompetencyAssessmentService
                 DB::raw('AVG(tpt.nilai_sk) as actual')
             )
             ->where('tpt.id_user', $userId)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_sk')
             ->groupBy('tpt.id_sk', 'sk.id', 'sk.keterangan_sk')
             ->havingRaw('AVG(tpt.nilai_sk) >= MAX(sk.nilai)')
@@ -67,6 +73,9 @@ class CompetencyAssessmentService
                 DB::raw('AVG(tpt.nilai_ad) as actual')
             )
             ->where('tpt.id_user', $userId)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_ad')
             ->groupBy('tpt.id_ad', 'ad.id', 'ad.keterangan_ad')
             ->havingRaw('AVG(tpt.nilai_ad) >= MAX(ad.nilai)')
@@ -94,7 +103,7 @@ class CompetencyAssessmentService
      * @param int $userId
      * @return array  Array of ['type', 'id', 'name', 'standard', 'actual']
      */
-    public function getAreaDevelopmentCompetencies(int $userId): array
+    public function getAreaDevelopmentCompetencies(int $userId, ?string $tahun = null): array
     {
         $result = [];
 
@@ -109,6 +118,9 @@ class CompetencyAssessmentService
                 DB::raw('AVG(tpt.nilai_tc) as actual')
             )
             ->where('tpt.id_user', $userId)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_tc')
             ->groupBy('tpt.id_tc', 'tc.id', 'tc.keterangan_tc')
             ->havingRaw('AVG(tpt.nilai_tc) < MAX(tc.nilai)')
@@ -125,6 +137,9 @@ class CompetencyAssessmentService
                 DB::raw('AVG(tpt.nilai_sk) as actual')
             )
             ->where('tpt.id_user', $userId)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_sk')
             ->groupBy('tpt.id_sk', 'sk.id', 'sk.keterangan_sk')
             ->havingRaw('AVG(tpt.nilai_sk) < MAX(sk.nilai)')
@@ -141,6 +156,9 @@ class CompetencyAssessmentService
                 DB::raw('AVG(tpt.nilai_ad) as actual')
             )
             ->where('tpt.id_user', $userId)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_ad')
             ->groupBy('tpt.id_ad', 'ad.id', 'ad.keterangan_ad')
             ->havingRaw('AVG(tpt.nilai_ad) < MAX(ad.nilai)')

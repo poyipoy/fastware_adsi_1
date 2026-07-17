@@ -167,14 +167,23 @@
     <main id="main" class="main">
         <section class="section dashboard">
             <div class="card">
-                <div class="user-profile">
-                    <i class="fas fa-user-circle profile-icon"></i>
-                    <div class="user-details">
-                        <span class="user-name">Nama Pengguna : </span>
-                        <span class="user-job">Job Position : </span>
-                        <input type="hidden" class="user-id-hidden" value="">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="user-profile mb-0">
+                        <i class="fas fa-user-circle profile-icon"></i>
+                        <div class="user-details">
+                            <span class="user-name">Nama Pengguna : </span>
+                            <span class="user-job">Job Position : </span>
+                            <input type="hidden" class="user-id-hidden" value="">
+                        </div>
                     </div>
-
+                    <div class="pe-4">
+                        <label for="filter-tahun" class="fw-bold me-2">Tahun:</label>
+                        <select id="filter-tahun" name="tahun" class="form-select form-select-sm d-inline-block w-auto" onchange="reloadAllData()">
+                            @foreach (\App\Models\TrsPenilaianTc::getAvailableYears() as $year)
+                                <option value="{{ $year }}">{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
                 <div id="radarChartContainer">
                     {{-- <canvas id="radarEmployee"></canvas> --}}
@@ -443,7 +452,9 @@
             let charts = [];
 
             function fetchCompetencyData(userId) {
-                fetch(`{{ route('get-detail-filter') }}?id_user=${userId}`)
+                const filterTahun = document.getElementById('filter-tahun');
+                const tahunQuery = filterTahun ? filterTahun.value : '';
+                fetch(`{{ route('get-detail-filter') }}?id_user=${userId}&tahun=${tahunQuery}`)
                     .then(response => response.json())
                     .then(data => {
                         console.log('Data fetched:', data);
@@ -670,11 +681,9 @@
                 charts.push(chart);
             }
 
-            // Ambil id_user dari parameter URL dan panggil fetchCompetencyData
-            document.addEventListener('DOMContentLoaded', function() {
+            function reloadAllData() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const userId = urlParams.get('id_user');
-
                 if (userId) {
                     fetchCompetencyData(userId);
                     loadCompetencyData(userId);
@@ -682,16 +691,34 @@
                     loadTabelDataView(userId);
                     loadStrengthData(userId);          // Modul 1.2
                     loadWorkingExperienceData(userId); // Modul 1.1
+                }
+            }
+
+            // Ambil id_user dari parameter URL dan panggil fetchCompetencyData
+            document.addEventListener('DOMContentLoaded', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const userId = urlParams.get('id_user');
+                const tahunParam = urlParams.get('tahun');
+                
+                if (tahunParam) {
+                    const filterTahun = document.getElementById('filter-tahun');
+                    if(filterTahun) filterTahun.value = tahunParam;
+                }
+
+                if (userId) {
+                    reloadAllData();
                 } else {
                     console.error('id_user parameter is missing in the URL.');
                 }
             });
 
             function loadCompetencyData(userId) {
+                const filterTahun = document.getElementById('filter-tahun');
+                const tahunQuery = filterTahun ? filterTahun.value : '';
                 // Lakukan AJAX request menggunakan jQuery
                 $(document).ready(function() {
                     $.ajax({
-                        url: `{{ route('get-detail-filter') }}?id_user=${userId}`, // Gunakan id_user yang diambil dari URL
+                        url: `{{ route('get-detail-filter') }}?id_user=${userId}&tahun=${tahunQuery}`, // Gunakan id_user yang diambil dari URL
                         type: 'GET',
                         success: function(data) {
                             // Kosongkan baris yang ada di table body dan header keterangan
@@ -873,9 +900,11 @@
             }
 
             function loadCompetencyDataViewOnly(userId) {
+                const filterTahun = document.getElementById('filter-tahun');
+                const tahunQuery = filterTahun ? filterTahun.value : '';
                 $(document).ready(function() {
                     $.ajax({
-                        url: `{{ route('get-detail-filter') }}?id_user=${userId}`,
+                        url: `{{ route('get-detail-filter') }}?id_user=${userId}&tahun=${tahunQuery}`,
                         type: 'GET',
                         success: function(data) {
                             $('#penilaianTableBodyViewOnly').empty();
@@ -1043,10 +1072,12 @@
 
 
             function loadTabelDataView(userId) {
+                const filterTahun = document.getElementById('filter-tahun');
+                const tahunQuery = filterTahun ? filterTahun.value : '';
                 $(document).ready(function() {
                     // Fetch data from the server
                     $.ajax({
-                        url: `{{ route('get-detail-filter') }}?id_user=${userId}`, // Update with your route
+                        url: `{{ route('get-detail-filter') }}?id_user=${userId}&tahun=${tahunQuery}`, // Update with your route
                         method: 'GET',
                         success: function(response) {
                             var tableBody = $('#peopleDevTabel');
@@ -1098,8 +1129,10 @@
 
             // ===== Modul 1.2: Strength Table =====
             function loadStrengthData(userId) {
+                const filterTahun = document.getElementById('filter-tahun');
+                const tahunQuery = filterTahun ? filterTahun.value : '';
                 $.ajax({
-                    url: `{{ route('get-detail-filter') }}?id_user=${userId}`,
+                    url: `{{ route('get-detail-filter') }}?id_user=${userId}&tahun=${tahunQuery}`,
                     type: 'GET',
                     success: function(data) {
                         var tbody = $('#strengthTableBody');

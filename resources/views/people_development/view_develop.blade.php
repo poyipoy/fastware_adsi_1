@@ -145,12 +145,14 @@
                                 <th scope="col" rowspan="2">Budget</th>
                                 <th scope="col" rowspan="2">Lembaga</th>
                                 <th scope="col" rowspan="2">Keterangan Tujuan</th>
+                                <th scope="col" rowspan="2">Objective Learning</th>
                             </tr>
                             <tr style="background-color: #f0ad4e;">
                                 <th scope="col">Nama Program</th>
                                 <th scope="col">Date Actual</th>
                                 <th scope="col">Lembaga</th>
                                 <th scope="col">Keterangan</th>
+                                <th scope="col" style="min-width:150px;">Sharing Knowledge</th>
                                 <th scope="col">Status</th>
                                 <th scope="col">Aksi</th>
                             </tr>
@@ -212,12 +214,14 @@
                                     <th scope="col" rowspan="2">Budget</th>
                                     <th scope="col" rowspan="2">Lembaga</th>
                                     <th scope="col" rowspan="2">Keterangan Tujuan</th>
+                                    <th scope="col" rowspan="2">Objective Learning</th>
                                 </tr>
                                 <tr hidden style="background-color: #f0ad4e;">
                                     <th scope="col">Nama Program</th>
                                     <th scope="col">Date Actual</th>
                                     <th scope="col">Lembaga</th>
                                     <th scope="col">Keterangan</th>
+                                    <th scope="col" style="min-width:150px;">Sharing Knowledge</th>
                                     <th scope="col">Status</th>
                                     <th scope="col">Aksi</th>
                                 </tr>
@@ -317,71 +321,63 @@
             </div>
 
                 {{-- status color --}}
-                <div style="margin-top: 20px;">
-                    <strong>Keterangan Status:</strong>
-                    <ul
-                        style="list-style-type: none; padding-left: 0; margin-top: 10px; display: flex; flex-direction: column; gap: 15px;">
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: blue; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Biru</b>
-                                </span> - Mencari Vendor =
-                                <span id="status-blue-percentage">{{ number_format($percentageStatusBlue, 2) }}%
-                                    ({{ $countStatusBlue }} dari {{ $totalRecords }})</span>
+                <div class="mt-4 mb-4">
+                    <h6 class="fw-bold mb-3" style="font-weight: 600;"><i class="fas fa-chart-pie me-2 text-secondary"></i> Ringkasan Status</h6>
+                    <div class="d-flex flex-wrap" style="gap: 12px;">
+                        <!-- Biru: Mencari Vendor -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; border: 1px solid rgba(13, 110, 253, 0.2); font-size: 13px; font-weight: 600;">
+                            Mencari Vendor
+                            <span class="mx-2 text-primary" style="opacity: 0.3;">|</span>
+                            <span id="status-blue-percentage">
+                                {{ $countStatusBlue }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusBlue, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: orange; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Orange</b>
-                                </span> - Proses Pendaftaran =
-                                <span id="status-orange-percentage">{{ number_format($percentageStatusOrange, 2) }}%
-                                    ({{ $countStatusOrange }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Orange: Proses Pendaftaran -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(253, 126, 20, 0.1); color: #fd7e14; border: 1px solid rgba(253, 126, 20, 0.2); font-size: 13px; font-weight: 600;">
+                            Proses Pendaftaran
+                            <span class="mx-2" style="opacity: 0.3; color: #fd7e14;">|</span>
+                            <span id="status-orange-percentage">
+                                {{ $countStatusOrange }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusOrange, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: yellow; color: black; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Kuning</b>
-                                </span> - On Progress =
-                                <span id="status-yellow-percentage">{{ number_format($percentageStatusYellow, 2) }}%
-                                    ({{ $countStatusYellow }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Kuning: On Progress -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(255, 193, 7, 0.15); color: #d39e00; border: 1px solid rgba(255, 193, 7, 0.3); font-size: 13px; font-weight: 600;">
+                            On Progress
+                            <span class="mx-2" style="opacity: 0.3; color: #d39e00;">|</span>
+                            <span id="status-yellow-percentage">
+                                {{ $countStatusYellow }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusYellow, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: green; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Hijau</b>
-                                </span> - Done =
-                                <span id="status-green-percentage">{{ number_format($percentageStatusGreen, 2) }}%
-                                    ({{ $countStatusGreen }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Hijau: Done -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(25, 135, 84, 0.1); color: #198754; border: 1px solid rgba(25, 135, 84, 0.2); font-size: 13px; font-weight: 600;">
+                            Done
+                            <span class="mx-2" style="opacity: 0.3; color: #198754;">|</span>
+                            <span id="status-green-percentage">
+                                {{ $countStatusGreen }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusGreen, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: rgb(154, 150, 150); color: rgb(251, 251, 251); padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Abu</b>
-                                </span> - Pending =
-                                <span id="status-gray-percentage">{{ number_format($percentageStatusGray, 2) }}%
-                                    ({{ $countStatusGray }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Abu: Pending -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(108, 117, 125, 0.1); color: #6c757d; border: 1px solid rgba(108, 117, 125, 0.2); font-size: 13px; font-weight: 600;">
+                            Pending
+                            <span class="mx-2" style="opacity: 0.3; color: #6c757d;">|</span>
+                            <span id="status-gray-percentage">
+                                {{ $countStatusGray }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusGray, 0) }}%)</span>
                             </span>
-                        </li>
-                        <li style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="display: flex; align-items: center;">
-                                <span
-                                    style="background-color: red; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 5px;">
-                                    <b>Merah</b>
-                                </span> - Ditolak =
-                                <span id="status-red-percentage">{{ number_format($percentageStatusRed, 2) }}%
-                                    ({{ $countStatusRed }} dari {{ $totalRecords }})</span>
+                        </div>
+
+                        <!-- Merah: Ditolak -->
+                        <div class="d-inline-flex align-items-center px-3 py-1" style="border-radius: 20px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); font-size: 13px; font-weight: 600;">
+                            Ditolak
+                            <span class="mx-2" style="opacity: 0.3; color: #dc3545;">|</span>
+                            <span id="status-red-percentage">
+                                {{ $countStatusRed }} <span style="font-weight: 400; opacity: 0.8;">({{ number_format($percentageStatusRed, 0) }}%)</span>
                             </span>
-                        </li>
-                    </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -484,10 +480,12 @@
                                 <td><input type="text" id="biaya" name="biaya[]" value="${item.biaya || ''}" placeholder="Budget" disabled></td>
                                 <td><input type="text" id="lembaga" name="lembaga[]" value="${item.lembaga}" placeholder="Lembaga" disabled></td>
                                 <td><input type="text" id="keterangan_tujuan" name="keterangan_tujuan[]" value="${item.keterangan_tujuan}" placeholder="Keterangan Tujuan" disabled></td>
+                                <td><textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>${item.objective_learning || '-'}</textarea></td>
                                 <td><input type="text" id="program_training_plan" name="program_training_plan[]" value="${item.program_training_plan || ''}" placeholder="Nama Program Plan" disabled></td>
                                 <td><input type="date" id="due_date_plan" name="due_date_plan[]" value="${item.due_date_plan || ''}" disabled></td>
                                 <td><input type="text" id="lembaga_plan" name="lembaga_plan[]" value="${item.lembaga_plan || ''}" placeholder="Lembaga Plan" disabled></td>
                                 <td><input type="text" id="keterangan_plan" name="keterangan_plan[]" value="${item.keterangan_plan || ''}" placeholder="Keterangan Plan" disabled></td>
+                                <td style="min-width:150px;"><textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>${item.objective_learning_aktual || '-'}</textarea></td>
                                 <td>
                                     <select name="status_2[]" class="status-dropdown1" onchange="updateDropdownColor(this); toggleFileUpload(this);" style="background-color: ${getStatusColor(item.status_2)}; color: ${getTextColor(item.status_2)};" disabled>
                                         <option value="">Status Belum Tersedia</option>
@@ -644,10 +642,12 @@
                             <td><input type="text" name="biaya[]" value="${item.biaya || ''}" placeholder="Budget" disabled></td>
                             <td><input type="text" name="lembaga[]" value="${item.lembaga || ''}" placeholder="Lembaga" disabled></td>
                             <td><input type="text" name="keterangan_tujuan[]" value="${item.keterangan_tujuan || ''}" placeholder="Keterangan Tujuan" disabled></td>
+                            <td><textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>${item.objective_learning || '-'}</textarea></td>
                             <td><input type="text" id="program_training_plan" name="program_training_plan[]" value="${item.program_training_plan || ''}" placeholder="Nama Program Plan" disabled></td>
                             <td><input type="date" id="due_date_plan" name="due_date_plan[]" value="${item.due_date_plan || ''}" disabled></td>
                             <td><input type="text" id="lembaga_plan" name="lembaga_plan[]" value="${item.lembaga_plan || ''}" placeholder="Lembaga Plan" disabled></td>
                             <td><input type="text" id="keterangan_plan" name="keterangan_plan[]" value="${item.keterangan_plan || ''}" placeholder="Keterangan Plan" disabled></td>
+                            <td style="min-width:150px;"><textarea class="form-control" style="min-width: 150px; white-space: normal; height: 80px;" disabled>${item.objective_learning_aktual || '-'}</textarea></td>
                             <td>
                                 <select name="status_2[]" class="status-dropdown2" onchange="updateDropdownColor(this); toggleFileUpload(this);" style="background-color: ${getStatusColor(item.status_2)}; color: ${getTextColor(item.status_2)};" disabled>
                                     <option value="">Status Belum Tersedia</option>
@@ -991,14 +991,22 @@
                         processData: false,
                         success: function(response) {
                             if (response.success) {
-                                alert('Data berhasil diperbarui!');
-                                window.location.href = "{{ route('indexPD') }}";
+                                Swal.fire({
+                                    title: 'Berhasil!',
+                                    text: 'Data berhasil diperbarui!',
+                                    icon: 'success',
+                                    confirmButtonText: 'OK'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        window.location.href = "{{ route('indexPD') }}";
+                                    }
+                                });
                             } else {
-                                alert('Terjadi kesalahan: ' + response.message);
+                                Swal.fire('Error!', 'Terjadi kesalahan: ' + response.message, 'error');
                             }
                         },
                         error: function(xhr, status, error) {
-                            alert('Terjadi kesalahan: ' + error);
+                            Swal.fire('Error!', 'Terjadi kesalahan: ' + error, 'error');
                         }
                     });
                 });

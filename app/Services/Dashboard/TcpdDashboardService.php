@@ -66,7 +66,7 @@ class TcpdDashboardService
             $jobDateToInput = $jobEndDate->format('Y-m-d');
         }
 
-        $normalizeName = static fn ($value) => strtolower(trim((string) $value));
+        $normalizeName = static fn($value) => strtolower(trim((string) $value));
 
         $rawJobPositions = \App\Models\MstJobPosition::query()
             ->leftJoin('mst_departments', 'mst_job_positions.department_id', '=', 'mst_departments.id')
@@ -90,7 +90,7 @@ class TcpdDashboardService
         } elseif (is_array($allowedJobNames)) {
             $allowedNormalized = array_map($normalizeName, $allowedJobNames);
             $rawJobPositions = $rawJobPositions->filter(
-                fn ($row) => in_array($normalizeName($row->job_position), $allowedNormalized, true)
+                fn($row) => in_array($normalizeName($row->job_position), $allowedNormalized, true)
             );
         }
 
@@ -128,8 +128,8 @@ class TcpdDashboardService
         }
 
         $jobDepartments = collect();
-        $grouped = $rawJobPositions->groupBy(function($row) {
-             return $row->department ?: 'Uncategorized';
+        $grouped = $rawJobPositions->groupBy(function ($row) {
+            return $row->department ?: 'Uncategorized';
         });
 
         foreach ($grouped as $departmentName => $jobs) {
@@ -152,7 +152,7 @@ class TcpdDashboardService
             $jobDepartments->push([
                 'department' => 'All',
                 'job_positions' => $rawJobPositions
-                    ->map(fn ($row) => [
+                    ->map(fn($row) => [
                         'id' => (int) $row->id,
                         'name' => $row->job_position,
                     ])
@@ -245,7 +245,7 @@ class TcpdDashboardService
         $selectedJobPositionName = $selectedJobEntry['name'] ?? null;
 
         $jobPositions = $jobPositionsForDepartment
-            ->map(fn ($job) => (object) [
+            ->map(fn($job) => (object) [
                 'id' => (int) $job['id'],
                 'job_position' => $job['name'],
             ]);
@@ -297,10 +297,10 @@ class TcpdDashboardService
             $departmentDefinitions = [];
             foreach ($dbMappings as $mapping) {
                 $dept = $mapping->department ?: 'Uncategorized';
-                $departmentDefinitions[$dept][] = trim((string)$mapping->job_position);
+                $departmentDefinitions[$dept][] = trim((string) $mapping->job_position);
             }
             if (array_key_exists($departmentFilter, $departmentDefinitions)) {
-                $normalize = static fn ($value) => strtolower(trim((string) $value));
+                $normalize = static fn($value) => strtolower(trim((string) $value));
                 $allowedJobs = collect($departmentDefinitions[$departmentFilter] ?? [])
                     ->map($normalize)
                     ->filter()
@@ -345,7 +345,7 @@ class TcpdDashboardService
         // Build a cache key scoped to this user's access level and date range.
         $userId = $user ? $user->id : 'public';
         $fromKey = $startDate ? $startDate->format('Ymd') : 'all';
-        $toKey   = $endDate   ? $endDate->format('Ymd')   : 'all';
+        $toKey = $endDate ? $endDate->format('Ymd') : 'all';
         $companyCacheKey = "tcpd_company_{$userId}_{$fromKey}_{$toKey}";
 
         return Cache::remember($companyCacheKey, TCPD_CACHE_TTL, function () use ($startDate, $endDate, $user) {
@@ -361,12 +361,12 @@ class TcpdDashboardService
                     continue;
                 }
                 $dept = $mapping->department;
-                $departmentDefinitions[$dept][] = trim((string)$mapping->job_position);
+                $departmentDefinitions[$dept][] = trim((string) $mapping->job_position);
             }
 
             $allowedJobNames = $this->resolveAllowedJobNames($user);
             if (is_array($allowedJobNames)) {
-                $allowedJobNamesSet = array_map(static fn ($value) => strtolower(trim((string) $value)), $allowedJobNames);
+                $allowedJobNamesSet = array_map(static fn($value) => strtolower(trim((string) $value)), $allowedJobNames);
                 $filteredDepartmentDefinitions = [];
                 foreach ($departmentDefinitions as $deptName => $jobNames) {
                     $filteredJobs = collect($jobNames)->filter(function ($jobName) use ($allowedJobNamesSet) {
@@ -382,7 +382,7 @@ class TcpdDashboardService
 
             $allJobNames = collect($filteredDepartmentDefinitions)
                 ->flatten()
-                ->map(fn ($name) => trim((string) $name))
+                ->map(fn($name) => trim((string) $name))
                 ->filter()
                 ->unique()
                 ->values()
@@ -391,7 +391,7 @@ class TcpdDashboardService
             $jobSnapshotData = $this->buildTcpdJobData($allJobNames, $startDate, $endDate);
             $departmentSummaries = $this->buildDepartmentSummaries($filteredDepartmentDefinitions, $jobSnapshotData);
             $companyOverview = $this->buildCompanyOverview($departmentSummaries, $jobSnapshotData['years'] ?? []);
-            
+
             $insights = $this->buildCompanyInsights($allJobNames, $jobSnapshotData);
             $trainingEffectiveness = $this->buildTrainingEffectiveness($allJobNames, $jobSnapshotData['years'] ?? []);
 
@@ -429,7 +429,7 @@ class TcpdDashboardService
      * Modul 2.1 — Hitung matriks persentase kompetensi untuk Key Positions.
      * Delegasikan ke CompetencyAssessmentService agar logic tidak duplikat.
      */
-    public function getKeyPositionStats(): array
+    public function getKeyPositionStats(array $jobSnapshotData = []): array
     {
         $keyPositions = DB::table('mst_job_positions')
             ->where('is_key_position', true)
@@ -447,7 +447,7 @@ class TcpdDashboardService
                 ->where('mst_job_position_id', $kp->id)
                 ->where('is_active', true)
                 ->pluck('user_id');
-            
+
             $empCount = $userIds->count();
             // Optional: Skip if no employees? For now, include it to show the key position exists
             if ($empCount === 0) {
@@ -456,16 +456,60 @@ class TcpdDashboardService
                     'employee_count' => 0,
                     'strength_count' => 0,
                     'deficit_count' => 0,
+                    'percentage' => 0,
+                    'employees' => [],
                 ];
                 continue;
             }
 
             $strengthCount = 0;
             $deficitCount = 0;
+            $users = [];
 
+            // Calculate overall counts first
             foreach ($userIds as $uid) {
                 $strengthCount += count($service->getStrengthCompetencies($uid));
                 $deficitCount += count($service->getAreaDevelopmentCompetencies($uid));
+            }
+
+            $snapshot = $jobSnapshotData['aggregate'][$kp->position_name] ?? null;
+            $kpPercentage = 0;
+            if ($snapshot && isset($snapshot['userSummaries']) && is_array($snapshot['userSummaries'])) {
+                $kpPercentage = $snapshot['totalPercentage'] ?? 0;
+                foreach ($snapshot['userSummaries'] as $summary) {
+                    if (empty($summary['id']) || $summary['id'] === 'average') {
+                        continue;
+                    }
+                    $users[] = [
+                        'id' => $summary['id'],
+                        'name' => $summary['name'],
+                        'tc' => $summary['tc_percentage'],
+                        'sk' => $summary['sk_percentage'],
+                        'ad' => $summary['ad_percentage'],
+                    ];
+                }
+                usort($users, fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
+            } else {
+                // Fallback, if snapshot is not available for this key position
+                $totComp = $strengthCount + $deficitCount;
+                $kpPercentage = $totComp > 0 ? round(($strengthCount / $totComp) * 100, 1) : 0;
+
+                $usersFallback = DB::table('users')->whereIn('id', $userIds)->select('id', 'name')->get();
+                foreach ($usersFallback as $uf) {
+                    $uS = count($service->getStrengthCompetencies($uf->id));
+                    $uD = count($service->getAreaDevelopmentCompetencies($uf->id));
+                    $uT = $uS + $uD;
+                    $p = $uT > 0 ? round(($uS / $uT) * 100, 1) : 0;
+
+                    $users[] = [
+                        'id' => $uf->id,
+                        'name' => $uf->name,
+                        'tc' => $p,
+                        'sk' => $p,
+                        'ad' => $p,
+                    ];
+                }
+                usort($users, fn($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
             }
 
             $results[] = [
@@ -473,14 +517,14 @@ class TcpdDashboardService
                 'employee_count' => $empCount,
                 'strength_count' => $strengthCount,
                 'deficit_count' => $deficitCount,
+                'percentage' => $kpPercentage,
+                'employees' => $users,
             ];
         }
 
         // Sort by strength percentage descending
-        usort($results, function($a, $b) {
-            $pctA = $a['employee_count'] > 0 ? ($a['strength_count'] / $a['employee_count']) : 0;
-            $pctB = $b['employee_count'] > 0 ? ($b['strength_count'] / $b['employee_count']) : 0;
-            return $pctB <=> $pctA;
+        usort($results, function ($a, $b) {
+            return $b['percentage'] <=> $a['percentage'];
         });
 
         return $results;
@@ -504,11 +548,11 @@ class TcpdDashboardService
                         continue;
                     }
                     $users[] = [
-                        'id'   => $summary['id'],
+                        'id' => $summary['id'],
                         'name' => $summary['name'],
-                        'tc'   => $summary['tc_percentage'],
-                        'sk'   => $summary['sk_percentage'],
-                        'ad'   => $summary['ad_percentage'],
+                        'tc' => $summary['tc_percentage'],
+                        'sk' => $summary['sk_percentage'],
+                        'ad' => $summary['ad_percentage'],
                     ];
                 }
             }
@@ -516,8 +560,8 @@ class TcpdDashboardService
 
             $jobRankings[] = [
                 'job_position' => $jobName,
-                'percentage'   => $snapshot['totalPercentage'],
-                'employees'    => $users,
+                'percentage' => $snapshot['totalPercentage'],
+                'employees' => $users,
             ];
 
             foreach ($snapshot['competencies'] ?? [] as $comp) {
@@ -525,9 +569,9 @@ class TcpdDashboardService
                     $id = $comp['type'] . '_' . $comp['id'];
                     if (!isset($competencyIssues[$id])) {
                         $competencyIssues[$id] = [
-                            'name'      => $comp['name'],
-                            'type'      => $comp['type'],
-                            'qty'       => 0,
+                            'name' => $comp['name'],
+                            'type' => $comp['type'],
+                            'qty' => 0,
                             'employees' => [],
                         ];
                     }
@@ -550,20 +594,20 @@ class TcpdDashboardService
         }
         unset($issue);
 
-        usort($jobRankings, fn ($a, $b) => $b['percentage'] <=> $a['percentage']);
+        usort($jobRankings, fn($a, $b) => $b['percentage'] <=> $a['percentage']);
         $topJobs = array_slice($jobRankings, 0, 5);
 
         // --- Modul 2.2: Terapkan threshold >= 5 defisit & tambahkan pagination info ---
-        usort($competencyIssues, fn ($a, $b) => $b['qty'] <=> $a['qty']);
+        usort($competencyIssues, fn($a, $b) => $b['qty'] <=> $a['qty']);
         // Filter: hanya tampilkan kompetensi dengan jumlah defisit >= 5
         $criticalFocus = array_values(
             array_filter($competencyIssues, fn($item) => ($item['qty'] ?? 0) >= 5)
         );
 
         return [
-            'top_jobs'           => $topJobs,
-            'critical_focus'     => $criticalFocus,
-            'key_position_stats' => $this->getKeyPositionStats(),
+            'top_jobs' => $topJobs,
+            'critical_focus' => $criticalFocus,
+            'key_position_stats' => $this->getKeyPositionStats($jobSnapshotData),
         ];
     }
 
@@ -587,8 +631,8 @@ class TcpdDashboardService
 
         $trainingCosts = [];
         foreach ($years as $year) {
-            $found = $costData->first(fn($item) => (int)$item->tahun_aktual === (int)$year);
-            $trainingCosts[(string)$year] = $found ? (float)$found->total_biaya : 0.0;
+            $found = $costData->first(fn($item) => (int) $item->tahun_aktual === (int) $year);
+            $trainingCosts[(string) $year] = $found ? (float) $found->total_biaya : 0.0;
         }
 
         return $trainingCosts;
@@ -704,7 +748,7 @@ class TcpdDashboardService
 
         if ($dateColumns === null) {
             $dateColumns = collect(['created_at', 'modified_updated'])
-                ->filter(fn ($column) => Schema::hasColumn($table, $column))
+                ->filter(fn($column) => Schema::hasColumn($table, $column))
                 ->values()
                 ->all();
         }
@@ -760,9 +804,9 @@ class TcpdDashboardService
 
 
         $cleanYears = $years
-            ->filter(fn ($year) => $year !== null)
-            ->map(fn ($year) => (int) $year)
-            ->filter(fn ($year) => $year > 0)
+            ->filter(fn($year) => $year !== null)
+            ->map(fn($year) => (int) $year)
+            ->filter(fn($year) => $year > 0)
             ->unique()
             ->sort()
             ->values();
@@ -786,7 +830,7 @@ class TcpdDashboardService
         foreach ($departmentSummaries as $department) {
             $departmentName = $department['department'] ?? 'Department';
             $entries = $department['entries'] ?? [];
-            $totalEntry = collect($entries)->first(fn ($entry) => ($entry['is_total'] ?? false) === true);
+            $totalEntry = collect($entries)->first(fn($entry) => ($entry['is_total'] ?? false) === true);
 
             if (!$totalEntry) {
                 $rows[] = [
@@ -890,7 +934,7 @@ class TcpdDashboardService
             'is_company' => true,
         ]);
 
-        $departmentCount = count(array_filter($rows, fn ($row) => !$row['is_company'] && $row['has_data']));
+        $departmentCount = count(array_filter($rows, fn($row) => !$row['is_company'] && $row['has_data']));
 
         return [
             'chartRows' => $rows,
@@ -906,7 +950,7 @@ class TcpdDashboardService
     {
         // Build a deterministic cache key from the job position name and date range.
         $fromKey = $startDate ? $startDate->format('Ymd') : 'all';
-        $toKey   = $endDate   ? $endDate->format('Ymd')   : 'all';
+        $toKey = $endDate ? $endDate->format('Ymd') : 'all';
         $cacheKey = 'tcpd_snapshot_' . md5($jobPositionName) . "_{$fromKey}_{$toKey}";
 
         return Cache::remember($cacheKey, TCPD_CACHE_TTL, function () use ($jobPositionName, $startDate, $endDate) {
@@ -920,8 +964,11 @@ class TcpdDashboardService
 
         if ($jobPositionIds->isEmpty()) {
             return [
-                'qty' => 0, 'competencies' => [], 'userSummaries' => [],
-                'totalPercentage' => 0.0, 'hasTotalPercentage' => false,
+                'qty' => 0,
+                'competencies' => [],
+                'userSummaries' => [],
+                'totalPercentage' => 0.0,
+                'hasTotalPercentage' => false,
             ];
         }
 
@@ -941,7 +988,7 @@ class TcpdDashboardService
             return app($model)->whereIn('id_job_position', $jobPositionIds)
                 ->select('id', DB::raw("$nameCol as name"), DB::raw("$valueCol as standard"))
                 ->get()
-                ->map(fn ($row) => [
+                ->map(fn($row) => [
                     'id' => (int) $row->id,
                     'name' => $row->name,
                     'standard' => $row->standard !== null ? (float) $row->standard : null,
@@ -955,17 +1002,20 @@ class TcpdDashboardService
         $additionals = $getCompetencies(MstAdditionals::class, 'keterangan_ad', 'nilai', 'additional');
 
         $competencies = collect()->concat($technical)->concat($softSkills)->concat($additionals)
-            ->filter(fn ($row) => isset($row['name']) && trim((string) $row['name']) !== '')
+            ->filter(fn($row) => isset($row['name']) && trim((string) $row['name']) !== '')
             ->values();
 
         if ($competencies->isEmpty() || $userIds->isEmpty()) {
             return [
-                'qty' => $userCount, 'competencies' => [], 'userSummaries' => [],
-                'totalPercentage' => 0.0, 'hasTotalPercentage' => false,
+                'qty' => $userCount,
+                'competencies' => [],
+                'userSummaries' => [],
+                'totalPercentage' => 0.0,
+                'hasTotalPercentage' => false,
             ];
         }
 
-        $sumStandards = fn ($collection) => $collection->reduce(fn ($sum, $row) => $sum + (is_numeric($row['standard']) ? (float) $row['standard'] : 0), 0.0);
+        $sumStandards = fn($collection) => $collection->reduce(fn($sum, $row) => $sum + (is_numeric($row['standard']) ? (float) $row['standard'] : 0), 0.0);
         $technicalStandardsSum = $sumStandards($technical);
         $softSkillStandardsSum = $sumStandards($softSkills);
         $additionalStandardsSum = $sumStandards($additionals);
@@ -1005,7 +1055,7 @@ class TcpdDashboardService
             $totals = $userTotals[(int) $userId] ?? ['technical' => 0.0, 'soft_skill' => 0.0, 'additional' => 0.0];
 
             // Cap at 100%: nilai aktual tidak boleh melebihi standar dalam hitungan persentase
-            $calcPercentage = fn ($total, $standardSum) => $standardSum > 0 ? min(100.0, round(($total / $standardSum) * 100, 2)) : null;
+            $calcPercentage = fn($total, $standardSum) => $standardSum > 0 ? min(100.0, round(($total / $standardSum) * 100, 2)) : null;
 
             return [
                 'id' => (int) $userId,
@@ -1018,9 +1068,9 @@ class TcpdDashboardService
 
         $userSummariesCollection = collect($userSummaries);
         if ($userSummariesCollection->isNotEmpty()) {
-            $avg_tc = $userSummariesCollection->pluck('tc_percentage')->filter(fn ($v) => $v !== null)->avg();
-            $avg_sk = $userSummariesCollection->pluck('sk_percentage')->filter(fn ($v) => $v !== null)->avg();
-            $avg_ad = $userSummariesCollection->pluck('ad_percentage')->filter(fn ($v) => $v !== null)->avg();
+            $avg_tc = $userSummariesCollection->pluck('tc_percentage')->filter(fn($v) => $v !== null)->avg();
+            $avg_sk = $userSummariesCollection->pluck('sk_percentage')->filter(fn($v) => $v !== null)->avg();
+            $avg_ad = $userSummariesCollection->pluck('ad_percentage')->filter(fn($v) => $v !== null)->avg();
 
             array_unshift($userSummaries, [
                 'id' => 'average',
@@ -1053,9 +1103,9 @@ class TcpdDashboardService
         // totalPercentage = rata-rata dari semua persentase per user per kategori, max 100%
         $totalPercentage = !empty($allPercentages) ? min(100.0, round(array_sum($allPercentages) / count($allPercentages), 2)) : 0.0;
 
-        $technicalStandards = $technical->mapWithKeys(fn ($r) => [$r['id'] => $r['standard']])->all();
-        $softSkillStandards = $softSkills->mapWithKeys(fn ($r) => [$r['id'] => $r['standard']])->all();
-        $additionalStandards = $additionals->mapWithKeys(fn ($r) => [$r['id'] => $r['standard']])->all();
+        $technicalStandards = $technical->mapWithKeys(fn($r) => [$r['id'] => $r['standard']])->all();
+        $softSkillStandards = $softSkills->mapWithKeys(fn($r) => [$r['id'] => $r['standard']])->all();
+        $additionalStandards = $additionals->mapWithKeys(fn($r) => [$r['id'] => $r['standard']])->all();
 
         $belowStandardUsers = ['technical' => [], 'soft_skill' => [], 'additional' => []];
         $userScoresPerCompetency = [];
@@ -1119,11 +1169,11 @@ class TcpdDashboardService
                 $userScores = $userScoresMapPerCompetency[$row['type']][$row['id']][$uid] ?? [];
                 $actualVal = !empty($userScores) ? round(array_sum($userScores) / count($userScores), 2) : null;
                 $employees[] = [
-                    'id'           => $uid,
-                    'name'         => optional($userLookup->get($uid))->name ?? ('User ' . $uid),
+                    'id' => $uid,
+                    'name' => optional($userLookup->get($uid))->name ?? ('User ' . $uid),
                     'job_position' => $jobPositionName,
-                    'actual'       => $actualVal,
-                    'standard'     => $row['standard'],
+                    'actual' => $actualVal,
+                    'standard' => $row['standard'],
                 ];
             }
             usort($employees, fn($a, $b) => strcmp($a['name'], $b['name']));
@@ -1131,14 +1181,14 @@ class TcpdDashboardService
             $mentors = app(\App\Services\Competency\CompetencyAssessmentService::class)->getEmployeesMeetingStandard($row['type'], (int) $row['id']);
 
             return [
-                'id'        => $row['id'],
-                'name'      => $row['name'],
-                'type'      => $row['type'],
-                'standard'  => $row['standard'],
-                'average'   => $average,
-                'qty'       => count($belowUserIds),
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'type' => $row['type'],
+                'standard' => $row['standard'],
+                'average' => $average,
+                'qty' => count($belowUserIds),
                 'employees' => $employees,
-                'mentors'   => $mentors,
+                'mentors' => $mentors,
             ];
         })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
 
@@ -1176,7 +1226,7 @@ class TcpdDashboardService
             ->where('is_active', true)
             ->distinct()
             ->pluck('position_name')
-            ->map(fn ($name) => trim((string) $name))
+            ->map(fn($name) => trim((string) $name))
             ->filter()
             ->unique()
             ->values()
@@ -1185,8 +1235,8 @@ class TcpdDashboardService
         $availableLookup = array_flip($availableJobPositions);
 
         $normalized = collect($jobNames)
-            ->map(fn ($name) => trim((string) $name))
-            ->filter(fn ($name) => $name !== '' && array_key_exists($name, $availableLookup))
+            ->map(fn($name) => trim((string) $name))
+            ->filter(fn($name) => $name !== '' && array_key_exists($name, $availableLookup))
             ->unique()
             ->values()
             ->all();
@@ -1226,9 +1276,9 @@ class TcpdDashboardService
 
         foreach ($departmentDefinitions as $departmentName => $jobNames) {
             $jobNames = collect($jobNames ?? [])
-                ->map(fn ($name) => trim((string) $name))
+                ->map(fn($name) => trim((string) $name))
                 ->filter()
-                ->filter(fn ($name) => array_key_exists($name, $aggregateSnapshots))
+                ->filter(fn($name) => array_key_exists($name, $aggregateSnapshots))
                 ->unique()
                 ->values()
                 ->all();

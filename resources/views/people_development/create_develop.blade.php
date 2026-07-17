@@ -314,11 +314,11 @@
                             </div>
                             {{-- Modul 4.4: Objective Learning (full width) --}}
                             <div class="col-12">
-                                <div class="form-floating">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-secondary"><i class="bi bi-bullseye me-1"></i> Objective Learning (Hasil yang Diharapkan)</label>
                                     <textarea class="form-control" name="objective_learning[]" id="objective_learning"
-                                        placeholder="Deskripsikan ekspektasi hasil yang diharapkan."
+                                        placeholder="Peserta mampu menerapkan............"
                                         style="min-height: 90px;"></textarea>
-                                    <label><i class="bi bi-bullseye me-1"></i> Objective Learning (Hasil yang Diharapkan)</label>
                                 </div>
                             </div>
                         </div>

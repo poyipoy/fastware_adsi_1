@@ -104,14 +104,24 @@
         <section class="section dashboard">
             <div class="card" style="width: 100%">
                 <!-- Dropdown select di luar inner-card -->
-                <div class="dropdown-select">
-                    <label for="options">Pilih Job Position:</label>
-                    <select id="options" name="options" onchange="updateChart()">
-                        <option value="">----- Pilih Position ------</option>
-                        @foreach ($jobPositions as $id => $name)
-                            <option value="{{ $id }}">{{ $name }}</option>
-                        @endforeach
-                    </select>
+                <div class="dropdown-select d-flex gap-3 align-items-center">
+                    <div>
+                        <label for="options">Pilih Job Position:</label>
+                        <select id="options" name="options" onchange="updateChart()">
+                            <option value="">----- Pilih Position ------</option>
+                            @foreach ($jobPositions as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-tahun">Tahun:</label>
+                        <select id="filter-tahun" name="tahun" onchange="updateChart()">
+                            @foreach (\App\Models\TrsPenilaianTc::getAvailableYears() as $year)
+                                <option value="{{ $year }}">{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <div id="radarChartContainer" class="row">
@@ -162,13 +172,15 @@
             function updateChart() {
                 const jobPositionSelect = document.getElementById('options');
                 const jobPositionId = jobPositionSelect.value;
+                const tahunFilter = document.getElementById('filter-tahun').value;
 
                 if (jobPositionId) {
                     $.ajax({
                         url: '{{ route('get-competency-data') }}',
                         type: 'GET',
                         data: {
-                            job_position: jobPositionId
+                            job_position: jobPositionId,
+                            tahun: tahunFilter
                         },
                         success: function(response) {
                             console.log('AJAX Response:', response);
@@ -404,13 +416,16 @@
                     return;
                 }
 
+                const tahunFilter = document.getElementById('filter-tahun').value;
+
                 $.ajax({
                     url: '{{ route('get-competency-filter') }}',
                     type: 'GET',
                     data: {
                         job_position: document.getElementById('options').value,
                         data_type: selectedDataType,
-                        user_id: userId
+                        user_id: userId,
+                        tahun: tahunFilter
                     },
                     success: function(response) {
                         const chart = charts[index];
@@ -461,8 +476,9 @@
 
             function btnDsDetail(userId) {
                 const jobPosition = document.getElementById('options').value;
+                const tahunFilter = document.getElementById('filter-tahun').value;
                 // Redirect ke controller dsDetailCompetency dengan mengirimkan id_user dan id_job_position sebagai parameter
-                window.location.href = `{{ route('dsDetailCompetency') }}?id_user=${userId}&id_job_position=${jobPosition}`;
+                window.location.href = `{{ route('dsDetailCompetency') }}?id_user=${userId}&id_job_position=${jobPosition}&tahun=${tahunFilter}`;
             }
 
             $(document).on('change', '.data-select', function() {

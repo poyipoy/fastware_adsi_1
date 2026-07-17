@@ -68,7 +68,7 @@ class PenilaianTCController extends Controller
     {
         $user = auth()->user();
         $hasAccess = $this->jobPositionAccess->canAccessJobPosition($user, $jobPosition);
-        
+
         Log::info("Access Check:", [
             'user_id' => $user ? $user->id : null,
             'user_name' => $user ? $user->name : null,
@@ -138,7 +138,8 @@ class PenilaianTCController extends Controller
         if (!$hasFullAccess) {
             $penilaianData = $penilaianData->filter(function ($item) use ($level, $approvalScope) {
                 $jobPos = $item->jobPosition;
-                if (!$jobPos) return false;
+                if (!$jobPos)
+                    return false;
 
                 if ($level === 'divhead') {
                     return in_array($jobPos->department_id, $approvalScope['div_dept_ids']);
@@ -225,12 +226,12 @@ class PenilaianTCController extends Controller
                     // Untuk posisi dengan Sub-Section Head:
                     // - Submit draft: user harus punya posisi yang di-mapping sebagai level 0 di posisi ini
                     // - Approve kasie: user harus punya posisi yang di-mapping sebagai level 1 di posisi ini
-                    $item->can_submit_draft  = $level0Approver ? in_array($level0Approver->approver_position_id, $userPosIds) : false;
+                    $item->can_submit_draft = $level0Approver ? in_array($level0Approver->approver_position_id, $userPosIds) : false;
                     $item->can_approve_kasie = $level1Approver ? in_array($level1Approver->approver_position_id, $userPosIds) : false;
                 } else {
                     // Untuk posisi tanpa Sub-Section Head:
                     // - Submit draft dilakukan oleh Section Head (level 1)
-                    $item->can_submit_draft  = $isKasieInSection;
+                    $item->can_submit_draft = $isKasieInSection;
                     $item->can_approve_kasie = $isKasieInSection && ($item->status == 1);
                 }
 
@@ -549,8 +550,8 @@ class PenilaianTCController extends Controller
         if (!$hasFullAccess) {
             $scope = $this->jobPositionAccess->getUserApprovalScope(auth()->user());
             $allowedSectionNames = \App\Models\MstSection::whereIn('id', $scope['section_ids'])->pluck('name')->toArray();
-            
-            $query->whereIn('id_user', function($q) use ($allowedSectionNames) {
+
+            $query->whereIn('id_user', function ($q) use ($allowedSectionNames) {
                 $q->select('id')->from('users')->whereIn('section', $allowedSectionNames);
             });
         }
@@ -1390,10 +1391,10 @@ class PenilaianTCController extends Controller
     {
         // Authorization: hanya user dengan hak akses penilaian (minimal Ka. Sie) yang boleh mengubah catatan
         $user = auth()->user();
-        $hasAccessKaSie   = $this->roleAccess->canAccessCompetencyLevel($user, 'kasie');
-        $hasAccessKaDept  = $this->roleAccess->canAccessCompetencyLevel($user, 'kadept');
+        $hasAccessKaSie = $this->roleAccess->canAccessCompetencyLevel($user, 'kasie');
+        $hasAccessKaDept = $this->roleAccess->canAccessCompetencyLevel($user, 'kadept');
         $hasAccessDivHead = $this->roleAccess->canAccessCompetencyLevel($user, 'divhead');
-        $hasAccessHR      = $this->roleAccess->canAccessCompetencyLevel($user, 'hr');
+        $hasAccessHR = $this->roleAccess->canAccessCompetencyLevel($user, 'hr');
 
         if (!$hasAccessKaSie && !$hasAccessKaDept && !$hasAccessDivHead && !$hasAccessHR) {
             return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengubah catatan penilaian.');
@@ -1452,7 +1453,7 @@ class PenilaianTCController extends Controller
                 // Shared position (null section): check if Section Head has access to the sections of the employees in this assessment
                 $hasEmployeesInSection = TrsPenilaianTc::where('id_job_position', $id_job_position)
                     ->where('status', 1)
-                    ->whereHas('user', function($q) use ($scope) {
+                    ->whereHas('user', function ($q) use ($scope) {
                         $q->whereIn('section', \App\Models\MstSection::whereIn('id', $scope['section_ids'])->pluck('name'));
                     })
                     ->exists();
@@ -1466,7 +1467,7 @@ class PenilaianTCController extends Controller
                 ->where('is_active', true)
                 ->pluck('mst_job_position_id')
                 ->toArray();
-            
+
             $approver1Ids = \App\Models\MstPositionApproval::where('position_id', $id_job_position)
                 ->where('approval_level', 1)
                 ->pluck('approver_position_id')
@@ -1480,7 +1481,7 @@ class PenilaianTCController extends Controller
                         break;
                     }
                 }
-                
+
                 // Fallback for shared positions: if no match, allow if user is a KaSie and has the section in scope
                 if (!$isMatched && !$jobPos->section_id) {
                     $isMatched = $this->roleAccess->isKaSie(auth()->user());
@@ -1504,8 +1505,8 @@ class PenilaianTCController extends Controller
         if (!$hasFullAccess) {
             $scope = $this->jobPositionAccess->getUserApprovalScope(auth()->user());
             $allowedSectionNames = \App\Models\MstSection::whereIn('id', $scope['section_ids'])->pluck('name')->toArray();
-            
-            $query->whereHas('user', function($q) use ($allowedSectionNames) {
+
+            $query->whereHas('user', function ($q) use ($allowedSectionNames) {
                 $q->whereIn('section', $allowedSectionNames);
             });
         }
@@ -1611,6 +1612,7 @@ class PenilaianTCController extends Controller
     public function getCompetencyData(Request $request)
     {
         $selectedJobPosition = $request->input('job_position');
+        $tahun = $request->input('tahun');
 
         $competencyData = DB::table('trs_penilaian_tcs as tpt')
             ->leftJoin('users as u', 'tpt.id_user', '=', 'u.id')
@@ -1637,6 +1639,9 @@ class PenilaianTCController extends Controller
                 DB::raw('SUM(ad.nilai) AS standar_nilai_ad')
             )
             ->where('tpt.id_job_position', $selectedJobPosition)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->groupBy('tpt.id_user', 'tpt.id_job_position', 'mjp.position_name', 'u.name')
             ->get();
 
@@ -1647,6 +1652,7 @@ class PenilaianTCController extends Controller
     {
         $jobPosition = $request->input('job_position');
         $dataType = $request->input('data_type');  // Ambil data_type dari request
+        $tahun = $request->input('tahun');
 
         if ($dataType === 'total_nilai_tc') {
             // Query untuk data yang berhubungan dengan TC
@@ -1663,6 +1669,9 @@ class PenilaianTCController extends Controller
                     DB::raw('SUM(tpt.nilai_tc) as total_nilai_tc')
                 )
                 ->where('tpt.id_job_position', $jobPosition)
+                ->when($tahun, function ($query) use ($tahun) {
+                    return $query->where('tpt.tahun_penilaian', $tahun);
+                })
                 ->whereNotNull('tpt.id_tc')
                 ->groupBy(
                     'tpt.id_user',
@@ -1687,6 +1696,9 @@ class PenilaianTCController extends Controller
                     DB::raw('SUM(tpt.nilai_sk) as total_nilai_sk')
                 )
                 ->where('tpt.id_job_position', $jobPosition)
+                ->when($tahun, function ($query) use ($tahun) {
+                    return $query->where('tpt.tahun_penilaian', $tahun);
+                })
                 ->whereNotNull('tpt.id_sk')
                 ->groupBy(
                     'tpt.id_user',
@@ -1711,6 +1723,9 @@ class PenilaianTCController extends Controller
                     DB::raw('SUM(tpt.nilai_ad) as total_nilai_ad')
                 )
                 ->where('tpt.id_job_position', $jobPosition)
+                ->when($tahun, function ($query) use ($tahun) {
+                    return $query->where('tpt.tahun_penilaian', $tahun);
+                })
                 ->whereNotNull('tpt.id_ad')
                 ->groupBy(
                     'tpt.id_user',
@@ -1732,6 +1747,7 @@ class PenilaianTCController extends Controller
     public function getDetailCompetency(Request $request)
     {
         $id_user = $request->query('id_user');
+        $tahun = $request->query('tahun');
 
         // Query untuk data yang berhubungan dengan TC
         $tcData = DB::table('trs_penilaian_tcs as tpt')
@@ -1749,6 +1765,9 @@ class PenilaianTCController extends Controller
                 DB::raw('SUM(tpt.nilai_tc) as total_nilai_tc')
             )
             ->where('tpt.id_user', $id_user)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_tc')
             ->groupBy(
                 'tpt.id_user',
@@ -1776,6 +1795,9 @@ class PenilaianTCController extends Controller
                 DB::raw('SUM(tpt.nilai_sk) as total_nilai_sk')
             )
             ->where('tpt.id_user', $id_user)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_sk')
             ->groupBy(
                 'tpt.id_user',
@@ -1803,6 +1825,9 @@ class PenilaianTCController extends Controller
                 DB::raw('SUM(tpt.nilai_ad) as total_nilai_ad')
             )
             ->where('tpt.id_user', $id_user)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tpt.tahun_penilaian', $tahun);
+            })
             ->whereNotNull('tpt.id_ad')
             ->groupBy(
                 'tpt.id_user',
@@ -1823,12 +1848,15 @@ class PenilaianTCController extends Controller
         // Menggunakan model Eloquent untuk mengambil data penilaian
         $penilaians = TrsPenilaianTc::with(['tc', 'sk', 'ad', 'poinKategori', 'user'])
             ->where('id_user', $id_user)
+            ->when($tahun, function ($query) use ($tahun) {
+                return $query->where('tahun_penilaian', $tahun);
+            })
             ->get(); // Mengambil semua record yang cocok
 
         // --- Modul 1.2: Strength Data ---
         $strengthData = [];
         if ($id_user) {
-            $strengthData = $this->competencyService->getStrengthCompetencies((int) $id_user);
+            $strengthData = $this->competencyService->getStrengthCompetencies((int) $id_user, $tahun);
         }
 
         // --- Modul 1.1: Working Experience Data ---
@@ -1838,14 +1866,14 @@ class PenilaianTCController extends Controller
                 ->chronological()
                 ->get()
                 ->map(fn($we) => [
-                    'id'           => $we->id,
-                    'year_start'   => $we->year_start,
-                    'year_end'     => $we->year_end,
+                    'id' => $we->id,
+                    'year_start' => $we->year_start,
+                    'year_end' => $we->year_end,
                     'year_end_label' => $we->year_end_label,
                     'job_position' => $we->job_position,
-                    'section'      => $we->section,
-                    'departemen'   => $we->departemen,
-                    'keterangan'   => $we->keterangan,
+                    'section' => $we->section,
+                    'departemen' => $we->departemen,
+                    'keterangan' => $we->keterangan,
                 ])
                 ->toArray();
         }
@@ -1867,14 +1895,14 @@ class PenilaianTCController extends Controller
 
         // Gabungkan hasil query menjadi satu array
         $data = [
-            'tc_data'                   => $tcData,
-            'sk_data'                   => $skData,
-            'ad_data'                   => $adData,
-            'penilaians'                => $penilaians,
-            'dataTcPeopleDevelopment'   => $dataTcPeopleDevelopment,
-            'strength_data'             => $strengthData,
-            'working_experience_data'   => $workingExperienceData,
-            'mentor_badges'             => $mentorBadges,
+            'tc_data' => $tcData,
+            'sk_data' => $skData,
+            'ad_data' => $adData,
+            'penilaians' => $penilaians,
+            'dataTcPeopleDevelopment' => $dataTcPeopleDevelopment,
+            'strength_data' => $strengthData,
+            'working_experience_data' => $workingExperienceData,
+            'mentor_badges' => $mentorBadges,
         ];
 
         // Mengembalikan data sebagai JSON
@@ -1901,7 +1929,7 @@ class PenilaianTCController extends Controller
 
         if (!$hasFullAccess) {
             $scope = $this->jobPositionAccess->getUserApprovalScope(auth()->user());
-            
+
             if ($jobPos->section_id) {
                 if (!in_array($jobPos->section_id, $scope['section_ids'])) {
                     return $this->forbiddenJson('Anda tidak memiliki akses ke section dari job position ini.');
@@ -1910,7 +1938,7 @@ class PenilaianTCController extends Controller
                 // Shared position (null section): check if Sub Section Head has access to the sections of the employees in this assessment
                 $hasEmployeesInSection = TrsPenilaianTc::where('id_job_position', $id_job_position)
                     ->where('status', 0)
-                    ->whereHas('user', function($q) use ($scope) {
+                    ->whereHas('user', function ($q) use ($scope) {
                         $q->whereIn('section', \App\Models\MstSection::whereIn('id', $scope['section_ids'])->pluck('name'));
                     })
                     ->exists();
@@ -1948,8 +1976,8 @@ class PenilaianTCController extends Controller
         if (!$hasFullAccess) {
             $scope = $this->jobPositionAccess->getUserApprovalScope(auth()->user());
             $allowedSectionNames = \App\Models\MstSection::whereIn('id', $scope['section_ids'])->pluck('name')->toArray();
-            
-            $query->whereHas('user', function($q) use ($allowedSectionNames) {
+
+            $query->whereHas('user', function ($q) use ($allowedSectionNames) {
                 $q->whereIn('section', $allowedSectionNames);
             });
         }
@@ -1992,13 +2020,15 @@ class PenilaianTCController extends Controller
 
         foreach ($records as $record) {
             $recordId = $record['id'] ?? null;
-            if (!$recordId) continue;
+            if (!$recordId)
+                continue;
 
             $penilaian = TrsPenilaianTc::where('id', $recordId)
                 ->where('id_job_position', $decoded_job_position)
                 ->first();
 
-            if (!$penilaian) continue;
+            if (!$penilaian)
+                continue;
 
             $hasChanged = false;
             $userName = $record['name'] ?? 'Unknown';
@@ -2115,8 +2145,14 @@ class PenilaianTCController extends Controller
         $isLocked = $penilaian ? $penilaian->is_locked : true;
 
         return view('tc_penilaian.view_penilaian', compact(
-            'penilaian', 'dataTc1', 'dataTc2', 'dataTc3',
-            'detailPenilaian', 'year', 'availableYears', 'isLocked'
+            'penilaian',
+            'dataTc1',
+            'dataTc2',
+            'dataTc3',
+            'detailPenilaian',
+            'year',
+            'availableYears',
+            'isLocked'
         ));
     }
 
@@ -2151,7 +2187,7 @@ class PenilaianTCController extends Controller
 
         // Filter by section jika dipilih
         if ($filterSection) {
-            $jobPositionsInSection = MstJobPosition::whereHas('section', function($q) use ($filterSection) {
+            $jobPositionsInSection = MstJobPosition::whereHas('section', function ($q) use ($filterSection) {
                 $q->where('name', $filterSection);
             })->pluck('id')->unique()->toArray();
             $monitoringData = $monitoringData->filter(
@@ -2171,8 +2207,13 @@ class PenilaianTCController extends Controller
         ];
 
         return view('tc_penilaian.monitoring', compact(
-            'monitoringData', 'sections', 'selectedYear', 'availableYears',
-            'filterSection', 'filterStatus', 'summary'
+            'monitoringData',
+            'sections',
+            'selectedYear',
+            'availableYears',
+            'filterSection',
+            'filterStatus',
+            'summary'
         ));
     }
 

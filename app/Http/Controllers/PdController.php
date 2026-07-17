@@ -208,7 +208,10 @@ class PdController extends Controller
 
         // Hitung metrik/KPI untuk ditampilkan di atas tabel
         $kpiTotalProgram = $data2->pluck('program_training')->filter()->unique()->count();
-        $kpiTotalBiaya = $data2->sum('biaya');
+        $kpiTotalBiaya = $data2->sum(function ($item) {
+            $val = preg_replace('/[^0-9.-]/', '', $item->biaya);
+            return is_numeric($val) ? (float) $val : 0;
+        });
         $kpiTotalKaryawan = $data2->pluck('id_user')->filter()->unique()->count();
         $kpiStatusDraft = $data->where('status_1', 1)->count();
         $kpiStatusProses = $data->where('status_1', 2)->count();
@@ -279,8 +282,14 @@ class PdController extends Controller
             ->get();
 
         // Hitung metrik HRGA
-        $kpiTotalBiayaUsulan = $allHrgaData->sum('biaya');
-        $kpiTotalBiayaPlan = $allHrgaData->sum('biaya_plan');
+        $kpiTotalBiayaUsulan = $allHrgaData->sum(function ($item) {
+            $val = preg_replace('/[^0-9.-]/', '', $item->biaya);
+            return is_numeric($val) ? (float) $val : 0;
+        });
+        $kpiTotalBiayaPlan = $allHrgaData->sum(function ($item) {
+            $val = preg_replace('/[^0-9.-]/', '', $item->biaya_plan);
+            return is_numeric($val) ? (float) $val : 0;
+        });
         $kpiTotalKaryawan = $allHrgaData->pluck('id_user')->filter()->unique()->count();
         $kpiTotalDepartemen = $allHrgaData->pluck('section_id')->filter()->unique()->count();
 
@@ -409,8 +418,67 @@ class PdController extends Controller
         // Gabungkan kedua data
         $data = $dataTanpaTahunUsulan->merge($dataDenganTahunUsulan);
 
+        // Menghitung jumlah total data yang sudah difilter
+        $totalRecords = $data->count();
+
+        // Menghitung jumlah data berdasarkan status
+        $countStatusBlue = $data->where('status_2', \App\Enums\TrainingStatus::MENCARI_VENDOR ?? 'Mencari Vendor')->count();
+        $countStatusOrange = $data->where('status_2', \App\Enums\TrainingStatus::PROSES_PENDAFTARAN ?? 'Proses Pendaftaran')->count();
+        $countStatusYellow = $data->where('status_2', \App\Enums\TrainingStatus::ON_PROGRESS ?? 'On Progress')->count();
+        $countStatusGreen = $data->where('status_2', \App\Enums\TrainingStatus::DONE ?? 'Done')->count();
+        $countStatusGray = $data->where('status_2', \App\Enums\TrainingStatus::PENDING ?? 'Pending')->count();
+        $countStatusRed = $data->where('status_2', \App\Enums\TrainingStatus::DITOLAK ?? 'Ditolak')->count();
+
+        // Menghitung persentase masing-masing status
+        $percentageStatusBlue = $totalRecords > 0 ? ($countStatusBlue / $totalRecords) * 100 : 0;
+        $percentageStatusOrange = $totalRecords > 0 ? ($countStatusOrange / $totalRecords) * 100 : 0;
+        $percentageStatusYellow = $totalRecords > 0 ? ($countStatusYellow / $totalRecords) * 100 : 0;
+        $percentageStatusGreen = $totalRecords > 0 ? ($countStatusGreen / $totalRecords) * 100 : 0;
+        $percentageStatusGray = $totalRecords > 0 ? ($countStatusGray / $totalRecords) * 100 : 0;
+        $percentageStatusRed = $totalRecords > 0 ? ($countStatusRed / $totalRecords) * 100 : 0;
+
         // Kirim data ke view
-        return view('people_development.view_develop_hrga', compact('data'));
+        return view('people_development.view_develop_hrga', compact(
+            'data',
+            'totalRecords',
+            'countStatusBlue',
+            'countStatusOrange',
+            'countStatusYellow',
+            'countStatusGreen',
+            'countStatusGray',
+            'countStatusRed',
+            'percentageStatusBlue',
+            'percentageStatusOrange',
+            'percentageStatusYellow',
+            'percentageStatusGreen',
+            'percentageStatusGray',
+            'percentageStatusRed'
+        ));
+    }
+
+    public function exportPD2($tahun_aktual)
+    {
+        $this->abortUnlessCanApproveTraining();
+
+        // Ambil data yang tidak memiliki tahun_usulan
+        $dataTanpaTahunUsulan = TcPeopleDevelopment::with('role', 'user', 'jobPosition', 'section')
+            ->where('tahun_aktual', $tahun_aktual)
+            ->whereNull('tahun_usulan')
+            ->get();
+
+        // Ambil data yang memiliki tahun_usulan
+        $dataDenganTahunUsulan = TcPeopleDevelopment::with('role', 'user', 'jobPosition', 'section')
+            ->where('tahun_aktual', $tahun_aktual)
+            ->whereNotNull('tahun_usulan')
+            ->get();
+
+        // Gabungkan kedua data
+        $data = $dataTanpaTahunUsulan->merge($dataDenganTahunUsulan);
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\PeopleDevelopmentHrgaExport($data), 
+            'Report_People_Development.xlsx'
+        );
     }
 
     public function createPD()
@@ -515,7 +583,7 @@ class PdController extends Controller
         $penilaians = $this->getApprovedCompetencyPenilaians();
 
         // Mengambil semua data TcPeopleDevelopment tanpa filter modified_at
-        $data = TcPeopleDevelopment::with('user')->where('tahun_aktual', $tahun_aktual)->get();
+        $data = TcPeopleDevelopment::with('user', 'section', 'jobPosition')->where('tahun_aktual', $tahun_aktual)->get();
 
         // Menghitung jumlah total data
         $totalRecords = $data->count();
@@ -538,6 +606,14 @@ class PdController extends Controller
 
         // Mengirimkan data ke view, menyertakan sections, job positions, dan penilaians
         $activeYear = MstPdActiveYear::getActiveYear();
+
+        $masterCompetencies = [
+            'technical'  => \App\Models\MstTc::whereNotNull('keterangan_tc')->distinct()->pluck('keterangan_tc'),
+            'softskill'  => \App\Models\MstSoftSkill::whereNotNull('keterangan_sk')->distinct()->pluck('keterangan_sk'),
+            'additional' => \App\Models\MstAdditionals::whereNotNull('keterangan_ad')->distinct()->pluck('keterangan_ad'),
+            'Others'     => ['Others']
+        ];
+
         return view('people_development.edit_develop_hrga', compact(
             'data',
             'sections',
@@ -545,6 +621,7 @@ class PdController extends Controller
             'penilaians',
             'tahun_aktual',
             'activeYear',
+            'masterCompetencies',
             'totalRecords',
             'countStatusBlue',
             'countStatusOrange',
@@ -655,6 +732,7 @@ class PdController extends Controller
                     'biaya'               => $data['biaya'][$index] ?? null,
                     'lembaga'             => $data['lembaga'][$index] ?? null,
                     'keterangan_tujuan'   => $data['keterangan_tujuan'][$index] ?? null,
+                    'objective_learning'  => $data['objective_learning'][$index] ?? null,
                     'modified_at'         => $userName,
                     'tahun_aktual'        => $nextYear,
                     'status_1'            => 1,
@@ -674,6 +752,7 @@ class PdController extends Controller
                     'biaya' => $data['biaya'][$index] ?? null,
                     'lembaga' => $data['lembaga'][$index] ?? null,
                     'keterangan_tujuan' => $data['keterangan_tujuan'][$index] ?? null,
+                    'objective_learning' => $data['objective_learning'][$index] ?? null,
                     'modified_at' => $userName,
                     'tahun_aktual' => $nextYear,
                     'status_1' => 1,
@@ -690,6 +769,7 @@ class PdController extends Controller
         try {
             // Decode JSON string menjadi array
             $data = json_decode($request->input('data'), true);
+            $action = $request->input('action'); // Ambil action dari request
 
             if (!is_array($data)) {
                 throw new \Exception('Invalid data format');
@@ -704,6 +784,11 @@ class PdController extends Controller
                 $isNew = str_starts_with($item['id'], 'new_');
 
                 if ($isNew) {
+                    // Check if it's completely empty (user didn't fill anything)
+                    if (empty($item['id_user']) && empty($item['program_training']) && empty($item['program_training_plan'])) {
+                        continue;
+                    }
+
                     // Create new additional row
                     $tcPeopleDevelopment = new TcPeopleDevelopment();
                     $tcPeopleDevelopment->status_1 = 3; // Approved (finalized by HRGA directly)
@@ -733,8 +818,11 @@ class PdController extends Controller
                     $tcPeopleDevelopment->status_2 = !empty($item['status_2']) ? $item['status_2'] : null;
 
                     // Modul 4.1 — Tindak Lanjut Pasca Training
-                    $tcPeopleDevelopment->sharing_knowledge = !empty($item['sharing_knowledge']) ? $item['sharing_knowledge'] : null;
+                    $tcPeopleDevelopment->objective_learning_aktual = !empty($item['objective_learning_aktual']) ? $item['objective_learning_aktual'] : null;
                     $tcPeopleDevelopment->objective_learning = !empty($item['objective_learning']) ? $item['objective_learning'] : null;
+                    
+                    // Kategori Usulan
+                    $tcPeopleDevelopment->is_sharing_knowledge = filter_var($item['is_sharing_knowledge'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
                     // Set modified_at based on job position or user
                     $userName = auth()->user()->name;
@@ -764,40 +852,30 @@ class PdController extends Controller
                     $existingItem = TcPeopleDevelopment::find($item['id']);
 
                     if ($existingItem) {
-                        // Proses update dengan handling nilai null/empty
+                        // Proses update — semua field nullable boleh di-clear ke null.
+                        // Khusus biaya & biaya_plan (kolom numerik) default ke 0, bukan null.
                         $updateData = [
-                            'due_date' => !empty($item['due_date']) ? $item['due_date'] : null,
-                            'biaya' => !empty($item['biaya']) ? $item['biaya'] : 0,
-                            'lembaga' => !empty($item['lembaga']) ? $item['lembaga'] : null,
-                            'keterangan_tujuan' => !empty($item['keterangan_tujuan']) ? $item['keterangan_tujuan'] : null,
-                            'program_training_plan' => !empty($item['program_training_plan']) ? $item['program_training_plan'] : null,
-                            'due_date_plan' => !empty($item['due_date_plan']) ? $item['due_date_plan'] : null,
-                            'biaya_plan' => !empty($item['biaya_plan']) ? $item['biaya_plan'] : 0,
-                            'lembaga_plan' => !empty($item['lembaga_plan']) ? $item['lembaga_plan'] : null,
-                            'keterangan_plan' => !empty($item['keterangan_plan']) ? $item['keterangan_plan'] : null,
-                            'status_2' => !empty($item['status_2']) ? $item['status_2'] : null,
+                            'due_date'             => !empty($item['due_date']) ? $item['due_date'] : null,
+                            'biaya'                => !empty($item['biaya']) ? $item['biaya'] : 0,
+                            'lembaga'              => isset($item['lembaga']) && $item['lembaga'] !== '' ? $item['lembaga'] : null,
+                            'keterangan_tujuan'    => isset($item['keterangan_tujuan']) && $item['keterangan_tujuan'] !== '' ? $item['keterangan_tujuan'] : null,
+                            'program_training_plan'=> isset($item['program_training_plan']) && $item['program_training_plan'] !== '' ? $item['program_training_plan'] : null,
+                            'due_date_plan'        => !empty($item['due_date_plan']) ? $item['due_date_plan'] : null,
+                            'biaya_plan'           => !empty($item['biaya_plan']) ? $item['biaya_plan'] : 0,
+                            'lembaga_plan'         => isset($item['lembaga_plan']) && $item['lembaga_plan'] !== '' ? $item['lembaga_plan'] : null,
+                            'keterangan_plan'      => isset($item['keterangan_plan']) && $item['keterangan_plan'] !== '' ? $item['keterangan_plan'] : null,
+                            'status_2'             => !empty($item['status_2']) ? $item['status_2'] : null,
                             // Modul 4.1 — Tindak Lanjut Pasca Training
-                            'sharing_knowledge' => isset($item['sharing_knowledge']) ? ($item['sharing_knowledge'] ?: null) : null,
-                            'objective_learning' => isset($item['objective_learning']) ? ($item['objective_learning'] ?: null) : null,
+                            'objective_learning_aktual' => isset($item['objective_learning_aktual']) && $item['objective_learning_aktual'] !== '' ? $item['objective_learning_aktual'] : null,
+                            'objective_learning'   => isset($item['objective_learning']) && $item['objective_learning'] !== '' ? $item['objective_learning'] : null,
                         ];
 
-                        // Filter out null values if you don't want to update those fields
-                        $updateData = array_filter($updateData, function ($value) {
-                            return $value !== null;
-                        });
-
-                        // Modul 4.1: Ensure we can clear sharing_knowledge and objective_learning
-                        if (array_key_exists('sharing_knowledge', $item) && empty($item['sharing_knowledge'])) {
-                            $updateData['sharing_knowledge'] = null;
-                        }
-                        if (array_key_exists('objective_learning', $item) && empty($item['objective_learning'])) {
-                            $updateData['objective_learning'] = null;
+                        if ($action === 'approve') {
+                            $updateData['status_1'] = 3;
                         }
 
-                        // Update only if we have valid data
-                        if (!empty($updateData)) {
-                            $existingItem->update($updateData);
-                        }
+                        // Langsung update — tidak pakai array_filter agar nilai null bisa meng-clear data lama.
+                        $existingItem->update($updateData);
 
                         // Handle file upload
                         if ($request->hasFile('file.' . $item['id'])) {
@@ -854,6 +932,7 @@ class PdController extends Controller
                 $tcPeopleDevelopment->biaya = $data['new_biaya'][$index] ?? null;
                 $tcPeopleDevelopment->lembaga = $data['new_lembaga'][$index] ?? null;
                 $tcPeopleDevelopment->keterangan_tujuan = $data['new_keterangan_tujuan'][$index] ?? null;
+                $tcPeopleDevelopment->objective_learning = $data['new_objective_learning'][$index] ?? null;
 
                 // Mengambil department_head_name secara dinamis dari MstJobPosition
                 $jobPos = \App\Models\MstJobPosition::find($data['new_id_job_position'][$index]);

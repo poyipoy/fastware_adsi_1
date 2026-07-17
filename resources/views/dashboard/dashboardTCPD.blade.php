@@ -21,8 +21,7 @@
             align-items: center;
             justify-content: center;
             color: #8c9aa5;
-            background: repeating-linear-gradient(
-                    135deg,
+            background: repeating-linear-gradient(135deg,
                     rgba(108, 117, 125, 0.08),
                     rgba(108, 117, 125, 0.08) 12px,
                     rgba(108, 117, 125, 0.12) 12px,
@@ -84,6 +83,7 @@
             .dashboard-tcpd .dashboard-card {
                 min-height: 220px;
             }
+
             .dashboard-tcpd .department-grid {
                 grid-template-columns: 1fr;
             }
@@ -94,8 +94,8 @@
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.05);
             display: flex;
             align-items: center;
             gap: 1rem;
@@ -104,7 +104,7 @@
 
         .scorecard:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
         }
 
         .scorecard-icon {
@@ -148,9 +148,9 @@
         .table-custom {
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
         }
-        
+
         .table-custom thead th {
             background-color: #f8f9fa;
             color: #2c3e50;
@@ -176,16 +176,16 @@
         .table-custom tbody tr:hover {
             background-color: #f8f9fa;
             transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
         }
-        
+
         /* Global Filter Bar */
         .global-filter-bar {
             background: #ffffff;
             border-radius: 12px;
             padding: 1rem 1.5rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.05);
             margin-bottom: 1.5rem;
             display: flex;
             align-items: center;
@@ -218,27 +218,27 @@
                                     'name' => (string) ($job['name'] ?? ''),
                                 ];
                             })
-                            ->filter(fn ($job) => $job['id'] > 0 && $job['name'] !== '')
+                            ->filter(fn($job) => $job['id'] > 0 && $job['name'] !== '')
                             ->values();
 
                         return [
                             'department' => $group['department'] ?? null,
                             'job_positions' => $jobPositionsForGroup,
                         ];
-                    })->filter(fn ($group) => !empty($group['department']) && $group['job_positions']->isNotEmpty())->values();
+                    })->filter(fn($group) => !empty($group['department']) && $group['job_positions']->isNotEmpty())->values();
 
                     $firstDepartmentOption = $jobDepartmentOptions->first();
                     if (!is_array($firstDepartmentOption)) {
                         $firstDepartmentOption = null;
                     }
                     $selectedDepartment = $selectedDepartment ?? ($firstDepartmentOption['department'] ?? null);
-                    if ($selectedDepartment && !$jobDepartmentOptions->contains(fn ($group) => $group['department'] === $selectedDepartment)) {
+                    if ($selectedDepartment && !$jobDepartmentOptions->contains(fn($group) => $group['department'] === $selectedDepartment)) {
                         $selectedDepartment = $firstDepartmentOption['department'] ?? null;
                     }
                     $jobDepartmentData = $jobDepartmentOptions->map(function ($group) {
                         return [
                             'department' => $group['department'],
-                            'job_positions' => $group['job_positions']->map(fn ($job) => [
+                            'job_positions' => $group['job_positions']->map(fn($job) => [
                                 'id' => $job['id'],
                                 'name' => $job['name'],
                             ])->all(),
@@ -251,7 +251,7 @@
                     $userCountByJobPosition = $userCountByJobPosition ?? 0;
                     $totalPercentage = isset($totalPercentage) && is_numeric($totalPercentage) ? (float) $totalPercentage : null;
                     $userSummaries = collect($userSummaries ?? [])->values()->all();
-                    $hasChartData = ($totalPercentage !== null) || collect($userSummaries)->some(fn ($u) => ($u['tc_percentage'] ?? null) !== null || ($u['sk_percentage'] ?? null) !== null || ($u['ad_percentage'] ?? null) !== null);
+                    $hasChartData = ($totalPercentage !== null) || collect($userSummaries)->some(fn($u) => ($u['tc_percentage'] ?? null) !== null || ($u['sk_percentage'] ?? null) !== null || ($u['ad_percentage'] ?? null) !== null);
                     $evaluatedUsersCount = count($userSummaries);
                     $chartEmptyMessage = $selectedJobPositionName
                         ? 'Data persentase belum tersedia untuk job position ini.'
@@ -264,11 +264,11 @@
                     $companyAverage = isset($companyOverview['average']) ? (float) $companyOverview['average'] : 0.0;
                     $companyHasData = (bool) ($companyOverview['hasData'] ?? false);
                     $companyRowsCount = (int) ($companyOverview['departmentCount'] ?? 0);
-                    $companyYears = collect($companyOverview['years'] ?? [])->map(fn ($year) => (int) $year)->sort()->values();
+                    $companyYears = collect($companyOverview['years'] ?? [])->map(fn($year) => (int) $year)->sort()->values();
                     $companyMode = $companyOverview['mode'] ?? ($companyYears->isNotEmpty() ? 'yearly' : 'aggregate');
                     $companyEmptyMessage = $companyHasData ? '' : 'Data persentase departemen belum tersedia.';
 
-                    $yearOptions = collect($yearOptions ?? [])->map(fn ($year) => (int) $year)->sort()->values();
+                    $yearOptions = collect($yearOptions ?? [])->map(fn($year) => (int) $year)->sort()->values();
                     $companyYearFrom = $companyYearFrom ?? null;
                     $companyYearTo = $companyYearTo ?? null;
                     $jobDateFrom = $jobDateFrom ?? null;
@@ -289,36 +289,45 @@
                             <h6 class="mb-0 fw-bold">Filter Dashboard</h6>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <button id="btn-export-all" type="button" class="btn btn-sm btn-success rounded-pill px-3" title="Export semua data ke Excel (4 Sheet: Departemen, Area Dev, Top Jobs, Crit Focus)">
+                            <button id="btn-export-all" type="button" class="btn btn-sm btn-success rounded-pill px-3"
+                                title="Export semua data ke Excel (4 Sheet: Departemen, Area Dev, Top Jobs, Crit Focus)">
                                 <i class="bi bi-file-earmark-excel me-1"></i> Export Semua (4 Sheet)
                             </button>
-                            <button id="btn-refresh-cache" type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" title="Hapus cache dan muat ulang data terbaru">
+                            <button id="btn-refresh-cache" type="button"
+                                class="btn btn-sm btn-outline-warning rounded-pill px-3"
+                                title="Hapus cache dan muat ulang data terbaru">
                                 <i class="bi bi-arrow-repeat me-1"></i> Refresh Data
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="row g-3">
                         <!-- Company Filter Section -->
                         <div class="col-lg-5">
                             <div class="p-3 bg-light rounded-3 h-100">
                                 <label class="form-label small fw-bold text-muted mb-2">Periode TCPD (Company Level)</label>
                                 <form id="company-filter-form" class="d-flex align-items-center gap-2 flex-wrap">
-                                    <select id="company-year-from" name="company_year_from" class="form-select form-select-sm border-primary shadow-sm" style="width: auto;">
+                                    <select id="company-year-from" name="company_year_from"
+                                        class="form-select form-select-sm border-primary shadow-sm" style="width: auto;">
                                         @foreach ($yearOptions as $year)
                                             <option value="{{ $year }}" {{ (string) $year === (string) $companyYearFrom ? 'selected' : '' }}>{{ $year }}</option>
                                         @endforeach
                                     </select>
                                     <span class="small text-muted fw-semibold">-</span>
-                                    <select id="company-year-to" name="company_year_to" class="form-select form-select-sm border-primary shadow-sm" style="width: auto;">
+                                    <select id="company-year-to" name="company_year_to"
+                                        class="form-select form-select-sm border-primary shadow-sm" style="width: auto;">
                                         @foreach ($yearOptions as $year)
                                             <option value="{{ $year }}" {{ (string) $year === (string) $companyYearTo ? 'selected' : '' }}>{{ $year }}</option>
                                         @endforeach
                                     </select>
                                     <div class="ms-auto d-flex gap-2">
-                                        <button type="button" id="company-filter-apply" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">Terapkan</button>
-                                        <button type="button" id="company-filter-reset" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Reset</button>
-                                        <button type="button" id="btn-export-company" class="btn btn-sm btn-outline-success rounded-pill px-3" title="Export data Company & Department ke Excel">
+                                        <button type="button" id="company-filter-apply"
+                                            class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">Terapkan</button>
+                                        <button type="button" id="company-filter-reset"
+                                            class="btn btn-sm btn-outline-secondary rounded-pill px-3">Reset</button>
+                                        <button type="button" id="btn-export-company"
+                                            class="btn btn-sm btn-outline-success rounded-pill px-3"
+                                            title="Export data Company & Department ke Excel">
                                             <i class="bi bi-file-earmark-excel me-1"></i> Export
                                         </button>
                                     </div>
@@ -330,17 +339,20 @@
                         <!-- Job Position Filter Section -->
                         <div class="col-lg-7">
                             <div class="p-3 bg-light rounded-3 h-100">
-                                <label class="form-label small fw-bold text-muted mb-2">Area Development (Job Position Level)</label>
+                                <label class="form-label small fw-bold text-muted mb-2">Area Development (Job Position
+                                    Level)</label>
                                 @if ($jobDepartmentOptions->isNotEmpty())
                                     <form id="job-filter-form" class="d-flex align-items-center gap-2 flex-wrap">
-                                        <select id="job-department" name="department" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                                        <select id="job-department" name="department" class="form-select form-select-sm"
+                                            style="width: auto; min-width: 120px;">
                                             @foreach ($jobDepartmentOptions as $departmentOption)
                                                 <option value="{{ $departmentOption['department'] }}" {{ $departmentOption['department'] === $selectedDepartment ? 'selected' : '' }}>
                                                     {{ $departmentOption['department'] }}
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <select id="job_position_id" name="job_position_id" class="form-select form-select-sm" style="width: auto; min-width: 150px;">
+                                        <select id="job_position_id" name="job_position_id" class="form-select form-select-sm"
+                                            style="width: auto; min-width: 150px;">
                                             @forelse ($jobPositions as $position)
                                                 <option value="{{ $position->id }}" {{ (int) $position->id === (int) $selectedJobPositionId ? 'selected' : '' }}>
                                                     {{ $position->job_position }}
@@ -349,12 +361,16 @@
                                                 <option value="" disabled selected>Job position kosong</option>
                                             @endforelse
                                         </select>
-                                        <input type="date" id="job-date-from" class="form-control form-control-sm" value="{{ $jobDateFrom }}" style="width: auto;">
+                                        <input type="date" id="job-date-from" class="form-control form-control-sm"
+                                            value="{{ $jobDateFrom }}" style="width: auto;">
                                         <span class="small text-muted fw-semibold">-</span>
-                                        <input type="date" id="job-date-to" class="form-control form-control-sm" value="{{ $jobDateTo }}" style="width: auto;">
+                                        <input type="date" id="job-date-to" class="form-control form-control-sm"
+                                            value="{{ $jobDateTo }}" style="width: auto;">
                                         <div class="ms-auto d-flex gap-2">
-                                            <button type="button" id="job-filter-apply" class="btn btn-sm btn-outline-primary rounded-pill px-3">Terapkan</button>
-                                            <button type="button" id="job-filter-reset" class="btn btn-sm btn-link text-decoration-none">Reset</button>
+                                            <button type="button" id="job-filter-apply"
+                                                class="btn btn-sm btn-outline-primary rounded-pill px-3">Terapkan</button>
+                                            <button type="button" id="job-filter-reset"
+                                                class="btn btn-sm btn-link text-decoration-none">Reset</button>
                                         </div>
                                     </form>
                                 @else
@@ -420,15 +436,21 @@
                 <!-- Smart Insights Row -->
                 <div class="row g-3 mb-4" id="smart-insights-row" style="display: none;">
                     <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                        <div class="card border-0 shadow-sm rounded-4 h-100"
+                            style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <h6 class="text-success fw-bold text-uppercase mb-0"><i class="bi bi-award-fill me-2"></i>Top 5 Job Positions</h6>
-                                    <button type="button" id="btn-export-top-jobs" class="btn btn-sm btn-outline-success rounded-pill px-2" title="Export Top Jobs ke Excel" style="font-size: 0.75rem;">
+                                    <h6 class="text-success fw-bold text-uppercase mb-0"><i
+                                            class="bi bi-award-fill me-2"></i>Top 5 Job Positions</h6>
+                                    <button type="button" id="btn-export-top-jobs"
+                                        class="btn btn-sm btn-outline-success rounded-pill px-2"
+                                        title="Export Top Jobs ke Excel" style="font-size: 0.75rem;">
                                         <i class="bi bi-file-earmark-excel me-1"></i> Export
                                     </button>
                                 </div>
-                                <p class="small text-success text-opacity-75 mb-3" style="font-size: 0.8rem;">Job position dengan pencapaian tertinggi. <i class="bi bi-hand-index-thumb"></i> Klik untuk melihat detail karyawan.</p>
+                                <p class="small text-success text-opacity-75 mb-3" style="font-size: 0.8rem;">Job position
+                                    dengan pencapaian tertinggi. <i class="bi bi-hand-index-thumb"></i> Klik untuk melihat
+                                    detail karyawan.</p>
                                 <div id="insight-top-jobs" class="d-flex flex-column gap-2">
                                     <!-- Populated by JS -->
                                 </div>
@@ -436,15 +458,21 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);">
+                        <div class="card border-0 shadow-sm rounded-4 h-100"
+                            style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <h6 class="text-danger fw-bold text-uppercase mb-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>Critical Focus Area</h6>
-                                    <button type="button" id="btn-export-critical-focus" class="btn btn-sm btn-outline-danger rounded-pill px-2" title="Export Critical Focus Area ke Excel" style="font-size: 0.75rem;">
+                                    <h6 class="text-danger fw-bold text-uppercase mb-0"><i
+                                            class="bi bi-exclamation-octagon-fill me-2"></i>Critical Focus Area</h6>
+                                    <button type="button" id="btn-export-critical-focus"
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-2"
+                                        title="Export Critical Focus Area ke Excel" style="font-size: 0.75rem;">
                                         <i class="bi bi-file-earmark-excel me-1"></i> Export
                                     </button>
                                 </div>
-                                <p class="small text-danger text-opacity-75 mb-3" style="font-size: 0.8rem;">Kompetensi dengan defisit terbanyak (min. 5 karyawan defisit). <i class="bi bi-hand-index-thumb"></i> Klik untuk melihat detail karyawan.</p>
+                                <p class="small text-danger text-opacity-75 mb-3" style="font-size: 0.8rem;">Kompetensi
+                                    dengan defisit terbanyak (min. 5 karyawan defisit). <i
+                                        class="bi bi-hand-index-thumb"></i> Klik untuk melihat detail karyawan.</p>
                                 <div id="insight-critical-focus" class="d-flex flex-column gap-2">
                                     <!-- Populated by JS -->
                                 </div>
@@ -454,14 +482,16 @@
                 </div>
 
                 <!-- Modal: Critical Focus Employee Detail -->
-                <div class="modal fade" id="criticalFocusModal" tabindex="-1" aria-labelledby="criticalFocusModalLabel" aria-hidden="true">
+                <div class="modal fade" id="criticalFocusModal" tabindex="-1" aria-labelledby="criticalFocusModalLabel"
+                    aria-hidden="true">
                     <div class="modal-dialog modal-lg modal-dialog-scrollable">
                         <div class="modal-content">
                             <div class="modal-header bg-danger text-white">
                                 <h5 class="modal-title fw-bold" id="criticalFocusModalLabel">
                                     <i class="bi bi-people-fill me-2"></i><span id="cfm-title">Detail Karyawan</span>
                                 </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <div id="cfm-badge-row" class="d-flex gap-2 mb-3 flex-wrap"></div>
@@ -488,14 +518,16 @@
                 </div>
 
                 <!-- Modal: Top Jobs Employee Detail -->
-                <div class="modal fade" id="topJobsModal" tabindex="-1" aria-labelledby="topJobsModalLabel" aria-hidden="true">
+                <div class="modal fade" id="topJobsModal" tabindex="-1" aria-labelledby="topJobsModalLabel"
+                    aria-hidden="true">
                     <div class="modal-dialog modal-lg modal-dialog-scrollable">
                         <div class="modal-content border-0 shadow">
                             <div class="modal-header bg-success text-white">
                                 <h5 class="modal-title fw-bold" id="topJobsModalLabel">
                                     <i class="bi bi-people-fill me-2"></i><span id="tjm-title">Detail Karyawan</span>
                                 </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <div id="tjm-badge-row" class="d-flex gap-2 mb-3 flex-wrap"></div>
@@ -521,6 +553,42 @@
                     </div>
                 </div>
 
+                <!-- Modal: Key Position Employee Detail -->
+                <div class="modal fade" id="keyPositionModal" tabindex="-1" aria-labelledby="keyPositionModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title fw-bold" id="keyPositionModalLabel">
+                                    <i class="bi bi-people-fill me-2"></i><span id="kp-tjm-title">Detail Karyawan</span>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="kp-tjm-badge-row" class="d-flex gap-2 mb-3 flex-wrap"></div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-sm align-middle">
+                                        <thead class="table-primary text-dark">
+                                            <tr>
+                                                <th style="width:40px">No.</th>
+                                                <th>Nama Karyawan</th>
+                                                <th style="width:140px; text-align:center;">Technical</th>
+                                                <th style="width:140px; text-align:center;">Soft Skill</th>
+                                                <th style="width:140px; text-align:center;">Additional</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="kp-tjm-tbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-3 mb-4">
                     <div class="col-12">
                         <div class="card dashboard-card level-1 h-100">
@@ -528,34 +596,29 @@
                                 <div class="d-flex flex-column gap-3">
                                     <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
                                         <div>
-                                            <h5 class="card-title mb-2"><i class="bi bi-bar-chart-fill text-primary me-2"></i>COMPANY PERFORMANCE</h5>
-                                            <p class="text-muted mb-0 small">Rata-rata performa kompetensi untuk seluruh perusahaan</p>
+                                            <h5 class="card-title mb-2"><i
+                                                    class="bi bi-bar-chart-fill text-primary me-2"></i>COMPANY PERFORMANCE
+                                            </h5>
+                                            <p class="text-muted mb-0 small">Rata-rata performa kompetensi untuk seluruh
+                                                perusahaan</p>
                                         </div>
-                                        <button type="button" id="btn-export-company" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Export data Departemen & Company ke Excel">
+                                        <button type="button" id="btn-export-company"
+                                            class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                            title="Export data Departemen & Company ke Excel">
                                             <i class="bi bi-file-earmark-excel me-1"></i> Export Departemen
                                         </button>
                                     </div>
                                     <div class="mt-1">
-                                        <div
-                                            id="company-chart"
-                                            class="w-100"
-                                            style="height: 400px;"
-                                        ></div>
-                                        <div
-                                            id="company-chart-empty"
-                                            class="text-center text-muted small py-4 d-none"
-                                            data-empty-message="{{ $companyEmptyMessage ?: 'Data persentase departemen belum tersedia.' }}"
-                                        >
+                                        <div id="company-chart" class="w-100" style="height: 400px;"></div>
+                                        <div id="company-chart-empty" class="text-center text-muted small py-4 d-none"
+                                            data-empty-message="{{ $companyEmptyMessage ?: 'Data persentase departemen belum tersedia.' }}">
                                             {{ $companyEmptyMessage ?: 'Data persentase departemen belum tersedia.' }}
                                         </div>
                                     </div>
                                     <div id="company-chart-legend" class="tcpd-legend d-none"></div>
-                                    <p
-                                        id="company-chart-summary"
-                                        class="text-muted small mb-0 d-none"
-                                    >
+                                    <p id="company-chart-summary" class="text-muted small mb-0 d-none">
                                         <span class="fw-semibold">Company Average:</span>
-                                            N/A
+                                        N/A
                                     </p>
                                 </div>
                             </div>
@@ -565,13 +628,17 @@
                 <!-- Key Position Stats Row (Modul 2.1) -->
                 <div class="row g-3 mb-4" id="key-position-row" style="display: none;">
                     <div class="col-12">
-                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                        <div class="card border-0 shadow-sm rounded-4 h-100"
+                            style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <h6 class="text-primary fw-bold text-uppercase mb-0"><i class="bi bi-key-fill me-2"></i>Key Position Status</h6>
-                                    <span class="badge bg-primary text-white rounded-pill px-3 py-2 shadow-sm" style="font-weight: 600;" id="kp-total-badge">-</span>
+                                    <h6 class="text-primary fw-bold text-uppercase mb-0"><i
+                                            class="bi bi-key-fill me-2"></i>Key Position Status</h6>
+                                    <span class="badge bg-primary text-white rounded-pill px-3 py-2 shadow-sm"
+                                        style="font-weight: 600;" id="kp-total-badge">-</span>
                                 </div>
-                                <p class="small text-primary text-opacity-75 mb-3" style="font-size: 0.8rem;">Kompetensi karyawan pada posisi-posisi kunci (key position) perusahaan.</p>
+                                <p class="small text-primary text-opacity-75 mb-3" style="font-size: 0.8rem;">Kompetensi
+                                    karyawan pada posisi-posisi kunci (key position) perusahaan.</p>
                                 <div class="row g-2" id="key-position-stats">
                                     <!-- Populated by JS -->
                                 </div>
@@ -586,8 +653,11 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
                                     <div>
-                                        <h5 class="card-title mb-1"><i class="bi bi-currency-dollar text-success me-2"></i>TRAINING EFFECTIVENESS (ROI)</h5>
-                                        <p class="text-muted mb-0 small">Korelasi antara Biaya Training Disetujui (Rp) dan Rata-rata Pemenuhan Kompetensi (%) per Tahun</p>
+                                        <h5 class="card-title mb-1"><i
+                                                class="bi bi-currency-dollar text-success me-2"></i>TRAINING EFFECTIVENESS
+                                            (ROI)</h5>
+                                        <p class="text-muted mb-0 small">Korelasi antara Biaya Training Disetujui (Rp) dan
+                                            Rata-rata Pemenuhan Kompetensi (%) per Tahun</p>
                                     </div>
                                 </div>
                                 <div id="effectiveness-chart" class="w-100" style="height: 350px;"></div>
@@ -598,10 +668,11 @@
                 <div class="mt-4">
                     <div class="department-section-header mb-3">
                         <div>
-                            
-                           
+
+
                         </div>
-                        {{-- <span class="text-muted small">Klik legend untuk menampilkan atau menyembunyikan job position.</span> --}}
+                        {{-- <span class="text-muted small">Klik legend untuk menampilkan atau menyembunyikan job
+                            position.</span> --}}
                     </div>
                     <div id="department-grid" class="department-grid"></div>
                     <div id="department-empty" class="department-empty py-4 d-none">
@@ -613,33 +684,25 @@
                     <div class="col-12">
                         <div class="card dashboard-card level-3 h-100">
                             <div class="card-body">
-                                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                                <div
+                                    class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                                     <div>
                                         <h5 class="card-title mb-2">Job Position Overview</h5>
                                         {{-- <p class="text-muted mb-0 small">
-                                            Persentase pencapaian kompetensi berdasarkan standar TC, SK, dan AD pada job position terpilih.
+                                            Persentase pencapaian kompetensi berdasarkan standar TC, SK, dan AD pada job
+                                            position terpilih.
                                         </p> --}}
                                     </div>
                                 </div>
                                 <div class="mt-3 position-relative">
-                                    <div
-                                        id="job-position-chart"
-                                        class="w-100"
-                                        style="height: 400px;"
-                                    ></div>
-                                    <div
-                                        id="job-position-chart-empty"
-                                        class="text-center text-muted small py-4 d-none"
-                                        data-empty-message="{{ $chartEmptyMessage }}"
-                                    >
+                                    <div id="job-position-chart" class="w-100" style="height: 400px;"></div>
+                                    <div id="job-position-chart-empty" class="text-center text-muted small py-4 d-none"
+                                        data-empty-message="{{ $chartEmptyMessage }}">
                                         {{ $chartEmptyMessage }}
                                     </div>
                                 </div>
                                 <div id="job-position-chart-legend" class="tcpd-legend d-none"></div>
-                                <p
-                                    id="job-position-chart-summary"
-                                    class="text-muted small mb-0 mt-3 d-none"
-                                ></p>
+                                <p id="job-position-chart-summary" class="text-muted small mb-0 mt-3 d-none"></p>
                                 <div id="job-position-user-links" class="d-flex flex-wrap gap-2 mt-3 d-none"></div>
                             </div>
                         </div>
@@ -652,12 +715,15 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
                                     <div>
-                                        <h5 class="card-title mb-2"><i class="bi bi-list-check text-primary me-2"></i>Area Development</h5>
+                                        <h5 class="card-title mb-2"><i class="bi bi-list-check text-primary me-2"></i>Area
+                                            Development</h5>
                                         <p class="text-muted mb-0 small">
                                             Menampilkan competency, standar, dan jumlah user di bawah standar.
                                         </p>
                                     </div>
-                                    <button type="button" id="btn-export-competency" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Export data Area Development ke Excel">
+                                    <button type="button" id="btn-export-competency"
+                                        class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                        title="Export data Area Development ke Excel">
                                         <i class="bi bi-file-earmark-excel me-1"></i> Export Area Development
                                     </button>
                                 </div>
@@ -684,11 +750,13 @@
                                 </div>
 
                                 {{-- Pagination Controls --}}
-                                <div id="tcpd-competency-pagination" class="d-flex align-items-center justify-content-between mt-3 d-none flex-wrap gap-2">
+                                <div id="tcpd-competency-pagination"
+                                    class="d-flex align-items-center justify-content-between mt-3 d-none flex-wrap gap-2">
                                     <div class="text-muted small" id="tcpd-competency-pagination-info"></div>
                                     <div class="d-flex align-items-center gap-2">
                                         <label class="text-muted small mb-0">Baris per halaman:</label>
-                                        <select id="tcpd-competency-per-page" class="form-select form-select-sm" style="width:auto;">
+                                        <select id="tcpd-competency-per-page" class="form-select form-select-sm"
+                                            style="width:auto;">
                                             <option value="10" selected>10</option>
                                             <option value="25">25</option>
                                             <option value="50">50</option>
@@ -700,10 +768,7 @@
                                     </div>
                                 </div>
 
-                                <p
-                                    id="tcpd-summary"
-                                    class="text-muted small mb-0 mt-3 d-none"
-                                ></p>
+                                <p id="tcpd-summary" class="text-muted small mb-0 mt-3 d-none"></p>
                             </div>
                         </div>
                     </div>
@@ -719,11 +784,11 @@
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             // Hover function for dropdowns
-            $('.nav-item.dropdown').hover(function() {
+            $('.nav-item.dropdown').hover(function () {
                 $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
-            }, function() {
+            }, function () {
                 $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
             });
         });
@@ -746,22 +811,22 @@
                         'Accept': 'application/json',
                     },
                 })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        refreshBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Berhasil!';
-                        setTimeout(() => window.location.reload(), 800);
-                    } else {
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            refreshBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Berhasil!';
+                            setTimeout(() => window.location.reload(), 800);
+                        } else {
+                            refreshBtn.innerHTML = originalHtml;
+                            refreshBtn.disabled = false;
+                            alert('Gagal menghapus cache: ' + (data.message ?? ''));
+                        }
+                    })
+                    .catch(() => {
                         refreshBtn.innerHTML = originalHtml;
                         refreshBtn.disabled = false;
-                        alert('Gagal menghapus cache: ' + (data.message ?? ''));
-                    }
-                })
-                .catch(() => {
-                    refreshBtn.innerHTML = originalHtml;
-                    refreshBtn.disabled = false;
-                    alert('Koneksi gagal. Silakan coba lagi.');
-                });
+                        alert('Koneksi gagal. Silakan coba lagi.');
+                    });
             });
         });
     </script>
@@ -780,23 +845,23 @@
 
                 // Company year filters
                 const yearFrom = document.getElementById('company-year-from');
-                const yearTo   = document.getElementById('company-year-to');
+                const yearTo = document.getElementById('company-year-to');
                 if (yearFrom && yearFrom.value) params.set('company_year_from', yearFrom.value);
-                if (yearTo   && yearTo.value)   params.set('company_year_to',   yearTo.value);
+                if (yearTo && yearTo.value) params.set('company_year_to', yearTo.value);
 
                 // Also expose as year_from / year_to for company-export endpoint
                 if (yearFrom && yearFrom.value) params.set('year_from', yearFrom.value);
-                if (yearTo   && yearTo.value)   params.set('year_to',   yearTo.value);
+                if (yearTo && yearTo.value) params.set('year_to', yearTo.value);
 
                 // Job position filters
-                const dept       = document.getElementById('job-department');
-                const jobPos     = document.getElementById('job_position_id');
-                const dateFrom   = document.getElementById('job-date-from');
-                const dateTo     = document.getElementById('job-date-to');
-                if (dept     && dept.value)     params.set('department',       dept.value);
-                if (jobPos   && jobPos.value)   params.set('job_position_id',  jobPos.value);
-                if (dateFrom && dateFrom.value) params.set('date_from',        dateFrom.value);
-                if (dateTo   && dateTo.value)   params.set('date_to',          dateTo.value);
+                const dept = document.getElementById('job-department');
+                const jobPos = document.getElementById('job_position_id');
+                const dateFrom = document.getElementById('job-date-from');
+                const dateTo = document.getElementById('job-date-to');
+                if (dept && dept.value) params.set('department', dept.value);
+                if (jobPos && jobPos.value) params.set('job_position_id', jobPos.value);
+                if (dateFrom && dateFrom.value) params.set('date_from', dateFrom.value);
+                if (dateTo && dateTo.value) params.set('date_to', dateTo.value);
 
                 return params.toString();
             }
@@ -881,7 +946,7 @@
             const escapeHtml = (value) => {
                 if (value === null || value === undefined) return '';
                 return String(value).replace(/[&<>'"\/]/g, (char) => {
-                    const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'" : '&#039;' };
+                    const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
                     return entities[char] || char;
                 });
             };
@@ -891,13 +956,13 @@
                 const s = document.createElement('style');
                 s.id = 'tcpd-legend-style';
                 s.textContent = `
-                  .tcpd-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-                  .tcpd-legend__item{display:inline-flex;align-items:center;gap:6px;
-                    padding:4px 10px;border:1px solid #dee2e6;border-radius:9999px;
-                    background:#fff;color:#495057;cursor:pointer;user-select:none}
-                  .tcpd-legend__item.is-off{opacity:.45}
-                  .tcpd-legend__dot{width:10px;height:10px;border-radius:50%}
-                `;
+                      .tcpd-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+                      .tcpd-legend__item{display:inline-flex;align-items:center;gap:6px;
+                        padding:4px 10px;border:1px solid #dee2e6;border-radius:9999px;
+                        background:#fff;color:#495057;cursor:pointer;user-select:none}
+                      .tcpd-legend__item.is-off{opacity:.45}
+                      .tcpd-legend__dot{width:10px;height:10px;border-radius:50%}
+                    `;
                 document.head.appendChild(s);
             }
 
@@ -1108,27 +1173,27 @@
 
                 const departmentName = escapeHtml((department && department.department) || `Department ${index + 1}`);
                 card.innerHTML = `
-                    <div class="card-body">
-                        <div class="d-flex flex-column gap-2">
-                            <div>
-                                <h6 class="card-title mb-1">${departmentName}</h6>
-                                <p class="text-muted mb-0 small">
-                                    Persentase rata-rata kompetensi untuk setiap job position dalam departemen ini.
+                        <div class="card-body">
+                            <div class="d-flex flex-column gap-2">
+                                <div>
+                                    <h6 class="card-title mb-1">${departmentName}</h6>
+                                    <p class="text-muted mb-0 small">
+                                        Persentase rata-rata kompetensi untuk setiap job position dalam departemen ini.
+                                    </p>
+                                </div>
+                                <div class="mt-1">
+                                    <div id="department-chart-${index}" class="w-100 department-chart" style="height: 350px;"></div>
+                                    <div id="department-chart-${index}-empty" class="text-center text-muted small py-4 d-none">
+                                        Data departemen belum tersedia.
+                                    </div>
+                                </div>
+                                <div id="department-chart-${index}-legend" class="tcpd-legend d-none"></div>
+                                <p id="department-chart-${index}-summary" class="text-muted small mb-0">
+                                    <span class="fw-semibold">Total Pencapaian:</span> N/A
                                 </p>
                             </div>
-                            <div class="mt-1">
-                                <div id="department-chart-${index}" class="w-100 department-chart" style="height: 350px;"></div>
-                                <div id="department-chart-${index}-empty" class="text-center text-muted small py-4 d-none">
-                                    Data departemen belum tersedia.
-                                </div>
-                            </div>
-                            <div id="department-chart-${index}-legend" class="tcpd-legend d-none"></div>
-                            <p id="department-chart-${index}-summary" class="text-muted small mb-0">
-                                <span class="fw-semibold">Total Pencapaian:</span> N/A
-                            </p>
                         </div>
-                    </div>
-                `;
+                    `;
 
                 item.appendChild(card);
                 return item;
@@ -1360,7 +1425,7 @@
                     if (this.currentPage > totalPages) this.currentPage = totalPages;
 
                     const startIdx = showAll ? 0 : (this.currentPage - 1) * this.perPage;
-                    const endIdx   = showAll ? totalItems : Math.min(startIdx + this.perPage, totalItems);
+                    const endIdx = showAll ? totalItems : Math.min(startIdx + this.perPage, totalItems);
                     const pageData = this.data.slice(startIdx, endIdx);
 
                     tbody.innerHTML = pageData.map((row, i) => {
@@ -1389,41 +1454,41 @@
                             const badgesHtml = displayMentors.map(m => {
                                 const titleInfo = m.job_position ? `Jabatan: ${escapeHtml(m.job_position)} (Nilai: ${m.actual ?? '-'})` : `Nilai: ${m.actual ?? '-'}`;
                                 return `<span class="badge bg-white text-info border border-info me-1 mb-1 d-inline-flex align-items-center rounded-pill px-2 py-1 shadow-sm" title="${titleInfo}" style="font-size: 0.72rem; font-weight: 500;">
-                                    <i class="bi bi-person-check-fill text-info me-1"></i>${escapeHtml(m.name)}
-                                </span>`;
+                                        <i class="bi bi-person-check-fill text-info me-1"></i>${escapeHtml(m.name)}
+                                    </span>`;
                             }).join('');
                             const mentorsJson = escapeHtml(JSON.stringify(validMentors));
                             const extraBadge = remainingCount > 0 ? `<a href="javascript:void(0)" class="text-decoration-underline ms-1 text-primary view-all-mentors fw-medium" data-mentors="${mentorsJson}" style="font-size: 0.75rem;">Lihat ${remainingCount} mentor lainnya...</a>` : '';
                             mentorHtml = `<div class="mt-2 pt-1 border-top border-light d-flex flex-wrap align-items-center">
-                                <span class="text-muted small me-2" style="font-size:0.75rem;"><i class="bi bi-lightbulb-fill text-warning me-1"></i>Saran Mentor:</span>
-                                ${badgesHtml}${extraBadge}
-                            </div>`;
+                                    <span class="text-muted small me-2" style="font-size:0.75rem;"><i class="bi bi-lightbulb-fill text-warning me-1"></i>Saran Mentor:</span>
+                                    ${badgesHtml}${extraBadge}
+                                </div>`;
                         } else {
                             mentorHtml = `<div class="mt-2 pt-1 border-top border-light">
-                                <span class="text-muted small fst-italic" style="font-size:0.75rem;"><i class="bi bi-lightbulb text-muted me-1"></i>Saran Mentor: Belum ada mentor memenuhi standar</span>
-                            </div>`;
+                                    <span class="text-muted small fst-italic" style="font-size:0.75rem;"><i class="bi bi-lightbulb text-muted me-1"></i>Saran Mentor: Belum ada mentor memenuhi standar</span>
+                                </div>`;
                         }
 
                         return `
-                            <tr>
-                                <td>${globalIndex}</td>
-                                <td><i class="bi bi-person-fill text-muted me-1"></i><strong>${escapeHtml(row.employeeName)}</strong></td>
-                                <td>
-                                    <div>
-                                        <span class="badge ${badgeClass} me-2" style="font-size:0.65rem;text-transform:uppercase;">${typeLabel}</span>
-                                        <strong class="text-dark">${escapeHtml(row.compName)}</strong>
-                                    </div>
-                                    ${mentorHtml}
-                                </td>
-                                <td><span class="badge bg-warning text-dark">${row.actual !== null ? Number(row.actual).toFixed(2) : '-'}</span></td>
-                                <td><span class="badge bg-primary">${row.standard !== null ? Number(row.standard).toFixed(2) : '-'}</span></td>
-                            </tr>
-                        `;
+                                <tr>
+                                    <td>${globalIndex}</td>
+                                    <td><i class="bi bi-person-fill text-muted me-1"></i><strong>${escapeHtml(row.employeeName)}</strong></td>
+                                    <td>
+                                        <div>
+                                            <span class="badge ${badgeClass} me-2" style="font-size:0.65rem;text-transform:uppercase;">${typeLabel}</span>
+                                            <strong class="text-dark">${escapeHtml(row.compName)}</strong>
+                                        </div>
+                                        ${mentorHtml}
+                                    </td>
+                                    <td><span class="badge bg-warning text-dark">${row.actual !== null ? Number(row.actual).toFixed(2) : '-'}</span></td>
+                                    <td><span class="badge bg-primary">${row.standard !== null ? Number(row.standard).toFixed(2) : '-'}</span></td>
+                                </tr>
+                            `;
                     }).join('');
 
                     // Bind event listeners for view all mentors modal
                     tbody.querySelectorAll('.view-all-mentors').forEach(link => {
-                        link.addEventListener('click', function(e) {
+                        link.addEventListener('click', function (e) {
                             e.preventDefault();
                             try {
                                 const mentors = JSON.parse(this.dataset.mentors);
@@ -1445,12 +1510,12 @@
                     if (pagesEl) {
                         let pagesHtml = '';
                         pagesHtml += `<li class="page-item ${this.currentPage === 1 ? 'disabled' : ''}">
-                            <button class="page-link" data-page="${this.currentPage - 1}">&laquo;</button>
-                        </li>`;
+                                <button class="page-link" data-page="${this.currentPage - 1}">&laquo;</button>
+                            </li>`;
 
                         const maxVisible = 5;
                         let startPage = Math.max(1, this.currentPage - Math.floor(maxVisible / 2));
-                        let endPage   = Math.min(totalPages, startPage + maxVisible - 1);
+                        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
                         if (endPage - startPage < maxVisible - 1) {
                             startPage = Math.max(1, endPage - maxVisible + 1);
                         }
@@ -1461,8 +1526,8 @@
                         }
                         for (let p = startPage; p <= endPage; p++) {
                             pagesHtml += `<li class="page-item ${p === this.currentPage ? 'active' : ''}">
-                                <button class="page-link" data-page="${p}">${p}</button>
-                            </li>`;
+                                    <button class="page-link" data-page="${p}">${p}</button>
+                                </li>`;
                         }
                         if (endPage < totalPages) {
                             if (endPage < totalPages - 1) pagesHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
@@ -1470,8 +1535,8 @@
                         }
 
                         pagesHtml += `<li class="page-item ${this.currentPage === totalPages || totalPages <= 1 ? 'disabled' : ''}">
-                            <button class="page-link" data-page="${this.currentPage + 1}">&raquo;</button>
-                        </li>`;
+                                <button class="page-link" data-page="${this.currentPage + 1}">&raquo;</button>
+                            </li>`;
 
                         pagesEl.innerHTML = pagesHtml;
 
@@ -1774,7 +1839,7 @@
                         data,
                     });
                 }
-                
+
                 const rotateLabels = categories.length > 3 ? 30 : 0;
                 const legendLabels = series.map((serie) => serie.name);
                 const option = {
@@ -1829,7 +1894,7 @@
 
                 // Interactive Drill-down
                 instance.off('click');
-                instance.on('click', function(params) {
+                instance.on('click', function (params) {
                     const deptName = params.name;
                     if (deptName && deptName !== 'Company' && deptName !== 'Total' && deptName !== 'Overall') {
                         const headers = document.querySelectorAll('.department-header h6');
@@ -2211,7 +2276,7 @@
                 // Prepare Data
                 const categories = years.map(String);
                 const costData = categories.map(y => Number(effectivenessData[y] || 0));
-                
+
                 // Get company average per year
                 const companyRow = companyRows.find(r => r.is_company);
                 const compData = categories.map(y => {
@@ -2230,7 +2295,7 @@
                 const option = {
                     tooltip: {
                         trigger: 'axis',
-                        axisPointer: { 
+                        axisPointer: {
                             type: 'shadow',
                             shadowStyle: { color: 'rgba(16, 185, 129, 0.05)' }
                         },
@@ -2243,17 +2308,17 @@
                         formatter: function (params) {
                             const dataIndex = params[0].dataIndex;
                             const year = params[0].name;
-                            
+
                             const cost = costData[dataIndex] || 0;
                             const comp = compData[dataIndex] || 0;
-                            
+
                             // YoY calculations
                             let costYoYHtml = '';
                             let compYoYHtml = '';
                             if (dataIndex > 0) {
                                 const prevCost = costData[dataIndex - 1] || 0;
                                 const prevComp = compData[dataIndex - 1] || 0;
-                                
+
                                 if (prevCost > 0) {
                                     const diffCost = ((cost - prevCost) / prevCost) * 100;
                                     const sign = diffCost >= 0 ? '+' : '';
@@ -2265,42 +2330,42 @@
                                     compYoYHtml = ` <span style="font-size:11px;color:${diffComp >= 0 ? '#10b981' : '#ef4444'};">(${sign}${diffComp.toFixed(2)}% YoY)</span>`;
                                 }
                             }
-                            
+
                             // Cost per 1% competency
                             let costPerCompHtml = '';
                             if (comp > 0 && cost > 0) {
                                 const costPerOnePercent = cost / comp;
                                 costPerCompHtml = `
-                                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0; font-size: 12px; color: #475569;">
-                                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
-                                        <strong>Cost per 1% Competency:</strong> Rp ${formatShortCurrency(costPerOnePercent)}
-                                    </div>
-                                `;
+                                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0; font-size: 12px; color: #475569;">
+                                            <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
+                                            <strong>Cost per 1% Competency:</strong> Rp ${formatShortCurrency(costPerOnePercent)}
+                                        </div>
+                                    `;
                             }
 
                             return `
-                                <div style="font-weight: 700; margin-bottom: 8px; color: #0f172a; font-size: 14px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
-                                    Tahun ${year}
-                                </div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 6px;">
-                                    <span>
-                                        <span style="display:inline-block;margin-right:6px;border-radius:50%;width:10px;height:10px;background-color:#10b981;"></span>
-                                        Total Biaya Training:
-                                    </span>
-                                    <strong>Rp ${cost.toLocaleString('id-ID')}${costYoYHtml}</strong>
-                                </div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
-                                    <span>
-                                        <span style="display:inline-block;margin-right:6px;border-radius:50%;width:10px;height:10px;background-color:#3b82f6;"></span>
-                                        Pemenuhan Kompetensi:
-                                    </span>
-                                    <strong>${comp.toFixed(2)}%${compYoYHtml}</strong>
-                                </div>
-                                ${costPerCompHtml}
-                            `;
+                                    <div style="font-weight: 700; margin-bottom: 8px; color: #0f172a; font-size: 14px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
+                                        Tahun ${year}
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 6px;">
+                                        <span>
+                                            <span style="display:inline-block;margin-right:6px;border-radius:50%;width:10px;height:10px;background-color:#10b981;"></span>
+                                            Total Biaya Training:
+                                        </span>
+                                        <strong>Rp ${cost.toLocaleString('id-ID')}${costYoYHtml}</strong>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+                                        <span>
+                                            <span style="display:inline-block;margin-right:6px;border-radius:50%;width:10px;height:10px;background-color:#3b82f6;"></span>
+                                            Pemenuhan Kompetensi:
+                                        </span>
+                                        <strong>${comp.toFixed(2)}%${compYoYHtml}</strong>
+                                    </div>
+                                    ${costPerCompHtml}
+                                `;
                         }
                     },
-                    legend: { 
+                    legend: {
                         data: ['Total Biaya Training', 'Pemenuhan Kompetensi'],
                         top: 0,
                         textStyle: { color: '#475569', fontWeight: 600 }
@@ -2319,9 +2384,9 @@
                             name: 'Biaya Training (Rp)',
                             nameTextStyle: { color: '#64748b', fontWeight: 600, padding: [0, 0, 0, 20] },
                             alignTicks: true,
-                            splitLine: { 
-                                show: true, 
-                                lineStyle: { type: 'dashed', color: '#f1f5f9' } 
+                            splitLine: {
+                                show: true,
+                                lineStyle: { type: 'dashed', color: '#f1f5f9' }
                             },
                             axisLine: { show: false },
                             axisTick: { show: false },
@@ -2340,9 +2405,9 @@
                             splitLine: { show: false },
                             axisLine: { show: false },
                             axisTick: { show: false },
-                            axisLabel: { 
+                            axisLabel: {
                                 color: '#64748b',
-                                formatter: '{value}%' 
+                                formatter: '{value}%'
                             }
                         }
                     ],
@@ -2381,17 +2446,17 @@
                             smooth: true,
                             symbol: 'circle',
                             symbolSize: 10,
-                            itemStyle: { 
+                            itemStyle: {
                                 color: '#2563eb', // blue-600
                                 borderColor: '#ffffff',
                                 borderWidth: 2,
                                 shadowColor: 'rgba(37, 99, 235, 0.4)',
                                 shadowBlur: 6
                             },
-                            lineStyle: { 
-                                width: 3.5, 
+                            lineStyle: {
+                                width: 3.5,
                                 color: '#3b82f6', // blue-500
-                                shadowColor: 'rgba(59, 130, 246, 0.35)', 
+                                shadowColor: 'rgba(59, 130, 246, 0.35)',
                                 shadowBlur: 10,
                                 shadowOffsetY: 4
                             },
@@ -2419,7 +2484,7 @@
                         }
                     ]
                 };
-                
+
                 instance.setOption(option);
             }
 
@@ -2448,15 +2513,15 @@
                                 mode: meta.company_chart_mode,
                             });
                             renderDepartmentGrid(currentDepartmentData);
-                            
+
                             // Update Scorecards
                             const formatNum = (val) => Number.isFinite(val) ? Number(val).toFixed(2) + '%' : 'N/A';
                             document.getElementById('scorecard-average').innerText = formatNum(meta.company_average);
                             document.getElementById('scorecard-dept-count').innerText = meta.company_department_count || '0';
-                            
+
                             let topDept = { name: '-', val: null };
                             let lowestDept = { name: '-', val: null };
-                            
+
                             if (currentDepartmentData.length > 0) {
                                 let validDepts = currentDepartmentData.filter(d => d.overall !== null && isFinite(d.overall));
                                 if (validDepts.length > 0) {
@@ -2465,7 +2530,7 @@
                                     lowestDept = { name: validDepts[validDepts.length - 1].department, val: validDepts[validDepts.length - 1].overall };
                                 }
                             }
-                            
+
                             document.getElementById('scorecard-top-dept').innerText = topDept.name;
                             document.getElementById('scorecard-top-val').innerText = topDept.val !== null ? formatNum(topDept.val) : 'N/A';
                             document.getElementById('scorecard-lowest-dept').innerText = lowestDept.name;
@@ -2474,7 +2539,7 @@
                             // Populate Smart Insights
                             if (meta.insights) {
                                 document.getElementById('smart-insights-row').style.display = 'flex';
-                                
+
                                 const topJobsEl = document.getElementById('insight-top-jobs');
                                 if (meta.insights.top_jobs && meta.insights.top_jobs.length > 0) {
                                     topJobsEl.innerHTML = meta.insights.top_jobs.map((job, idx) => {
@@ -2482,13 +2547,13 @@
                                         const jobName = escapeHtml(job.job_position);
                                         const percentage = Number(job.percentage).toFixed(2) + '%';
                                         return `
-                                        <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-75 p-2 rounded shadow-sm top-job-item"
-                                             role="button" style="cursor:pointer;"
-                                             data-job-name="${jobName}" data-percentage="${percentage}"
-                                             data-employees="${employeesJson}">
-                                            <span class="text-dark fw-semibold"><span class="badge bg-success bg-opacity-25 text-success me-2">#${idx+1}</span>${jobName}</span>
-                                            <span class="badge bg-success rounded-pill px-3 py-2 fs-6 shadow-sm">${percentage}</span>
-                                        </div>`;
+                                            <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-75 p-2 rounded shadow-sm top-job-item"
+                                                 role="button" style="cursor:pointer;"
+                                                 data-job-name="${jobName}" data-percentage="${percentage}"
+                                                 data-employees="${employeesJson}">
+                                                <span class="text-dark fw-semibold"><span class="badge bg-success bg-opacity-25 text-success me-2">#${idx + 1}</span>${jobName}</span>
+                                                <span class="badge bg-success rounded-pill px-3 py-2 fs-6 shadow-sm">${percentage}</span>
+                                            </div>`;
                                     }).join('');
 
                                     // Attach click handler for top jobs modal
@@ -2501,7 +2566,7 @@
                                             document.getElementById('tjm-title').textContent = jobName;
                                             document.getElementById('tjm-badge-row').innerHTML =
                                                 `<span class="badge bg-success">Overall: ${percentage}</span>
-                                                 <span class="badge bg-secondary">${employees.length} karyawan</span>`;
+                                                     <span class="badge bg-secondary">${employees.length} karyawan</span>`;
 
                                             const tbody = document.getElementById('tjm-tbody');
                                             if (employees.length === 0) {
@@ -2513,14 +2578,14 @@
                                                     const sk = emp.sk !== null ? Number(emp.sk).toFixed(2) + '%' : '0.00%';
                                                     const ad = emp.ad !== null ? Number(emp.ad).toFixed(2) + '%' : '0.00%';
                                                     return `
-                                                        <tr>
-                                                            <td>${idx + 1}</td>
-                                                            <td><i class="bi bi-person-fill text-success me-1"></i>${name}</td>
-                                                            <td style="text-align:center;"><span class="badge bg-primary rounded-pill px-2 py-1">${tc}</span></td>
-                                                            <td style="text-align:center;"><span class="badge bg-success rounded-pill px-2 py-1">${sk}</span></td>
-                                                            <td style="text-align:center;"><span class="badge bg-info rounded-pill px-2 py-1">${ad}</span></td>
-                                                        </tr>
-                                                    `;
+                                                            <tr>
+                                                                <td>${idx + 1}</td>
+                                                                <td><i class="bi bi-person-fill text-success me-1"></i>${name}</td>
+                                                                <td style="text-align:center;"><span class="badge bg-primary rounded-pill px-2 py-1">${tc}</span></td>
+                                                                <td style="text-align:center;"><span class="badge bg-success rounded-pill px-2 py-1">${sk}</span></td>
+                                                                <td style="text-align:center;"><span class="badge bg-info rounded-pill px-2 py-1">${ad}</span></td>
+                                                            </tr>
+                                                        `;
                                                 }).join('');
                                             }
 
@@ -2531,7 +2596,7 @@
                                 } else {
                                     topJobsEl.innerHTML = '<span class="text-muted small">Data tidak tersedia</span>';
                                 }
-                                
+
                                 const criticalFocusEl = document.getElementById('insight-critical-focus');
                                 if (meta.insights.critical_focus && meta.insights.critical_focus.length > 0) {
                                     const cfItems = meta.insights.critical_focus;
@@ -2548,26 +2613,26 @@
                                             const employeesJson = escapeHtml(JSON.stringify(comp.employees || []));
                                             const compName = escapeHtml(comp.name);
                                             return `
-                                            <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-75 p-2 rounded border border-danger border-opacity-25 shadow-sm
-                                                         critical-focus-item" role="button" style="cursor:pointer;"
-                                                 data-comp-name="${compName}" data-comp-type="${escapeHtml(comp.type)}"
-                                                 data-employees="${employeesJson}">
-                                                <div class="text-dark fw-semibold text-truncate" style="max-width: 70%;" title="${compName}">
-                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary me-2" style="font-size:0.65rem;">${comp.type}</span>${compName}
-                                                </div>
-                                                <span class="badge bg-danger rounded-pill shadow-sm"><i class="bi bi-people-fill me-1"></i>${comp.qty}</span>
-                                            </div>`;
+                                                <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-75 p-2 rounded border border-danger border-opacity-25 shadow-sm
+                                                             critical-focus-item" role="button" style="cursor:pointer;"
+                                                     data-comp-name="${compName}" data-comp-type="${escapeHtml(comp.type)}"
+                                                     data-employees="${employeesJson}">
+                                                    <div class="text-dark fw-semibold text-truncate" style="max-width: 70%;" title="${compName}">
+                                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary me-2" style="font-size:0.65rem;">${comp.type}</span>${compName}
+                                                    </div>
+                                                    <span class="badge bg-danger rounded-pill shadow-sm"><i class="bi bi-people-fill me-1"></i>${comp.qty}</span>
+                                                </div>`;
                                         }).join('');
 
                                         if (cfTotalPages > 1) {
                                             html += `
-                                            <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-2 border-danger border-opacity-10">
-                                                <span class="small text-danger text-opacity-75">Halaman ${page} dari ${cfTotalPages}</span>
-                                                <div class="btn-group btn-group-sm">
-                                                    <button class="btn btn-outline-danger cf-prev" ${page === 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
-                                                    <button class="btn btn-outline-danger cf-next" ${page === cfTotalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
-                                                </div>
-                                            </div>`;
+                                                <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-2 border-danger border-opacity-10">
+                                                    <span class="small text-danger text-opacity-75">Halaman ${page} dari ${cfTotalPages}</span>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button class="btn btn-outline-danger cf-prev" ${page === 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
+                                                        <button class="btn btn-outline-danger cf-next" ${page === cfTotalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
+                                                    </div>
+                                                </div>`;
                                         }
 
                                         criticalFocusEl.innerHTML = html;
@@ -2581,21 +2646,21 @@
                                                 document.getElementById('cfm-title').textContent = name;
                                                 document.getElementById('cfm-badge-row').innerHTML =
                                                     `<span class="badge bg-danger">${type}</span>
-                                                     <span class="badge bg-secondary">${employees.length} karyawan defisit</span>`;
+                                                         <span class="badge bg-secondary">${employees.length} karyawan defisit</span>`;
 
                                                 const tbody = document.getElementById('cfm-tbody');
                                                 if (employees.length === 0) {
                                                     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Data karyawan tidak tersedia.</td></tr>';
                                                 } else {
                                                     tbody.innerHTML = employees.map((emp, idx) => `
-                                                        <tr>
-                                                            <td>${idx + 1}</td>
-                                                            <td><i class="bi bi-person-fill text-danger me-1"></i>${escapeHtml(emp.name || '-')}</td>
-                                                            <td><span class="badge bg-light text-dark border">${escapeHtml(emp.job_position || '-')}</span></td>
-                                                            <td><span class="badge bg-warning text-dark">${emp.actual !== null ? Number(emp.actual).toFixed(2) : '-'}</span></td>
-                                                            <td><span class="badge bg-primary">${emp.standard !== null ? Number(emp.standard).toFixed(2) : '-'}</span></td>
-                                                        </tr>
-                                                    `).join('');
+                                                            <tr>
+                                                                <td>${idx + 1}</td>
+                                                                <td><i class="bi bi-person-fill text-danger me-1"></i>${escapeHtml(emp.name || '-')}</td>
+                                                                <td><span class="badge bg-light text-dark border">${escapeHtml(emp.job_position || '-')}</span></td>
+                                                                <td><span class="badge bg-warning text-dark">${emp.actual !== null ? Number(emp.actual).toFixed(2) : '-'}</span></td>
+                                                                <td><span class="badge bg-primary">${emp.standard !== null ? Number(emp.standard).toFixed(2) : '-'}</span></td>
+                                                            </tr>
+                                                        `).join('');
                                                 }
 
                                                 const modal = new bootstrap.Modal(document.getElementById('criticalFocusModal'));
@@ -2643,31 +2708,85 @@
                                         const empCount = kp.employee_count || 0;
                                         const strengthCount = kp.strength_count || 0;
                                         const deficitCount = kp.deficit_count || 0;
-                                        const pct = empCount > 0 ? ((strengthCount / empCount) * 100).toFixed(1) : '0.0';
+                                        const pct = kp.percentage !== undefined ? parseFloat(kp.percentage).toFixed(1) : '0.0';
                                         const barWidth = Math.min(100, parseFloat(pct));
                                         const barColor = barWidth >= 70 ? '#198754' : barWidth >= 40 ? '#ffc107' : '#dc3545';
+                                        const employeesJson = escapeHtml(JSON.stringify(kp.employees || []));
                                         return `
-                                        <div class="col-md-4 col-sm-6">
-                                            <div class="bg-white rounded-3 p-3 shadow-sm h-100">
-                                                <div class="fw-semibold text-dark mb-2 text-wrap" style="font-size:0.85rem;line-height:1.4;word-break:break-word;white-space:normal;" title="${name}">
-                                                    <i class="bi bi-briefcase-fill text-primary me-1"></i>
-                                                    <span>${name}</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between small text-muted mb-1">
-                                                    <span><i class="bi bi-people me-1"></i>${empCount} karyawan</span>
-                                                    <span class="text-success"><i class="bi bi-check-circle me-1"></i>${strengthCount} terpenuhi</span>
-                                                    <span class="text-danger"><i class="bi bi-x-circle me-1"></i>${deficitCount} defisit</span>
-                                                </div>
-                                                <div class="progress" style="height:6px;border-radius:3px;">
-                                                    <div class="progress-bar" role="progressbar"
-                                                        style="width:${barWidth}%;background-color:${barColor};"
-                                                        aria-valuenow="${barWidth}" aria-valuemin="0" aria-valuemax="100">
+                                            <div class="col-md-4 col-sm-6 key-position-item" role="button" style="cursor:pointer;"
+                                                data-job-name="${name}" 
+                                                data-percentage="${pct}" 
+                                                data-employees="${employeesJson}">
+                                                <div class="bg-white rounded-3 p-3 shadow-sm h-100">
+                                                    <div class="fw-semibold text-dark mb-2 text-wrap" style="font-size:0.85rem;line-height:1.4;word-break:break-word;white-space:normal;" title="${name}">
+                                                        <i class="bi bi-briefcase-fill text-primary me-1"></i>
+                                                        <span>${name}</span>
                                                     </div>
+                                                    <div class="d-flex justify-content-between small text-muted mb-1">
+                                                        <span><i class="bi bi-people me-1"></i>${empCount} karyawan</span>
+                                                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>${strengthCount} terpenuhi</span>
+                                                        <span class="text-danger"><i class="bi bi-x-circle me-1"></i>${deficitCount} defisit</span>
+                                                    </div>
+                                                    <div class="progress" style="height:6px;border-radius:3px;">
+                                                        <div class="progress-bar" role="progressbar"
+                                                            style="width:${barWidth}%;background-color:${barColor};"
+                                                            aria-valuenow="${barWidth}" aria-valuemin="0" aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-end small mt-1 fw-semibold" style="color:${barColor};">${pct}%</div>
                                                 </div>
-                                                <div class="text-end small mt-1 fw-semibold" style="color:${barColor};">${pct}%</div>
-                                            </div>
-                                        </div>`;
+                                            </div>`;
                                     }).join('');
+
+                                    // Attach event listener for key position modal
+                                    kpStatsEl.querySelectorAll('.key-position-item').forEach(item => {
+                                        item.addEventListener('click', (e) => {
+                                            const jobName = item.getAttribute('data-job-name');
+                                            const pct = item.getAttribute('data-percentage');
+                                            let employees = [];
+                                            try {
+                                                employees = JSON.parse(item.getAttribute('data-employees'));
+                                            } catch (err) {
+                                                console.error('Failed to parse employees JSON', err);
+                                            }
+
+                                            document.getElementById('kp-tjm-title').textContent = jobName;
+                                            const badgeRow = document.getElementById('kp-tjm-badge-row');
+                                            badgeRow.innerHTML = `
+                                                <span class="badge bg-primary text-white p-2">Total Karyawan: ${employees.length}</span>
+                                                <span class="badge bg-light text-dark border p-2">Nilai Rata-rata: ${pct}%</span>
+                                            `;
+
+                                            const tbody = document.getElementById('kp-tjm-tbody');
+                                            if (employees.length === 0) {
+                                                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada karyawan pada posisi ini</td></tr>';
+                                            } else {
+                                                tbody.innerHTML = employees.map((emp, index) => {
+                                                    const tc = (emp.tc != null ? emp.tc : 0).toFixed(1);
+                                                    const sk = (emp.sk != null ? emp.sk : 0).toFixed(1);
+                                                    const ad = (emp.ad != null ? emp.ad : 0).toFixed(1);
+                                                    return `
+                                                        <tr>
+                                                            <td class="text-center text-muted">${index + 1}</td>
+                                                            <td class="fw-medium">${escapeHtml(emp.name || '-')}</td>
+                                                            <td class="text-center">
+                                                                <span class="badge bg-light text-dark border" style="width:50px">${tc}%</span>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <span class="badge bg-light text-dark border" style="width:50px">${sk}%</span>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <span class="badge bg-light text-dark border" style="width:50px">${ad}%</span>
+                                                            </td>
+                                                        </tr>
+                                                    `;
+                                                }).join('');
+                                            }
+                                            
+                                            const modal = new bootstrap.Modal(document.getElementById('keyPositionModal'));
+                                            modal.show();
+                                        });
+                                    });
                                 } else {
                                     if (kpRowEl) kpRowEl.style.display = 'flex';
                                     if (kpTotalBadge) kpTotalBadge.textContent = '0 Key Position';
@@ -2678,7 +2797,7 @@
                                 document.getElementById('smart-insights-row').style.display = 'flex';
                                 document.getElementById('insight-top-jobs').innerHTML = '<span class="text-muted small">Data tidak tersedia</span>';
                                 document.getElementById('insight-critical-focus').innerHTML = '<span class="text-muted small">Data tidak tersedia</span>';
-                                
+
                                 const kpStatsEl = document.getElementById('key-position-stats');
                                 const kpRowEl = document.getElementById('key-position-row');
                                 const kpTotalBadge = document.getElementById('kp-total-badge');
@@ -2686,7 +2805,7 @@
                                 if (kpTotalBadge) kpTotalBadge.textContent = '0 Key Position';
                                 if (kpStatsEl) kpStatsEl.innerHTML = '<div class="col-12"><div class="bg-white rounded-3 p-3 shadow-sm text-center text-muted small h-100 d-flex align-items-center justify-content-center">Data tidak tersedia</div></div>';
                             }
-                            
+
                             // Render Training Effectiveness Chart
                             document.getElementById('training-effectiveness-row').style.display = 'flex';
                             if (meta.training_effectiveness && Object.keys(meta.training_effectiveness).length > 0 && meta.company_years && meta.company_years.length > 0) {
@@ -2699,7 +2818,7 @@
                                     chartContainer.innerHTML = '<div class="d-flex align-items-center justify-content-center w-100 h-100"><span class="text-muted small">Data tidak tersedia</span></div>';
                                 }
                             }
-                            
+
                         } else {
                             currentDepartmentData = [];
                             renderDepartmentGrid([]);
@@ -2864,27 +2983,27 @@
                             'Accept': 'application/json'
                         }
                     })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result && result.success) {
-                            window.location.reload();
-                        } else {
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result && result.success) {
+                                window.location.reload();
+                            } else {
+                                btnRefreshCache.disabled = false;
+                                btnRefreshCache.innerHTML = originalHtml;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error clearing cache:', error);
                             btnRefreshCache.disabled = false;
                             btnRefreshCache.innerHTML = originalHtml;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error clearing cache:', error);
-                        btnRefreshCache.disabled = false;
-                        btnRefreshCache.innerHTML = originalHtml;
-                    });
+                        });
                 });
             }
 
             function showMentorsModal(mentors) {
                 const tbody = document.getElementById('mentors-modal-tbody');
                 if (!tbody) return;
-                
+
                 if (!mentors || mentors.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Data mentor tidak tersedia.</td></tr>';
                 } else {
@@ -2893,15 +3012,15 @@
                         const job = escapeHtml(m.job_position || '-');
                         const actual = m.actual !== null ? Number(m.actual).toFixed(2) : '-';
                         return `
-                        <tr>
-                            <td class="text-center">${idx + 1}</td>
-                            <td><div class="fw-semibold text-primary"><i class="bi bi-person-check-fill me-2"></i>${name}</div></td>
-                            <td>${job}</td>
-                            <td class="text-center"><span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3">${actual}</span></td>
-                        </tr>`;
+                            <tr>
+                                <td class="text-center">${idx + 1}</td>
+                                <td><div class="fw-semibold text-primary"><i class="bi bi-person-check-fill me-2"></i>${name}</div></td>
+                                <td>${job}</td>
+                                <td class="text-center"><span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3">${actual}</span></td>
+                            </tr>`;
                     }).join('');
                 }
-                
+
                 const modalEl = document.getElementById('all-mentors-modal');
                 if (modalEl) {
                     const modal = new bootstrap.Modal(modalEl);
@@ -2916,8 +3035,10 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header bg-primary text-white rounded-top-4">
-                    <h5 class="modal-title fw-bold" id="allMentorsModalLabel"><i class="bi bi-people-fill me-2"></i>Daftar Saran Mentor</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title fw-bold" id="allMentorsModalLabel"><i class="bi bi-people-fill me-2"></i>Daftar
+                        Saran Mentor</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0">
                     <div class="table-responsive">
@@ -2943,4 +3064,3 @@
         </div>
     </div>
 @endsection
-

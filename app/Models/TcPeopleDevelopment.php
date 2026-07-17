@@ -111,7 +111,7 @@ class TcPeopleDevelopment extends Model
         'catatan_tambahan',
         'is_sharing_knowledge',
         'objective_learning',
-        'sharing_knowledge',   // Modul 4.1 — Catatan hasil sharing knowledge pasca training
+        'objective_learning_aktual',
     ];
 
     // =============================================

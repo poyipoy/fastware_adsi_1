@@ -26,11 +26,95 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
+
+            {{-- SweetAlert: Global Error --}}
             @if(session('error'))
-                <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm">
-                    <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Terjadi Kesalahan',
+                                text: "{{ session('error') }}"
+                            });
+                        } else {
+                            alert("{{ session('error') }}");
+                        }
+                    });
+                </script>
+            @endif
+
+            {{-- SweetAlert: Validation Error --}}
+            @if($errors->any())
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Validasi Gagal',
+                                html: '<ul style="text-align:left;font-size:0.85em;">' +
+                                      @foreach($errors->all() as $error)
+                                          '<li>{{ $error }}</li>' +
+                                      @endforeach
+                                      '</ul>'
+                            });
+                        } else {
+                            alert("Validasi Gagal! Periksa input Anda.");
+                        }
+                    });
+                </script>
+            @endif
+
+            {{-- SweetAlert: Reminder setelah assign/edit mapping --}}
+            @if(session('reminder'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Pengingat Competency',
+                            text: "{{ session('reminder') }}",
+                            confirmButtonText: 'Mengerti',
+                            confirmButtonColor: '#0d6efd'
+                        });
+                    });
+                </script>
+            @endif
+
+            {{-- SweetAlert: Hasil Import Working Experience --}}
+            @if(session('import_success'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        @if(session('import_failures') && count(session('import_failures')) > 0)
+                        var failureList = @json(session('import_failures'));
+                        var failHtml = '<ul style="text-align:left;font-size:0.85em;max-height:200px;overflow-y:auto;">';
+                        failureList.forEach(function(f){ failHtml += '<li>' + f + '</li>'; });
+                        failHtml += '</ul>';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Import Selesai (ada kegagalan)',
+                                html: '<p>{{ session("import_success") }}</p>' + failHtml,
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#ffc107'
+                            });
+                        } else {
+                            alert("Import Selesai (ada kegagalan):\n{{ session('import_success') }}");
+                        }
+                        @else
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Import Berhasil',
+                                text: "{{ session('import_success') }}",
+                                timer: 3000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            alert("Import Berhasil: {{ session('import_success') }}");
+                        }
+                        @endif
+                    });
+                </script>
             @endif
 
             {{-- Form Tambah Mapping --}}
@@ -69,6 +153,16 @@
                         </div>
                     </form>
                 </div>
+            </div>
+
+            {{-- Tombol Import Riwayat Jabatan --}}
+            <div class="mb-3 text-end">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalImportWe">
+                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Import Riwayat Jabatan (Excel)
+                </button>
+                <a href="{{ route('user-job-position.api.working-experience.import.template') }}" class="btn btn-outline-success rounded-pill px-4 ms-2">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Download Template
+                </a>
             </div>
 
             {{-- Filter & Tabel --}}
@@ -180,7 +274,7 @@
 
             <!-- Modal Edit Mapping -->
             <div class="modal fade" id="modalEditMapping" tabindex="-1" aria-labelledby="modalEditMappingLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
                     <div class="modal-content rounded-4 border-0 shadow">
                         <div class="modal-header bg-primary text-white rounded-top-4 py-3">
                             <h5 class="modal-title fw-semibold" id="modalEditMappingLabel"><i class="fas fa-edit me-2"></i>Edit Mapping Karyawan</h5>
@@ -207,6 +301,27 @@
                                             <option value="{{ $pos->id }}">{{ $pos->position_name }}</option>
                                         @endforeach
                                     </select>
+                                </div>
+                                <hr class="my-4">
+                                <div>
+                                    <h6 class="fw-semibold text-muted mb-3"><i class="bi bi-briefcase me-2"></i>Riwayat Jabatan Karyawan</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm align-middle mb-0" style="font-size:0.85em;">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Thn Mulai</th>
+                                                    <th>Thn Selesai</th>
+                                                    <th>Jabatan</th>
+                                                    <th>Section</th>
+                                                    <th>Departemen</th>
+                                                    <th>Keterangan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="edit-mapping-we-tbody">
+                                                <tr><td colspan="6" class="text-center text-muted py-3">Pilih karyawan terlebih dahulu.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                             <div class="modal-footer border-0 p-3 bg-light rounded-bottom-4">
@@ -245,15 +360,30 @@
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small fw-semibold">Jabatan <span class="text-danger">*</span></label>
-                                            <input type="text" id="we-job-position" class="form-control form-control-sm" placeholder="Jabatan">
+                                            <select id="we-job-position" class="form-select form-select-sm select2-tags" style="width:100%;">
+                                                <option value=""></option>
+                                                @foreach($positions as $pos)
+                                                    <option value="{{ $pos->position_name }}">{{ $pos->position_name }}</option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label small fw-semibold">Section</label>
-                                            <input type="text" id="we-section" class="form-control form-control-sm" placeholder="Section">
+                                            <select id="we-section" class="form-select form-select-sm select2-tags" style="width:100%;">
+                                                <option value=""></option>
+                                                @foreach($sections as $sec)
+                                                    <option value="{{ $sec->name }}">{{ $sec->name }}</option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label small fw-semibold">Departemen</label>
-                                            <input type="text" id="we-departemen" class="form-control form-control-sm" placeholder="Departemen">
+                                            <select id="we-departemen" class="form-select form-select-sm select2-tags" style="width:100%;">
+                                                <option value=""></option>
+                                                @foreach($departments as $dept)
+                                                    <option value="{{ $dept->name }}">{{ $dept->name }}</option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                         <div class="col-md-1">
                                             <button type="button" id="we-btn-add" class="btn btn-sm w-100" style="background:#6f42c1;color:white;border-radius:20px;">
@@ -310,11 +440,29 @@
                                 <div class="col-6"><label class="form-label small fw-semibold">Tahun Selesai</label>
                                     <input type="number" id="edit-we-year-end" class="form-control form-control-sm" placeholder="Tahun Selesai"></div>
                                 <div class="col-12"><label class="form-label small fw-semibold">Jabatan</label>
-                                    <input type="text" id="edit-we-job-position" class="form-control form-control-sm" placeholder="Jabatan"></div>
+                                            <select id="edit-we-job-position" class="form-select form-select-sm select2-tags" style="width:100%;">
+                                                <option value=""></option>
+                                                @foreach($positions as $pos)
+                                                    <option value="{{ $pos->position_name }}">{{ $pos->position_name }}</option>
+                                                @endforeach
+                                            </select>
+                                </div>
                                 <div class="col-6"><label class="form-label small fw-semibold">Section</label>
-                                    <input type="text" id="edit-we-section" class="form-control form-control-sm" placeholder="Section"></div>
+                                            <select id="edit-we-section" class="form-select form-select-sm select2-tags" style="width:100%;">
+                                                <option value=""></option>
+                                                @foreach($sections as $sec)
+                                                    <option value="{{ $sec->name }}">{{ $sec->name }}</option>
+                                                @endforeach
+                                            </select>
+                                </div>
                                 <div class="col-6"><label class="form-label small fw-semibold">Departemen</label>
-                                    <input type="text" id="edit-we-departemen" class="form-control form-control-sm" placeholder="Departemen"></div>
+                                            <select id="edit-we-departemen" class="form-select form-select-sm select2-tags" style="width:100%;">
+                                                <option value=""></option>
+                                                @foreach($departments as $dept)
+                                                    <option value="{{ $dept->name }}">{{ $dept->name }}</option>
+                                                @endforeach
+                                            </select>
+                                </div>
                                 <div class="col-12"><label class="form-label small fw-semibold">Keterangan</label>
                                     <input type="text" id="edit-we-keterangan" class="form-control form-control-sm" placeholder="Keterangan"></div>
                             </div>
@@ -330,9 +478,49 @@
         </div>
     </section>
 </main>
+
+{{-- Modal: Import Bulk Working Experience --}}
+<div class="modal fade" id="modalImportWe" tabindex="-1" aria-labelledby="modalImportWeLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header py-3" style="background:#198754;color:white;">
+                <h5 class="modal-title fw-semibold" id="modalImportWeLabel">
+                    <i class="bi bi-file-earmark-arrow-up me-2"></i>Import Riwayat Jabatan (Excel)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ route('user-job-position.api.working-experience.import') }}" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        Upload file Excel (.xlsx / .xls) dengan kolom:
+                        <strong>nama_karyawan, tahun_mulai, tahun_selesai, jabatan, section, departemen, keterangan</strong>.<br>
+                        Kolom <code>tahun_selesai</code> boleh dikosongkan (artinya jabatan masih berlangsung / Present).
+                        Pencocokan karyawan berdasarkan <code>nama_karyawan</code> (harus sama persis dengan sistem, hati-hati salah ketik).
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Pilih File Excel <span class="text-danger">*</span></label>
+                        <input type="file" name="import_file" id="importWeFile" class="form-control" accept=".xlsx,.xls,.csv" required>
+                        @error('import_file')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4">
+                        <i class="bi bi-upload me-1"></i> Upload & Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- jQuery must be loaded before Select2 -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -360,6 +548,36 @@
                 dropdownParent: $('#modalEditMapping')
             });
 
+            // Inisialisasi Select2 untuk Working Experience (bisa input bebas)
+            $('#we-job-position, #we-section, #we-departemen').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                tags: true,
+                dropdownParent: $('#modalWorkingExp'),
+                placeholder: "Pilih atau Ketik..."
+            });
+            $('#edit-we-job-position, #edit-we-section, #edit-we-departemen').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                tags: true,
+                dropdownParent: $('#modalEditWE'),
+                placeholder: "Pilih atau Ketik..."
+            });
+
+            // Helper function to set select2 tags value safely
+            function setSelect2TagsVal(selector, val) {
+                if (val && val !== '-' && val !== '—') {
+                    if ($(selector).find("option[value='" + val + "']").length) {
+                        $(selector).val(val).trigger('change');
+                    } else {
+                        var newOption = new Option(val, val, true, true);
+                        $(selector).append(newOption).trigger('change');
+                    }
+                } else {
+                    $(selector).val('').trigger('change');
+                }
+            }
+
             // Handler tombol Edit
             $('.btn-edit-mapping').on('click', function() {
                 var id = $(this).data('id');
@@ -374,8 +592,23 @@
                 $('#editUserId').val(userId).trigger('change');
                 $('#editPositionId').val(positionId).trigger('change');
                 
+                // Load read-only table
+                $('#edit-mapping-we-tbody').html('<tr><td colspan="6" class="text-center text-muted py-3">Memuat data...</td></tr>');
+                weLoadData(userId, '#edit-mapping-we-tbody', true);
+
                 // Show modal
                 $('#modalEditMapping').modal('show');
+            });
+
+            // Refresh table if user changes dropdown inside modal edit
+            $('#editUserId').on('change', function() {
+                var userId = $(this).val();
+                if (userId && $('#modalEditMapping').is(':visible')) {
+                    $('#edit-mapping-we-tbody').html('<tr><td colspan="6" class="text-center text-muted py-3">Memuat data...</td></tr>');
+                    weLoadData(userId, '#edit-mapping-we-tbody', true);
+                } else if (!userId) {
+                    $('#edit-mapping-we-tbody').html('<tr><td colspan="6" class="text-center text-muted py-3">Pilih karyawan terlebih dahulu.</td></tr>');
+                }
             });
 
             // Submit otomatis saat filter berubah
@@ -387,14 +620,15 @@
             var weCurrentUserId = null;
             var weApiBase = "{{ route('user-job-position.api.working-experience.index') }}";
 
-            function weLoadData(userId) {
+            function weLoadData(userId, targetTbodyId = '#we-tbody', isReadOnly = false) {
                 var url = weApiBase + '?user_id=' + userId;
                 $.getJSON(url, function(res) {
-                    var tbody = $('#we-tbody');
+                    var tbody = $(targetTbodyId);
                     tbody.empty();
                     var data = res.data || [];
                     if (data.length === 0) {
-                        tbody.append('<tr><td colspan="7" class="text-center text-muted">Belum ada riwayat jabatan.</td></tr>');
+                        var colSpan = isReadOnly ? 6 : 7;
+                        tbody.append('<tr><td colspan="' + colSpan + '" class="text-center text-muted py-3">Belum ada riwayat jabatan.</td></tr>');
                         return;
                     }
                     data.forEach(function(item) {
@@ -406,13 +640,16 @@
                         row.append('<td>' + (item.section || '-') + '</td>');
                         row.append('<td>' + (item.departemen || '-') + '</td>');
                         row.append('<td>' + (item.keterangan || '-') + '</td>');
-                        var editBtn = '<button class="btn btn-sm btn-outline-primary rounded-pill px-2 me-1 we-btn-edit" data-id="' + item.id + '"><i class="bi bi-pencil-fill"></i></button>';
-                        var delBtn = '<button class="btn btn-sm btn-outline-danger rounded-pill px-2 we-btn-delete" data-id="' + item.id + '"><i class="bi bi-trash-fill"></i></button>';
-                        row.append('<td class="text-center">' + editBtn + delBtn + '</td>');
+                        if (!isReadOnly) {
+                            var editBtn = '<button class="btn btn-sm btn-outline-primary rounded-pill px-2 me-1 we-btn-edit" data-id="' + item.id + '"><i class="bi bi-pencil-fill"></i></button>';
+                            var delBtn = '<button class="btn btn-sm btn-outline-danger rounded-pill px-2 we-btn-delete" data-id="' + item.id + '"><i class="bi bi-trash-fill"></i></button>';
+                            row.append('<td class="text-center">' + editBtn + delBtn + '</td>');
+                        }
                         tbody.append(row);
                     });
                 }).fail(function() {
-                    $('#we-tbody').html('<tr><td colspan="7" class="text-center text-danger">Gagal memuat data.</td></tr>');
+                    var colSpan = isReadOnly ? 6 : 7;
+                    $(targetTbodyId).html('<tr><td colspan="' + colSpan + '" class="text-center text-danger py-3">Gagal memuat data.</td></tr>');
                 });
             }
 
@@ -422,7 +659,10 @@
                 var userName = $(this).data('user-name');
                 $('#we-user-name').text(userName);
                 // Reset form fields
-                $('#we-year-start,#we-year-end,#we-job-position,#we-section,#we-departemen,#we-keterangan').val('');
+                $('#we-year-start,#we-year-end,#we-keterangan').val('');
+                setSelect2TagsVal('#we-job-position', '');
+                setSelect2TagsVal('#we-section', '');
+                setSelect2TagsVal('#we-departemen', '');
                 weLoadData(weCurrentUserId);
                 $('#modalWorkingExp').modal('show');
             });
@@ -450,7 +690,10 @@
                     method: 'POST',
                     data: payload,
                     success: function() {
-                        $('#we-year-start,#we-year-end,#we-job-position,#we-section,#we-departemen,#we-keterangan').val('');
+                        $('#we-year-start,#we-year-end,#we-keterangan').val('');
+                        setSelect2TagsVal('#we-job-position', '');
+                        setSelect2TagsVal('#we-section', '');
+                        setSelect2TagsVal('#we-departemen', '');
                         weLoadData(weCurrentUserId);
                     },
                     error: function(xhr) {
@@ -468,9 +711,9 @@
                 $('#edit-we-id').val(id);
                 $('#edit-we-year-start').val($(cells[0]).text().trim());
                 $('#edit-we-year-end').val($(cells[1]).text().trim() === 'Present' ? '' : $(cells[1]).text().trim());
-                $('#edit-we-job-position').val($(cells[2]).text().trim());
-                $('#edit-we-section').val($(cells[3]).text().trim());
-                $('#edit-we-departemen').val($(cells[4]).text().trim());
+                setSelect2TagsVal('#edit-we-job-position', $(cells[2]).text().trim());
+                setSelect2TagsVal('#edit-we-section', $(cells[3]).text().trim());
+                setSelect2TagsVal('#edit-we-departemen', $(cells[4]).text().trim());
                 $('#edit-we-keterangan').val($(cells[5]).text().trim());
                 $('#modalEditWE').modal('show');
             });
@@ -508,16 +751,34 @@
 
             // Delete
             $(document).on('click', '.we-btn-delete', function() {
-                if (!confirm('Hapus riwayat ini?')) return;
                 var id = $(this).data('id');
                 var baseUrl = "{{ route('user-job-position.api.working-experience.destroy', ':id') }}";
                 var url = baseUrl.replace(':id', id);
-                $.ajax({
-                    url: url,
-                    method: 'POST',
-                    data: { _token: $('meta[name="csrf-token"]').attr('content'), _method: 'DELETE' },
-                    success: function() { weLoadData(weCurrentUserId); },
-                    error: function() { alert('Gagal menghapus.'); }
+
+                Swal.fire({
+                    title: 'Hapus Riwayat?',
+                    text: "Data yang dihapus tidak dapat dikembalikan!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: url,
+                            method: 'POST',
+                            data: { _token: $('meta[name="csrf-token"]').attr('content'), _method: 'DELETE' },
+                            success: function() {
+                                Swal.fire('Terhapus!', 'Riwayat jabatan berhasil dihapus.', 'success');
+                                weLoadData(weCurrentUserId);
+                            },
+                            error: function() {
+                                Swal.fire('Gagal!', 'Terjadi kesalahan saat menghapus data.', 'error');
+                            }
+                        });
+                    }
                 });
             });
         });

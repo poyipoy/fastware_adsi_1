@@ -88,7 +88,6 @@ Route::get('debug-visits-public', function () {
         'all_approvals' => $allApprovals
     ]);
 });
-
 Route::post('/login', [AuthController::class, 'login'])->name('login_post');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -521,6 +520,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     Route::get('/view-pd/{modified_at}/{tahun_aktual}', [PdController::class, 'viewPD'])->name('viewPD');
     Route::get('/view-pd-HRGA/{tahun_aktual}', [PdController::class, 'viewPD2'])->name('viewPD2');
+    Route::get('/export-pd-HRGA/{tahun_aktual}', [PdController::class, 'exportPD2'])->name('exportPD2');
 
     Route::post('/save-penilaian', [PenilaianTCController::class, 'savePenilaian'])->name('savePenilaian');
     Route::post('/save-pd-pengajuan', [PdController::class, 'savePdPengajuan'])->name('savePdPengajuan');
@@ -910,6 +910,9 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::post('/user-job-position/api/working-experience', [\App\Http\Controllers\UserJobPositionController::class, 'storeWorkingExperience'])->name('api.working-experience.store');
         Route::put('/user-job-position/api/working-experience/{workingExperience}', [\App\Http\Controllers\UserJobPositionController::class, 'updateWorkingExperience'])->name('api.working-experience.update');
         Route::delete('/user-job-position/api/working-experience/{workingExperience}', [\App\Http\Controllers\UserJobPositionController::class, 'destroyWorkingExperience'])->name('api.working-experience.destroy');
+        // Modul 3.2 — Working Experience Bulk Import
+        Route::post('/user-job-position/api/working-experience/import', [\App\Http\Controllers\UserJobPositionController::class, 'importWorkingExperience'])->name('api.working-experience.import');
+        Route::get('/user-job-position/api/working-experience/import/template', [\App\Http\Controllers\UserJobPositionController::class, 'downloadImportTemplate'])->name('api.working-experience.import.template');
     });
 
     // Modul 4.2 — Year Management API (HR & Administrator only)
