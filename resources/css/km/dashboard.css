@@ -1,0 +1,175 @@
+.km-app .km-filter-bar {
+    border-color: var(--km-color-border-subtle);
+}
+
+.km-app .km-document-card {
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--km-radius-md);
+    transition: border-color var(--km-motion-fast) ease, box-shadow var(--km-motion-fast) ease;
+}
+
+.km-app .km-document-card:hover {
+    border-color: var(--km-color-border);
+    box-shadow: var(--km-shadow-md);
+}
+
+.km-app .km-thumbnail-wrapper {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--km-color-neutral-bg);
+}
+
+.km-app .km-thumbnail-wrapper img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.km-app .km-document-title {
+    display: -webkit-box;
+    min-height: 2.6rem;
+    margin: 0 0 8px;
+    overflow: hidden;
+    color: var(--km-color-text);
+    font-size: var(--km-font-size-md);
+    font-weight: 700;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.km-app .km-bookmark-btn {
+    width: var(--km-control-height);
+    height: var(--km-control-height);
+    padding: 0;
+    border: 0;
+    color: var(--km-color-text-muted);
+    background: transparent;
+}
+
+.km-app .km-bookmark-btn[data-bookmarked="true"] {
+    color: var(--km-color-link);
+}
+
+.km-app .km-bookmark-btn:disabled {
+    opacity: 0.55;
+}
+
+.km-app .btn-like {
+    min-width: var(--km-control-height);
+    color: var(--km-color-text-muted);
+}
+
+.km-app .btn-like.liked {
+    color: var(--km-color-link);
+}
+
+.km-app .km-leaderboard-item {
+    width: 150px;
+    min-width: 150px;
+    border-radius: var(--km-radius-md);
+}
+
+.km-app .km-synopsis-content {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.km-app .km-viewer-toolbar {
+    min-height: 58px;
+    gap: 8px;
+}
+
+.km-app .km-viewer-toolbar .modal-title {
+    min-width: 120px;
+    max-width: 28%;
+}
+
+.km-app .km-viewer-label {
+    width: 64px;
+    opacity: 1 !important;
+}
+
+.km-app .km-viewer-body {
+    min-height: 0;
+    overflow: auto;
+    background: var(--km-color-neutral-bg);
+}
+
+.km-app .km-viewer-canvas-wrapper {
+    display: flex;
+    min-height: 100%;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px;
+}
+
+.km-app #km-viewer-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    background: var(--km-color-surface);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.km-app #km-viewer-canvas[hidden] {
+    display: none;
+}
+
+.km-app .km-viewer-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    width: min(320px, calc(100% - 32px));
+    padding: 20px;
+    border: 1px solid var(--km-color-border-subtle);
+    border-radius: var(--km-radius-md);
+    background: var(--km-color-surface);
+    text-align: center;
+    transform: translate(-50%, -50%);
+}
+
+.km-app .km-autosave-status {
+    min-height: 1.25rem;
+    color: var(--km-color-text-muted);
+    font-size: 0.8rem;
+}
+
+.km-app .km-autosave-saving {
+    color: var(--km-color-warning);
+}
+
+.km-app .km-autosave-saved {
+    color: var(--km-color-success);
+}
+
+.km-app .km-autosave-error,
+.km-app .km-autosave-conflict {
+    color: var(--km-color-danger);
+}
+
+@media (max-width: 575.98px) {
+    .km-app .km-viewer-toolbar {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .km-app .km-viewer-toolbar .modal-title {
+        width: calc(100% - 40px);
+        max-width: none;
+    }
+
+    .km-app .km-viewer-toolbar .ms-auto {
+        width: 100%;
+        margin-left: 0 !important;
+        justify-content: flex-start !important;
+    }
+
+    .km-app .km-viewer-canvas-wrapper {
+        padding: 8px;
+    }
+}

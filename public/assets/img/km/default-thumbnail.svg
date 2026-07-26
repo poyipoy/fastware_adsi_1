@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" role="img" aria-label="Thumbnail dokumen">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8f9fa"/>
+      <stop offset="100%" stop-color="#e9ecef"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="200" height="280" rx="6" fill="url(#bg)"/>
+  <!-- Page fold -->
+  <polygon points="140,0 200,60 140,60" fill="#dee2e6"/>
+  <polygon points="140,0 200,60 200,0" fill="#ced4da"/>
+  <!-- Document body -->
+  <rect x="20" y="80" width="160" height="12" rx="3" fill="#ced4da"/>
+  <rect x="20" y="102" width="140" height="8" rx="3" fill="#dee2e6"/>
+  <rect x="20" y="118" width="150" height="8" rx="3" fill="#dee2e6"/>
+  <rect x="20" y="134" width="120" height="8" rx="3" fill="#dee2e6"/>
+  <rect x="20" y="158" width="160" height="8" rx="3" fill="#dee2e6"/>
+  <rect x="20" y="174" width="100" height="8" rx="3" fill="#dee2e6"/>
+  <!-- KM Icon -->
+  <text x="100" y="240" text-anchor="middle" fill="#adb5bd" font-size="11" font-family="sans-serif">Knowledge Management</text>
+</svg>

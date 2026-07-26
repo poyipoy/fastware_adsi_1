@@ -1,0 +1,733 @@
+/*
+ * Knowledge Management design foundation.
+ * Component rules are intentionally scoped beneath `.km-app` so the legacy
+ * global shell and other Fastware modules remain unchanged.
+ */
+
+.km-app {
+    /* Primitive tokens */
+    --km-navy-950: #102a43;
+    --km-navy-900: #163a5f;
+    --km-navy-800: #1f4d78;
+    --km-blue-700: #175cd3;
+    --km-blue-600: #2563eb;
+    --km-red-700: #b42318;
+    --km-red-600: #c4322b;
+    --km-green-700: #18794e;
+    --km-amber-800: #854a0e;
+    --km-slate-950: #101828;
+    --km-slate-700: #344054;
+    --km-slate-600: #475467;
+    --km-slate-500: #667085;
+    --km-slate-400: #98a2b3;
+    --km-slate-300: #d0d5dd;
+    --km-slate-200: #e4e7ec;
+    --km-slate-100: #f2f4f7;
+    --km-slate-50: #f8fafc;
+    --km-white: #ffffff;
+
+    /* Semantic tokens */
+    --km-color-page: #f4f7fa;
+    --km-color-surface: var(--km-white);
+    --km-color-surface-subtle: var(--km-slate-50);
+    --km-color-text: var(--km-slate-950);
+    --km-color-text-secondary: var(--km-slate-600);
+    --km-color-text-muted: var(--km-slate-500);
+    --km-color-border: var(--km-slate-300);
+    --km-color-border-subtle: var(--km-slate-200);
+    --km-color-primary: var(--km-navy-900);
+    --km-color-primary-hover: var(--km-navy-950);
+    --km-color-link: var(--km-blue-700);
+    --km-color-accent: var(--km-red-600);
+    --km-color-success: var(--km-green-700);
+    --km-color-warning: var(--km-amber-800);
+    --km-color-danger: var(--km-red-700);
+    --km-color-focus: var(--km-blue-600);
+    --km-color-info-bg: #eff8ff;
+    --km-color-success-bg: #ecfdf3;
+    --km-color-warning-bg: #fffaeb;
+    --km-color-danger-bg: #fef3f2;
+    --km-color-neutral-bg: var(--km-slate-100);
+
+    /* Type, layout, and component tokens */
+    --km-font-sans: "Segoe UI", Arial, sans-serif;
+    --km-font-size-xs: 0.75rem;
+    --km-font-size-sm: 0.875rem;
+    --km-font-size-md: 1rem;
+    --km-font-size-lg: 1.125rem;
+    --km-font-size-xl: clamp(1.5rem, 2vw, 2rem);
+    --km-line-height-tight: 1.25;
+    --km-line-height-body: 1.55;
+    --km-space-1: 0.25rem;
+    --km-space-2: 0.5rem;
+    --km-space-3: 0.75rem;
+    --km-space-4: 1rem;
+    --km-space-5: 1.25rem;
+    --km-space-6: 1.5rem;
+    --km-space-8: 2rem;
+    --km-space-10: 2.5rem;
+    --km-radius-sm: 0.25rem;
+    --km-radius-md: 0.5rem;
+    --km-radius-lg: 0.75rem;
+    --km-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+    --km-shadow-md: 0 8px 24px rgba(16, 24, 40, 0.1);
+    --km-control-height: 2.75rem;
+    --km-sidebar-width: 16.5rem;
+    --km-z-sticky: 20;
+    --km-z-offcanvas: 40;
+    --km-motion-fast: 160ms;
+    --km-motion-standard: 220ms;
+
+    min-height: calc(100vh - 4rem);
+    padding: 0;
+    color: var(--km-color-text);
+    background: var(--km-color-page);
+    font-family: var(--km-font-sans);
+    font-size: var(--km-font-size-md);
+    line-height: var(--km-line-height-body);
+}
+
+.km-app *,
+.km-app *::before,
+.km-app *::after {
+    box-sizing: border-box;
+}
+
+.km-app a {
+    color: var(--km-color-link);
+    text-underline-offset: 0.16em;
+}
+
+.km-app a:hover {
+    color: var(--km-color-primary-hover);
+}
+
+.km-app :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid var(--km-color-focus);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.km-app :where(.btn, .form-control, .form-select, .form-check-input, .page-link) {
+    min-height: var(--km-control-height);
+}
+
+.km-app .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--km-space-2);
+    border-radius: var(--km-radius-sm);
+    font-weight: 600;
+    transition: background-color var(--km-motion-fast) ease,
+        border-color var(--km-motion-fast) ease,
+        color var(--km-motion-fast) ease;
+}
+
+.km-app .btn-sm {
+    min-height: var(--km-control-height);
+    padding-inline: var(--km-space-3);
+}
+
+.km-app .btn-primary {
+    --bs-btn-bg: var(--km-color-primary);
+    --bs-btn-border-color: var(--km-color-primary);
+    --bs-btn-hover-bg: var(--km-color-primary-hover);
+    --bs-btn-hover-border-color: var(--km-color-primary-hover);
+    --bs-btn-active-bg: var(--km-color-primary-hover);
+    --bs-btn-active-border-color: var(--km-color-primary-hover);
+}
+
+.km-app .btn-outline-primary {
+    --bs-btn-color: var(--km-color-primary);
+    --bs-btn-border-color: var(--km-color-primary);
+    --bs-btn-hover-bg: var(--km-color-primary);
+    --bs-btn-hover-border-color: var(--km-color-primary);
+}
+
+.km-app .form-label,
+.km-app legend {
+    margin-bottom: var(--km-space-2);
+    color: var(--km-color-text-secondary);
+    font-size: var(--km-font-size-sm);
+    font-weight: 650;
+}
+
+.km-app .form-control,
+.km-app .form-select,
+.km-app .input-group-text {
+    border-color: var(--km-color-border);
+    border-radius: var(--km-radius-sm);
+    color: var(--km-color-text);
+    background-color: var(--km-color-surface);
+}
+
+.km-app .form-control::placeholder {
+    color: var(--km-color-text-muted);
+    opacity: 1;
+}
+
+.km-app .form-control:focus,
+.km-app .form-select:focus,
+.km-app .form-check-input:focus {
+    border-color: var(--km-color-focus);
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
+}
+
+.km-app .form-text {
+    color: var(--km-color-text-muted);
+}
+
+.km-app .card,
+.km-app .modal-content {
+    border: 1px solid var(--km-color-border-subtle);
+    border-radius: var(--km-radius-md);
+    background: var(--km-color-surface);
+    box-shadow: var(--km-shadow-sm);
+}
+
+.km-app .card-header,
+.km-app .card-footer,
+.km-app .modal-header,
+.km-app .modal-footer {
+    border-color: var(--km-color-border-subtle);
+    background: var(--km-color-surface);
+}
+
+.km-app .alert {
+    border-radius: var(--km-radius-md);
+    border-left-width: 4px;
+}
+
+.km-app .table-responsive {
+    overflow-x: auto;
+    border: 1px solid var(--km-color-border-subtle);
+    border-radius: var(--km-radius-md);
+    background: var(--km-color-surface);
+    box-shadow: var(--km-shadow-sm);
+    -webkit-overflow-scrolling: touch;
+}
+
+.km-app .table {
+    min-width: 48rem;
+    margin-bottom: 0;
+    color: var(--km-color-text);
+}
+
+.km-app .table > :not(caption) > * > * {
+    padding: var(--km-space-3) var(--km-space-4);
+    border-color: var(--km-color-border-subtle);
+    vertical-align: middle;
+}
+
+.km-app .table thead th {
+    color: var(--km-color-text-secondary);
+    background: var(--km-color-surface-subtle);
+    font-size: var(--km-font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.km-app .table tbody tr:hover > * {
+    --bs-table-hover-bg: #f5f9fc;
+}
+
+.km-app .pagination {
+    flex-wrap: wrap;
+    gap: var(--km-space-1);
+}
+
+.km-app .page-link {
+    display: inline-flex;
+    min-width: var(--km-control-height);
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--km-radius-sm);
+    color: var(--km-color-primary);
+}
+
+.km-app .page-item.active .page-link {
+    border-color: var(--km-color-primary);
+    background: var(--km-color-primary);
+}
+
+.km-app .km-skip-link {
+    position: fixed;
+    top: var(--km-space-3);
+    left: var(--km-space-3);
+    z-index: calc(var(--km-z-offcanvas) + 20);
+    padding: var(--km-space-3) var(--km-space-4);
+    border-radius: var(--km-radius-sm);
+    color: var(--km-white);
+    background: var(--km-color-primary);
+    font-weight: 700;
+    transform: translateY(-160%);
+}
+
+.km-app .km-skip-link:focus {
+    color: var(--km-white);
+    transform: translateY(0);
+}
+
+.km-app .km-workspace {
+    display: grid;
+    min-height: calc(100vh - 4rem);
+}
+
+.km-app .km-sidebar.offcanvas {
+    --bs-offcanvas-width: var(--km-sidebar-width);
+    z-index: var(--km-z-offcanvas);
+    border-right: 1px solid var(--km-color-border-subtle);
+    color: var(--km-color-text);
+    background: var(--km-color-surface);
+}
+
+.km-app .km-sidebar-title {
+    margin: 0;
+    color: var(--km-color-primary);
+    font-size: var(--km-font-size-lg);
+    font-weight: 750;
+    letter-spacing: -0.01em;
+}
+
+.km-app .km-sidebar-kicker {
+    display: block;
+    margin-bottom: var(--km-space-1);
+    color: var(--km-color-text-muted);
+    font-size: var(--km-font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.km-app .km-sidebar-nav {
+    display: grid;
+    gap: var(--km-space-1);
+    padding: var(--km-space-4);
+}
+
+.km-app .km-sidebar-link {
+    display: flex;
+    min-height: var(--km-control-height);
+    align-items: center;
+    gap: var(--km-space-3);
+    padding: var(--km-space-3) var(--km-space-4);
+    border-left: 3px solid transparent;
+    border-radius: var(--km-radius-sm);
+    color: var(--km-color-text-secondary);
+    font-size: var(--km-font-size-sm);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.km-app .km-sidebar-link:hover {
+    color: var(--km-color-primary);
+    background: var(--km-color-surface-subtle);
+}
+
+.km-app .km-sidebar-link[aria-current="page"] {
+    border-left-color: var(--km-color-accent);
+    color: var(--km-color-primary);
+    background: #eef4f8;
+}
+
+.km-app .km-sidebar-link .bi {
+    width: 1.25rem;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.km-app .km-sidebar-toggle-row {
+    position: sticky;
+    top: 4rem;
+    z-index: var(--km-z-sticky);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--km-space-3);
+    padding: var(--km-space-3) var(--km-space-4);
+    border-bottom: 1px solid var(--km-color-border-subtle);
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.km-app .km-main-panel {
+    min-width: 0;
+    padding: var(--km-space-5) var(--km-space-4) var(--km-space-10);
+}
+
+.km-app .km-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--km-space-4);
+    margin-bottom: var(--km-space-6);
+    padding-bottom: var(--km-space-5);
+    border-bottom: 1px solid var(--km-color-border);
+}
+
+.km-app .km-page-header__content {
+    max-width: 52rem;
+}
+
+.km-app .km-page-header__eyebrow {
+    margin: 0 0 var(--km-space-2);
+    color: var(--km-color-primary);
+    font-size: var(--km-font-size-xs);
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.km-app .km-page-header h1 {
+    margin: 0;
+    color: var(--km-color-text);
+    font-size: var(--km-font-size-xl);
+    font-weight: 750;
+    letter-spacing: -0.025em;
+    line-height: var(--km-line-height-tight);
+}
+
+.km-app .km-page-header__description {
+    margin: var(--km-space-2) 0 0;
+    color: var(--km-color-text-secondary);
+}
+
+.km-app .km-page-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--km-space-2);
+}
+
+.km-app .km-panel {
+    margin-bottom: var(--km-space-5);
+    padding: var(--km-space-5);
+    border: 1px solid var(--km-color-border-subtle);
+    border-radius: var(--km-radius-md);
+    background: var(--km-color-surface);
+    box-shadow: var(--km-shadow-sm);
+}
+
+.km-app .km-panel__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--km-space-3);
+    margin-bottom: var(--km-space-4);
+}
+
+.km-app .km-panel__title {
+    margin: 0;
+    font-size: var(--km-font-size-lg);
+    font-weight: 700;
+}
+
+.km-app .km-search-control .input-group-text {
+    min-width: var(--km-control-height);
+    justify-content: center;
+    border-right: 0;
+    background: var(--km-color-surface);
+}
+
+.km-app .km-search-control .form-control {
+    border-left: 0;
+}
+
+.km-app .km-filter-disclosure {
+    margin-top: var(--km-space-3);
+    border-top: 1px solid var(--km-color-border-subtle);
+}
+
+.km-app .km-filter-disclosure > summary {
+    display: flex;
+    min-height: var(--km-control-height);
+    cursor: pointer;
+    list-style: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--km-space-3);
+    color: var(--km-color-primary);
+    font-size: var(--km-font-size-sm);
+    font-weight: 700;
+}
+
+.km-app .km-filter-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+
+.km-app .km-filter-disclosure > summary::after {
+    content: "\F282";
+    font-family: "bootstrap-icons";
+    transition: transform var(--km-motion-fast) ease;
+}
+
+.km-app .km-filter-disclosure[open] > summary::after {
+    transform: rotate(180deg);
+}
+
+.km-app .km-filter-disclosure__body {
+    padding: var(--km-space-3) 0 var(--km-space-1);
+}
+
+.km-app .km-active-filter-note {
+    color: var(--km-color-text-secondary);
+    font-size: var(--km-font-size-sm);
+}
+
+.km-app .km-status {
+    display: inline-flex;
+    min-height: 1.75rem;
+    align-items: center;
+    gap: var(--km-space-2);
+    padding: var(--km-space-1) var(--km-space-2);
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: var(--km-font-size-xs);
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.km-app .km-status--inactive {
+    color: var(--km-color-danger);
+    background: var(--km-color-danger-bg);
+}
+
+.km-app .km-status--draft {
+    color: var(--km-color-text-secondary);
+    background: var(--km-color-neutral-bg);
+}
+
+.km-app .km-status--pending {
+    color: var(--km-color-warning);
+    background: var(--km-color-warning-bg);
+}
+
+.km-app .km-status--published {
+    color: var(--km-color-success);
+    background: var(--km-color-success-bg);
+}
+
+.km-app .km-empty-state,
+.km-app .km-loading-state {
+    display: grid;
+    min-height: 14rem;
+    place-items: center;
+    align-content: center;
+    gap: var(--km-space-2);
+    padding: var(--km-space-8) var(--km-space-4);
+    border: 1px dashed var(--km-color-border);
+    border-radius: var(--km-radius-md);
+    color: var(--km-color-text-secondary);
+    background: var(--km-color-surface-subtle);
+    text-align: center;
+}
+
+.km-app .km-empty-state__icon,
+.km-app .km-loading-state__icon {
+    color: var(--km-color-primary);
+    font-size: 2rem;
+}
+
+.km-app .km-empty-state__title,
+.km-app .km-loading-state__title {
+    margin: var(--km-space-1) 0 0;
+    color: var(--km-color-text);
+    font-size: var(--km-font-size-lg);
+    font-weight: 700;
+}
+
+.km-app .km-empty-state__description,
+.km-app .km-loading-state__description {
+    max-width: 38rem;
+    margin: 0;
+}
+
+.km-app .km-error-summary {
+    scroll-margin-top: 6rem;
+}
+
+.km-app .km-error-summary a {
+    color: inherit;
+    font-weight: 600;
+}
+
+.km-app .km-required-note,
+.km-app .km-field-required {
+    color: var(--km-color-danger);
+}
+
+.km-app .km-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--km-space-2);
+}
+
+.km-app .km-action-group .btn-icon {
+    width: var(--km-control-height);
+    min-width: var(--km-control-height);
+    padding: 0;
+}
+
+.km-app [aria-busy="true"] {
+    cursor: wait;
+}
+
+.km-app [aria-busy="true"] button[type="submit"] {
+    pointer-events: none;
+}
+
+.km-app .km-toast-region {
+    position: fixed;
+    top: 5rem;
+    right: var(--km-space-4);
+    z-index: calc(var(--km-z-offcanvas) + 30);
+    width: min(24rem, calc(100vw - 2rem));
+}
+
+.km-app .km-toast {
+    border-left: 4px solid var(--km-color-primary);
+}
+
+.km-app .km-toast[data-tone="success"] {
+    border-left-color: var(--km-color-success);
+}
+
+.km-app .km-toast[data-tone="warning"] {
+    border-left-color: var(--km-color-warning);
+}
+
+.km-app .km-toast[data-tone="danger"] {
+    border-left-color: var(--km-color-danger);
+}
+
+.km-app .km-modal-description {
+    color: var(--km-color-text-secondary);
+    white-space: pre-line;
+}
+
+.km-app .km-operational-note {
+    border-left-color: var(--km-color-warning);
+    color: var(--km-color-text-secondary);
+    background: var(--km-color-warning-bg);
+}
+
+.km-app .km-table-title {
+    display: block;
+    max-width: 24rem;
+    color: var(--km-color-text);
+    font-weight: 650;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.km-app .km-table-meta {
+    display: block;
+    margin-top: var(--km-space-1);
+    color: var(--km-color-text-muted);
+    font-size: var(--km-font-size-xs);
+}
+
+.km-app .km-bulk-toolbar {
+    position: sticky;
+    top: 7.5rem;
+    z-index: var(--km-z-sticky);
+    border-left: 4px solid var(--km-color-primary);
+}
+
+.km-app .km-history {
+    max-height: 15rem;
+    overflow-y: auto;
+    border: 1px solid var(--km-color-border-subtle);
+    border-radius: var(--km-radius-sm);
+    background: var(--km-color-surface-subtle);
+}
+
+.km-app .km-history-item:last-child {
+    border-bottom: 0 !important;
+}
+
+.km-app .km-sr-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (min-width: 768px) {
+    .km-app .km-main-panel {
+        padding: var(--km-space-8);
+    }
+}
+
+@media (min-width: 1024px) {
+    .km-app .km-workspace {
+        grid-template-columns: var(--km-sidebar-width) minmax(0, 1fr);
+    }
+
+    .km-app .km-sidebar.offcanvas {
+        position: sticky;
+        top: 4rem;
+        bottom: auto;
+        grid-column: 1;
+        width: auto;
+        height: calc(100vh - 4rem);
+        visibility: visible !important;
+        transform: none !important;
+    }
+
+    .km-app .km-sidebar .offcanvas-header {
+        display: none;
+    }
+
+    .km-app .km-sidebar .offcanvas-body {
+        display: block;
+        overflow-y: auto;
+    }
+
+    .km-app .km-sidebar-toggle-row {
+        display: none;
+    }
+
+    .km-app .km-main-panel {
+        grid-column: 2;
+        padding: var(--km-space-8) clamp(2rem, 4vw, 4rem) var(--km-space-10);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .km-app .km-page-header {
+        align-items: stretch;
+    }
+
+    .km-app .km-page-header__actions,
+    .km-app .km-page-header__actions .btn {
+        width: 100%;
+    }
+
+    .km-app .km-action-group .btn:not(.btn-icon) {
+        flex: 1 1 auto;
+    }
+
+    .km-app .km-bulk-toolbar {
+        position: static;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .km-app *,
+    .km-app *::before,
+    .km-app *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+

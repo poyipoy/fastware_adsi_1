@@ -1,49 +1,45 @@
 <?php
 
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BopmController;
+use App\Http\Controllers\ClaimSubmissionController;
+use App\Http\Controllers\CrpController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomRequestController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EntertainController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\FormFPPController;
 use App\Http\Controllers\HandlingController;
 use App\Http\Controllers\HeatTreatmentController;
+use App\Http\Controllers\ImportAdministrationController;
 use App\Http\Controllers\InquirySalesController;
+use App\Http\Controllers\ItemCodeController;
+use App\Http\Controllers\JsonToCsvController;
+use App\Http\Controllers\KmAnalyticsController;
 use App\Http\Controllers\KmPengajuanController;
+use App\Http\Controllers\LayoutEditorController;
+use App\Http\Controllers\LayoutMenuController;
+use App\Http\Controllers\MadingController;
+use App\Http\Controllers\magang\ConvertController;
+use App\Http\Controllers\magang\StrukturOrganisasiController;
 use App\Http\Controllers\MesinController;
-use App\Http\Controllers\PenilaianTCController;
+use App\Http\Controllers\OutstandingMaterialController;
 use App\Http\Controllers\PdController;
+use App\Http\Controllers\PengajuanSubcontController;
+use App\Http\Controllers\PenilaianTCController;
+use App\Http\Controllers\PoPengajuanController;
 use App\Http\Controllers\PreventiveController;
 use App\Http\Controllers\SafetyController;
 use App\Http\Controllers\SparepartController;
 use App\Http\Controllers\SumbangSaranController;
+use App\Http\Controllers\SupplierFormController;
 use App\Http\Controllers\TcController;
 use App\Http\Controllers\TcJobController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\MadingController;
-use App\Http\Controllers\PoPengajuanController;
-use App\Http\Controllers\PengajuanSubcontController;
-use App\Http\Controllers\ClaimSubmissionController;
-use App\Http\Controllers\JsonToCsvController;
-use App\Http\Controllers\CrpController;
-use App\Http\Controllers\CustomRequestController;
-use App\Http\Controllers\ImportAdministrationController;
-use App\Http\Controllers\LayoutMenuController;
-use App\Http\Controllers\LayoutEditorController;
-use App\Http\Controllers\EntertainController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\CheckSeedController;
-use App\Http\Controllers\BopmController;
-use App\Http\Controllers\FeedbackController;
-use App\Http\Controllers\ItemCodeController;
-use App\Http\Controllers\ApprovalController;
-use App\Http\Controllers\OutstandingMaterialController;
-use App\Models\InquirySales;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\SupplierFormController;
-use App\Models\SupplierFormToken;
-use App\Http\Controllers\magang\JumlahKaryawanController;
-use App\Http\Controllers\magang\StrukturOrganisasiController;
-use App\Http\Controllers\magang\ConvertController;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,7 +67,6 @@ Route::get('/supplier/form/{token}', [SupplierFormController::class, 'showPublic
 Route::post('/supplier/form/create', [SupplierFormController::class, 'storePublicForm'])->name('supplierform.public.store');
 Route::get('/download/template-rek', [SupplierFormController::class, 'downloadTemplateRek'])->name('download.template.rek');
 
-
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
 
 // Public debug route (no auth) - temporary
@@ -79,20 +74,18 @@ Route::get('debug-visits-public', function () {
     $approvals = \App\Models\MstPositionApproval::where('approver_position_id', 65)
         ->orWhere('position_id', 65)
         ->get();
-    
+
     $allApprovals = \App\Models\MstPositionApproval::all();
-    
+
     return response()->json([
         'approvals_for_dept_head_65' => $approvals,
         'all_approvals_count' => $allApprovals->count(),
-        'all_approvals' => $allApprovals
+        'all_approvals' => $allApprovals,
     ]);
 });
 Route::post('/login', [AuthController::class, 'login'])->name('login_post');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('full-calender', [EventController::class, 'blokMaintanence'])->name('blokMaintanence');
@@ -206,20 +199,21 @@ Route::middleware(['web', 'auth'])->group(function () {
     // DashboardforALL
     // Debug route to inspect current authenticated user
     Route::get('debug-auth', function () {
-        return response()->json([ 'user' => auth()->user() ]);
+        return response()->json(['user' => auth()->user()]);
     })->name('debug.auth');
 
     // Debug: sample visits with related user
     Route::get('debug-visits', function () {
-        $rows = App\Models\LogbookVisits::with('user')->limit(10)->get()->map(function($v){
+        $rows = App\Models\LogbookVisits::with('user')->limit(10)->get()->map(function ($v) {
             return [
                 'id' => $v->id,
                 'id_user' => $v->id_user,
                 'user_name' => $v->user ? $v->user->name : null,
                 'customer' => $v->customer_name,
-                'visit_date' => (string)$v->visit_date,
+                'visit_date' => (string) $v->visit_date,
             ];
         });
+
         return response()->json(['data' => $rows]);
     })->name('debug.visits');
 
@@ -415,7 +409,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/showFormSSimport/pdf/{id}', [InquirySalesController::class, 'generatePDFimport'])->name('showFormSSimport.pdf');
     Route::get('/inquiry/form-import/{month}/{klasifikasi}', [InquirySalesController::class, 'showFormSSimportpurchase'])->name('showFormSSimportpurchase');
 
-
     Route::post('/inquiry/update-details/{id}', [InquirySalesController::class, 'updateInquiryDetails'])->name('updateInquiryDetails');
     Route::get('konfirmInquiry', [InquirySalesController::class, 'konfirmInquiry'])->name('konfirmInquiry');
     Route::get('validasiInquiry', [InquirySalesController::class, 'validasiInquiry'])->name('validasiInquiry');
@@ -430,7 +423,6 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     Route::get('/export-inquiry', [InquirySalesController::class, 'exportInquiry'])->name('export.inquiry');
 
-
     //import administration
     route::get('/import-administration', [ImportAdministrationController::class, 'showcreate'])->name('createadministration');
     route::post('/import-administration/store', [ImportAdministrationController::class, 'store'])->name('storeadministration');
@@ -442,11 +434,22 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/admin/{adminId}/update', [ImportAdministrationController::class, 'updateAdmin'])->name('updateAdmin');
     Route::post('/admin/delete-file', [ImportAdministrationController::class, 'deleteFile'])->name('deleteFile');
 
-
     // km
     Route::get('/km', [KmPengajuanController::class, 'pengajuanKM'])->name('pengajuanKM');
     Route::get('/dsKnowlege', [KmPengajuanController::class, 'dsKnowlege'])->name('dsKnowlege');
     Route::get('/persetujuanKM', [KmPengajuanController::class, 'persetujuanKM'])->name('persetujuanKM');
+    Route::get('/km/documents/{kmPengajuan}/preview', [KmPengajuanController::class, 'preview'])
+        ->name('km.documents.preview');
+    Route::get('/km/documents/{kmPengajuan}/download', [KmPengajuanController::class, 'download'])
+        ->name('km.documents.download');
+    Route::post('/km/approvals/bulk', [KmPengajuanController::class, 'bulkApprove'])
+        ->name('km.approvals.bulk');
+    Route::get('/km/analytics/popular', [KmAnalyticsController::class, 'popular'])
+        ->name('km.analytics.popular');
+    Route::get('/km/analytics/popular/export/xlsx', [KmAnalyticsController::class, 'exportPopularXlsx'])
+        ->name('km.analytics.popular.export.xlsx');
+    Route::get('/km/analytics/popular/export/pdf', [KmAnalyticsController::class, 'exportPopularPdf'])
+        ->name('km.analytics.popular.export.pdf');
     Route::post('/kmTransaksi/markAsRead', [KmPengajuanController::class, 'markAsRead'])->name('kmTransaksi.markAsRead');
     Route::post('/kmTransaksi/saveTransaction', [KmPengajuanController::class, 'saveTransaction'])->name('kmTransaksi.saveTransaction');
 
@@ -463,6 +466,35 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/like', [KmPengajuanController::class, 'like'])->name('kmSuka.like');
     Route::post('/unlike', [KmPengajuanController::class, 'unlike'])->name('kmSuka.unlike');
     Route::post('/insights/add', [KmPengajuanController::class, 'addInsight'])->name('insights.add');
+
+    // ===== KM Jangka Menengah — Fitur Baru =====
+
+    // Bookmark: simpan/hapus dokumen ke "Baca Nanti"
+    Route::post(
+        '/km/documents/{kmPengajuan}/bookmarks',
+        [\App\Http\Controllers\KnowledgeManagement\KmBookmarkController::class, 'store']
+    )->name('km.bookmarks.store');
+    Route::delete(
+        '/km/documents/{kmPengajuan}/bookmarks',
+        [\App\Http\Controllers\KnowledgeManagement\KmBookmarkController::class, 'destroy']
+    )->name('km.bookmarks.destroy');
+
+    // Autosave metadata draft (judul, keterangan, tags, co-authors, reading_minutes)
+    Route::patch(
+        '/km/documents/{kmPengajuan}/autosave',
+        \App\Http\Controllers\KnowledgeManagement\KmDocumentAutosaveController::class
+    )->name('km.documents.autosave');
+
+    Route::get(
+        '/km/co-authors/options',
+        \App\Http\Controllers\KnowledgeManagement\KmCoAuthorOptionsController::class
+    )->name('km.co-authors.options');
+
+    // Thumbnail — stream PNG privat atau SVG default
+    Route::get(
+        '/km/documents/{kmPengajuan}/thumbnail',
+        \App\Http\Controllers\KnowledgeManagement\KmDocumentThumbnailController::class
+    )->name('km.documents.thumbnail');
 
     // // tc
     // Route::get('/job', [TcJobController::class, 'jobShow'])->name('jobShow');
@@ -488,7 +520,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/sumarry/details', [TcController::class, 'fetchDetails'])->name('job.positions.details');
     Route::get('/job/positions/details2/{job_position}', [TcController::class, 'fetchDetails2'])->name('job.positions.details2');
 
-
     // Route::get('/users/{userId}/role', [TcJobController::class, 'getUserRole'])->name('users.role');
     // Route::post('/job-positions', [TcJobController::class, 'store'])->name('jobPositions.store');
     // Route::put('/job-positions/{id}', [TcJobController::class, 'updateJob'])->name('jobPositions.update');
@@ -508,7 +539,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/dashboard-people-development', [PdController::class, 'indexPD'])->name('indexPD');
     Route::get('/dashboard-people-development-hrga', [PdController::class, 'indexPD2'])->name('indexPD2');
     Route::get('/dashboard-histori-development', [PdController::class, 'historiDevelop'])->name('historiDept');
-
 
     Route::get('/buat-penilaian', [PenilaianTCController::class, 'createPenilaian'])->name('create.penilaian');
     Route::get('/buat-training', [PdController::class, 'createPD'])->name('createPD');
@@ -587,7 +617,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/download-pdf/{id}', [PdController::class, 'downloadPDF'])->name('download.pdf');
     Route::post('/update-button-status', [PdController::class, 'updateBtn'])->name('updateButtonStatus');
 
-
     //chartTC
     Route::get('/get-competency-data', [PenilaianTCController::class, 'getCompetencyData'])->name('get-competency-data');
     Route::get('/get-competency-filter', [PenilaianTCController::class, 'getCompetencyFilter'])->name('get-competency-filter');
@@ -638,7 +667,6 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // Route::get('/dashboardFPB', [PoPengajuanController::class, 'dashboardCombined'])->name('dashboardFPB');
 
-
     //E-Mading Adasi
     Route::get('/ds-E-Mading-Adasi', [MadingController::class, 'dsMading'])->name('dsMading');
 
@@ -686,45 +714,48 @@ Route::middleware(['web', 'auth'])->group(function () {
         'auth',
         'role:item_code_access',
     ])->group(function () {
- 
-    // --- Form (Pembuat) ---
-    Route::middleware(['role:item_code_form'])->group(function () {
-        Route::get('/form-item-code', [ItemCodeController::class, 'index'])->name('form');
-        Route::get('/form-item-code/next-nomor', [ItemCodeController::class, 'nextNomor'])->name('nextNomor');
-        Route::get('/form-item-code/export', [ItemCodeController::class, 'export'])->name('exportForm');
-        Route::get('/form-item-code/import-template', [ItemCodeController::class, 'importTemplate'])->name('importTemplate');
-        Route::post('/form-item-code/import', [ItemCodeController::class, 'import'])->name('import');
-        Route::post('/form-item-code', [ItemCodeController::class, 'store'])->name('store');
-        Route::post('/form-item-code/submit-all', [ItemCodeController::class, 'submitAll'])->name('submitAll');
-        Route::put('/form-item-code/{id}', [ItemCodeController::class, 'update'])->name('update');
-        Route::delete('/form-item-code/{id}', [ItemCodeController::class, 'destroy'])->name('destroy');
-        Route::post('/form-item-code/{id}/submit', [ItemCodeController::class, 'submit'])->name('submit');
-    });
- 
-    // --- Persetujuan (Approver 1, Approver 2, Finisher) ---
-    Route::middleware(['role:item_code_approval'])->group(function () {
-        Route::get('/persetujuan', [ApprovalController::class, 'index'])->name('approval');
-        Route::get('/persetujuan/export', [ApprovalController::class, 'export'])->name('exportApproval');
- 
-        // Approve 1 — Jessica Paune (submitted → approved_1)
-        Route::post('/persetujuan/approve-all', [ApprovalController::class, 'approveAll'])->name('approveAll');
-        Route::post('/persetujuan/{id}/approve', [ApprovalController::class, 'approve'])->name('approve');
- 
-        // Approve 2 — Martinus Cahyo Rahasto (approved_1 → approved_2)
-        Route::post('/persetujuan/approve2-all', [ApprovalController::class, 'approve2All'])->name('approve2All');
-        Route::post('/persetujuan/{id}/approve2', [ApprovalController::class, 'approve2'])->name('approve2');
- 
-        // Reject — bisa dilakukan Approver 1 atau Approver 2
-        Route::post('/persetujuan/{id}/reject', [ApprovalController::class, 'reject'])->name('reject');
- 
-        // Finish — Adhi Prasetiyo (approved_2 → finished)
-        Route::post('/persetujuan/finish-all', [ApprovalController::class, 'finishAll'])->name('finishAll');
-        Route::post('/persetujuan/{id}/finish', [ApprovalController::class, 'finish'])->name('finish');
-    });
- 
-    // --- Shared (semua role item-code) ---
-    Route::get('/form-item-code/{id}/history', [ItemCodeController::class, 'history'])->name('history');
-    Route::get('/form-item-code/{id}/attachment', [ItemCodeController::class, 'attachment'])->name('attachment');
+
+        // --- Form (Pembuat) ---
+        Route::middleware(['role:item_code_form'])->group(function () {
+            Route::get('/form-item-code', [ItemCodeController::class, 'index'])->name('form');
+            Route::get('/form-item-code/next-nomor', [ItemCodeController::class, 'nextNomor'])->name('nextNomor');
+            Route::get('/form-item-code/export', [ItemCodeController::class, 'export'])->name('exportForm');
+            Route::get('/form-item-code/import-template', [ItemCodeController::class, 'importTemplate'])->name('importTemplate');
+            Route::post('/form-item-code/import', [ItemCodeController::class, 'import'])->name('import');
+            Route::post('/form-item-code', [ItemCodeController::class, 'store'])->name('store');
+            Route::post('/form-item-code/submit-all', [ItemCodeController::class, 'submitAll'])->name('submitAll');
+            Route::put('/form-item-code/{id}', [ItemCodeController::class, 'update'])->name('update');
+            Route::delete('/form-item-code/{id}', [ItemCodeController::class, 'destroy'])->name('destroy');
+            Route::post('/form-item-code/{id}/submit', [ItemCodeController::class, 'submit'])->name('submit');
+            Route::post('/form-item-code/{id}/cancel', [ItemCodeController::class, 'cancel'])
+                ->middleware('role:item_code_canceller')
+                ->name('cancel');
+        });
+
+        // --- Persetujuan (Approver 1, Approver 2, Finisher) ---
+        Route::middleware(['role:item_code_approval'])->group(function () {
+            Route::get('/persetujuan', [ApprovalController::class, 'index'])->name('approval');
+            Route::get('/persetujuan/export', [ApprovalController::class, 'export'])->name('exportApproval');
+
+            // Approve 1 — Jessica Paune (submitted → approved_1)
+            Route::post('/persetujuan/approve-all', [ApprovalController::class, 'approveAll'])->name('approveAll');
+            Route::post('/persetujuan/{id}/approve', [ApprovalController::class, 'approve'])->name('approve');
+
+            // Approve 2 — Martinus Cahyo Rahasto (approved_1 → approved_2)
+            Route::post('/persetujuan/approve2-all', [ApprovalController::class, 'approve2All'])->name('approve2All');
+            Route::post('/persetujuan/{id}/approve2', [ApprovalController::class, 'approve2'])->name('approve2');
+
+            // Reject — bisa dilakukan Approver 1 atau Approver 2
+            Route::post('/persetujuan/{id}/reject', [ApprovalController::class, 'reject'])->name('reject');
+
+            // Finish — Adhi Prasetiyo (approved_2 → finished)
+            Route::post('/persetujuan/finish-all', [ApprovalController::class, 'finishAll'])->name('finishAll');
+            Route::post('/persetujuan/{id}/finish', [ApprovalController::class, 'finish'])->name('finish');
+        });
+
+        // --- Shared (semua role item-code) ---
+        Route::get('/form-item-code/{id}/history', [ItemCodeController::class, 'history'])->name('history');
+        Route::get('/form-item-code/{id}/attachment', [ItemCodeController::class, 'attachment'])->name('attachment');
     });
 
     Route::prefix('outstanding-materials')->name('outstanding-materials.')->middleware([
@@ -787,7 +818,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/custom-request/rejected-production/{id}', [CustomRequestController::class, 'rejectproduction'])->name('RejectProduction');
     Route::post('/custom-request/submit-quotation/{id}', [CustomRequestController::class, 'submitData'])->name('submit.quotation');
     Route::put('/custom-request/update-no-so', [CustomRequestController::class, 'updateNoSo'])->name('customrequest.updateNoSo');
-    
+
     Route::get('/dashboard-fpb', [DashboardController::class, 'dashboardFPB'])->name('dashboardFPB');
     Route::get('/dashboard-tcpd', [DashboardController::class, 'dashboardTCPD'])->name('dashboardTCPD');
     Route::get('/dashboard-tcpd/data', [DashboardController::class, 'getTcpdCompetencyData'])->name('dashboardTCPD.data');
@@ -799,7 +830,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/dashboard-tcpd/export-top-jobs', [DashboardController::class, 'exportTcpdTopJobs'])->name('dashboardTCPD.exportTopJobs');
     Route::get('/dashboard-tcpd/export-critical-focus', [DashboardController::class, 'exportTcpdCriticalFocus'])->name('dashboardTCPD.exportCriticalFocus');
     Route::post('/dashboard-tcpd/clear-cache', [DashboardController::class, 'clearTcpdCache'])->name('dashboardTCPD.clearCache');
-    
+
     // BOPM Dashboard
     Route::get('/dashboard-bopm', [BOPMController::class, 'index'])->name('bopm.dashboard.index');
     Route::get('/dashboard-bopm/chart', [BOPMController::class, 'getChartData'])->name('bopm.dashboard.chart');
@@ -818,7 +849,6 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/inquiry', [DashboardController::class, 'getInquiryData'])->name('inquiry');
         Route::get('/crp', [DashboardController::class, 'getCrpData'])->name('crp');
     });
-
 
     // Supplier Form
     Route::get('/supplier-form/index', [SupplierFormController::class, 'index'])->name('supplierform.index');
@@ -846,7 +876,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::patch('/supplier-form/{id}/reject-schedule', [SupplierFormController::class, 'rejectSchedule'])->name('supplierform.reject.schedule');
     Route::patch('/supplier-form/{id}/reject-trial', [SupplierFormController::class, 'rejectTrial'])->name('supplierform.reject.trial');
     Route::post('/supplierform/{id}/trial/update', [SupplierFormController::class, 'updateTrialUpload'])->name('assessment.trial.update');
-    Route::post('/supplierform/{id}/trial/delete', [SupplierFormController::class, 'deleteTrialUpload'])    ->name('assessment.trial.delete');
+    Route::post('/supplierform/{id}/trial/delete', [SupplierFormController::class, 'deleteTrialUpload'])->name('assessment.trial.delete');
     Route::post('/supplier-form/visit-approval/{id}', [SupplierFormController::class, 'visitApproval'])->name('supplier.visit.approval');
     Route::post('/supplier-form/trial-approval/{id}', [SupplierFormController::class, 'trialApproval'])->name('supplier.trial.approval');
     Route::get('/supplier-form/trial-file/{id}', [SupplierFormController::class, 'downloadTrial'])->name('supplierform.download.trial');
@@ -872,7 +902,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/feedback/list', [FeedbackController::class, 'list'])->name('feedback.list');
     Route::get('/feedback/detail/{id}', [FeedbackController::class, 'detail'])->name('feedback.detail');
     Route::get('/feedback/dashboard', [FeedbackController::class, 'dashboard'])->name('feedback.dashboard');
-    
+
     // Sales Visit Dashboard
     Route::get('/sales-visit/dashboard', [\App\Http\Controllers\SalesVisitController::class, 'index'])->name('salesvisit.dashboard');
     Route::get('/sales-visit/dashboard/data', [\App\Http\Controllers\SalesVisitController::class, 'getDashboardData'])->name('salesvisit.dashboard.data');

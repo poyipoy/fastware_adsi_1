@@ -8,11 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 class KmKategori extends Model
 {
     use HasFactory;
+
     protected $table = 'km_kategoris';
 
     protected $fillable = [
         'nama_kategori',
         'poin_kategori',
+    ];
+
+    protected $casts = [
+        'poin_kategori' => 'integer',
     ];
 
     // Relasi dengan KmTransaksi

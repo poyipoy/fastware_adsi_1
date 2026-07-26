@@ -10,8 +10,14 @@ class Insight extends Model
     use HasFactory;
 
     protected $table = 'km_insights';
+
     protected $fillable = [
-        'id_user', 'id_km_pengajuan', 'content'
+        'id_user', 'id_km_pengajuan', 'content',
+    ];
+
+    protected $casts = [
+        'id_user' => 'integer',
+        'id_km_pengajuan' => 'integer',
     ];
 
     public function user()

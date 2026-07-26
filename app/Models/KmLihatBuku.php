@@ -18,6 +18,12 @@ class KmLihatBuku extends Model
         'jumlah_lihat',
     ];
 
+    protected $casts = [
+        'id_km_transaksi' => 'integer',
+        'id_km_pengajuan' => 'integer',
+        'jumlah_lihat' => 'integer',
+    ];
+
     public function kmTransaksi()
     {
         return $this->belongsTo(KmTransaksi::class, 'id_km_transaksi');

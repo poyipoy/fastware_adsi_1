@@ -1,220 +1,402 @@
 @extends('layout')
 
-@section('content')
-    <main id="main" class="main">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+@section('documentLanguage', 'id')
 
-        <div class="pagetitle">
-            <h1>Halaman Persetujuan KM</h1>
-            <nav>
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item active">Menu List Persetujuan KM</li>
-                </ol>
-            </nav>
-        </div>
-        <section class="section">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Tampilan Data Knowlege Management</h5>
+@push('styles')
+    @vite('resources/css/km/foundation.css')
+@endpush
+
+@push('scripts')
+    @vite('resources/js/km/approval.js')
+@endpush
+
+@section('content')
+    @php
+        $oldBulkItems = collect(old('items', []))->keyBy(
+            fn ($item) => (string) ($item['document_id'] ?? '')
+        );
+        $oldBulkAction = match (old('action')) {
+            'approved' => 'approve',
+            'rejected' => 'reject',
+            default => old('action', 'approve'),
+        };
+        $hasBulkErrors = old('items') !== null && $errors->any();
+        $approvalErrorFields = ['id', 'action', 'judul', 'posisi', 'id_km_kategori', 'keterangan', 'reason'];
+        $hasApprovalErrors = $errors->hasAny($approvalErrorFields) && old('id');
+        $oldApprovalAction = old('action');
+        if (! in_array($oldApprovalAction, ['approved', 'rejected'], true)) {
+            $oldApprovalAction = old('reject') !== null
+                ? 'rejected'
+                : (old('approve') !== null ? 'approved' : '');
+        }
+    @endphp
+
+    <x-km.shell active="approvals">
+        <div data-km-approval-page
+            data-detail-url-template="{{ route('showPersetujuan', ['id' => '__KM_ID__']) }}">
+            <x-km.page-header
+                title="Persetujuan Materi"
+                description="Tinjau dokumen satu per satu atau proses beberapa dokumen secara atomik.">
+                <x-slot:actions>
+                    <a class="btn btn-outline-primary" href="{{ route('km.analytics.popular') }}">
+                        <i class="bi bi-bar-chart" aria-hidden="true"></i>
+                        Materi Populer
+                    </a>
+                </x-slot:actions>
+            </x-km.page-header>
+
+            <x-km.feedback />
+
+            <section aria-labelledby="km-approval-list-title">
+                <div class="km-panel">
+                    <div class="km-panel__header">
+                        <div>
+                            <h2 class="km-panel__title" id="km-approval-list-title">Antrean Persetujuan</h2>
+                            <p class="text-muted small mb-0">Kategori dipilih per dokumen sebelum batch disetujui.</p>
+                        </div>
+                        @if (! $km->isEmpty())
+                            <span class="text-muted small">{{ $km->total() }} dokumen</span>
+                        @endif
+                    </div>
+
+                    @if ($hasBulkErrors)
+                        <div class="alert alert-danger mt-3" role="alert" tabindex="-1" data-km-bulk-error>
+                            <strong>Batch belum diproses.</strong>
+                            <ul class="mb-0 mt-2">
+                                @foreach ($errors->all() as $message)
+                                    <li>{{ $message }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     @if ($km->isEmpty())
-                        <p>Tidak ada data yang ditemukan.</p>
+                        <x-km.empty-state
+                            icon="bi-check2-circle"
+                            title="Antrean persetujuan kosong"
+                            description="Tidak ada dokumen yang menunggu keputusan saat ini." />
                     @else
-                        <div class="table-responsive" style="height: 100%; overflow-y: auto;">
-                            <table class="datatable table">
-                                <thead>
+                        <form action="{{ route('km.approvals.bulk') }}" method="POST" id="bulkApprovalForm"
+                            class="mt-3" data-km-bulk-form>
+                            @csrf
+                            <div class="km-panel km-bulk-toolbar">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-12 col-md-3">
+                                        <label for="bulkAction" class="form-label">Tindakan batch</label>
+                                        <select id="bulkAction" name="action" class="form-select" data-km-bulk-action required>
+                                            <option value="approve" @selected($oldBulkAction === 'approve')>Setujui</option>
+                                            <option value="reject" @selected($oldBulkAction === 'reject')>Tolak</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-6" data-km-bulk-reason-group
+                                        @if ($oldBulkAction !== 'reject') hidden @endif>
+                                        <label for="bulkReason" class="form-label">
+                                            Alasan penolakan <span class="text-danger" aria-hidden="true">*</span>
+                                        </label>
+                                        <textarea id="bulkReason" name="reason"
+                                            class="form-control @error('reason') is-invalid @enderror"
+                                            rows="2" maxlength="2000" data-km-bulk-reason
+                                            aria-describedby="bulk-reason-help @error('reason') bulk-reason-error @enderror"
+                                            @error('reason') aria-invalid="true" @enderror
+                                            @if ($oldBulkAction === 'reject') required @endif>{{ old('reason') }}</textarea>
+                                        <div class="form-text" id="bulk-reason-help">Wajib untuk penolakan, maksimum 2.000 karakter.</div>
+                                        @error('reason')
+                                            <div class="invalid-feedback" id="bulk-reason-error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-12 col-md-3 d-flex flex-wrap align-items-center justify-content-md-end gap-2">
+                                        <span class="small text-muted" aria-live="polite" data-km-bulk-count>0 dipilih</span>
+                                        <button type="submit" class="btn btn-primary" data-km-bulk-submit disabled>
+                                            Proses batch
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle text-nowrap">
+                                <caption class="visually-hidden">Daftar dokumen dan kategori untuk persetujuan Knowledge Management</caption>
+                                <thead class="table-light">
                                     <tr>
+                                        <th scope="col" class="text-center">
+                                            <input type="checkbox" class="form-check-input" data-km-bulk-select-all
+                                                aria-label="Pilih semua dokumen pending pada halaman ini">
+                                        </th>
                                         <th scope="col">No</th>
                                         <th scope="col">PIC</th>
                                         <th scope="col">Judul</th>
+                                        <th scope="col" style="min-width: 220px;">Kategori batch</th>
                                         <th scope="col">Status</th>
                                         <th scope="col">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($km as $item)
-                                        @if ($item->status == 2 || $item->status == 3)
-                                            <tr>
-                                                <th scope="row">{{ $loop->iteration }}</th>
-                                                <td>{{ $item->user->name }}</td>
-                                                <td>{{ $item->judul }}</td>
-                                                <td class="text-center py-4"
-                                                    style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                    @if ($item->status == 0)
-                                                        <span class="badge bg-danger align-items-center"
-                                                            style="font-size: 18px;">Tidak Aktif</span>
-                                                    @elseif ($item->status == 1)
-                                                        <span class="badge bg-primary align-items-center"
-                                                            style="font-size: 18px;">Draf</span>
-                                                    @elseif($item->status == 2)
-                                                        <span class="badge bg-warning align-items-center"
-                                                            style="font-size: 18px;">Menunggu <br> Persetujuan HR</span>
-                                                    @elseif($item->status == 3)
-                                                        <span class="badge bg-success align-items-center"
-                                                            style="font-size: 18px;">Publish</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @if ($item->status != 4)
-                                                        <a class="btn btn-primary mt-1" title="Edit"
-                                                            onclick="openEditKmModal({{ $item->id }})">
-                                                            <i class="bi bi-folder2-open"></i>
-                                                        </a>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endif
+                                        @php
+                                            $isPendingApproval = $item->status == $documentStatuses::PENDING_APPROVAL->value;
+                                            $oldBulkItem = $oldBulkItems->get((string) $item->id, []);
+                                            $bulkSelected = $oldBulkItem !== [];
+                                        @endphp
+                                        <tr data-doc-id="{{ $item->id }}">
+                                            <td class="text-center">
+                                                @if ($isPendingApproval)
+                                                    <input type="checkbox" class="form-check-input"
+                                                        name="items[{{ $loop->index }}][document_id]"
+                                                        form="bulkApprovalForm" value="{{ $item->id }}"
+                                                        data-km-bulk-checkbox
+                                                        aria-label="Pilih {{ $item->judul }} untuk batch"
+                                                        @checked($bulkSelected)>
+                                                @else
+                                                    <span class="text-muted" aria-hidden="true">—</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>{{ $item->user?->name ?? '-' }}</td>
+                                            <td>
+                                                <span class="km-table-title">{{ $item->judul }}</span>
+                                            </td>
+                                            <td>
+                                                @if ($isPendingApproval)
+                                                    <label class="visually-hidden" for="bulkCategory{{ $item->id }}">
+                                                        Kategori untuk {{ $item->judul }}
+                                                    </label>
+                                                    <select id="bulkCategory{{ $item->id }}"
+                                                        name="items[{{ $loop->index }}][id_km_kategori]"
+                                                        form="bulkApprovalForm" class="form-select form-select-sm"
+                                                        data-km-bulk-category
+                                                        @if (! $bulkSelected || $oldBulkAction !== 'approve') disabled @endif>
+                                                        <option value="">Pilih kategori</option>
+                                                        @foreach ($kategoris as $kategori)
+                                                            <option value="{{ $kategori->id }}"
+                                                                @selected((string) ($oldBulkItem['id_km_kategori'] ?? $item->id_km_kategori) === (string) $kategori->id)>
+                                                                {{ $kategori->nama_kategori }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <span class="text-muted">{{ $item->kmKategori?->nama_kategori ?? '-' }}</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <x-km.status-badge :status="$item->status" />
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    @can('view', $item)
+                                                        <button type="button" class="btn btn-sm btn-outline-primary btn-icon" title="Buka detail"
+                                                            data-km-open-approval="{{ $item->id }}"
+                                                            aria-label="Buka detail dokumen {{ $item->judul }}">
+                                                            <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                                                        </button>
+                                                    @endcan
+                                                </div>
+
+                                                @if ($isPendingApproval)
+                                                    <noscript>
+                                                        <details class="mt-2 text-wrap" style="min-width: 260px;">
+                                                            <summary>Persetujuan tanpa JavaScript</summary>
+                                                            <form action="{{ route('approveKM') }}" method="POST" class="mt-2">
+                                                                @csrf
+                                                                @method('PUT')
+                                                                <input type="hidden" name="id" value="{{ $item->id }}">
+                                                                <input type="hidden" name="judul" value="{{ $item->judul }}">
+                                                                <input type="hidden" name="keterangan" value="{{ $item->keterangan }}">
+
+                                                                <label class="form-label" for="noJsPosition{{ $item->id }}">Bagian</label>
+                                                                <select class="form-select form-select-sm mb-2"
+                                                                    id="noJsPosition{{ $item->id }}" name="posisi" required>
+                                                                    @foreach (['HR', 'Dept. Head', 'Sec. Head', 'All Employee'] as $position)
+                                                                        <option value="{{ $position }}" @selected($item->posisi === $position)>
+                                                                            {{ $position }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+
+                                                                <label class="form-label" for="noJsCategory{{ $item->id }}">Kategori</label>
+                                                                <select class="form-select form-select-sm mb-2"
+                                                                    id="noJsCategory{{ $item->id }}" name="id_km_kategori" required>
+                                                                    <option value="">Pilih kategori</option>
+                                                                    @foreach ($kategoris as $kategori)
+                                                                        <option value="{{ $kategori->id }}"
+                                                                            @selected($item->id_km_kategori == $kategori->id)>
+                                                                            {{ $kategori->nama_kategori }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+
+                                                                <label class="form-label" for="noJsReason{{ $item->id }}">
+                                                                    Alasan jika menolak
+                                                                </label>
+                                                                <textarea class="form-control form-control-sm mb-2"
+                                                                    id="noJsReason{{ $item->id }}" name="reason"
+                                                                    maxlength="2000" rows="2"></textarea>
+                                                                <div class="d-flex flex-wrap gap-1">
+                                                                    <button type="submit" name="approve" value="1"
+                                                                        class="btn btn-success btn-sm">Setujui</button>
+                                                                    <button type="submit" name="reject" value="1"
+                                                                        class="btn btn-danger btn-sm">Tolak</button>
+                                                                </div>
+                                                            </form>
+                                                        </details>
+                                                    </noscript>
+                                                @endif
+                                            </td>
+                                        </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
+
+                        <div class="mt-3">
+                            {{ $km->links('pagination::bootstrap-5') }}
+                        </div>
                     @endif
                 </div>
-                <!-- Modal Edit-->
-                <div class="modal fade" id="editKmModal" tabindex="-1" aria-labelledby="editKmModalLabel"
-                    aria-hidden="true">
-                    <div class="modal-dialog">
+
+                <div class="modal fade" id="editKmModal" tabindex="-1"
+                    aria-labelledby="editKmModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-scrollable modal-lg modal-fullscreen-sm-down">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="editKmModalLabel">Persetujuan Knowledge Management</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                    aria-label="Close"></button>
+                                <h2 class="modal-title fs-5" id="editKmModalLabel">Persetujuan Knowledge Management</h2>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                             </div>
                             <div class="modal-body">
-                                <form action="{{ route('approveKM') }}" method="POST" enctype="multipart/form-data">
+                                <form action="{{ route('approveKM') }}" method="POST" id="singleApprovalForm"
+                                    data-restore-id="{{ $hasApprovalErrors ? (int) old('id') : '' }}">
                                     @csrf
                                     @method('PUT')
-                                    <input type="hidden" id="editId" name="id">
+                                    <input type="hidden" id="editId" name="id" value="{{ old('id') }}">
+                                    <input type="hidden" id="approvalAction" name="action" value="{{ $oldApprovalAction }}">
+
+                                    @error('id')
+                                        <div class="alert alert-danger" role="alert">{{ $message }}</div>
+                                    @enderror
+                                    @if ($hasApprovalErrors)
+                                        @error('action')
+                                            <div class="alert alert-danger" role="alert">{{ $message }}</div>
+                                        @enderror
+                                    @endif
+
                                     <div class="mb-3">
                                         <label for="editJudul" class="form-label">Judul</label>
-                                        <input type="text" class="form-control" id="editJudul" name="judul">
+                                        <input type="text" class="form-control @if ($hasApprovalErrors) @error('judul') is-invalid @enderror @endif"
+                                            id="editJudul" name="judul" value="{{ old('judul') }}" required
+                                            @if ($hasApprovalErrors && $errors->has('judul'))
+                                                aria-invalid="true" aria-describedby="approval-judul-error"
+                                            @endif>
+                                        @if ($hasApprovalErrors)
+                                            @error('judul')
+                                                <div class="invalid-feedback" id="approval-judul-error">{{ $message }}</div>
+                                            @enderror
+                                        @endif
                                     </div>
+
                                     <div class="mb-3">
                                         <label for="editKeterangan" class="form-label">Sinopsis Isi Buku</label>
-                                        <textarea class="form-control" id="editKeterangan" name="keterangan" rows="4"></textarea>
+                                        <textarea class="form-control @if ($hasApprovalErrors) @error('keterangan') is-invalid @enderror @endif"
+                                            id="editKeterangan" name="keterangan" rows="4"
+                                            @if ($hasApprovalErrors && $errors->has('keterangan'))
+                                                aria-invalid="true" aria-describedby="approval-keterangan-error"
+                                            @endif>{{ old('keterangan') }}</textarea>
+                                        @if ($hasApprovalErrors)
+                                            @error('keterangan')
+                                                <div class="invalid-feedback" id="approval-keterangan-error">{{ $message }}</div>
+                                            @enderror
+                                        @endif
                                     </div>
-                                    <div class="row mb-3">
-                                        <div class="col-sm-10">
-                                            <div id="editFileLink" style="margin-top: 10px; display: none;">
-                                                <button id="editFileButton" class="btn btn-primary"
-                                                    onclick="openPdf()">Tampilkan Buku</button>
-                                            </div>
-                                        </div>
+
+                                    <div class="mb-3 d-none" id="editFileLink">
+                                        <button type="button" id="editFileButton" class="btn btn-outline-primary btn-sm">
+                                            Tampilkan Buku
+                                        </button>
                                     </div>
+
                                     <div class="mb-3">
                                         <label for="editPosisi" class="form-label">Bagian</label>
-                                        <select id="editPosisi" name="posisi" class="form-select">
+                                        <select id="editPosisi" name="posisi"
+                                            class="form-select @if ($hasApprovalErrors) @error('posisi') is-invalid @enderror @endif"
+                                            required
+                                            @if ($hasApprovalErrors && $errors->has('posisi'))
+                                                aria-invalid="true" aria-describedby="approval-posisi-error"
+                                            @endif>
                                             <option value="">----- Pilih Bagian -----</option>
-                                            <option value="HR">HR</option>
-                                            <option value="Dept. Head">Dept. Head</option>
-                                            <option value="Sec. Head">Sec. Head</option>
-                                            <option value="All Employee">All Employee</option>
+                                            @foreach (['HR', 'Dept. Head', 'Sec. Head', 'All Employee'] as $position)
+                                                <option value="{{ $position }}" @selected(old('posisi') === $position)>{{ $position }}</option>
+                                            @endforeach
                                         </select>
+                                        @if ($hasApprovalErrors)
+                                            @error('posisi')
+                                                <div class="invalid-feedback" id="approval-posisi-error">{{ $message }}</div>
+                                            @enderror
+                                        @endif
                                     </div>
+
                                     <div class="mb-3">
                                         <label for="editKategori" class="form-label">Kategori</label>
-                                        <select id="editKategori" class="form-select" name="id_km_kategori">
+                                        <select id="editKategori" name="id_km_kategori"
+                                            class="form-select @if ($hasApprovalErrors) @error('id_km_kategori') is-invalid @enderror @endif"
+                                            required
+                                            @if ($hasApprovalErrors && $errors->has('id_km_kategori'))
+                                                aria-invalid="true" aria-describedby="approval-kategori-error"
+                                            @endif>
                                             <option value="">----- Pilih Kategori -----</option>
-                                            <!-- Option akan diisi oleh JavaScript -->
+                                            @foreach ($kategoris as $kategori)
+                                                <option value="{{ $kategori->id }}" @selected(old('id_km_kategori') == $kategori->id)>
+                                                    {{ $kategori->nama_kategori }}
+                                                </option>
+                                            @endforeach
                                         </select>
+                                        @if ($hasApprovalErrors)
+                                            @error('id_km_kategori')
+                                                <div class="invalid-feedback" id="approval-kategori-error">{{ $message }}</div>
+                                            @enderror
+                                        @endif
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary"
-                                            data-bs-dismiss="modal">Close</button>
-                                        <button type="submit" name="approve" class="btn btn-primary">Disetujui</button>
-                                        <button type="submit" name="reject" class="btn btn-danger">Ditolak</button>
+
+                                    <div class="mb-3" id="rejectReasonGroup"
+                                        @if ($oldApprovalAction !== 'rejected') hidden @endif>
+                                        <label for="rejectReason" class="form-label">
+                                            Alasan Penolakan <span class="text-danger" aria-hidden="true">*</span>
+                                        </label>
+                                        <textarea class="form-control @if ($hasApprovalErrors) @error('reason') is-invalid @enderror @endif"
+                                            id="rejectReason" name="reason" rows="4" maxlength="2000"
+                                            aria-describedby="reject-reason-help @if ($hasApprovalErrors && $errors->has('reason')) approval-reason-error @endif"
+                                            @if ($hasApprovalErrors && $errors->has('reason')) aria-invalid="true" @endif
+                                            @if ($oldApprovalAction === 'rejected') required @endif>{{ old('reason') }}</textarea>
+                                        <div class="form-text" id="reject-reason-help">Maksimum 2.000 karakter.</div>
+                                        @if ($hasApprovalErrors)
+                                            @error('reason')
+                                                <div class="invalid-feedback" id="approval-reason-error">{{ $message }}</div>
+                                            @enderror
+                                        @endif
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <span class="form-label d-block">Riwayat Persetujuan</span>
+                                        <div id="approvalHistory" class="km-history p-2 text-muted small" aria-live="polite">
+                                            Belum ada riwayat.
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                        <button type="submit" id="approveButton" name="approve" value="1"
+                                            class="btn btn-success" data-km-single-action="approved">
+                                            <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Setujui
+                                        </button>
+                                        <button type="submit" id="rejectButton" name="reject" value="1"
+                                            class="btn btn-danger" data-km-single-action="rejected">
+                                            <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Tolak
+                                        </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- End Modal Edit -->
-            </div>
-        </section>
-
-                        <!-- jQuery -->
-                        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-                        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-                        <script>
-                            $(document).ready(function() {
-                                // Hover function for dropdowns
-                                $('.nav-item.dropdown').hover(function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
-                                }, function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
-                                });
-                            });
-                            </script>
-
-        <!-- jQuery -->
-        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-        {{-- excel --}}
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-
-        <!-- SimpleDataTables JS -->
-        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-
-        <script>
-            var fileUrl = '';
-
-            function openEditKmModal(id) {
-                // Membuat panggilan AJAX untuk mengambil data
-                $.ajax({
-                    url: `{{ route('showPersetujuan', ['id' => ':id']) }}`.replace(':id', id),
-                    type: 'GET',
-                    dataType: 'json',
-                    success: function(data) {
-                        console.log(data); // Log ini untuk memastikan data diterima
-
-                        // Mengisi nilai form pada modal edit
-                        $('#editId').val(data.km.id);
-                        $('#editJudul').val(data.km.judul);
-                        $('#editKeterangan').val(data.km.keterangan);
-
-                        // Menampilkan informasi file jika ada
-                        if (data.km.file) {
-                            fileUrl = `{{ asset('assets/image/') }}/${data.km.file}`;
-                            $('#editFileLink').show();
-                        } else {
-                            $('#editFileLink').hide();
-                        }
-
-                        // Mengisi dropdown kategori
-                        var kategoriSelect = $('#editKategori');
-                        kategoriSelect.empty(); // Kosongkan dropdown
-                        kategoriSelect.append(
-                            '<option value="">----- Pilih Kategori -----</option>'); // Tambahkan opsi default
-                        $.each(data.kategoris, function(index, kategori) {
-                            kategoriSelect.append(
-                                $('<option>', {
-                                    value: kategori.id,
-                                    text: kategori.nama_kategori
-                                })
-                            );
-                        });
-
-                        // Set nilai kategori yang dipilih
-                        kategoriSelect.val(data.km.id_km_kategori);
-
-                        // Set nilai posisi yang dipilih
-                        $('#editPosisi').val(data.km.posisi);
-
-                        // Menampilkan modal edit
-                        $('#editKmModal').modal('show');
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error:', error);
-                    }
-                });
-            }
-
-            function openPdf() {
-                if (fileUrl) {
-                    window.open(fileUrl, '_blank');
-                }
-            }
-        </script>
-
-    </main><!-- End #main -->
+            </section>
+        </div>
+    </x-km.shell>
 @endsection

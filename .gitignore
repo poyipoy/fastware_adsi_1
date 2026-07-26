@@ -18,8 +18,12 @@ yarn-error.log
 /.idea
 /.vscode
 *.md
+!/AGENTS.md
+!/km-docs/
+!/km-docs/*.md
 /pindah-android/storage/app/*.json
 
 /storage/framework/cache/*
 /storage/framework/sessions/*
 /storage/framework/views/*
+/storage/bin/

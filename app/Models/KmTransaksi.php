@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\KnowledgeManagement\KmReadStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,7 +19,25 @@ class KmTransaksi extends Model
         'level',
         'status',
         'modified_by',
+        'completed_at',
+        'points_awarded_at',
     ];
+
+    protected $casts = [
+        'id_km_pengajuan' => 'integer',
+        'id_user' => 'integer',
+        'poin' => 'integer',
+        'level' => 'integer',
+        'status' => 'integer',
+        'modified_by' => 'integer',
+        'completed_at' => 'datetime',
+        'points_awarded_at' => 'datetime',
+    ];
+
+    public function readStatus(): ?KmReadStatus
+    {
+        return KmReadStatus::tryFrom((int) $this->status);
+    }
 
     // Relasi dengan KmPengajuan
     public function kmPengajuan()

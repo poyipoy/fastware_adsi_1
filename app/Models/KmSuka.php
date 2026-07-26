@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class KmSuka extends Model
 {
     use HasFactory;
+
     protected $table = 'km_sukas'; // Specify the table name
 
     // Define the fillable fields
@@ -15,6 +16,12 @@ class KmSuka extends Model
         'id_user',
         'id_km_pengajuan',
         'jumlah_like',
+    ];
+
+    protected $casts = [
+        'id_user' => 'integer',
+        'id_km_pengajuan' => 'integer',
+        'jumlah_like' => 'integer',
     ];
 
     public function user()

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Prototype high-fidelity redesign Knowledge Management Fastware ADSI.">
+    <title>Prototype Enterprise Knowledge Management — Fastware ADSI</title>
+    <link rel="icon" href="../../../public/assets/img/logo-menu.png">
+    <link rel="stylesheet" href="../../../public/assets/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="./km-prototype.css">
+</head>
+<body>
+    <a class="km-skip-link" href="#prototype-main">Lewati navigasi dan menuju konten utama</a>
+
+    <div class="km-prototype-strip" role="note">
+        <i class="bi bi-bezier2" aria-hidden="true"></i>
+        Prototype desain read-only — data, status lanjutan, SLA, versioning, dan workflow bertingkat bersifat konseptual.
+    </div>
+
+    <div class="km-shell">
+        <aside class="km-sidebar" id="prototype-sidebar" aria-label="Navigasi prototype Knowledge Management">
+            <div class="km-brand">
+                <span class="km-brand-mark" aria-hidden="true">
+                    <img src="../../../public/assets/img/logo-adasi.png" alt="">
+                </span>
+                <span class="km-brand-copy">
+                    <strong>Knowledge Management</strong>
+                    <span>PT Astra Daido Steel Indonesia</span>
+                </span>
+            </div>
+
+            <div class="km-sidebar-tools">
+                <label class="km-design-mode" for="design-mode-toggle">
+                    <input type="checkbox" id="design-mode-toggle" checked>
+                    <span>Tampilkan semua 30 layar</span>
+                </label>
+            </div>
+
+            <nav class="km-sidebar-nav" id="prototype-nav"></nav>
+
+            <div class="km-sidebar-footer">
+                <span>UX blueprint v1 · 25 Juli 2026</span>
+            </div>
+        </aside>
+
+        <button class="km-sidebar-scrim" id="sidebar-scrim" type="button" aria-label="Tutup navigasi"></button>
+
+        <div class="km-content-shell">
+            <header class="km-topbar">
+                <button class="km-sidebar-toggle" id="sidebar-collapse" type="button"
+                    aria-label="Ciutkan sidebar" aria-expanded="true">
+                    <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+                </button>
+                <button class="km-mobile-menu" id="mobile-menu" type="button"
+                    aria-label="Buka navigasi" aria-controls="prototype-sidebar" aria-expanded="false">
+                    <i class="bi bi-list" aria-hidden="true"></i>
+                </button>
+
+                <form class="km-global-search" id="global-search-form" role="search">
+                    <label class="km-visually-hidden" for="global-search">Cari knowledge, kebijakan, atau panduan</label>
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="global-search" name="q" type="search"
+                        placeholder="Cari judul atau sinopsis knowledge…" autocomplete="off">
+                    <span class="km-search-shortcut" aria-hidden="true">Ctrl K</span>
+                </form>
+
+                <div class="km-topbar-spacer"></div>
+
+                <div class="km-topbar-actions">
+                    <button class="km-btn km-btn-primary km-quick-create" type="button" data-screen-target="create-knowledge">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                        <span class="km-quick-create-label">Buat Knowledge</span>
+                    </button>
+                    <button class="km-icon-button km-notification-button" type="button" data-screen-target="notifications"
+                        aria-label="Buka pusat notifikasi; 3 belum dibaca">
+                        <i class="bi bi-bell" aria-hidden="true"></i>
+                        <span class="km-notification-dot" aria-hidden="true"></span>
+                    </button>
+                    <button class="km-icon-button" type="button" data-demo-action="Panduan kontekstual dibuka."
+                        aria-label="Buka bantuan dan panduan">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i>
+                    </button>
+
+                    <label class="km-visually-hidden" for="role-switcher">Peran prototype</label>
+                    <select class="km-role-select" id="role-switcher">
+                        <option value="employee">Employee / Consumer</option>
+                        <option value="contributor">Knowledge Contributor</option>
+                        <option value="reviewer">Reviewer (konsep)</option>
+                        <option value="approver" selected>Approver</option>
+                        <option value="manager">Knowledge Manager (konsep)</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+
+                    <button class="km-user-chip" type="button" data-demo-action="Menu profil dibuka.">
+                        <span class="km-avatar" aria-hidden="true">MS</span>
+                        <span class="km-user-copy">
+                            <strong>Maya Santoso</strong>
+                            <span>Human Resources</span>
+                        </span>
+                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </header>
+
+            <main class="km-main" id="prototype-main" tabindex="-1">
+                <div id="screen-root" aria-live="polite"></div>
+            </main>
+        </div>
+    </div>
+
+    <dialog class="km-dialog" id="prototype-dialog" aria-labelledby="prototype-dialog-title">
+        <div class="km-dialog-header">
+            <div>
+                <h2 id="prototype-dialog-title">Konfirmasi keputusan</h2>
+                <p id="prototype-dialog-description">Tinjau dampak tindakan sebelum melanjutkan.</p>
+            </div>
+            <button class="km-icon-button" type="button" data-dialog-close aria-label="Tutup dialog">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="km-dialog-body" id="prototype-dialog-body"></div>
+        <div class="km-dialog-footer">
+            <button class="km-btn km-btn-secondary" type="button" data-dialog-close>Batal</button>
+            <button class="km-btn km-btn-primary" type="button" id="prototype-dialog-confirm">Konfirmasi</button>
+        </div>
+    </dialog>
+
+    <div class="km-toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <noscript>
+        <div class="km-alert km-alert-danger" role="alert" style="margin: 4rem 1rem 1rem;">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <div>
+                <h2>JavaScript diperlukan untuk menavigasi prototype.</h2>
+                <p>Dokumen blueprint tetap dapat dibaca pada file UX-REDESIGN-KM-ENTERPRISE.md.</p>
+            </div>
+        </div>
+    </noscript>
+
+    <script src="./km-prototype.js" defer></script>
+</body>
+</html>

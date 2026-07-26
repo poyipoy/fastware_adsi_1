@@ -2,410 +2,356 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Insight;
-use App\Models\KmKategori;
-use App\Models\KmLihatBuku;
+use App\Enums\KnowledgeManagement\KmApprovalAction;
+use App\Enums\KnowledgeManagement\KmDocumentStatus;
+use App\Exceptions\KnowledgeManagement\InvalidKmTransitionException;
+use App\Exceptions\KnowledgeManagement\KmBulkApprovalConflictException;
+use App\Http\Requests\KnowledgeManagement\AddKmInsightRequest;
+use App\Http\Requests\KnowledgeManagement\ApproveKmDocumentRequest;
+use App\Http\Requests\KnowledgeManagement\BulkKmApprovalRequest;
+use App\Http\Requests\KnowledgeManagement\CompleteKmReadingRequest;
+use App\Http\Requests\KnowledgeManagement\KmDashboardFilterRequest;
+use App\Http\Requests\KnowledgeManagement\KmDocumentInteractionRequest;
+use App\Http\Requests\KnowledgeManagement\MarkKmReadingRequest;
+use App\Http\Requests\KnowledgeManagement\StoreKmDocumentRequest;
+use App\Http\Requests\KnowledgeManagement\UpdateKmDocumentRequest;
 use App\Models\KmPengajuan;
-use App\Models\KmSuka;
-use App\Models\KmTransaksi;
 use App\Models\User;
+use App\Services\KnowledgeManagement\KmAccessService;
+use App\Services\KnowledgeManagement\KmApprovalService;
+use App\Services\KnowledgeManagement\KmDashboardQueryService;
+use App\Services\KnowledgeManagement\KmDocumentAuthoringService;
+use App\Services\KnowledgeManagement\KmDocumentQueryService;
+use App\Services\KnowledgeManagement\KmFileService;
+use App\Services\KnowledgeManagement\KmInteractionService;
+use App\Services\KnowledgeManagement\KmReadingService;
+use DomainException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class KmPengajuanController extends Controller
 {
-    public function pengajuanKM()
-    {
-        $km = KmPengajuan::with('user')->get();
-
-        return view('knowlege_management.pengajuanKM', compact('km'));
-    }
-
-    public function persetujuanKM()
-    {
-        $km = KmPengajuan::with('user', 'kmKategori')->get();
-
-        return view('knowlege_management.persetujuanKM', compact('km'));
-    }
-
-    public function storeKM(Request $request)
-    {
-        $request->validate([
-            'judul' => 'required',
-            'keterangan' => 'required',
-            'file' => 'required|file|mimes:pdf,ppt,pptx|max:12048',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:12048', // validation for image
-        ]);
-
-        // Ensure the directory exists
-        $destinationPath = public_path('assets/image');
-        if (!file_exists($destinationPath)) {
-            mkdir($destinationPath, 0755, true);
-        }
-
-        // Handle file upload
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            $hashName = $file->hashName();
-            $file->move($destinationPath, $hashName);
-            $originalName = $file->getClientOriginalName();
-        }
-
-        // Handle image upload
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageHashName = $image->hashName();
-            $image->move($destinationPath, $imageHashName);
-        }
-
-        KmPengajuan::create([
-            'id_user' => auth()->id(),
-            'judul' => $request->judul,
-            'keterangan' => $request->keterangan,
-            'file' => $hashName ?? null,
-            'file_name' => $originalName ?? null,
-            'image' => $imageHashName ?? null, // save image name to image field
-            'persetujuan' => 1, // Set default value for status_baca
-            'status' => 1, // Set default value for status
-        ]);
-
-        return redirect()->route('pengajuanKM')->with('success', 'Knowledge Management created successfully.');
-    }
-
-    public function edit($id)
-    {
-        // Temukan KM berdasarkan id
-        $km = KmPengajuan::findOrFail($id);
-
-        // Mengirim data dalam respons JSON
-        return response()->json($km);
-    }
-
-    public function update(Request $request)
-    {
-        // Validasi request
-        $request->validate([
-            'id' => 'required|exists:km_pengajuans,id',
-            'judul' => 'required',
-            'keterangan' => 'required',
-            'file' => 'nullable|mimes:ppt,pptx,pdf', // tambahkan validasi jika ada file baru diunggah
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // validation for image
-        ]);
-
-        // Cari KM berdasarkan ID
-        $km = KmPengajuan::findOrFail($request->id);
-
-        // Simpan perubahan judul dan keterangan
-        $km->judul = $request->judul;
-        $km->keterangan = $request->keterangan;
-
-        // Proses jika ada file yang diunggah baru
-        if ($request->hasFile('file')) {
-            // Hapus file yang sudah ada jika ada
-            if ($km->file) {
-                $existingFilePath = public_path('assets/image/'.$km->file);
-                if (file_exists($existingFilePath)) {
-                    unlink($existingFilePath);
-                }
-            }
-
-            // Upload file baru
-            $file = $request->file('file');
-            $fileName = time().'_'.$file->getClientOriginalName();
-            $file->move(public_path('assets/image'), $fileName);
-
-            // Simpan informasi file baru
-            $km->file_name = $file->getClientOriginalName();
-            $km->file = $fileName;
-        }
-
-        // Proses jika ada image baru yang diunggah
-        if ($request->hasFile('image')) {
-            // Hapus image yang sudah ada jika ada
-            if ($km->image) {
-                $existingThumbnailPath = public_path('assets/image/'.$km->image);
-                if (file_exists($existingThumbnailPath)) {
-                    unlink($existingThumbnailPath);
-                }
-            }
-
-            // Upload image baru
-            $image = $request->file('image');
-            $imageHashName = time().'_'.$image->getClientOriginalName();
-            $image->move(public_path('assets/image'), $imageHashName);
-
-            // Simpan informasi image baru
-            $km->image = $imageHashName;
-        }
-
-        // Simpan perubahan ke database
-        $km->save();
-
-        // Redirect atau response jika berhasil disimpan
-        return redirect()->back()->with('success', 'Data KM berhasil diperbarui.');
-    }
-
-    public function updateStatus($id)
-    {
-        try {
-            // Cari data KM berdasarkan ID
-            $km = KmPengajuan::findOrFail($id);
-
-            // Update status menjadi 0
-            $km->update(['persetujuan' => 0]);
-            $km->update(['status' => 0]);
-
-            return response()->json(['message' => 'Status data berhasil diperbarui'], 200);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Gagal memperbarui status data: '.$e->getMessage()], 500);
-        }
-    }
-
-    public function kirimKM($id)
-    {
-        try {
-            // Find the item by ID
-            $km = KmPengajuan::find($id);
-
-            if (!$km) {
-                return response()->json(['message' => 'Item not found'], 404);
-            }
-
-            // Update the status to '2'
-            $km->status = 2;
-            $km->save();
-
-            return response()->json(['message' => 'Status updated successfully'], 200);
-        } catch (\Exception $e) {
-            // Log the error message for debugging
-            \Log::error('Error updating status: '.$e->getMessage());
-
-            // Return a JSON response with an error message
-            return response()->json(['message' => 'Terjadi kesalahan saat mengupdate status.'], 500);
-        }
-    }
-
-    public function showPersetujuan($id)
-    {
-        // Temukan KM berdasarkan id
-        $km = KmPengajuan::with('kmKategori')->findOrFail($id);
-        $kategoris = KmKategori::all();
-
-        // Mengirim data dalam respons JSON
-        return response()->json([
-            'km' => $km,
-            'kategoris' => $kategoris,
-        ]);
-    }
-
-    public function approveKM(Request $request)
-    {
-        // Validasi request
-        $request->validate([
-            'id' => 'required|exists:km_pengajuans,id',
-            'posisi' => 'required',
-            'id_km_kategori' => 'required',
-            'judul' => 'required|string|max:255',
-            'keterangan' => 'nullable|string',
-        ]);
-
-        // Cari KM berdasarkan ID
-        $km = KmPengajuan::findOrFail($request->id);
-
-        // Simpan perubahan posisi, kategori, judul, dan keterangan
-        $km->posisi = $request->posisi;
-        $km->id_km_kategori = $request->id_km_kategori;
-        $km->judul = $request->judul;
-        $km->keterangan = $request->keterangan;
-
-        // Debug: Log request data
-        \Log::info('Request Data:', $request->all());
-
-        // Set status berdasarkan tombol yang diklik
-        if ($request->has('approve')) {
-            $km->status = 3; // Disetujui
-            $km->persetujuan = 2; // Disetujui
-            \Log::info('Approved KM:', ['id' => $request->id]);
-        } elseif ($request->has('reject')) {
-            $km->status = 1; // Ditolak
-            \Log::info('Rejected KM:', ['id' => $request->id]);
-        } else {
-            \Log::info('No Action Taken:', ['id' => $request->id]);
-        }
-
-        // Simpan perubahan ke database
-        $km->save();
-
-        // Redirect atau response jika berhasil disimpan
-        return redirect()->back()->with('success', 'Data KM berhasil diperbarui.');
-    }
-
-    public function dsKnowlege(
-        \App\Services\Dashboard\KnowledgeManagementDashboardService $service
+    public function __construct(
+        private readonly KmAccessService $access,
+        private readonly KmApprovalService $approval,
+        private readonly KmReadingService $reading,
+        private readonly KmFileService $files,
+        private readonly KmDashboardQueryService $dashboardQuery,
+        private readonly KmDocumentAuthoringService $authoring,
+        private readonly KmDocumentQueryService $documents,
+        private readonly KmInteractionService $interactions,
     ) {
-        $data = $service->getDashboardData();
-
-        return view('dashboard.dsKnowlege', $data);
     }
 
-    public function downloadPdf($id)
+    public function pengajuanKM(Request $request): View
     {
-        $pengajuan = KmPengajuan::findOrFail($id);
-        $filePath = storage_path('app/'.$pengajuan->file); // Pastikan path ini sesuai dengan lokasi file Anda
+        $this->authorize('viewAny', KmPengajuan::class);
+        abort_unless($this->access->canCreate($request->user()), 403);
 
-        return response()->file($filePath);
+        return view('knowlege_management.pengajuanKM', [
+            'km' => $this->documents->paginateAuthoring($request->user()),
+            'documentStatuses' => KmDocumentStatus::class,
+        ]);
     }
 
-    public function markAsRead(Request $request)
+    public function persetujuanKM(Request $request): View
     {
-        $id_km_pengajuan = $request->input('id_km_pengajuan');
-        $user_id = auth()->id();
+        $this->authorize('viewAny', KmPengajuan::class);
+        abort_unless($this->access->canApprove($request->user()), 403);
 
-        // Periksa apakah rekaman KmTransaksi sudah ada untuk pengguna dan pengajuan
-        $existingRecord = KmTransaksi::where('id_km_pengajuan', $id_km_pengajuan)
-                                     ->where('id_user', $user_id)
-                                     ->first();
+        return view('knowlege_management.persetujuanKM', [
+            'km' => $this->documents->paginateApprovals(),
+            'documentStatuses' => KmDocumentStatus::class,
+            'kategoris' => $this->documents->categories(),
+        ]);
+    }
 
-        if (!$existingRecord) {
-            // Buat rekaman KmTransaksi baru jika tidak ada
-            KmTransaksi::create([
-                'id_km_pengajuan' => $id_km_pengajuan,
-                'id_user' => $user_id,
-                'status' => 2,
-                'modified_by' => $user_id,
+    public function storeKM(StoreKmDocumentRequest $request): RedirectResponse
+    {
+        $this->authoring->createDraft(
+            $request->user(),
+            $request->validated(),
+            $request->file('file'),
+        );
+
+        return redirect()
+            ->route('pengajuanKM')
+            ->with('success', 'Knowledge Management berhasil dibuat.');
+    }
+
+    public function edit(int $id): JsonResponse
+    {
+        $document = $this->documents->findForPayload($id);
+        $this->authorize('update', $document);
+
+        return response()->json($this->documentPayload($document));
+    }
+
+    public function update(UpdateKmDocumentRequest $request): RedirectResponse
+    {
+        $this->authoring->updateDraft(
+            $request->user(),
+            $request->integer('id'),
+            $request->validated(),
+            $request->hasFile('file') ? $request->file('file') : null,
+        );
+
+        return redirect()->back()->with('success', 'Data KM berhasil diperbarui.');
+    }
+
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        $document = $this->documents->find($id);
+        $this->authorize('deactivate', $document);
+
+        try {
+            $this->approval->deactivate($document, $request->user(), $this->requestMetadata($request));
+        } catch (InvalidKmTransitionException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Status data berhasil diperbarui']);
+    }
+
+    public function kirimKM(Request $request, int $id): JsonResponse
+    {
+        $document = $this->documents->find($id);
+        $this->authorize('submit', $document);
+
+        try {
+            $this->approval->submit($document, $request->user(), $this->requestMetadata($request));
+        } catch (InvalidKmTransitionException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Status updated successfully']);
+    }
+
+    public function showPersetujuan(Request $request, int $id): JsonResponse
+    {
+        $document = $this->documents->findForApprovalPayload($id);
+        $this->authorize('view', $document);
+
+        $payload = $this->documentPayload($document);
+        $payload['id_km_kategori'] = $document->id_km_kategori;
+        $payload['posisi'] = $document->posisi;
+        $payload['can_approve'] = $request->user()->can('approve', $document);
+        $payload['can_reject'] = $request->user()->can('reject', $document);
+        $payload['approval_events'] = $document->approvalEvents->map(static fn ($event): array => [
+            'action' => $event->action->value,
+            'from_status' => $event->from_status,
+            'to_status' => $event->to_status,
+            'reason' => $event->reason,
+            'actor_name' => $event->actor_name,
+            'acted_at' => $event->acted_at?->toIso8601String(),
+        ])->values();
+
+        return response()->json([
+            'km' => $payload,
+            'kategoris' => $this->documents->categories(),
+        ]);
+    }
+
+    public function approveKM(ApproveKmDocumentRequest $request): RedirectResponse
+    {
+        $document = $this->documents->find($request->integer('id'));
+        $attributes = $request->safe()->only([
+            'posisi',
+            'id_km_kategori',
+            'judul',
+            'keterangan',
+        ]);
+
+        try {
+            if ($request->string('action')->toString() === KmApprovalAction::APPROVED->value) {
+                $this->authorize('approve', $document);
+                $this->approval->approve(
+                    $document,
+                    $request->user(),
+                    $attributes,
+                    $this->requestMetadata($request),
+                );
+            } else {
+                $this->authorize('reject', $document);
+                $this->approval->reject(
+                    $document,
+                    $request->user(),
+                    $request->string('reason')->toString(),
+                    $attributes,
+                    $this->requestMetadata($request),
+                );
+            }
+        } catch (InvalidKmTransitionException $exception) {
+            abort(422, $exception->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Data KM berhasil diperbarui.');
+    }
+
+    public function bulkApprove(BulkKmApprovalRequest $request): JsonResponse|RedirectResponse
+    {
+        $this->authorize('bulkApprove', KmPengajuan::class);
+
+        try {
+            $documents = $this->approval->bulkAct(
+                $request->user(),
+                $request->validated('items'),
+                $request->action(),
+                $request->validated('reason'),
+                $this->requestMetadata($request),
+            );
+        } catch (InvalidKmTransitionException|KmBulkApprovalConflictException $exception) {
+            throw ValidationException::withMessages([
+                'items' => $exception->getMessage(),
             ]);
-        } elseif ($existingRecord->status != 3) {
-            // Perbarui status menjadi 2 hanya jika status saat ini bukan 3
-            $existingRecord->update([
-                'status' => 2,
-                'modified_by' => $user_id,
+        }
+
+        $message = sprintf('%d dokumen berhasil diproses secara atomik.', $documents->count());
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'processed_count' => $documents->count(),
+                'action' => $request->action()->value,
             ]);
         }
 
-        // Periksa apakah rekaman KmLihatBuku ada untuk id_km_pengajuan yang diberikan
-        $lihatBukuRecord = KmLihatBuku::where('id_km_pengajuan', $id_km_pengajuan)->first();
-
-        if ($lihatBukuRecord) {
-            // Tambahkan nilai jumlah_lihat jika rekaman ada
-            $lihatBukuRecord->increment('jumlah_lihat');
-        } else {
-            // Buat rekaman KmLihatBuku baru jika tidak ada
-            KmLihatBuku::create([
-                'id_km_pengajuan' => $id_km_pengajuan,
-                'jumlah_lihat' => 1,
-            ]);
-        }
-
-        return response()->json(['success' => true]);
+        return redirect()->back()->with('success', $message);
     }
 
-    public function saveTransaction(Request $request)
+    public function dsKnowlege(KmDashboardFilterRequest $request): View
     {
-        $id_km_pengajuan = $request->input('id_km_pengajuan');
-        $user_id = Auth::id(); // Assuming the user is authenticated
+        $this->authorize('viewAny', KmPengajuan::class);
 
-        // Fetch the pengajuan and its associated category
-        $kmPengajuan = KmPengajuan::find($id_km_pengajuan);
+        $pengajuans = $this->dashboardQuery->paginate($request, $request->user());
+        $references = $this->documents->dashboardReferences();
 
-        if (!$kmPengajuan) {
-            return response()->json(['success' => false, 'message' => 'Pengajuan not found.']);
-        }
-
-        // Assuming KmPengajuan has a 'kmKategori' relationship
-        $kategori = $kmPengajuan->kmKategori;
-
-        if (!$kategori) {
-            return response()->json(['success' => false, 'message' => 'Category not found.']);
-        }
-
-        $poin_kategori = $kategori->poin_kategori;
-
-        // Find the existing KmTransaksi record
-        $kmTransaksi = KmTransaksi::where('id_km_pengajuan', $id_km_pengajuan)
-                                  ->where('id_user', $user_id)
-                                  ->first();
-
-        if ($kmTransaksi) {
-            // Update the existing record
-            $kmTransaksi->status = 3; // Status indicating that the PDF was read
-            $kmTransaksi->modified_by = $user_id;
-            $kmTransaksi->save();
-        } else {
-            // Create a new record
-            $kmTransaksi = new KmTransaksi();
-            $kmTransaksi->id_km_pengajuan = $id_km_pengajuan;
-            $kmTransaksi->id_user = $user_id;
-            $kmTransaksi->level = 0; // Set default level or calculate based on your logic
-            $kmTransaksi->status = 3; // Status indicating that the PDF was read
-            $kmTransaksi->modified_by = $user_id;
-
-            // Save the new record to the database
-            $kmTransaksi->save();
-        }
-
-        // Update the user's total points
-        $user = User::find($user_id);
-        $user->km_total_poin += $poin_kategori;
-        $user->save();
-
-        return response()->json(['success' => true]);
+        return view('dashboard.dsKnowlege', [
+            'pengajuans' => $pengajuans,
+            ...$references,
+            'filters' => $request->safe()->except('page'),
+        ]);
     }
 
-    public function like(Request $request)
+    public function preview(KmPengajuan $kmPengajuan): BinaryFileResponse
     {
-        $request->validate([
-            'id_km_pengajuan' => 'required|integer|exists:km_pengajuans,id',
-        ]);
+        $this->authorize('view', $kmPengajuan);
 
-        $like = KmSuka::firstOrCreate([
-            'id_user' => Auth::id(),
-            'id_km_pengajuan' => $request->id_km_pengajuan,
-        ]);
+        return $this->files->streamPreview($kmPengajuan);
+    }
 
-        if ($like->wasRecentlyCreated) {
-            return response()->json(['message' => 'Liked successfully', 'like_count' => $this->getLikeCount($request->id_km_pengajuan)], 201);
-        } else {
-            return response()->json(['message' => 'Already liked', 'like_count' => $this->getLikeCount($request->id_km_pengajuan)], 200);
+    public function download(KmPengajuan $kmPengajuan): BinaryFileResponse
+    {
+        $this->authorize('view', $kmPengajuan);
+
+        return $this->files->streamDownload($kmPengajuan);
+    }
+
+    public function markAsRead(MarkKmReadingRequest $request): JsonResponse
+    {
+        $document = $this->documents->find($request->integer('id_km_pengajuan'));
+        $this->authorize('view', $document);
+        $result = $this->reading->markStarted($request->user(), $document);
+
+        return response()->json(['success' => true, ...$result]);
+    }
+
+    public function saveTransaction(CompleteKmReadingRequest $request): JsonResponse
+    {
+        $document = $this->documents->find($request->integer('id_km_pengajuan'));
+        $this->authorize('completeReading', $document);
+
+        try {
+            $result = $this->reading->complete($request->user(), $document);
+        } catch (DomainException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'already_completed' => false,
+                'points_awarded' => 0,
+            ], 422);
         }
+
+        return response()->json(['success' => true, ...$result]);
     }
 
-    public function unlike(Request $request)
+    public function like(KmDocumentInteractionRequest $request): JsonResponse
     {
-        $request->validate([
-            'id_km_pengajuan' => 'required|integer|exists:km_pengajuans,id',
-        ]);
+        $result = $this->interactions->like($request->user(), $request->document());
 
-        $deleted = KmSuka::where('id_user', Auth::id())
-                          ->where('id_km_pengajuan', $request->id_km_pengajuan)
-                          ->delete();
+        return response()->json([
+            'message' => $result['created'] ? 'Liked successfully' : 'Already liked',
+            'like_count' => $result['like_count'],
+        ], $result['created'] ? 201 : 200);
+    }
 
-        if ($deleted) {
-            return response()->json(['message' => 'Unliked successfully', 'like_count' => $this->getLikeCount($request->id_km_pengajuan)], 200);
-        } else {
-            return response()->json(['message' => 'Not liked yet', 'like_count' => $this->getLikeCount($request->id_km_pengajuan)], 400);
+    public function unlike(KmDocumentInteractionRequest $request): JsonResponse
+    {
+        $result = $this->interactions->unlike($request->user(), $request->document());
+
+        return response()->json([
+            'message' => $result['deleted'] ? 'Unliked successfully' : 'Not liked yet',
+            'like_count' => $result['like_count'],
+        ], $result['deleted'] ? 200 : 400);
+    }
+
+    public function addInsight(AddKmInsightRequest $request): RedirectResponse
+    {
+        $this->interactions->addInsight(
+            $request->user(),
+            $request->document(),
+            $request->string('content')->toString(),
+        );
+
+        return back()->with('success', 'Insight berhasil ditambahkan.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function documentPayload(KmPengajuan $document): array
+    {
+        $hasFile = $document->hasCompletePrivateFileMetadata();
+
+        return [
+            'id' => $document->getKey(),
+            'judul' => $document->judul,
+            'keterangan' => $document->keterangan,
+            'reading_minutes' => $document->reading_minutes,
+            'tags_csv' => $document->tags->pluck('name')->join(','),
+            'co_authors' => $document->coAuthors
+                ->map(fn (User $user): array => [
+                    'id' => (int) $user->getKey(),
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ])
+                ->values(),
+            'draft_revision' => (int) $document->draft_revision,
+            'file' => $hasFile ? basename((string) $document->file) : null,
+            'file_name' => $document->file_original_name ?: $document->file_name,
+            'status' => $document->status,
+            'has_file' => $hasFile,
+            'previewable' => $hasFile && $document->isPreviewableFile(),
+            'preview_url' => $hasFile ? route('km.documents.preview', $document) : null,
+            'download_url' => $hasFile ? route('km.documents.download', $document) : null,
+        ];
+    }
+
+    /**
+     * @return array{request_id: string}
+     */
+    private function requestMetadata(Request $request): array
+    {
+        $requestId = trim((string) $request->header('X-Request-ID'));
+        if ($requestId === '' || strlen($requestId) > 128) {
+            $requestId = Str::uuid()->toString();
         }
-    }
 
-    private function getLikeCount($id_km_pengajuan)
-    {
-        return KmSuka::where('id_km_pengajuan', $id_km_pengajuan)->count();
-    }
-
-    public function addInsight(Request $request)
-    {
-        $request->validate([
-            'id_km_pengajuan' => 'required|exists:km_pengajuans,id',
-            'content' => 'required|string',
-        ]);
-
-        $user = auth()->user();
-
-        Insight::create([
-            'id_user' => $user->id,
-            'id_km_pengajuan' => $request->id_km_pengajuan,
-            'content' => $request->content,
-        ]);
-
-        return back()->with('success', 'Insight added successfully');
+        return ['request_id' => $requestId];
     }
 }

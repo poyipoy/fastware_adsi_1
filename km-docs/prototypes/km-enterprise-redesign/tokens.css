@@ -1,0 +1,174 @@
+/*
+ * Fastware Knowledge Management — enterprise redesign prototype tokens.
+ * Three layers: primitive -> semantic -> component.
+ * Prototype only; these tokens do not change the production application.
+ */
+
+:root {
+    /* Primitive: brand and neutral color scales */
+    --km-navy-950: #0b1f33;
+    --km-navy-900: #102a43;
+    --km-navy-800: #163a5f;
+    --km-navy-700: #1e4f7a;
+    --km-navy-100: #dce9f3;
+    --km-navy-50: #edf4f8;
+    --km-blue-700: #175cd3;
+    --km-blue-600: #2563eb;
+    --km-blue-100: #dbeafe;
+    --km-blue-50: #eff6ff;
+    --km-red-700: #b42318;
+    --km-red-600: #c4322b;
+    --km-red-100: #fee4e2;
+    --km-red-50: #fff1f0;
+    --km-green-700: #18794e;
+    --km-green-100: #d1fadf;
+    --km-green-50: #ecfdf3;
+    --km-amber-800: #854a0e;
+    --km-amber-700: #9a5b13;
+    --km-amber-100: #feefc7;
+    --km-amber-50: #fffaeb;
+    --km-slate-950: #101828;
+    --km-slate-900: #1d2939;
+    --km-slate-700: #344054;
+    --km-slate-600: #475467;
+    --km-slate-500: #667085;
+    --km-slate-400: #98a2b3;
+    --km-slate-300: #d0d5dd;
+    --km-slate-200: #e4e7ec;
+    --km-slate-100: #f2f4f7;
+    --km-slate-50: #f8fafc;
+    --km-white: #ffffff;
+    --km-white-alpha-06: rgb(255 255 255 / 0.06);
+    --km-white-alpha-08: rgb(255 255 255 / 0.08);
+    --km-white-alpha-12: rgb(255 255 255 / 0.12);
+    --km-white-alpha-15: rgb(255 255 255 / 0.15);
+    --km-white-alpha-18: rgb(255 255 255 / 0.18);
+    --km-white-alpha-20: rgb(255 255 255 / 0.2);
+
+    /* Primitive: type */
+    --km-font-sans: Inter, "IBM Plex Sans", "Source Sans 3", "Segoe UI", Arial, sans-serif;
+    --km-font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    --km-text-xs: 0.75rem;
+    --km-text-sm: 0.875rem;
+    --km-text-md: 1rem;
+    --km-text-lg: 1.125rem;
+    --km-text-xl: 1.25rem;
+    --km-text-2xl: 1.5rem;
+    --km-text-3xl: 1.875rem;
+    --km-leading-tight: 1.25;
+    --km-leading-normal: 1.5;
+    --km-leading-relaxed: 1.65;
+    --km-weight-regular: 400;
+    --km-weight-medium: 500;
+    --km-weight-semibold: 600;
+    --km-weight-bold: 700;
+
+    /* Primitive: 4/8 spacing rhythm */
+    --km-space-0: 0;
+    --km-space-1: 0.25rem;
+    --km-space-2: 0.5rem;
+    --km-space-3: 0.75rem;
+    --km-space-4: 1rem;
+    --km-space-5: 1.25rem;
+    --km-space-6: 1.5rem;
+    --km-space-8: 2rem;
+    --km-space-10: 2.5rem;
+    --km-space-12: 3rem;
+    --km-space-16: 4rem;
+
+    /* Primitive: shape, elevation, motion */
+    --km-radius-xs: 0.25rem;
+    --km-radius-sm: 0.375rem;
+    --km-radius-md: 0.5rem;
+    --km-radius-lg: 0.75rem;
+    --km-radius-round: 999px;
+    --km-shadow-xs: 0 1px 2px rgb(16 24 40 / 0.05);
+    --km-shadow-sm: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
+    --km-shadow-md: 0 8px 24px rgb(16 24 40 / 0.12);
+    --km-duration-fast: 150ms;
+    --km-duration-normal: 220ms;
+    --km-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --km-z-sidebar: 40;
+    --km-z-topbar: 50;
+    --km-z-overlay: 90;
+    --km-z-modal: 100;
+    --km-z-toast: 110;
+
+    /* Semantic: surfaces and content */
+    --km-color-page: #f4f7fa;
+    --km-color-surface: var(--km-white);
+    --km-color-surface-subtle: var(--km-slate-50);
+    --km-color-surface-strong: var(--km-navy-950);
+    --km-color-text: var(--km-slate-950);
+    --km-color-text-secondary: var(--km-slate-600);
+    --km-color-text-muted: var(--km-slate-500);
+    --km-color-text-inverse: var(--km-white);
+    --km-color-border: var(--km-slate-300);
+    --km-color-border-subtle: var(--km-slate-200);
+    --km-color-primary: var(--km-navy-800);
+    --km-color-primary-hover: var(--km-navy-900);
+    --km-color-primary-soft: var(--km-navy-50);
+    --km-color-link: var(--km-blue-700);
+    --km-color-focus: var(--km-blue-600);
+    --km-color-brand-accent: var(--km-red-600);
+    --km-color-success: var(--km-green-700);
+    --km-color-success-soft: var(--km-green-50);
+    --km-color-warning: var(--km-amber-800);
+    --km-color-warning-soft: var(--km-amber-50);
+    --km-color-danger: var(--km-red-700);
+    --km-color-danger-soft: var(--km-red-50);
+    --km-color-info: var(--km-blue-700);
+    --km-color-info-soft: var(--km-blue-50);
+    --km-color-overlay: rgb(11 31 51 / 0.56);
+
+    /* Semantic: layout */
+    --km-sidebar-width: 17rem;
+    --km-sidebar-collapsed-width: 5rem;
+    --km-topbar-height: 4.5rem;
+    --km-content-max: 100rem;
+    --km-page-gutter: var(--km-space-8);
+    --km-section-gap: var(--km-space-6);
+
+    /* Component: buttons and controls */
+    --km-control-height: 2.75rem;
+    --km-control-height-sm: 2.25rem;
+    --km-control-radius: var(--km-radius-sm);
+    --km-control-border: var(--km-color-border);
+    --km-control-background: var(--km-color-surface);
+    --km-button-primary-bg: var(--km-color-primary);
+    --km-button-primary-bg-hover: var(--km-color-primary-hover);
+    --km-button-primary-fg: var(--km-color-text-inverse);
+    --km-button-secondary-bg: var(--km-color-surface);
+    --km-button-secondary-fg: var(--km-color-primary);
+    --km-button-secondary-border: var(--km-color-border);
+    --km-focus-ring: 0 0 0 3px rgb(37 99 235 / 0.28);
+
+    /* Component: cards, tables, status */
+    --km-card-bg: var(--km-color-surface);
+    --km-card-border: var(--km-color-border-subtle);
+    --km-card-radius: var(--km-radius-md);
+    --km-card-shadow: var(--km-shadow-xs);
+    --km-table-header-bg: var(--km-slate-50);
+    --km-table-row-hover: var(--km-navy-50);
+    --km-status-radius: var(--km-radius-round);
+}
+
+@media (max-width: 1279.98px) {
+    :root {
+        --km-page-gutter: var(--km-space-6);
+    }
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --km-page-gutter: var(--km-space-4);
+        --km-topbar-height: 4rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --km-duration-fast: 0.01ms;
+        --km-duration-normal: 0.01ms;
+    }
+}

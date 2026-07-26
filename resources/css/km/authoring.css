@@ -1,0 +1,65 @@
+.km-app .km-tag-container {
+    display: flex;
+    min-height: 42px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    border: 1px solid var(--km-color-border);
+    border-radius: var(--km-radius-sm);
+    background: var(--km-color-surface);
+}
+
+.km-app .km-tag-container:focus-within {
+    border-color: var(--km-color-focus);
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
+}
+
+.km-app .km-tag-container .form-control {
+    min-width: 140px;
+    flex: 1;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+}
+
+.km-app .km-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.km-app .km-tag-chip .btn-close,
+.km-app .km-coauthor-picker .btn-close {
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0.35rem;
+}
+
+.km-app .km-coauthor-picker {
+    position: relative;
+}
+
+.km-app .km-coauthor-picker [data-km-coauthor-results] {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.km-app .km-autosave-status {
+    min-height: 1.25rem;
+    color: var(--km-color-text-muted);
+    font-size: 0.8rem;
+}
+
+.km-app .km-autosave-saving {
+    color: var(--km-color-warning);
+}
+
+.km-app .km-autosave-saved {
+    color: var(--km-color-success);
+}
+
+.km-app .km-autosave-error,
+.km-app .km-autosave-conflict {
+    color: var(--km-color-danger);
+}

@@ -1,307 +1,294 @@
 @extends('layout')
 
+@section('documentLanguage', 'id')
+
+@push('styles')
+    @vite('resources/css/km/foundation.css')
+@endpush
+
+@push('scripts')
+    @vite('resources/js/km/authoring.js')
+@endpush
+
 @section('content')
-    <main id="main" class="main">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+<x-km.shell active="submissions">
+    <x-km.page-header
+        title="Pengajuan Saya"
+        description="Kelola draf dan kirim materi pengetahuan Anda untuk persetujuan.">
+        <x-slot:actions>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#kmModal">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Buat Draf
+            </button>
+        </x-slot:actions>
+    </x-km.page-header>
 
-        <div class="pagetitle">
-            <h1>Halaman Pengajuan KM</h1>
-            <nav>
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item active">Menu List Pengajuan KM</li>
-                </ol>
-            </nav>
-        </div>
-        <section class="section">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Tampilan Data Knowlege Management</h5>
-                    <button class="btn btn-primary btn-sm mb-3" data-bs-toggle="modal" data-bs-target="#kmModal">Form
-                        KM</button>
-                    @if ($km->isEmpty())
-                        <p>Tidak ada data yang ditemukan.</p>
-                    @else
-                        <div class="table-responsive" style="height: 100%; overflow-y: auto;">
-                            <table class="datatable table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">No</th>
-                                        <th scope="col">PIC</th>
-                                        <th scope="col">Judul</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($km as $item)
-                                        <tr>
-                                            <th scope="row">{{ $loop->iteration }}</th>
-                                            <td>{{ $item->user->name }}</td>
-                                            <td>{{ $item->judul }}</td>
-                                            <td class="text-center py-4"
-                                                style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                @if ($item->status == 0)
-                                                    <span class="badge bg-danger align-items-center"
-                                                        style="font-size: 18px;">Tidak Aktif</span>
-                                                @elseif ($item->status == 1)
-                                                    <span class="badge bg-secondary align-items-center"
-                                                        style="font-size: 18px;">Draf</span>
-                                                @elseif($item->status == 2)
-                                                    <span class="badge bg-warning align-items-center"
-                                                        style="font-size: 18px;">Menunggu <br> Persetujuan HR</span>
-                                                @elseif($item->status == 3)
-                                                    <span class="badge bg-success align-items-center"
-                                                        style="font-size: 18px;">Publish</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if ($item->status != 0 && $item->status != 2 && $item->status != 3)
-                                                    <button type="button" class="btn btn-primary"
-                                                        onclick="openEditKmModal({{ $item->id }})"
-                                                        data-id="{{ $item->id }}" data-judul="{{ $item->judul }}"
-                                                        data-keterangan="{{ $item->keterangan }}"
-                                                        data-thumbnail="{{ $item->image }}"> <!-- Pass the image data -->
-                                                        Edit
-                                                    </button>
+    <x-km.feedback :errors="$errors" error-title="Pengajuan belum dapat diproses." />
 
-                                                    <a class="btn btn-danger mt-1" title="Nonaktifkan"
-                                                        onclick="updateStatusKm({{ $item->id }})">
-                                                        <i class="bi bi-trash-fill"></i>
-                                                    </a>
-                                                    <a class="btn btn-info mt-1" title="Kirim"
-                                                        onclick="kirimKM({{ $item->id }})">
-                                                        <i class="bi bi-cursor-fill"></i>
-                                                    </a>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
+    <section aria-labelledby="km-submission-list-title">
+        <div class="km-panel">
+            <div class="km-panel__header">
+                <div>
+                    <h2 class="km-panel__title" id="km-submission-list-title">Dokumen Saya</h2>
+                    <p class="text-muted small mb-0">Status dan tindakan tersedia sesuai tahap dokumen.</p>
                 </div>
-
-                <!-- Modal Add-->
-                <div class="modal fade" id="kmModal" tabindex="-1" aria-labelledby="kmModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="inquiryModalLabel">Form input Knowledge Management</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                    aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form action="{{ route('storeKM') }}" method="POST" enctype="multipart/form-data">
-                                    @csrf
-                                    <div class="mb-3">
-                                        <label for="judul" class="form-label">Judul</label>
-                                        <input type="text" class="form-control" id="judul" name="judul" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="keterangan" class="form-label">Sinopsis Isi Buku</label>
-                                        <textarea class="form-control" id="keterangan" name="keterangan" rows="4" required></textarea>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <label for="inputNumber" class="form-label">File Pengajuan<span
-                                                style="color: red;">*</span></label>
-                                        <div class="col-sm-10">
-                                            <input class="form-control" type="file" id="file" name="file"
-                                                accept=".ppt,.pptx,.pdf" width="100%" required>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <label for="thumbnail" class="form-label">Upload Thumbnail</label>
-                                        <div class="col-sm-10">
-                                            <input class="form-control" type="file" id="image" name="image"
-                                                accept=".jpg,.jpeg,.png" width="100%">
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary"
-                                            data-bs-dismiss="modal">Close</button>
-                                        <button type="submit" class="btn btn-primary">Submit</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- End Modal -->
-                <!-- Edit Modal -->
-                <div class="modal fade" id="editKmModal" tabindex="-1" aria-labelledby="editKmModalLabel"
-                    aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="editKmModalLabel">Edit Knowledge Management</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                    aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form action="{{ route('updateKM') }}" method="POST" enctype="multipart/form-data">
-                                    @csrf
-                                    @method('PUT')
-                                    <input type="hidden" id="editId" name="id">
-                                    <div class="mb-3">
-                                        <label for="editJudul" class="form-label">Judul</label>
-                                        <input type="text" class="form-control" id="editJudul" name="judul"
-                                            required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="editKeterangan" class="form-label">Sinopsis Isi Buku</label>
-                                        <textarea class="form-control" id="editKeterangan" name="keterangan" rows="4" required></textarea>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <label for="editFile" class="form-label">File Pengajuan</label>
-                                        <div class="col-sm-10">
-                                            <input class="form-control" type="file" id="editFile" name="file"
-                                                accept=".ppt,.pptx,.pdf" width="100%">
-                                            <div id="editFileLink" style="display: none;">
-                                                <a id="editFileName" href="#">Lihat File</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <label for="editThumbnail" class="form-label">Upload Thumbnail</label>
-                                        <div class="col-sm-10">
-                                            <input class="form-control" type="file" id="editThumbnail" name="image"
-                                                accept=".jpg,.jpeg,.png" width="100%">
-                                        </div>
-                                        <div class="col-sm-10">
-                                            <img id="currentThumbnail" src="" alt="Current Thumbnail"
-                                                style="max-width: 100%; margin-top: 10px;">
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary"
-                                            data-bs-dismiss="modal">Close</button>
-                                        <button type="submit" class="btn btn-primary">Update</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- End Modal Edit -->
+                @if (! $km->isEmpty())
+                    <span class="text-muted small">{{ $km->total() }} dokumen</span>
+                @endif
             </div>
-        </section>
 
-                        <!-- jQuery -->
-                        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-                        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-                        <script>
-                            $(document).ready(function() {
-                                // Hover function for dropdowns
-                                $('.nav-item.dropdown').hover(function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideDown(150);
-                                }, function() {
-                                    $(this).find('.dropdown-menu').first().stop(true, true).slideUp(150);
-                                });
-                            });
-                            </script>
+            <noscript>
+                <style>
+                    .km-app #kmModal { display: block; position: static; opacity: 1; }
+                    .km-app #kmModal .modal-dialog { margin: 0 0 1rem; max-width: none; }
+                    .km-app #kmModal .btn-close,
+                    .km-app #kmModal [data-bs-dismiss="modal"] { display: none; }
+                </style>
+                <div class="alert alert-info" role="status">
+                    JavaScript tidak aktif. Form pembuatan draf ditampilkan langsung di bawah daftar.
+                </div>
+            </noscript>
 
-        <!-- jQuery -->
-        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+            @if ($km->isEmpty())
+                <x-km.empty-state
+                    icon="bi-file-earmark-plus"
+                    title="Belum ada pengajuan"
+                    description="Buat draf pertama untuk mulai membagikan pengetahuan kepada rekan kerja.">
+                    <x-slot:actions>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#kmModal">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                            Buat Draf
+                        </button>
+                    </x-slot:actions>
+                </x-km.empty-state>
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <caption class="visually-hidden">Daftar pengajuan Knowledge Management milik pengguna</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">No</th>
+                                <th scope="col">PIC</th>
+                                <th scope="col">Judul</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($km as $item)
+                                <tr>
+                                    <td>{{ $km->firstItem() + $loop->index }}</td>
+                                    <td>{{ $item->user?->name ?? '-' }}</td>
+                                    <td><span class="km-table-title">{{ $item->judul }}</span></td>
+                                    <td><x-km.status-badge :status="$item->status" /></td>
+                                    <td>
+                                        <div class="km-action-group text-nowrap">
+                                            @can('update', $item)
+                                                <button type="button" class="btn btn-outline-primary btn-sm btn-icon"
+                                                    data-km-edit="{{ $item->id }}" title="Edit"
+                                                    aria-label="Edit draf {{ $item->judul }}">
+                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                </button>
+                                            @endcan
+                                            @can('deactivate', $item)
+                                                <button type="button" class="btn btn-outline-danger btn-sm btn-icon"
+                                                    data-km-deactivate="{{ $item->id }}" title="Nonaktifkan"
+                                                    aria-label="Nonaktifkan {{ $item->judul }}">
+                                                    <i class="bi bi-slash-circle" aria-hidden="true"></i>
+                                                </button>
+                                            @endcan
+                                            @can('submit', $item)
+                                                <button type="button" class="btn btn-primary btn-sm"
+                                                    data-km-submit="{{ $item->id }}" title="Kirim untuk persetujuan"
+                                                    aria-label="Kirim {{ $item->judul }} untuk persetujuan">
+                                                    <i class="bi bi-send" aria-hidden="true"></i>
+                                                    Kirim
+                                                </button>
+                                            @endcan
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">{{ $km->links('pagination::bootstrap-5') }}</div>
+            @endif
+        </div>
+    </section>
 
+<div class="modal fade" id="kmModal" tabindex="-1" aria-labelledby="kmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="kmModalLabel">Buat Draf KM</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <form action="{{ route('storeKM') }}" method="POST" enctype="multipart/form-data"
+                id="km-create-form" data-km-submit-protection>
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="judul" class="form-label">
+                            Judul <span class="km-field-required" aria-hidden="true">*</span>
+                        </label>
+                        <input type="text" class="form-control @error('judul') is-invalid @enderror"
+                            id="judul" name="judul" value="{{ old('judul') }}" maxlength="255" required
+                            autocomplete="off" @error('judul') aria-invalid="true" aria-describedby="judul-error" @enderror>
+                        @error('judul')
+                            <div class="invalid-feedback" id="judul-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="keterangan" class="form-label">
+                            Sinopsis Isi Buku <span class="km-field-required" aria-hidden="true">*</span>
+                        </label>
+                        <textarea class="form-control @error('keterangan') is-invalid @enderror"
+                            id="keterangan" name="keterangan" rows="4" maxlength="3000" required
+                            @error('keterangan') aria-invalid="true" aria-describedby="keterangan-error" @enderror>{{ old('keterangan') }}</textarea>
+                        @error('keterangan')
+                            <div class="invalid-feedback" id="keterangan-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">
+                            File Pengajuan <span class="km-field-required" aria-hidden="true">*</span>
+                        </label>
+                        <input class="form-control @error('file') is-invalid @enderror" type="file"
+                            id="file" name="file" accept=".ppt,.pptx,.pdf" required
+                            aria-describedby="file-help @error('file') file-error @enderror"
+                            @error('file') aria-invalid="true" @enderror>
+                        <div class="form-text" id="file-help">PDF mendukung preview dan thumbnail otomatis. PPT/PPTX hanya dapat diunduh.</div>
+                        @error('file')
+                            <div class="invalid-feedback" id="file-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="reading_minutes" class="form-label">Estimasi Waktu Baca (menit)</label>
+                        <input type="number" class="form-control @error('reading_minutes') is-invalid @enderror"
+                            id="reading_minutes" name="reading_minutes" value="{{ old('reading_minutes') }}"
+                            min="1" max="1440"
+                            @error('reading_minutes') aria-invalid="true" aria-describedby="reading-minutes-error" @enderror>
+                        @error('reading_minutes')
+                            <div class="invalid-feedback" id="reading-minutes-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="km-tags-input" class="form-label">Tag</label>
+                        <div class="km-tag-container" data-km-tag-picker>
+                            <input type="text" id="km-tags-input" class="form-control" maxlength="50" placeholder="Ketik lalu tekan Enter atau koma">
+                        </div>
+                        <input type="hidden" id="km-tags-csv" name="tags_csv" value="{{ old('tags_csv') }}">
+                    </div>
+                    <div class="mb-3 km-coauthor-picker" data-km-coauthor-picker="create">
+                        <label for="km-coauthor-search" class="form-label">Co-author</label>
+                        <input type="search" id="km-coauthor-search" class="form-control" maxlength="100" placeholder="Cari nama, email, atau NPK">
+                        <div class="list-group mt-2 d-none" data-km-coauthor-results></div>
+                        <div class="d-flex flex-wrap gap-1 mt-2" data-km-coauthor-selected></div>
+                        <div data-km-coauthor-inputs></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                        Simpan Draf
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-        {{-- excel --}}
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<div class="modal fade" id="editKmModal" tabindex="-1" aria-labelledby="editKmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="editKmModalLabel">Edit Draf KM</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <form action="{{ route('updateKM') }}" method="POST" enctype="multipart/form-data"
+                id="km-draft-form" data-km-submit-protection>
+                @csrf
+                @method('PUT')
+                <input type="hidden" id="editId" name="id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editJudul" class="form-label">
+                            Judul <span class="km-field-required" aria-hidden="true">*</span>
+                        </label>
+                        <input type="text" class="form-control @error('judul') is-invalid @enderror"
+                            id="editJudul" name="judul" maxlength="255" required autocomplete="off"
+                            @error('judul') aria-invalid="true" aria-describedby="edit-judul-error" @enderror>
+                        @error('judul')
+                            <div class="invalid-feedback" id="edit-judul-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="editKeterangan" class="form-label">
+                            Sinopsis Isi Buku <span class="km-field-required" aria-hidden="true">*</span>
+                        </label>
+                        <textarea class="form-control @error('keterangan') is-invalid @enderror"
+                            id="editKeterangan" name="keterangan" rows="4" maxlength="3000" required
+                            @error('keterangan') aria-invalid="true" aria-describedby="edit-keterangan-error" @enderror></textarea>
+                        @error('keterangan')
+                            <div class="invalid-feedback" id="edit-keterangan-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="editReadingMinutes" class="form-label">Estimasi Waktu Baca (menit)</label>
+                        <input type="number" class="form-control @error('reading_minutes') is-invalid @enderror"
+                            id="editReadingMinutes" name="reading_minutes" min="1" max="1440"
+                            @error('reading_minutes') aria-invalid="true" aria-describedby="edit-reading-minutes-error" @enderror>
+                        @error('reading_minutes')
+                            <div class="invalid-feedback" id="edit-reading-minutes-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-km-tags-input" class="form-label">Tag</label>
+                        <div class="km-tag-container" data-km-tag-picker>
+                            <input type="text" id="edit-km-tags-input" class="form-control" maxlength="50" placeholder="Ketik lalu tekan Enter atau koma">
+                        </div>
+                        <input type="hidden" id="edit-km-tags-csv" name="tags_csv" value="">
+                    </div>
+                    <div class="mb-3 km-coauthor-picker" data-km-coauthor-picker="edit">
+                        <label for="edit-km-coauthor-search" class="form-label">Co-author</label>
+                        <input type="search" id="edit-km-coauthor-search" class="form-control" maxlength="100" placeholder="Cari nama, email, atau NPK">
+                        <div class="list-group mt-2 d-none" data-km-coauthor-results></div>
+                        <div class="d-flex flex-wrap gap-1 mt-2" data-km-coauthor-selected></div>
+                        <div data-km-coauthor-inputs></div>
+                    </div>
+                    <div id="km-autosave-status" class="km-autosave-status mb-3" aria-live="polite"></div>
+                    <div class="mb-3">
+                        <label for="editFile" id="editFileLabel" class="form-label">File Pengajuan</label>
+                        <input class="form-control" type="file" id="editFile" name="file" accept=".ppt,.pptx,.pdf">
+                        <div id="editFileLink" class="mt-2" hidden>
+                            <a id="editFileName" href="#">Unduh file tersimpan</a>
+                        </div>
+                        <div id="editFileState" class="form-text"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i>
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-        <!-- SimpleDataTables JS -->
-        <script src="{{ asset('assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-
-        <script>
-            function openEditKmModal(id) {
-                // Membuat panggilan AJAX untuk mengambil data
-                $.ajax({
-                    url: `{{ route('editKM', ['id' => ':id']) }}`.replace(':id', id),
-                    type: 'GET',
-                    dataType: 'json',
-                    success: function(data) {
-                        // Mengisi nilai form pada modal edit
-                        $('#editId').val(data.id);
-                        $('#editJudul').val(data.judul);
-                        $('#editKeterangan').val(data.keterangan);
-
-                        // Menampilkan informasi file jika ada
-                        if (data.file_name) {
-                            $('#editFileLabel').text('File tersimpan:');
-                            $('#editFileName').text(data
-                                .file_name); // Memperbarui dengan file_name yang diterima dari server
-                            $('#editFileLink').show();
-                            $('#editFile').prop('required', false);
-                        } else {
-                            $('#editFileLabel').text('Pilih file:');
-                            $('#editFileLink').hide();
-                            $('#editFile').prop('required', true);
-                        }
-
-                        // Menampilkan thumbnail jika ada
-                        if (data.image) {
-                            $('#currentThumbnail').attr('src', '/assets/image/' + data.image).show();
-                        } else {
-                            $('#currentThumbnail').hide();
-                        }
-
-                        // Menampilkan modal edit
-                        $('#editKmModal').modal('show');
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error:', error);
-                    }
-                });
-            }
-
-            function updateStatusKm(id) {
-                if (confirm('Anda yakin ingin menonaktifkan data ini?')) {
-                    $.ajax({
-                        url: `{{ route('updateStatusKM', ['id' => ':id']) }}`.replace(':id', id),
-                        type: 'PATCH', // atau 'PUT' sesuai kebutuhan
-                        dataType: 'json',
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(response) {
-                            alert(response.message);
-                            // Lakukan update atau refresh halaman jika diperlukan
-                            // Contoh: reload halaman setelah penghapusan
-                            window.location.reload();
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('Error:', error);
-                            alert('Terjadi kesalahan saat memperbarui status data.');
-                        }
-                    });
-                }
-            }
-
-            function kirimKM(id) {
-                if (confirm('Anda yakin ingin mengirim data ini?')) {
-                    $.ajax({
-                        url: `{{ route('kirimKM', ['id' => ':id']) }}`.replace(':id', id),
-                        type: 'POST',
-                        dataType: 'json',
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(response) {
-                            alert(response.message);
-                            window.location.reload();
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('Error:', error);
-                            if (xhr.responseJSON && xhr.responseJSON.message) {
-                                alert(xhr.responseJSON.message);
-                            } else {
-                                alert('Terjadi kesalahan saat mengirim data.');
-                            }
-                        }
-                    });
-                }
-            }
-        </script>
-
-    </main><!-- End #main -->
+<script>
+window.kmAuthoringConfig = {
+    csrfToken: @js(csrf_token()),
+    editUrl: @js(route('editKM', ['id' => '__KM_ID__'])),
+    deactivateUrl: @js(route('updateStatusKM', ['id' => '__KM_ID__'])),
+    submitUrl: @js(route('kirimKM', ['id' => '__KM_ID__'])),
+    autosaveUrl: @js(route('km.documents.autosave', ['kmPengajuan' => '__KM_ID__'])),
+    coAuthorOptionsUrl: @js(route('km.co-authors.options')),
+};
+</script>
+</x-km.shell>
 @endsection

@@ -83,6 +83,12 @@ class User extends Authenticatable
         return $this->hasMany(KmPengajuan::class, 'id_user');
     }
 
+    // Relasi dengan KmBookmark
+    public function bookmarks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(KmBookmark::class, 'user_id');
+    }
+
     // Relasi dengan KmTransaksi
     public function kmTransaksi()
     {
