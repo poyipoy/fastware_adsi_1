@@ -34,7 +34,15 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/Enums/Warehouse/WarehouseEnums.php",
+            "app/Data/Warehouse/WarehouseStockData.php"
+        ],
+        "exclude-from-classmap": [
+            "/app/Enums/Warehouse/WarehouseEnums.php",
+            "/app/Data/Warehouse/WarehouseStockData.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

@@ -19,3 +19,9 @@ enum WarehouseTransactionType: string
         return $this === self::OUT;
     }
 }
+
+enum WarehouseVerificationStatus: string
+{
+    case SUCCESS = 'SUCCESS';
+    case FAILED = 'FAILED';
+}
