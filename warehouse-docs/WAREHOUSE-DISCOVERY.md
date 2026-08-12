@@ -70,3 +70,14 @@ Raw scanned values are not written to this document or the execution log. Item i
 ## Additional local-artifact audit
 
 The available SQL dumps contain generic `Consumable` planning records and improvement notes such as `Warehouse Consumable Deltamas` and `Digitalisasi Barcode Material`, but no employee card scan value, item barcode value, card mapping table, or barcode column that can establish a scan format. These records are contextual evidence only and were not imported or used as Warehouse master data.
+
+## Current post-refactor snapshot — 2026-08-12
+
+- Current branch: `refactor/warehouse-structure-cleanup`.
+- Current HEAD: `9bf70d5` after six structural refactor commits.
+- Current worktree: clean.
+- Warehouse route inventory: `24` routes; `routes/web.php` remains unchanged.
+- Warehouse module structure: `51` files in `10` folders after Fase 1–6.
+- Final focused gate: `102` Warehouse tests and `685` assertions passed.
+- The refactor changed file placement and Composer autoload registration only; controller/service behavior, validation, routes, schema, migration, and application data were preserved.
+- The deployment package `warehouse-consumable/` was intentionally not regenerated. Its documentation is synchronized separately, while its source code remains the pre-refactor artifact until a manual redeploy is approved.

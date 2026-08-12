@@ -1,5 +1,11 @@
 # Warehouse Consumable — Rollback Plan
 
+## Structure refactor rollback
+
+- The refactor is represented by six commits ending at `9bf70d5`; roll back the application artifact to the last approved source release if a structural regression is found.
+- Do not delete Warehouse tables or transaction history as part of an application rollback. This refactor made no schema or data changes.
+- If `warehouse-consumable/` is used as a separate deployment artifact, regenerate or restore that artifact independently; it was intentionally outside the refactor scope.
+
 ## Application rollback
 
 1. Stop the release and preserve the execution log, test output, and failing transaction number.

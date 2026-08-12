@@ -1,5 +1,12 @@
 # Warehouse Consumable — Deployment Checklist
 
+## Current release snapshot — 2026-08-12
+
+- Source refactor: `refactor/warehouse-structure-cleanup` at `9bf70d5`.
+- Six structural phases are complete; the focused Warehouse gate is `102` tests and `685` assertions.
+- Module structure is now `51` files in `10` folders. The `warehouse.*` route inventory remains `24` routes.
+- `warehouse-consumable/` source is not part of this refactor artifact. Its documentation is synchronized, but its code must be regenerated/redeployed separately if it is used for deployment.
+
 ## Pre-deployment
 
 - [ ] Confirm the source commit and review `warehouse-docs/WAREHOUSE-EXECUTION-LOG.md`.

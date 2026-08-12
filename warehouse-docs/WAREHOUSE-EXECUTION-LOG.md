@@ -398,3 +398,19 @@ Status: `DONE (automated gate passed; browser visual confirmation remains open)`
 - Assets/tests: added `resources/js/warehouse/dashboard.js` to the Vite inputs and loaded it only on the Dashboard view. Focused UI/Dashboard tests passed **14 tests, 285 assertions**. Full Warehouse suite passed **102 tests, 685 assertions**, compared with the prior baseline **102 tests, 677 assertions**; zero failures.
 - Gates: `php artisan view:cache`, `npm.cmd run build`, `node --check resources/js/warehouse/dashboard.js`, and targeted Warehouse whitespace checks passed. Vite emitted only the existing pdfjs `eval` and chunk-size warnings. Global `git diff --check` still reports only the unrelated pre-existing trailing whitespace in `app/Models/Insight.php:9`.
 - Open QA: verify one-click open/close, keyboard toggling, active-filter and validation-error states, reset, 360/768/1440px layouts, and 200% zoom in a browser; visual QA is not claimed by automation.
+
+## STRUCTURE REFACTOR FASE 1–6 — 2026-08-12
+
+Status: `DONE (automated gate passed; browser smoke remains a release step)`
+
+- Branch: `refactor/warehouse-structure-cleanup`.
+- Final HEAD: `9bf70d5`.
+- Commits: `943f539`, `702f434`, `d6416fa`, `aa12ba4`, `1fb6770`, and `9bf70d5`, one commit per phase.
+- Scope: structural file placement and autoload only. Controllers, service behavior, validation, routes, schema, migration, and application data were preserved.
+- Fase 1 removed the unused `action-bar` component. Fase 2 consolidated DTO and enum files. Fase 3 consolidated feature Form Requests. Fase 4 flattened exception/export namespaces. Fase 5 flattened the two single-view folders. Fase 6 co-located the transaction-number generator while preserving constructor injection.
+- Composer deviation: consolidated multi-class files are registered through `autoload.files` and excluded from the PSR-4 classmap so every original FQCN remains autoloadable without consumer `use` changes.
+- Structure result: `59` to `51` module files and `14` to `10` module folders.
+- Route gate: `24` Warehouse routes; route fingerprint remained identical to the baseline. `routes/web.php` had zero diff.
+- Regression gate: `102` tests and `685` assertions passed. `composer dump-autoload`, `php artisan optimize:clear`, and `php artisan view:cache` passed; no Warehouse autoload warning remained.
+- Safety: no production/local application DB mutation, migration, route edit, or data change was performed. Testing-only database recovery was restricted to `fastware_adsi_1_testing` after runtime guard verification.
+- Artifact note: `warehouse-consumable/` remained out of scope and its source files were not regenerated. Its documentation is now synchronized to this version; the code artifact remains pre-refactor and requires a separate manual regeneration/redeploy if it is still used.

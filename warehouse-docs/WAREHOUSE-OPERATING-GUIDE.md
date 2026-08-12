@@ -1,5 +1,9 @@
 # Warehouse Consumable — Operating Guide
 
+## Version note — 2026-08-12
+
+This guide matches the source after the six-phase Warehouse structure refactor at `9bf70d5`. The refactor is structural only; operating behavior and database rules remain unchanged. The `warehouse-consumable/` code artifact needs separate regeneration if it is still used for deployment.
+
 ## Before first use
 
 1. An authorized Warehouse user creates an active consumable. Item Code is also used as the item barcode; current stock starts at zero.
