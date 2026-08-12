@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Warehouse;
 
 use App\Data\Warehouse\WarehouseStockCommand;
 use App\Enums\Warehouse\WarehouseTransactionType;
-use App\Exceptions\Warehouse\WarehouseDomainException;
+use App\Exceptions\WarehouseDomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\ReverseWarehouseTransactionRequest;
 use App\Http\Requests\Warehouse\StoreWarehouseTransactionRequest;

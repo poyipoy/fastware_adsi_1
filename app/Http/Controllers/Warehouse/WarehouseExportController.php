@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Warehouse;
 
-use App\Exports\Warehouse\WarehouseTransactionsExport;
+use App\Exports\WarehouseTransactionsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\WarehouseTransactionExportRequest;
 use App\Models\Warehouse\WarehouseStockTransaction;

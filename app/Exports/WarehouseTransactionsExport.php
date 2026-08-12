@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exports\Warehouse;
+namespace App\Exports;
 
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;

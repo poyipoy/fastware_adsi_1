@@ -4,7 +4,7 @@ namespace Tests\Feature\Warehouse;
 
 use App\Data\Warehouse\WarehouseStockCommand;
 use App\Enums\Warehouse\WarehouseTransactionType;
-use App\Exceptions\Warehouse\WarehouseDomainException;
+use App\Exceptions\WarehouseDomainException;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockTransaction;
 use App\Services\Warehouse\WarehouseAccessService;
