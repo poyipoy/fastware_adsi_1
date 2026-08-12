@@ -1,3 +1,22 @@
+.km-app .modal-dialog-scrollable .modal-content {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.km-app .modal-dialog-scrollable .modal-header,
+.km-app .modal-dialog-scrollable .modal-footer {
+    flex: 0 0 auto;
+}
+
+.km-app .modal-dialog-scrollable .modal-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+}
+
 .km-app .km-tag-container {
     display: flex;
     min-height: 42px;
@@ -15,6 +34,12 @@
     box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
 }
 
+.km-app .km-tag-container.km-tag-container--invalid,
+.km-app .km-tag-container.km-tag-container--invalid:focus-within {
+    border-color: var(--km-color-danger);
+    box-shadow: 0 0 0 0.2rem rgba(185, 28, 28, 0.14);
+}
+
 .km-app .km-tag-container .form-control {
     min-width: 140px;
     flex: 1;
@@ -27,6 +52,13 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+}
+
+.km-app .km-tag-feedback {
+    margin-top: var(--km-space-1);
+    color: var(--km-color-danger);
+    font-size: var(--km-font-size-sm);
+    font-weight: 600;
 }
 
 .km-app .km-tag-chip .btn-close,
@@ -62,4 +94,10 @@
 .km-app .km-autosave-error,
 .km-app .km-autosave-conflict {
     color: var(--km-color-danger);
+}
+
+@media (max-width: 575.98px) {
+    .km-app .modal-fullscreen-sm-down .modal-content {
+        min-height: 100dvh;
+    }
 }

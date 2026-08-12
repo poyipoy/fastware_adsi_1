@@ -31,6 +31,7 @@ class KmReadinessCommand extends Command
         'users' => [
             'id',
             'km_total_poin',
+            'section',
         ],
         'km_kategoris' => [
             'id',
@@ -41,6 +42,8 @@ class KmReadinessCommand extends Command
         ],
         'km_pengajuans' => [
             'id',
+            'current_version_id',
+            'published_version_id',
             'id_user',
             'id_km_kategori',
             'judul',
@@ -65,6 +68,7 @@ class KmReadinessCommand extends Command
         'km_transaksis' => [
             'id',
             'id_km_pengajuan',
+            'document_version_id',
             'id_user',
             'poin',
             'level',
@@ -74,6 +78,13 @@ class KmReadinessCommand extends Command
             'modified_by',
             'completed_at',
             'points_awarded_at',
+            'last_page',
+            'pages_total',
+            'unique_pages',
+            'unique_pages_count',
+            'active_seconds',
+            'progress_percent',
+            'last_progress_at',
         ],
         'km_lihat_bukus' => [
             'id',
@@ -95,13 +106,22 @@ class KmReadinessCommand extends Command
             'id',
             'id_user',
             'id_km_pengajuan',
+            'document_version_id',
+            'parent_id',
             'content',
+            'edited_at',
+            'deleted_at',
+            'deleted_by',
+            'delete_reason',
+            'featured_at',
+            'featured_by',
             'created_at',
             'updated_at',
         ],
         'km_approval_events' => [
             'id',
             'km_pengajuan_id',
+            'document_version_id',
             'actor_id',
             'actor_name',
             'actor_role_snapshot',
@@ -112,6 +132,107 @@ class KmReadinessCommand extends Command
             'metadata',
             'acted_at',
             'created_at',
+        ],
+        'km_notifications' => [
+            'id',
+            'user_id',
+            'type',
+            'event_key',
+            'data',
+            'read_at',
+            'created_at',
+        ],
+        'km_insight_reactions' => [
+            'id',
+            'insight_id',
+            'user_id',
+            'reaction',
+            'created_at',
+            'updated_at',
+        ],
+        'km_insight_mentions' => [
+            'id',
+            'insight_id',
+            'mentioned_user_id',
+            'created_at',
+        ],
+        'km_point_ledger' => [
+            'id',
+            'user_id',
+            'event_type',
+            'event_key',
+            'points',
+            'department_snapshot',
+            'km_pengajuan_id',
+            'document_version_id',
+            'km_insight_id',
+            'notes',
+            'created_by',
+            'created_at',
+        ],
+        'km_document_versions' => [
+            'id',
+            'km_pengajuan_id',
+            'version_major',
+            'version_minor',
+            'change_type',
+            'change_note',
+            'version_status',
+            'title',
+            'synopsis',
+            'category_id',
+            'audience',
+            'original_disk',
+            'original_path',
+            'original_checksum_sha256',
+            'normalized_pdf_disk',
+            'normalized_pdf_path',
+            'normalized_pdf_checksum_sha256',
+            'extracted_text',
+            'processing_status',
+            'antivirus_status',
+            'processing_attempts',
+            'next_attempt_at',
+            'created_by',
+            'approved_by',
+            'published_at',
+            'created_at',
+            'updated_at',
+        ],
+        'km_access_rules' => [
+            'id',
+            'subject_type',
+            'subject_id',
+            'ability',
+            'effect',
+            'valid_from',
+            'valid_until',
+            'reason',
+            'created_by',
+        ],
+        'km_access_audits' => ['id', 'access_rule_id', 'actor_id', 'action', 'reason', 'created_at'],
+        'km_publication_batches' => ['id', 'document_version_id', 'status', 'recipient_count', 'processed_count'],
+        'km_publication_recipients' => ['id', 'publication_batch_id', 'user_id', 'notified_at', 'notification_id'],
+        'km_reading_sessions' => [
+            'id', 'user_id', 'document_id', 'document_version_id', 'session_hash', 'device_hash',
+            'client_active_seconds', 'credited_active_seconds', 'last_seen_at',
+        ],
+        'km_assignments' => ['id', 'document_version_id', 'title', 'status', 'due_at', 'target_snapshot', 'created_by', 'reason'],
+        'km_assignment_users' => [
+            'id', 'assignment_id', 'user_id', 'due_at', 'completed_at', 'exempted_at',
+            'exempted_by', 'exemption_reason', 'completion_event_id',
+        ],
+        'km_completion_events' => [
+            'id', 'event_key', 'user_id', 'document_id', 'document_version_id', 'transaction_id',
+            'assignment_user_id', 'completion_type', 'acknowledged_at', 'actor_id',
+            'reason', 'evidence_snapshot', 'completed_at',
+        ],
+        'km_badges' => ['id', 'slug', 'name', 'event_type', 'threshold', 'is_active'],
+        'km_user_badges' => ['id', 'user_id', 'badge_id', 'event_key', 'evidence', 'awarded_at'],
+        'km_export_audits' => ['id', 'actor_id', 'export_type', 'format', 'filters', 'record_count', 'checksum_sha256'],
+        'km_hris_outbound_events' => [
+            'id', 'event_key', 'completion_event_id', 'employee_hris_id', 'payload', 'status',
+            'attempts', 'next_attempt_at', 'last_error', 'sent_at',
         ],
     ];
 
@@ -169,6 +290,46 @@ class KmReadinessCommand extends Command
         ['table' => 'km_pengajuans', 'column' => 'file_size_bytes', 'type' => 'bigint unsigned', 'nullable' => true],
         ['table' => 'km_pengajuans', 'column' => 'file_checksum_sha256', 'type' => 'char(64)', 'nullable' => true],
         ['table' => 'km_pengajuans', 'column' => 'file_migrated_at', 'type' => 'timestamp', 'nullable' => true],
+        ['table' => 'km_transaksis', 'column' => 'last_page', 'type' => 'int unsigned', 'nullable' => true],
+        ['table' => 'km_transaksis', 'column' => 'pages_total', 'type' => 'int unsigned', 'nullable' => true],
+        ['table' => 'km_transaksis', 'column' => 'unique_pages', 'type' => 'text', 'nullable' => true],
+        ['table' => 'km_transaksis', 'column' => 'unique_pages_count', 'type' => 'int unsigned', 'nullable' => false, 'default' => '0'],
+        ['table' => 'km_transaksis', 'column' => 'active_seconds', 'type' => 'bigint unsigned', 'nullable' => false, 'default' => '0'],
+        ['table' => 'km_transaksis', 'column' => 'progress_percent', 'type' => 'tinyint unsigned', 'nullable' => false, 'default' => '0'],
+        ['table' => 'km_transaksis', 'column' => 'last_progress_at', 'type' => 'timestamp', 'nullable' => true],
+        ['table' => 'km_insights', 'column' => 'parent_id', 'type' => 'int', 'nullable' => true],
+        ['table' => 'km_insights', 'column' => 'edited_at', 'type' => 'timestamp', 'nullable' => true],
+        ['table' => 'km_insights', 'column' => 'deleted_at', 'type' => 'timestamp', 'nullable' => true],
+        ['table' => 'km_insights', 'column' => 'deleted_by', 'type' => 'bigint unsigned', 'nullable' => true],
+        ['table' => 'km_insights', 'column' => 'delete_reason', 'type' => 'varchar(500)', 'nullable' => true],
+        ['table' => 'km_insights', 'column' => 'featured_at', 'type' => 'timestamp', 'nullable' => true],
+        ['table' => 'km_insights', 'column' => 'featured_by', 'type' => 'bigint unsigned', 'nullable' => true],
+        ['table' => 'km_notifications', 'column' => 'id', 'type' => 'bigint unsigned', 'primary' => true, 'auto_increment' => true],
+        ['table' => 'km_notifications', 'column' => 'user_id', 'type' => 'bigint unsigned', 'nullable' => false],
+        ['table' => 'km_notifications', 'column' => 'type', 'type' => 'varchar(48)', 'nullable' => false],
+        ['table' => 'km_notifications', 'column' => 'event_key', 'type' => 'varchar(191)', 'nullable' => false],
+        ['table' => 'km_notifications', 'column' => 'data', 'type' => 'json', 'nullable' => false],
+        ['table' => 'km_notifications', 'column' => 'read_at', 'type' => 'timestamp', 'nullable' => true],
+        ['table' => 'km_notifications', 'column' => 'created_at', 'type' => 'timestamp', 'nullable' => false],
+        ['table' => 'km_insight_reactions', 'column' => 'id', 'type' => 'bigint unsigned', 'primary' => true, 'auto_increment' => true],
+        ['table' => 'km_insight_reactions', 'column' => 'insight_id', 'type' => 'int', 'nullable' => false],
+        ['table' => 'km_insight_reactions', 'column' => 'user_id', 'type' => 'bigint unsigned', 'nullable' => false],
+        ['table' => 'km_insight_reactions', 'column' => 'reaction', 'type' => 'varchar(16)', 'nullable' => false],
+        ['table' => 'km_insight_mentions', 'column' => 'id', 'type' => 'bigint unsigned', 'primary' => true, 'auto_increment' => true],
+        ['table' => 'km_insight_mentions', 'column' => 'insight_id', 'type' => 'int', 'nullable' => false],
+        ['table' => 'km_insight_mentions', 'column' => 'mentioned_user_id', 'type' => 'bigint unsigned', 'nullable' => false],
+        ['table' => 'km_insight_mentions', 'column' => 'created_at', 'type' => 'timestamp', 'nullable' => false],
+        ['table' => 'km_point_ledger', 'column' => 'id', 'type' => 'bigint unsigned', 'primary' => true, 'auto_increment' => true],
+        ['table' => 'km_point_ledger', 'column' => 'user_id', 'type' => 'bigint unsigned', 'nullable' => false],
+        ['table' => 'km_point_ledger', 'column' => 'event_type', 'type' => 'varchar(48)', 'nullable' => false],
+        ['table' => 'km_point_ledger', 'column' => 'event_key', 'type' => 'varchar(191)', 'nullable' => false],
+        ['table' => 'km_point_ledger', 'column' => 'points', 'type' => 'int', 'nullable' => false],
+        ['table' => 'km_point_ledger', 'column' => 'department_snapshot', 'type' => 'varchar(255)', 'nullable' => true],
+        ['table' => 'km_point_ledger', 'column' => 'km_pengajuan_id', 'type' => 'int', 'nullable' => true],
+        ['table' => 'km_point_ledger', 'column' => 'km_insight_id', 'type' => 'int', 'nullable' => true],
+        ['table' => 'km_point_ledger', 'column' => 'notes', 'type' => 'json', 'nullable' => true],
+        ['table' => 'km_point_ledger', 'column' => 'created_by', 'type' => 'bigint unsigned', 'nullable' => true],
+        ['table' => 'km_point_ledger', 'column' => 'created_at', 'type' => 'timestamp', 'nullable' => false],
     ];
 
     /**
@@ -177,8 +338,8 @@ class KmReadinessCommand extends Command
     private const REQUIRED_UNIQUE_INDEXES = [
         [
             'table' => 'km_transaksis',
-            'name' => 'km_transaksis_user_document_unique',
-            'columns' => ['id_user', 'id_km_pengajuan'],
+            'name' => 'km_transaksis_user_version_unique',
+            'columns' => ['id_user', 'document_version_id'],
         ],
         [
             'table' => 'km_sukas',
@@ -190,6 +351,36 @@ class KmReadinessCommand extends Command
             'name' => 'km_lihat_bukus_document_unique',
             'columns' => ['id_km_pengajuan'],
         ],
+        [
+            'table' => 'km_notifications',
+            'name' => 'km_notifications_event_key_unique',
+            'columns' => ['event_key'],
+        ],
+        [
+            'table' => 'km_insight_reactions',
+            'name' => 'km_insight_reactions_insight_user_unique',
+            'columns' => ['insight_id', 'user_id'],
+        ],
+        [
+            'table' => 'km_insight_mentions',
+            'name' => 'km_insight_mentions_insight_user_unique',
+            'columns' => ['insight_id', 'mentioned_user_id'],
+        ],
+        [
+            'table' => 'km_point_ledger',
+            'name' => 'km_point_ledger_event_key_unique',
+            'columns' => ['event_key'],
+        ],
+        ['table' => 'km_document_versions', 'name' => 'km_document_versions_number_unique', 'columns' => ['km_pengajuan_id', 'version_major', 'version_minor']],
+        ['table' => 'km_publication_batches', 'name' => 'km_publication_batches_version_unique', 'columns' => ['document_version_id']],
+        ['table' => 'km_publication_recipients', 'name' => 'km_publication_recipients_batch_user_unique', 'columns' => ['publication_batch_id', 'user_id']],
+        ['table' => 'km_reading_sessions', 'name' => 'km_reading_sessions_user_version_session_unique', 'columns' => ['user_id', 'document_version_id', 'session_hash']],
+        ['table' => 'km_assignment_users', 'name' => 'km_assignment_users_assignment_user_unique', 'columns' => ['assignment_id', 'user_id']],
+        ['table' => 'km_completion_events', 'name' => 'km_completion_events_event_unique', 'columns' => ['event_key']],
+        ['table' => 'km_badges', 'name' => 'km_badges_slug_unique', 'columns' => ['slug']],
+        ['table' => 'km_user_badges', 'name' => 'km_user_badges_user_badge_unique', 'columns' => ['user_id', 'badge_id']],
+        ['table' => 'km_user_badges', 'name' => 'km_user_badges_event_unique', 'columns' => ['event_key']],
+        ['table' => 'km_hris_outbound_events', 'name' => 'km_hris_outbound_event_unique', 'columns' => ['event_key']],
     ];
 
     /**
@@ -210,6 +401,38 @@ class KmReadinessCommand extends Command
         ['table' => 'km_insights', 'name' => 'km_insights_document_index', 'columns' => ['id_km_pengajuan']],
         ['table' => 'km_approval_events', 'name' => 'km_approval_events_document_acted_at_index', 'columns' => ['km_pengajuan_id', 'acted_at']],
         ['table' => 'km_approval_events', 'name' => 'km_approval_events_actor_acted_at_index', 'columns' => ['actor_id', 'acted_at']],
+        ['table' => 'km_notifications', 'name' => 'km_notifications_user_unread_id_index', 'columns' => ['user_id', 'read_at', 'id']],
+        ['table' => 'km_transaksis', 'name' => 'km_transaksis_user_status_progress_index', 'columns' => ['id_user', 'status', 'last_progress_at']],
+        ['table' => 'km_insights', 'name' => 'km_insights_document_parent_id_index', 'columns' => ['id_km_pengajuan', 'parent_id', 'id']],
+        ['table' => 'km_insights', 'name' => 'km_insights_document_featured_at_index', 'columns' => ['id_km_pengajuan', 'featured_at']],
+        ['table' => 'km_insight_reactions', 'name' => 'km_insight_reactions_user_insight_index', 'columns' => ['user_id', 'insight_id']],
+        ['table' => 'km_insight_mentions', 'name' => 'km_insight_mentions_user_insight_index', 'columns' => ['mentioned_user_id', 'insight_id']],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_user_created_index', 'columns' => ['user_id', 'created_at', 'id']],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_department_created_index', 'columns' => ['department_snapshot', 'created_at']],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_document_index', 'columns' => ['km_pengajuan_id']],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_insight_index', 'columns' => ['km_insight_id']],
+        ['table' => 'km_document_versions', 'name' => 'km_document_versions_processing_index', 'columns' => ['processing_status', 'next_attempt_at', 'id']],
+        ['table' => 'km_document_versions', 'name' => 'km_document_versions_publication_index', 'columns' => ['version_status', 'published_at', 'id']],
+        ['table' => 'km_publication_batches', 'name' => 'km_publication_batches_status_index', 'columns' => ['status', 'id']],
+        ['table' => 'km_publication_recipients', 'name' => 'km_publication_recipients_pending_index', 'columns' => ['publication_batch_id', 'notified_at', 'id']],
+        ['table' => 'km_reading_sessions', 'name' => 'km_reading_sessions_active_index', 'columns' => ['user_id', 'document_version_id', 'last_seen_at']],
+        ['table' => 'km_assignments', 'name' => 'km_assignments_status_due_index', 'columns' => ['status', 'due_at']],
+        ['table' => 'km_assignment_users', 'name' => 'km_assignment_users_user_completion_index', 'columns' => ['user_id', 'completed_at', 'due_at']],
+        ['table' => 'km_assignment_users', 'name' => 'km_assignment_users_reminder_index', 'columns' => ['completed_at', 'exempted_at', 'due_at']],
+        ['table' => 'km_completion_events', 'name' => 'km_completion_events_user_version_index', 'columns' => ['user_id', 'document_version_id']],
+        ['table' => 'km_export_audits', 'name' => 'km_export_audits_actor_created_index', 'columns' => ['actor_id', 'created_at']],
+        ['table' => 'km_hris_outbound_events', 'name' => 'km_hris_outbound_pending_index', 'columns' => ['status', 'next_attempt_at', 'id']],
+    ];
+
+    /**
+     * @var list<array{table: string, name: string, tokens: list<string>}>
+     */
+    private const REQUIRED_CHECK_CONSTRAINTS = [
+        [
+            'table' => 'km_insight_reactions',
+            'name' => 'km_insight_reactions_type_check',
+            'tokens' => ['reaction', 'helpful', 'insightful', 'agree'],
+        ],
     ];
 
     /**
@@ -236,13 +459,37 @@ class KmReadinessCommand extends Command
         ['table' => 'km_lihat_bukus', 'name' => 'km_lihat_bukus_transaction_foreign', 'column' => 'id_km_transaksi', 'target_table' => 'km_transaksis', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
         ['table' => 'km_approval_events', 'name' => 'km_approval_events_document_foreign', 'column' => 'km_pengajuan_id', 'target_table' => 'km_pengajuans', 'target_column' => 'id', 'delete_rule' => 'RESTRICT'],
         ['table' => 'km_approval_events', 'name' => 'km_approval_events_actor_foreign', 'column' => 'actor_id', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_notifications', 'name' => 'km_notifications_user_foreign', 'column' => 'user_id', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_insights', 'name' => 'km_insights_parent_foreign', 'column' => 'parent_id', 'target_table' => 'km_insights', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_insights', 'name' => 'km_insights_deleted_by_foreign', 'column' => 'deleted_by', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_insights', 'name' => 'km_insights_featured_by_foreign', 'column' => 'featured_by', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_insight_reactions', 'name' => 'km_insight_reactions_insight_foreign', 'column' => 'insight_id', 'target_table' => 'km_insights', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_insight_reactions', 'name' => 'km_insight_reactions_user_foreign', 'column' => 'user_id', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_insight_mentions', 'name' => 'km_insight_mentions_insight_foreign', 'column' => 'insight_id', 'target_table' => 'km_insights', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_insight_mentions', 'name' => 'km_insight_mentions_user_foreign', 'column' => 'mentioned_user_id', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_user_foreign', 'column' => 'user_id', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'RESTRICT'],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_document_foreign', 'column' => 'km_pengajuan_id', 'target_table' => 'km_pengajuans', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_insight_foreign', 'column' => 'km_insight_id', 'target_table' => 'km_insights', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_created_by_foreign', 'column' => 'created_by', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_document_versions', 'name' => 'km_document_versions_document_foreign', 'column' => 'km_pengajuan_id', 'target_table' => 'km_pengajuans', 'target_column' => 'id', 'delete_rule' => 'RESTRICT'],
+        ['table' => 'km_pengajuans', 'name' => 'km_pengajuans_current_version_foreign', 'column' => 'current_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_pengajuans', 'name' => 'km_pengajuans_published_version_foreign', 'column' => 'published_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_approval_events', 'name' => 'km_approval_events_version_foreign', 'column' => 'document_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_transaksis', 'name' => 'km_transaksis_version_foreign', 'column' => 'document_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_insights', 'name' => 'km_insights_version_foreign', 'column' => 'document_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_point_ledger', 'name' => 'km_point_ledger_version_foreign', 'column' => 'document_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'SET NULL'],
+        ['table' => 'km_reading_sessions', 'name' => 'km_reading_sessions_version_foreign', 'column' => 'document_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_assignments', 'name' => 'km_assignments_version_foreign', 'column' => 'document_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'RESTRICT'],
+        ['table' => 'km_completion_events', 'name' => 'km_completion_events_version_foreign', 'column' => 'document_version_id', 'target_table' => 'km_document_versions', 'target_column' => 'id', 'delete_rule' => 'RESTRICT'],
+        ['table' => 'km_user_badges', 'name' => 'km_user_badges_user_foreign', 'column' => 'user_id', 'target_table' => 'users', 'target_column' => 'id', 'delete_rule' => 'CASCADE'],
+        ['table' => 'km_hris_outbound_events', 'name' => 'km_hris_outbound_completion_foreign', 'column' => 'completion_event_id', 'target_table' => 'km_completion_events', 'target_column' => 'id', 'delete_rule' => 'RESTRICT'],
     ];
 
     protected $signature = 'km:readiness
         {--strict : Perlakukan WARN sebagai kegagalan}
         {--json : Cetak hasil sebagai JSON}';
 
-    protected $description = 'Memeriksa kesiapan schema, storage, queue, dan scheduler Knowledge Management';
+    protected $description = 'Memeriksa kesiapan schema, storage, pemrosesan, dan scheduler Knowledge Management';
 
     /**
      * @var list<array{name: string, status: string, message: string, required: bool}>
@@ -257,6 +504,12 @@ class KmReadinessCommand extends Command
             $this->checkSchema();
         } catch (Throwable $exception) {
             $this->record('schema.connection', 'FAIL', $exception->getMessage(), true);
+        }
+
+        try {
+            $this->checkAssignmentPeriods();
+        } catch (Throwable $exception) {
+            $this->record('organization.assignment_periods', 'FAIL', $exception->getMessage(), true);
         }
 
         $this->checkStorage();
@@ -313,6 +566,10 @@ class KmReadinessCommand extends Command
             'km_sukas',
             'km_insights',
             'km_approval_events',
+            'km_notifications',
+            'km_insight_reactions',
+            'km_insight_mentions',
+            'km_point_ledger',
         ];
         $missingTables = array_values(array_filter(
             $tables,
@@ -374,6 +631,23 @@ class KmReadinessCommand extends Command
             $this->record('schema.unique', 'PASS', 'Constraint idempotensi tersedia.', true);
         }
 
+        $invalidChecks = $this->invalidCheckConstraints();
+        if ($invalidChecks !== []) {
+            $this->record(
+                'schema.check_constraints',
+                'FAIL',
+                'Check constraint hilang atau tidak sesuai: '.implode(', ', $invalidChecks),
+                true,
+            );
+        } else {
+            $this->record(
+                'schema.check_constraints',
+                'PASS',
+                'Domain value reaksi insight dibatasi oleh database.',
+                true,
+            );
+        }
+
         $invalidIndexes = $this->invalidNonUniqueIndexes();
         if ($invalidIndexes !== []) {
             $this->record(
@@ -407,6 +681,44 @@ class KmReadinessCommand extends Command
                 true,
             );
         }
+    }
+
+    private function checkAssignmentPeriods(): void
+    {
+        if (! Schema::hasTable('user_job_positions')
+            || ! Schema::hasColumn('user_job_positions', 'effective_from')) {
+            $this->record(
+                'organization.assignment_periods',
+                'FAIL',
+                'Tabel atau kolom periode assignment job position belum tersedia.',
+                true,
+            );
+
+            return;
+        }
+
+        $missingEffectiveFrom = DB::table('user_job_positions')
+            ->where('is_active', true)
+            ->whereNull('effective_from')
+            ->count();
+
+        if ($missingEffectiveFrom > 0) {
+            $this->record(
+                'organization.assignment_periods',
+                'FAIL',
+                $missingEffectiveFrom.' assignment aktif belum memiliki effective_from.',
+                true,
+            );
+
+            return;
+        }
+
+        $this->record(
+            'organization.assignment_periods',
+            'PASS',
+            'Seluruh assignment aktif memiliki effective_from.',
+            true,
+        );
     }
 
     private function checkStorage(): void
@@ -596,76 +908,14 @@ class KmReadinessCommand extends Command
     {
         $connection = (string) config('queue.default');
         $driver = (string) config('queue.connections.'.$connection.'.driver', $connection);
-        if ($driver === 'sync') {
-            $this->record(
-                'queue.connection',
-                'WARN',
-                sprintf('Queue %s memakai driver sync; worker belum diperlukan fase ini.', $connection),
-                false,
-            );
-
-            return;
-        }
-
-        if ($driver === 'database') {
-            $queueConnection = config('queue.connections.'.$connection.'.connection');
-            $failedConnection = config('queue.failed.database');
-            $definitions = [
-                [
-                    'check' => 'queue.jobs',
-                    'label' => 'jobs',
-                    'table' => (string) config('queue.connections.'.$connection.'.table', 'jobs'),
-                    'connection' => is_string($queueConnection) && $queueConnection !== ''
-                        ? $queueConnection
-                        : null,
-                ],
-                [
-                    'check' => 'queue.failed_jobs',
-                    'label' => 'failed_jobs',
-                    'table' => (string) config('queue.failed.table', 'failed_jobs'),
-                    'connection' => is_string($failedConnection) && $failedConnection !== ''
-                        ? $failedConnection
-                        : null,
-                ],
-            ];
-
-            $results = [];
-            foreach ($definitions as $definition) {
-                $results[] = $definition + $this->probeQueueTable(
-                    $definition['table'],
-                    $definition['connection'],
-                );
-            }
-
-            $unavailable = array_values(array_map(
-                static fn (array $result): string => $result['label'],
-                array_filter($results, static fn (array $result): bool => ! $result['exists']),
-            ));
-            $this->record(
-                'queue.tables',
-                $unavailable === [] ? 'PASS' : 'WARN',
-                $unavailable === []
-                    ? 'Tabel jobs dan failed_jobs tersedia.'
-                    : 'Tabel queue hilang atau tidak dapat diperiksa: '.implode(', ', $unavailable),
-                false,
-            );
-
-            foreach ($results as $result) {
-                $this->record(
-                    $result['check'],
-                    $result['readable'] ? 'PASS' : 'WARN',
-                    $result['message'],
-                    false,
-                );
-            }
-
-            return;
-        }
-
         $this->record(
             'queue.connection',
             'PASS',
-            sprintf('Queue connection %s memakai driver %s.', $connection, $driver),
+            sprintf(
+                'Queue %s (%s) tidak menjadi dependency KM; proses berat dijalankan oleh scheduled Artisan command idempotent tanpa worker.',
+                $connection,
+                $driver,
+            ),
             false,
         );
     }
@@ -737,7 +987,7 @@ class KmReadinessCommand extends Command
         $this->record(
             'scheduler.deployment',
             'WARN',
-            'Scheduler code tersedia; cron dan worker eksternal harus diverifikasi operator.',
+            'Scheduler code tersedia; pemicu schedule:run eksternal harus diverifikasi operator (queue worker tidak diperlukan).',
             false,
         );
     }
@@ -813,6 +1063,50 @@ class KmReadinessCommand extends Command
     private function invalidNonUniqueIndexes(): array
     {
         return $this->invalidIndexes(self::REQUIRED_NON_UNIQUE_INDEXES, false);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function invalidCheckConstraints(): array
+    {
+        $metadata = DB::table('information_schema.CHECK_CONSTRAINTS as checks')
+            ->join('information_schema.TABLE_CONSTRAINTS as constraints', function (JoinClause $join): void {
+                $join->on(
+                    'constraints.CONSTRAINT_SCHEMA',
+                    '=',
+                    'checks.CONSTRAINT_SCHEMA',
+                )->on(
+                    'constraints.CONSTRAINT_NAME',
+                    '=',
+                    'checks.CONSTRAINT_NAME',
+                );
+            })
+            ->where('checks.CONSTRAINT_SCHEMA', DB::getDatabaseName())
+            ->where('constraints.CONSTRAINT_TYPE', 'CHECK')
+            ->whereIn('checks.CONSTRAINT_NAME', array_column(self::REQUIRED_CHECK_CONSTRAINTS, 'name'))
+            ->get([
+                'constraints.TABLE_NAME as table_name',
+                'checks.CONSTRAINT_NAME as constraint_name',
+                'checks.CHECK_CLAUSE as check_clause',
+            ])
+            ->keyBy(static fn (object $row): string => $row->table_name.'|'.$row->constraint_name);
+
+        $invalid = [];
+        foreach (self::REQUIRED_CHECK_CONSTRAINTS as $required) {
+            $row = $metadata->get($required['table'].'|'.$required['name']);
+            $clause = strtolower((string) ($row->check_clause ?? ''));
+            $matches = $row !== null && $clause !== '';
+            foreach ($required['tokens'] as $token) {
+                $matches = $matches && str_contains($clause, strtolower($token));
+            }
+
+            if (! $matches) {
+                $invalid[] = $required['table'].'.'.$required['name'];
+            }
+        }
+
+        return $invalid;
     }
 
     /**

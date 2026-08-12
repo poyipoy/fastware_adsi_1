@@ -25,10 +25,8 @@ class ProcurementMenuComposer
             return;
         }
 
-        $userName = Auth::user()->name ?? '';
-        $procurementMenu = $this->procurementMenuService->getMenuStructure($userName);
+        $procurementMenu = $this->procurementMenuService->getMenuStructure(Auth::user());
 
         $view->with('procurementMenu', $procurementMenu);
     }
 }
-

@@ -19,6 +19,7 @@ class KmDocumentAuthoringService
 {
     public function __construct(
         private readonly KmFileService $files,
+        private readonly KmVersioningService $versions,
     ) {
     }
 
@@ -43,15 +44,16 @@ class KmDocumentAuthoringService
                 $storedPath = (string) $metadata['file_path'];
                 $document->forceFill($metadata)->save();
 
-                return $this->synchronizeMetadataLocked($document, $payload);
+                $document = $this->synchronizeMetadataLocked($document, $payload);
+                $this->versions->initializeDraft($document, $owner);
+
+                return $document->refresh();
             });
         } catch (Throwable $exception) {
             $this->files->discardStoredPath($storedPath);
 
             throw $exception;
         }
-
-        $this->files->dispatchThumbnailJobIfPdf($document);
 
         return $document;
     }
@@ -81,6 +83,23 @@ class KmDocumentAuthoringService
                     ->firstOrFail();
                 Gate::forUser($actor)->authorize('update', $document);
 
+                if ($document->documentStatus() === KmDocumentStatus::PUBLISHED
+                    && $document->hasEditableDraftVersion()) {
+                    $metadata = null;
+                    if ($file !== null) {
+                        $metadata = $this->files->storeUploadedDocument($file, $document);
+                        $storedPath = (string) $metadata['file_path'];
+                    }
+                    $this->versions->updateMajorRevisionDraft(
+                        $document,
+                        $actor,
+                        $payload,
+                        $metadata,
+                    );
+
+                    return $document->refresh();
+                }
+
                 $attributes = [
                     'judul' => (string) $payload['judul'],
                     'keterangan' => (string) $payload['keterangan'],
@@ -94,16 +113,15 @@ class KmDocumentAuthoringService
 
                 $document->forceFill($attributes)->save();
 
-                return $this->synchronizeMetadataLocked($document, $payload, true);
+                $document = $this->synchronizeMetadataLocked($document, $payload, true);
+                $this->versions->synchronizeDraft($document, $actor);
+
+                return $document->refresh();
             });
         } catch (Throwable $exception) {
             $this->files->discardStoredPath($storedPath);
 
             throw $exception;
-        }
-
-        if ($storedPath !== null) {
-            $this->files->dispatchThumbnailJobIfPdf($document);
         }
 
         return $document;
@@ -126,6 +144,21 @@ class KmDocumentAuthoringService
         $clientRevision = (int) $payload['revision'];
 
         return DB::transaction(function () use ($document, $owner, $payload, $clientRevision): array {
+            if ($document->documentStatus() === KmDocumentStatus::PUBLISHED
+                && $document->hasEditableDraftVersion()) {
+                if ((int) $document->id_user !== (int) $owner->getKey()
+                    || (int) $document->draft_revision !== $clientRevision) {
+                    $this->throwAutosaveFailure($document, $owner);
+                }
+                $this->versions->updateMajorRevisionDraft($document, $owner, $payload);
+                $fresh = $document->refresh();
+
+                return [
+                    'draft_revision' => (int) $fresh->draft_revision,
+                    'autosaved_at' => $fresh->autosaved_at?->toIso8601String() ?? now()->toIso8601String(),
+                ];
+            }
+
             $affected = DB::table('km_pengajuans')
                 ->where('id', $document->getKey())
                 ->where('id_user', $owner->getKey())
@@ -211,7 +244,8 @@ class KmDocumentAuthoringService
             throw new AuthorizationException('Draft ini bukan milik Anda.');
         }
 
-        if ($fresh->documentStatus() !== KmDocumentStatus::DRAFT) {
+        if ($fresh->documentStatus() !== KmDocumentStatus::DRAFT
+            && ! $fresh->hasEditableDraftVersion()) {
             throw ValidationException::withMessages([
                 'document' => 'Hanya dokumen berstatus Draf yang dapat di-autosave.',
             ]);
@@ -245,7 +279,7 @@ class KmDocumentAuthoringService
         $ids = array_map('intval', array_values($coAuthorIds));
         $validIds = User::query()
             ->whereIn('id', $ids)
-            ->where('is_active', true)
+            ->where('is_active', false)
             ->whereKeyNot((int) $document->id_user)
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)

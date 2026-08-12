@@ -31,11 +31,26 @@ final class KmHealthCommandTest extends KmTestCase
             'PASS',
             $payload['checks']['foreign:km_approval_events.km_approval_events_document_foreign']['status'],
         );
+        $this->assertSame(
+            'PASS',
+            $payload['checks']['index:km_notifications.km_notifications_event_key_unique']['status'],
+        );
+        $this->assertSame(
+            'PASS',
+            $payload['checks']['check:km_insight_reactions.km_insight_reactions_type_check']['status'],
+        );
+        $this->assertSame(
+            'PASS',
+            $payload['checks']['foreign:km_point_ledger.km_point_ledger_user_foreign']['status'],
+        );
         $this->assertSame('PASS', $payload['checks']['route:km.approvals.bulk']['status']);
         $this->assertSame('PASS', $payload['checks']['route:km.analytics.popular.export.pdf']['status']);
+        $this->assertSame('PASS', $payload['checks']['route:km.notifications.index']['status']);
+        $this->assertSame('PASS', $payload['checks']['route:km.reading.progress']['status']);
+        $this->assertSame('PASS', $payload['checks']['route:km.insights.feature']['status']);
         $this->assertSame('PASS', $payload['checks']['storage:km_private']['status']);
-        $this->assertSame('WARN', $payload['checks']['runtime:queue']['status']);
-        $this->assertSame('WARN', $payload['checks']['runtime:worker']['status']);
+        $this->assertSame('PASS', $payload['checks']['runtime:queue']['status']);
+        $this->assertSame('PASS', $payload['checks']['runtime:worker']['status']);
         $this->assertSame('WARN', $payload['checks']['runtime:scheduler']['status']);
 
         $output = Artisan::output();

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Models\TcJobPosition;
+use App\Models\MstJobPosition;
 use App\Models\User;
 use App\Services\HR\JobPositionAccessService;
 use Illuminate\Support\Collection;
@@ -10,120 +10,61 @@ use PHPUnit\Framework\TestCase;
 
 class JobPositionAccessServiceTest extends TestCase
 {
-    private FakeJobPositionAccessService $service;
-
-    protected function setUp(): void
+    public function test_access_uses_active_master_positions_and_canonical_names(): void
     {
-        parent::setUp();
+        $service = new FakeJobPositionAccessService(collect([
+            $this->position(101, 'Cutting Operator', 10, 1, true),
+            $this->position(102, 'MC Operator', 11, 1, true),
+            $this->position(103, 'Other Job', 12, 2, true),
+            $this->position(104, 'Inactive Job', 10, 1, false),
+        ]));
 
-        $positions = collect([
-            $this->position(101, 'Cutting Operator', ' Mugi Pramono ', 'ARY RODJO PRASETYO', 1, 'Production Cutting'),
-            $this->position(102, 'MC Operator', 'MUGI PRAMONO', 'ARY RODJO PRASETYO', 1, 'Production Machining'),
-            $this->position(103, 'Unrelated Job', 'OTHER HEAD', 'OTHER DEPT HEAD', 1, 'Other Section'),
-            $this->position(104, 'Inactive Job', 'MUGI PRAMONO', 'MUGI PRAMONO', 0, 'Production Cutting'),
-            $this->position(105, 'Override Job', 'OTHER HEAD', 'OTHER DEPT HEAD', 1, 'Override Section'),
-            $this->position(106, 'Role Override Job', 'OTHER HEAD', 'OTHER DEPT HEAD', 1, 'Role Override Section'),
-            $this->position(107, 'Department Controlled Job', 'OTHER HEAD', 'MUGI PRAMONO', 1, 'Department Section'),
-        ]);
+        $user = new User(['name' => 'SECTION HEAD']);
+        $user->id = 50;
 
-        $this->service = new FakeJobPositionAccessService(
-            $positions,
-            [
-                10 => ['Override Job', 'Stale Access Job'],
-            ],
-            [
-                22 => ['Role Override Job'],
-            ]
+        $positions = $service->getAccessibleJobPositions($user, false);
+
+        $this->assertSame([101, 102], $positions->pluck('id')->all());
+        $this->assertSame(['Cutting Operator', 'MC Operator'], $positions->pluck('position_name')->all());
+    }
+
+    public function test_full_hr_receives_every_active_position(): void
+    {
+        $service = new FakeJobPositionAccessService(collect([
+            $this->position(101, 'Cutting Operator', 10, 1, true),
+            $this->position(103, 'Other Job', 12, 2, true),
+            $this->position(104, 'Inactive Job', 10, 1, false),
+        ]), true);
+
+        $user = new User(['name' => 'FULL HR']);
+        $user->id = 1;
+
+        $this->assertSame([101, 103], $service->getAccessibleJobPositions($user)->pluck('id')->all());
+    }
+
+    public function test_invalid_positions_include_empty_and_unknown_values(): void
+    {
+        $service = new FakeJobPositionAccessService(collect([
+            $this->position(101, 'Cutting Operator', 10, 1, true),
+        ]));
+        $user = new User(['name' => 'SECTION HEAD']);
+        $user->id = 50;
+
+        $this->assertSame(
+            ['Unknown Job', '(kosong)'],
+            $service->getInvalidJobPositions($user, ['cutting operator', 'Unknown Job', ''])
         );
     }
 
-    public function test_section_head_receives_section_head_jobs_and_access_overrides(): void
+    private function position(int $id, string $name, int $sectionId, int $departmentId, bool $active): MstJobPosition
     {
-        $user = new User(['name' => 'MUGI PRAMONO', 'role_id' => 22]);
-        $user->id = 10;
-
-        $jobNames = $this->service->getAccessibleJobPositionNames($user)->all();
-
-        $this->assertContains('Cutting Operator', $jobNames);
-        $this->assertContains('MC Operator', $jobNames);
-        $this->assertContains('Department Controlled Job', $jobNames);
-        $this->assertContains('Override Job', $jobNames);
-        $this->assertContains('Role Override Job', $jobNames);
-        $this->assertNotContains('Inactive Job', $jobNames);
-        $this->assertNotContains('Unrelated Job', $jobNames);
-        $this->assertNotContains('Stale Access Job', $jobNames);
-    }
-
-    public function test_accessible_job_position_options_keep_active_ids_for_dropdown(): void
-    {
-        $user = new User(['name' => 'MUGI PRAMONO', 'role_id' => 22]);
-        $user->id = 10;
-
-        $optionIds = $this->service->getAccessibleJobPositionOptions($user)
-            ->pluck('id')
-            ->all();
-
-        $this->assertContains(101, $optionIds);
-        $this->assertContains(102, $optionIds);
-        $this->assertContains(105, $optionIds);
-        $this->assertContains(106, $optionIds);
-        $this->assertContains(107, $optionIds);
-        $this->assertNotContains(103, $optionIds);
-        $this->assertNotContains(104, $optionIds);
-    }
-
-    public function test_full_access_user_receives_all_active_job_positions(): void
-    {
-        $user = new User(['name' => 'SITI MARIA ULFA', 'role_id' => 15]);
-        $user->id = 11;
-
-        $jobNames = $this->service->getAccessibleJobPositionNames($user)->all();
-
-        $this->assertContains('Cutting Operator', $jobNames);
-        $this->assertContains('Unrelated Job', $jobNames);
-        $this->assertContains('Override Job', $jobNames);
-        $this->assertNotContains('Inactive Job', $jobNames);
-    }
-
-    public function test_admin_role_receives_all_active_job_positions(): void
-    {
-        $user = new User(['name' => 'ANY ADMIN', 'role_id' => 1]);
-        $user->id = 12;
-
-        $jobNames = $this->service->getAccessibleJobPositionNames($user)->all();
-
-        $this->assertContains('Cutting Operator', $jobNames);
-        $this->assertContains('Unrelated Job', $jobNames);
-        $this->assertNotContains('Inactive Job', $jobNames);
-    }
-
-    public function test_invalid_job_positions_are_reported_after_stale_access_is_pruned(): void
-    {
-        $user = new User(['name' => 'MUGI PRAMONO', 'role_id' => 22]);
-        $user->id = 10;
-
-        $invalid = $this->service->getInvalidJobPositions($user, [
-            'Cutting Operator',
-            'Stale Access Job',
-            '',
-        ]);
-
-        $this->assertNotContains('Cutting Operator', $invalid);
-        $this->assertContains('Stale Access Job', $invalid);
-        $this->assertContains('(kosong)', $invalid);
-    }
-
-    private function position(int $id, string $jobPosition, string $sectionHead, string $departmentHead, int $status, string $userSection): TcJobPosition
-    {
-        $position = new TcJobPosition([
-            'job_position' => $jobPosition,
-            'section_head_name' => $sectionHead,
-            'department_head_name' => $departmentHead,
-            'status' => $status,
+        $position = new MstJobPosition([
+            'position_name' => $name,
+            'section_id' => $sectionId,
+            'department_id' => $departmentId,
+            'is_active' => $active,
         ]);
         $position->id = $id;
-
-        $position->setRelation('user', new User(['section' => $userSection]));
 
         return $position;
     }
@@ -131,37 +72,45 @@ class JobPositionAccessServiceTest extends TestCase
 
 class FakeJobPositionAccessService extends JobPositionAccessService
 {
-    public function __construct(
-        private Collection $positions,
-        private array $userOverrides,
-        private array $roleOverrides
-    ) {
+    public function __construct(private readonly Collection $positions, private readonly bool $fullAccess = false)
+    {
+    }
+
+    public function hasFullAccess(User $user): bool
+    {
+        return $this->fullAccess;
+    }
+
+    public function getUserApprovalScope(User $user): array
+    {
+        return ['section_ids' => [10, 11], 'dept_ids' => [], 'div_dept_ids' => []];
+    }
+
+    public function getAccessibleJobPositions(User $user, bool $excludeSelf = true): Collection
+    {
+        $active = $this->getActiveJobPositions();
+
+        if ($this->hasFullAccess($user)) {
+            return $active;
+        }
+
+        return $active
+            ->filter(fn (MstJobPosition $position) => in_array($position->section_id, [10, 11], true))
+            ->values();
+    }
+
+    public function getAccessibleJobPositionNames(User $user, bool $excludeSelf = true): Collection
+    {
+        return $this->getAccessibleJobPositions($user, $excludeSelf)->pluck('position_name');
     }
 
     protected function getActiveJobPositions(): Collection
     {
-        return $this->positions
-            ->filter(fn(TcJobPosition $position) => (int) $position->status === 1)
-            ->values();
-    }
-
-    protected function getSectionHeadJobPositionNames(User $user): Collection
-    {
-        return $this->getActiveJobPositions()
-            ->filter(fn(TcJobPosition $position) => $this->normalize($position->section_head_name) === $this->normalize($user->name))
-            ->pluck('job_position');
-    }
-
-    protected function getDepartmentHeadJobPositionNames(User $user): Collection
-    {
-        return $this->getActiveJobPositions()
-            ->filter(fn(TcJobPosition $position) => $this->normalize($position->department_head_name) === $this->normalize($user->name))
-            ->pluck('job_position');
+        return $this->positions->where('is_active', true)->values();
     }
 
     protected function getOverrideJobPositionNames(User $user): Collection
     {
-        return collect($this->userOverrides[$user->id] ?? [])
-            ->merge($this->roleOverrides[$user->role_id] ?? []);
+        return collect();
     }
 }

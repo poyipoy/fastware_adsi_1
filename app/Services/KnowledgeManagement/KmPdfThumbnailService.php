@@ -142,9 +142,10 @@ class KmPdfThumbnailService
             : preg_quote((string) $documentId, '#');
         $uuidPattern = '[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}';
         $legacyPattern = '[A-Za-z0-9]{32}';
+        $versionPattern = 'versions/[1-9][0-9]*';
 
         return preg_match(
-            '#^thumbnails/'.$idPattern.'/(?:'.$uuidPattern.'|'.$legacyPattern.')\.png$#',
+            '#^thumbnails/'.$idPattern.'/(?:'.$uuidPattern.'|'.$legacyPattern.'|'.$versionPattern.')\.png$#',
             $path,
         ) === 1;
     }

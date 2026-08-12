@@ -16,9 +16,13 @@ class KmDashboardFilterRequest extends FormRequest
         'date_from',
         'date_to',
         'bookmarked',
+        'mandatory',
         'sort',
         'per_page',
         'page',
+        'document',
+        'assignment',
+        'insight',
     ];
 
     public function authorize(): bool
@@ -37,9 +41,13 @@ class KmDashboardFilterRequest extends FormRequest
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'bookmarked' => ['nullable', 'boolean'],
+            'mandatory' => ['nullable', 'boolean'],
             'sort' => ['nullable', 'string', Rule::in(['latest', 'oldest', 'title_asc', 'popular', 'relevance'])],
             'per_page' => ['nullable', 'integer', Rule::in([12, 24, 48])],
             'page' => ['nullable', 'integer', 'min:1'],
+            'document' => ['nullable', 'integer', 'min:1'],
+            'assignment' => ['nullable', 'integer', 'min:1'],
+            'insight' => ['nullable', 'integer', 'min:1'],
         ];
     }
 
@@ -85,6 +93,13 @@ class KmDashboardFilterRequest extends FormRequest
             $value = filter_var($this->input('bookmarked'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
             if ($value !== null) {
                 $this->merge(['bookmarked' => $value]);
+            }
+        }
+
+        if ($this->has('mandatory')) {
+            $value = filter_var($this->input('mandatory'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($value !== null) {
+                $this->merge(['mandatory' => $value]);
             }
         }
     }

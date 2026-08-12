@@ -3,7 +3,9 @@
 namespace Tests\Feature\KnowledgeManagement;
 
 use App\Models\KmPengajuan;
+use App\Models\MstJobPosition;
 use App\Models\User;
+use App\Models\UserJobPosition;
 use App\Services\KnowledgeManagement\KmFileService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
@@ -55,15 +57,52 @@ final class KmReadinessCommandTest extends KmTestCase
         $this->assertStringContainsString('[PASS] schema.columns', $output);
         $this->assertStringContainsString('[PASS] schema.column_shapes', $output);
         $this->assertStringContainsString('[PASS] schema.unique', $output);
+        $this->assertStringContainsString('[PASS] schema.check_constraints', $output);
         $this->assertStringContainsString('[PASS] schema.indexes', $output);
         $this->assertStringContainsString('[PASS] schema.foreign_keys', $output);
         $this->assertStringContainsString('[PASS] storage.private', $output);
         $this->assertStringContainsString('[PASS] files.metadata', $output);
         $this->assertStringContainsString('[PASS] files.public_exposure', $output);
         $this->assertStringContainsString('[PASS] files.checksum', $output);
-        $this->assertStringContainsString('[WARN] queue.connection', $output);
+        $this->assertStringContainsString('[PASS] queue.connection', $output);
+        $this->assertStringContainsString('[PASS] organization.assignment_periods', $output);
         $this->assertStringContainsString('[WARN] scheduler.deployment', $output);
         $this->assertStringNotContainsString('[FAIL]', $output);
+    }
+
+    public function test_missing_effective_from_is_required_failure_and_data_migration_repairs_it(): void
+    {
+        $user = User::factory()->create(['name' => 'KM Period Repair User']);
+        $position = MstJobPosition::query()->create([
+            'position_name' => 'KM Period Repair Position',
+            'is_active' => true,
+        ]);
+        $assignment = UserJobPosition::query()->create([
+            'user_id' => $user->getKey(),
+            'mst_job_position_id' => $position->getKey(),
+            'is_active' => true,
+            'effective_from' => null,
+            'assignment_source' => 'test_legacy',
+        ]);
+
+        $this->assertSame(1, Artisan::call('km:readiness'));
+        $this->assertStringContainsString(
+            '[FAIL] organization.assignment_periods',
+            Artisan::output(),
+        );
+
+        (require database_path(
+            'migrations/2026_08_02_160001_backfill_km_job_position_effective_from.php',
+        ))->up();
+
+        $this->assertNotNull($assignment->refresh()->effective_from);
+        $exitCode = Artisan::call('km:readiness');
+        $output = Artisan::output();
+        $this->assertSame(0, $exitCode, $output);
+        $this->assertStringContainsString(
+            '[PASS] organization.assignment_periods',
+            $output,
+        );
     }
 
     public function test_strict_mode_turns_non_blocking_warning_into_failure_exit_code(): void
@@ -72,7 +111,7 @@ final class KmReadinessCommandTest extends KmTestCase
         $output = Artisan::output();
 
         $this->assertSame(1, $exitCode, $output);
-        $this->assertStringContainsString('[WARN] queue.connection', $output);
+        $this->assertStringContainsString('[PASS] queue.connection', $output);
         $this->assertStringContainsString('[WARN] scheduler.deployment', $output);
         $this->assertStringNotContainsString('[FAIL]', $output);
     }
@@ -86,13 +125,13 @@ final class KmReadinessCommandTest extends KmTestCase
         $this->assertArrayHasKey('checks', $payload);
         $this->assertArrayHasKey('summary', $payload);
         $this->assertGreaterThan(0, $payload['summary']['pass']);
-        $this->assertGreaterThanOrEqual(2, $payload['summary']['warn']);
+        $this->assertGreaterThanOrEqual(1, $payload['summary']['warn']);
         $this->assertSame(0, $payload['summary']['fail']);
 
         $checks = collect($payload['checks'])->keyBy('name');
         $this->assertSame('PASS', $checks->get('storage.private')['status']);
         $this->assertTrue($checks->get('storage.private')['required']);
-        $this->assertSame('WARN', $checks->get('queue.connection')['status']);
+        $this->assertSame('PASS', $checks->get('queue.connection')['status']);
         $this->assertFalse($checks->get('queue.connection')['required']);
     }
 
@@ -128,10 +167,10 @@ final class KmReadinessCommandTest extends KmTestCase
             'ALTER TABLE `km_transaksis` ADD INDEX `km_transaksis_user_test_index` (`id_user`)'
         );
         DB::statement(
-            'ALTER TABLE `km_transaksis` DROP INDEX `km_transaksis_user_document_unique`'
+            'ALTER TABLE `km_transaksis` DROP INDEX `km_transaksis_user_version_unique`'
         );
         DB::statement(
-            'ALTER TABLE `km_sukas` ADD UNIQUE INDEX `km_transaksis_user_document_unique` '
+            'ALTER TABLE `km_sukas` ADD UNIQUE INDEX `km_transaksis_user_version_unique` '
             .'(`id`)'
         );
 
@@ -141,7 +180,7 @@ final class KmReadinessCommandTest extends KmTestCase
         $this->assertSame(1, $exitCode, $output);
         $this->assertStringContainsString('[FAIL] schema.unique', $output);
         $this->assertStringContainsString(
-            'km_transaksis.km_transaksis_user_document_unique',
+            'km_transaksis.km_transaksis_user_version_unique',
             $output,
         );
     }
@@ -188,11 +227,11 @@ final class KmReadinessCommandTest extends KmTestCase
             'ALTER TABLE `km_transaksis` ADD INDEX `km_transaksis_user_test_index` (`id_user`)'
         );
         DB::statement(
-            'ALTER TABLE `km_transaksis` DROP INDEX `km_transaksis_user_document_unique`'
+            'ALTER TABLE `km_transaksis` DROP INDEX `km_transaksis_user_version_unique`'
         );
         DB::statement(
-            'ALTER TABLE `km_transaksis` ADD UNIQUE INDEX `km_transaksis_user_document_unique` '
-            .'(`id_km_pengajuan`, `id_user`)'
+            'ALTER TABLE `km_transaksis` ADD UNIQUE INDEX `km_transaksis_user_version_unique` '
+            .'(`document_version_id`, `id_user`)'
         );
 
         $exitCode = Artisan::call('km:readiness');
@@ -208,11 +247,11 @@ final class KmReadinessCommandTest extends KmTestCase
             'ALTER TABLE `km_transaksis` ADD INDEX `km_transaksis_user_test_index` (`id_user`)'
         );
         DB::statement(
-            'ALTER TABLE `km_transaksis` DROP INDEX `km_transaksis_user_document_unique`'
+            'ALTER TABLE `km_transaksis` DROP INDEX `km_transaksis_user_version_unique`'
         );
         DB::statement(
-            'ALTER TABLE `km_transaksis` ADD INDEX `km_transaksis_user_document_unique` '
-            .'(`id_user`, `id_km_pengajuan`)'
+            'ALTER TABLE `km_transaksis` ADD INDEX `km_transaksis_user_version_unique` '
+            .'(`id_user`, `document_version_id`)'
         );
 
         $exitCode = Artisan::call('km:readiness');
@@ -404,7 +443,7 @@ final class KmReadinessCommandTest extends KmTestCase
         $this->assertSame(1, $strictExitCode, $strictOutput);
     }
 
-    public function test_database_queue_performs_read_only_select_on_failed_jobs(): void
+    public function test_database_queue_tables_are_not_a_km_runtime_dependency(): void
     {
         $this->createQueueTables();
         DB::table('failed_jobs')->insert(['id' => 901]);
@@ -417,13 +456,9 @@ final class KmReadinessCommandTest extends KmTestCase
         $output = Artisan::output();
 
         $this->assertSame(0, $exitCode, $output);
-        $this->assertStringContainsString('[PASS] queue.tables', $output);
-        $this->assertStringContainsString('[PASS] queue.jobs', $output);
-        $this->assertStringContainsString('[PASS] queue.failed_jobs', $output);
-        $this->assertStringContainsString(
-            'SELECT read-only pada failed_jobs berhasil (1 row sampel)',
-            $output,
-        );
+        $this->assertStringContainsString('[PASS] queue.connection', $output);
+        $this->assertStringContainsString('tanpa worker', $output);
+        $this->assertStringNotContainsString('queue.tables', $output);
         $this->assertSame(
             $before,
             DB::table('failed_jobs')->orderBy('id')->get()->map(
@@ -432,7 +467,7 @@ final class KmReadinessCommandTest extends KmTestCase
         );
     }
 
-    public function test_database_queue_reports_warning_when_failed_jobs_cannot_be_read(): void
+    public function test_unreadable_failed_jobs_table_does_not_block_scheduled_km_commands(): void
     {
         Schema::create('jobs', function (Blueprint $table): void {
             $table->id();
@@ -446,9 +481,8 @@ final class KmReadinessCommandTest extends KmTestCase
         $output = Artisan::output();
 
         $this->assertSame(0, $exitCode, $output);
-        $this->assertStringContainsString('[PASS] queue.tables', $output);
-        $this->assertStringContainsString('[WARN] queue.failed_jobs', $output);
-        $this->assertStringContainsString('Tidak dapat membaca failed_jobs', $output);
+        $this->assertStringContainsString('[PASS] queue.connection', $output);
+        $this->assertStringNotContainsString('queue.failed_jobs', $output);
     }
 
     public function test_readiness_is_read_only_for_business_rows_and_private_files(): void

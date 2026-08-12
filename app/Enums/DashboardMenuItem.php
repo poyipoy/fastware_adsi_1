@@ -86,8 +86,8 @@ enum DashboardMenuItem: string
      */
     public function toArray(?int $roleId, string $userName): array
     {
-        // Dashboard TCPD is always visible for authenticated users
-        if ($this === self::DASHBOARD_TCPD) {
+        // Menu ini dirender oleh composer hanya untuk pengguna terautentikasi.
+        if ($this === self::KNOWLEDGE_MANAGEMENT) {
             return [
                 'key' => $this->value,
                 'label' => $this->getLabel(),
@@ -107,4 +107,3 @@ enum DashboardMenuItem: string
         ];
     }
 }
-

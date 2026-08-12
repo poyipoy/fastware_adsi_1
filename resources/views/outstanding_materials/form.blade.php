@@ -299,7 +299,8 @@
 .om-table-wrap {
     max-height: 70vh;
     overflow: auto;
-    overscroll-behavior: contain;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
     border: 1px solid var(--om-gray-200);
     border-radius: var(--om-radius);
 }
@@ -326,6 +327,11 @@
     position: sticky;
     top: 0;
     z-index: 3;
+}
+
+.om-table thead tr:first-child th {
+    z-index: 4;
+    background: var(--om-gray-50);
 }
 
 .om-table tbody td {
@@ -359,7 +365,7 @@
     text-transform: none !important;
     letter-spacing: 0 !important;
     position: sticky;
-    top: 40px;
+    top: var(--om-table-header-height, 0px);
     z-index: 2;
 }
 
@@ -888,6 +894,9 @@
 @php
     $title = $isEdit ? 'Edit Outstanding Material' : 'Add Outstanding Material';
     $action = $isEdit ? route('outstanding-materials.update', $material) : route('outstanding-materials.store');
+    $backUrl = $detailReturnAnchor
+        ? route('outstanding-materials.show', $detailReturnAnchor)
+        : route('outstanding-materials.index');
 @endphp
 
 <main id="main" class="main">
@@ -903,7 +912,7 @@
     </div>
 
     <section class="section">
-        @if ($errors->any())
+        @if (!empty($errors) && $errors->any())
             <div class="alert alert-danger om-alert">
                 <i class="bi bi-exclamation-triangle me-2"></i>
                 <ul class="mb-0">
@@ -920,10 +929,13 @@
                     <h5 class="om-card-title">{{ $title }}</h5>
                 </div>
 
-                <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="om-form">
+                <form method="POST" action="{{ $action }}" class="om-form">
                     @csrf
                     @if ($isEdit)
                         @method('PUT')
+                    @endif
+                    @if ($invoiceContextAnchor)
+                        <input type="hidden" name="invoice_context_id" value="{{ $invoiceContextAnchor->id }}">
                     @endif
 
                     {{-- Section: Supplier & Material --}}
@@ -992,8 +1004,11 @@
                                 <input type="number" step="0.01" id="est_qty_kg" name="est_qty_kg" class="form-control" value="{{ old('est_qty_kg', $material->est_qty_kg) }}">
                             </div>
                             <div class="col-md-3">
-                                <label for="number_invoice" class="form-label">Number Invoice</label>
-                                <input type="text" id="number_invoice" name="number_invoice" class="form-control" value="{{ old('number_invoice', $material->number_invoice) }}">
+                                <label for="number_invoice" class="form-label">Number Invoice <span class="text-danger">*</span></label>
+                                <input type="text" id="number_invoice" name="number_invoice" class="form-control" value="{{ old('number_invoice', $invoiceContext ?? $material->number_invoice) }}" @readonly($invoiceContextAnchor) required>
+                                @if ($invoiceContextAnchor)
+                                    <div class="form-text text-primary"><i class="bi bi-lock-fill me-1"></i>Invoice context terkunci dari workspace invoice.</div>
+                                @endif
                             </div>
                             <div class="col-md-3">
                                 <label for="estimasi_bulan_eta" class="form-label">Estimasi Bulan ETA</label>
@@ -1027,13 +1042,13 @@
                         </div>
                     </div>
 
-                    {{-- Section: Dokumen & Keterangan --}}
+                    {{-- Section: Keterangan --}}
                     <div class="om-fieldset">
                         <div class="om-fieldset-title">
-                            <i class="bi bi-file-earmark-text"></i> Dokumen & Keterangan
+                            <i class="bi bi-chat-left-text"></i> Keterangan
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-12">
                                 <label for="keterangan" class="form-label">Keterangan</label>
                                 <select id="keterangan" name="keterangan" class="form-select">
                                     <option value="">Pilih Keterangan</option>
@@ -1042,40 +1057,12 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label for="packing_list" class="form-label">Packing List</label>
-                                <input type="file" id="packing_list" name="packing_list" class="form-control" accept=".pdf,.xls,.xlsx,.doc,.docx,.jpg,.jpeg,.png">
-                                @if ($material->packing_list_path)
-                                    <div class="form-text">
-                                        <i class="bi bi-paperclip me-1"></i>File saat ini:
-                                        @if (str_starts_with($material->packing_list_path, 'outstanding-materials/'))
-                                            <a href="{{ route('outstanding-materials.attachment', ['outstandingMaterial' => $material, 'type' => 'packing-list']) }}" target="_blank" class="om-link">{{ basename($material->packing_list_path) }}</a>
-                                        @else
-                                            {{ $material->packing_list_path }}
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="col-md-4">
-                                <label for="mtc" class="form-label">MTC</label>
-                                <input type="file" id="mtc" name="mtc" class="form-control" accept=".pdf,.xls,.xlsx,.doc,.docx,.jpg,.jpeg,.png">
-                                @if ($material->mtc_path)
-                                    <div class="form-text">
-                                        <i class="bi bi-paperclip me-1"></i>File saat ini:
-                                        @if (str_starts_with($material->mtc_path, 'outstanding-materials/'))
-                                            <a href="{{ route('outstanding-materials.attachment', ['outstandingMaterial' => $material, 'type' => 'mtc']) }}" target="_blank" class="om-link">{{ basename($material->mtc_path) }}</a>
-                                        @else
-                                            {{ $material->mtc_path }}
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
                         </div>
                     </div>
 
                     {{-- Form Footer --}}
                     <div class="om-form-footer">
-                        <a href="{{ route('outstanding-materials.index') }}" class="btn btn-outline-secondary">
+                        <a href="{{ $backUrl }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-1"></i>Back
                         </a>
                         <button type="submit" class="btn btn-primary">

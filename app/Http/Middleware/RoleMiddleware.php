@@ -3,12 +3,22 @@
 namespace App\Http\Middleware;
 
 use App\Enums\ProcurementMenuAccessGroup;
+use App\Services\OutstandingMaterialAccessService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
+    public function __construct(
+        ?OutstandingMaterialAccessService $outstandingMaterialAccess = null,
+    ) {
+        $this->outstandingMaterialAccess = $outstandingMaterialAccess
+            ?? new OutstandingMaterialAccessService();
+    }
+
+    private readonly OutstandingMaterialAccessService $outstandingMaterialAccess;
+
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
         $user = auth()->user();
@@ -33,7 +43,11 @@ class RoleMiddleware
         $hasAccess = false;
 
         foreach ($enumRoles as $enumRole) {
-            if ($enumRole->hasAccess($userName)) {
+            $allowed = $enumRole === ProcurementMenuAccessGroup::OUTSTANDING_MATERIAL
+                ? $this->outstandingMaterialAccess->canView($user)
+                : $enumRole->hasAccess($userName);
+
+            if ($allowed) {
                 $hasAccess = true;
                 break;
             }

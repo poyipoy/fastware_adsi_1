@@ -47,9 +47,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sales-summary', [SalesVisitController::class, 'salesSummary']);
     Route::get('/reports/visits/download', [SalesVisitController::class, 'downloadVisits']);
 
-    Route::get('dashboard/tcpd', [ApiDashboardController::class, 'tcpdOverview']);
-    Route::get('dashboard/tcpd/company', [ApiDashboardController::class, 'getTcpdCompanyData']);
-    Route::get('dashboard/tcpd/job', [ApiDashboardController::class, 'getTcpdCompetencyData']);
+    Route::middleware('can:viewTcpdDashboard')->group(function () {
+        Route::get('dashboard/tcpd', [ApiDashboardController::class, 'tcpdOverview']);
+        Route::get('dashboard/tcpd/company', [ApiDashboardController::class, 'getTcpdCompanyData']);
+        Route::get('dashboard/tcpd/sensitive', [ApiDashboardController::class, 'getTcpdSensitiveData']);
+        Route::get('dashboard/tcpd/job', [ApiDashboardController::class, 'getTcpdCompetencyData']);
+    });
 
     Route::get('navigation/drawer', [ServerDrivenController::class, 'drawer']);
 

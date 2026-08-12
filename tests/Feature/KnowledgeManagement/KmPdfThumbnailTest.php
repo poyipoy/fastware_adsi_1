@@ -3,8 +3,12 @@
 namespace Tests\Feature\KnowledgeManagement;
 
 use App\Enums\KnowledgeManagement\KmDocumentStatus;
+use App\Enums\KnowledgeManagement\KmProcessingStatus;
 use App\Enums\KnowledgeManagement\KmThumbnailStatus;
+use App\Enums\KnowledgeManagement\KmVersionChangeType;
+use App\Enums\KnowledgeManagement\KmVersionStatus;
 use App\Jobs\KnowledgeManagement\GenerateKmPdfThumbnail;
+use App\Models\KmDocumentVersion;
 use App\Models\KmPengajuan;
 use App\Models\User;
 use App\Services\KnowledgeManagement\KmPdfThumbnailService;
@@ -289,6 +293,52 @@ class KmPdfThumbnailTest extends KmTestCase
         $doc->forceFill([
             'thumbnail_path' => $path,
             'thumbnail_source_checksum' => $checksum,
+        ])->save();
+
+        $this->actingAs($this->viewer)
+            ->get(route('km.documents.thumbnail', $doc))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+    }
+
+    /** @test */
+    public function ready_office_version_thumbnail_is_streamed_from_version_path(): void
+    {
+        Storage::fake('km_private');
+        $doc = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->owner->getKey(),
+            'posisi' => 'All Employee',
+            'file_mime_type' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'file_checksum_sha256' => str_repeat('5', 64),
+            'thumbnail_status' => KmThumbnailStatus::READY->value,
+        ]);
+        $version = KmDocumentVersion::query()->create([
+            'km_pengajuan_id' => $doc->getKey(),
+            'version_major' => 1,
+            'version_minor' => 0,
+            'change_type' => KmVersionChangeType::MAJOR,
+            'change_note' => 'Versi Office siap.',
+            'version_status' => KmVersionStatus::PUBLISHED,
+            'title' => $doc->judul,
+            'synopsis' => $doc->keterangan,
+            'audience' => 'All Employee',
+            'normalized_pdf_disk' => 'km_private',
+            'normalized_pdf_path' => 'documents/'.$doc->getKey().'/versions/1/normalized.pdf',
+            'normalized_pdf_size_bytes' => 20,
+            'normalized_pdf_checksum_sha256' => str_repeat('6', 64),
+            'processing_status' => KmProcessingStatus::READY,
+            'antivirus_status' => 'clean',
+            'processing_attempts' => 1,
+            'created_by' => $this->owner->getKey(),
+            'published_at' => now(),
+        ]);
+        $thumbnailPath = 'thumbnails/'.$doc->getKey().'/versions/'.$version->getKey().'.png';
+        Storage::disk('km_private')->put($thumbnailPath, $this->pngContent());
+        $doc->forceFill([
+            'current_version_id' => $version->getKey(),
+            'published_version_id' => $version->getKey(),
+            'thumbnail_path' => $thumbnailPath,
+            'thumbnail_source_checksum' => $version->normalized_pdf_checksum_sha256,
         ])->save();
 
         $this->actingAs($this->viewer)

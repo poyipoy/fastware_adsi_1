@@ -21,7 +21,12 @@ class StoreKmDocumentRequest extends FormRequest
         return array_merge([
             'judul' => ['required', 'string', 'max:255'],
             'keterangan' => ['required', 'string', 'max:3000'],
-            'file' => ['required', 'file', 'mimes:pdf,ppt,pptx', 'max:12048'],
+            'file' => [
+                'required',
+                'file',
+                'mimes:pdf,ppt,pptx',
+                'max:'.(int) config('knowledge_management.upload.maximum_kilobytes', 51_200),
+            ],
         ], KmDocumentAuthoringRules::rules((int) $this->user()->getKey()));
     }
 

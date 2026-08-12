@@ -9,61 +9,76 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithStartRow;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
-class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmptyRows
+/**
+ * Parses both the legacy positional template and the canonical named-header
+ * template used by Import Multi-Invoice.
+ */
+class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
 {
     private int $userId;
     private array $rows = [];
     private array $errors = [];
     private array $warnings = [];
+    private array $headerIndexes = [];
 
     public function __construct(int $userId)
     {
         $this->userId = $userId;
     }
 
-    public function startRow(): int
-    {
-        return 2;
-    }
-
     public function collection(Collection $rows): void
     {
+        $rows = $rows->values();
+        $first = $rows->first();
+        if ($first === null) {
+            return;
+        }
+
+        $firstArray = $this->toArray($first);
+        if ($this->looksLikeHeader($firstArray)) {
+            $this->headerIndexes = $this->buildHeaderIndexes($firstArray);
+            $rows = $rows->slice(1)->values();
+            $startRow = 2;
+        } else {
+            // Keep reading the legacy positional template. Its old column
+            // layout already contains all fields needed for append-only import.
+            $this->headerIndexes = $this->legacyHeaderIndexes();
+            $startRow = 1;
+        }
+
         foreach ($rows as $index => $rawRow) {
-            $rowNumber = $index + 2;
-            $row = is_array($rawRow) ? $rawRow : $rawRow->toArray();
+            $rowNumber = $startRow + $index;
+            $row = $this->toArray($rawRow);
 
             if ($this->isEmptyRow($row)) {
                 continue;
             }
 
-            if ($this->isHeaderRow($row)) {
-                continue;
-            }
-
+            $errorsBeforeNormalization = count($this->errors);
             $payload = [
-                'supplier' => $this->normalizeString($this->valueAt($row, 1)),
-                'type' => $this->normalizeString($this->valueAt($row, 2)),
-                'thickness' => $this->normalizeNumber($this->valueAt($row, 3)),
-                'width' => $this->normalizeNumber($this->valueAt($row, 4)),
-                'diameter' => $this->normalizeNumber($this->valueAt($row, 5)),
-                'length' => $this->normalizeLength($this->valueAt($row, 6)),
-                'qty_pcs' => $this->normalizeNumber($this->valueAt($row, 7)),
-                'est_qty_kg' => $this->normalizeNumber($this->valueAt($row, 8)),
-                'number_invoice' => $this->normalizeString($this->valueAt($row, 9)),
-                'status' => $this->normalizeOption($this->valueAt($row, 10), OutstandingMaterial::statusOptions()),
-                'estimasi_eta_port' => $this->normalizeDateText($this->valueAt($row, 11), $rowNumber, 'Estimasi ETA Port'),
-                'estimasi_eta_warehouse' => $this->normalizeDateText($this->valueAt($row, 12), $rowNumber, 'Estimasi ETA Warehouse'),
-                'estimasi_bulan_eta' => $this->normalizeString($this->valueAt($row, 13)),
-                'keterangan' => $this->normalizeOption($this->valueAt($row, 14), OutstandingMaterial::keteranganOptions(), true),
-                'estimasi_delay_eta_port' => $this->normalizeDateText($this->valueAt($row, 15), $rowNumber, 'Estimasi Delay ETA Port'),
-                'estimasi_delay_eta_warehouse' => $this->normalizeDateText($this->valueAt($row, 16), $rowNumber, 'Estimasi Delay ETA Warehouse'),
+                'supplier' => $this->normalizeString($this->value($row, 'supplier')),
+                'number_invoice' => $this->normalizeString($this->value($row, 'number_invoice')),
+                'type' => $this->normalizeString($this->value($row, 'type')),
+                'thickness' => $this->normalizeNumber($this->value($row, 'thickness')),
+                'width' => $this->normalizeNumber($this->value($row, 'width')),
+                'diameter' => $this->normalizeNumber($this->value($row, 'diameter')),
+                'length' => $this->normalizeLength($this->value($row, 'length')),
+                'qty_pcs' => $this->normalizeNumber($this->value($row, 'qty_pcs')),
+                'est_qty_kg' => $this->normalizeNumber($this->value($row, 'est_qty_kg')),
+                'status' => $this->normalizeOption($this->value($row, 'status'), OutstandingMaterial::statusOptions()),
+                'estimasi_eta_port' => $this->normalizeDateText($this->value($row, 'estimasi_eta_port'), $rowNumber, 'Estimasi ETA Port'),
+                'estimasi_eta_warehouse' => $this->normalizeDateText($this->value($row, 'estimasi_eta_warehouse'), $rowNumber, 'Estimasi ETA Warehouse'),
+                'estimasi_bulan_eta' => $this->normalizeString($this->value($row, 'estimasi_bulan_eta')),
+                'keterangan' => $this->normalizeOption($this->value($row, 'keterangan'), OutstandingMaterial::keteranganOptions(), true),
+                'estimasi_delay_eta_port' => $this->normalizeDateText($this->value($row, 'estimasi_delay_eta_port'), $rowNumber, 'Estimasi Delay ETA Port'),
+                'estimasi_delay_eta_warehouse' => $this->normalizeDateText($this->value($row, 'estimasi_delay_eta_warehouse'), $rowNumber, 'Estimasi Delay ETA Warehouse'),
             ];
 
             $validator = Validator::make($payload, [
                 'supplier' => 'required|string|max:255',
+                'number_invoice' => 'required|string|max:255',
                 'type' => 'required|string|max:255',
                 'thickness' => 'nullable|numeric',
                 'width' => 'nullable|numeric',
@@ -71,7 +86,6 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
                 'length' => 'nullable|string|max:255',
                 'qty_pcs' => 'nullable|numeric',
                 'est_qty_kg' => 'nullable|numeric',
-                'number_invoice' => 'nullable|string|max:255',
                 'status' => ['required', 'string', Rule::in(OutstandingMaterial::statusOptions())],
                 'estimasi_eta_port' => 'nullable|string|max:100',
                 'estimasi_eta_warehouse' => 'nullable|string|max:100',
@@ -81,15 +95,22 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
                 'estimasi_delay_eta_warehouse' => 'nullable|string|max:100',
             ], [], $this->validationAttributes());
 
-            if ($validator->fails()) {
-                $this->errors[] = 'Baris ' . $rowNumber . ': ' . implode(', ', $validator->errors()->all());
+            $normalizationFailed = count($this->errors) > $errorsBeforeNormalization;
+            if ($validator->fails() || $this->containsInvalidNumber($payload) || $normalizationFailed) {
+                $messages = $validator->errors()->all();
+                if ($this->containsInvalidNumber($payload)) {
+                    $messages[] = 'Nilai angka tidak valid.';
+                }
+                if (!$normalizationFailed || $messages !== []) {
+                    $this->errors[] = 'Baris ' . $rowNumber . ': ' . implode(', ', array_unique($messages));
+                }
                 continue;
             }
 
             $data = $validator->validated();
+            $data['_row_number'] = $rowNumber;
             $data['created_by'] = $this->userId;
             $data['updated_by'] = null;
-
             $this->rows[] = $data;
         }
     }
@@ -109,57 +130,90 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
         return $this->warnings;
     }
 
-    private function valueAt(array $row, int $index): mixed
+    private function toArray(mixed $row): array
     {
-        return array_key_exists($index, $row) ? $row[$index] : null;
+        return is_array($row) ? $row : $row->toArray();
+    }
+
+    private function value(array $row, string $field): mixed
+    {
+        $index = $this->headerIndexes[$field] ?? null;
+
+        return $index === null ? null : ($row[$index] ?? null);
+    }
+
+    private function legacyHeaderIndexes(): array
+    {
+        return [
+            'supplier' => 1,
+            'type' => 2,
+            'thickness' => 3,
+            'width' => 4,
+            'diameter' => 5,
+            'length' => 6,
+            'qty_pcs' => 7,
+            'est_qty_kg' => 8,
+            'number_invoice' => 9,
+            'status' => 10,
+            'estimasi_eta_port' => 11,
+            'estimasi_eta_warehouse' => 12,
+            'estimasi_bulan_eta' => 13,
+            'keterangan' => 14,
+            'estimasi_delay_eta_port' => 15,
+            'estimasi_delay_eta_warehouse' => 16,
+        ];
+    }
+
+    private function buildHeaderIndexes(array $row): array
+    {
+        $aliases = [
+            'supplier' => ['supplier'],
+            'number_invoice' => ['numberinvoice', 'invoice', 'invoicenumber'],
+            'type' => ['type'],
+            'thickness' => ['thickness'],
+            'width' => ['width'],
+            'diameter' => ['diameter'],
+            'length' => ['length'],
+            'qty_pcs' => ['qtypcs', 'qtypcs'],
+            'est_qty_kg' => ['estqtykg', 'estimatedqtykg'],
+            'status' => ['status'],
+            'estimasi_eta_port' => ['estimasietaport'],
+            'estimasi_eta_warehouse' => ['estimasietawarehouse', 'estimasietawarehose'],
+            'estimasi_bulan_eta' => ['estimasibulaneta'],
+            'keterangan' => ['keterangan'],
+            'estimasi_delay_eta_port' => ['estimasidelayetaport'],
+            'estimasi_delay_eta_warehouse' => ['estimasidelayetawarehouse'],
+        ];
+        $indexes = [];
+        foreach ($row as $index => $value) {
+            $normalized = $this->normalizeHeaderValue($value);
+            foreach ($aliases as $field => $expected) {
+                if (in_array($normalized, $expected, true)) {
+                    $indexes[$field] = $index;
+                    break;
+                }
+            }
+        }
+
+        return array_merge(array_fill_keys(array_keys($this->legacyHeaderIndexes()), null), $indexes);
+    }
+
+    private function looksLikeHeader(array $row): bool
+    {
+        $headerValues = array_map(fn (mixed $value): string => $this->normalizeHeaderValue($value), $row);
+        $known = ['supplier', 'type', 'numberinvoice', 'status', 'thickness', 'width', 'diameter'];
+        return count(array_intersect($headerValues, $known)) >= 3;
     }
 
     private function isEmptyRow(array $row): bool
     {
-        for ($index = 1; $index <= 19; $index++) {
-            if ($this->normalizeString($this->valueAt($row, $index)) !== null) {
+        foreach ($row as $value) {
+            if ($this->normalizeString($value) !== null) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    private function isHeaderRow(array $row): bool
-    {
-        $matches = 0;
-        $headerMap = [
-            0 => ['no'],
-            1 => ['supplier'],
-            2 => ['type'],
-            3 => ['thickness'],
-            4 => ['width'],
-            5 => ['diameter'],
-            6 => ['length'],
-            7 => ['qtypcs'],
-            8 => ['estqtykg'],
-            9 => ['numberinvoice'],
-            10 => ['status'],
-            11 => ['estimasietaport'],
-            12 => ['estimasietawarehouse', 'estimasietawarehose'],
-            13 => ['estimasibulaneta'],
-            14 => ['keterangan'],
-            15 => ['estimasidelayetaport'],
-            16 => ['estimasidelayetawarehouse'],
-        ];
-
-        foreach ($headerMap as $index => $expectedValues) {
-            $value = $this->normalizeHeaderValue($this->valueAt($row, $index));
-            if ($value === '') {
-                continue;
-            }
-
-            if (in_array($value, $expectedValues, true)) {
-                $matches++;
-            }
-        }
-
-        return $matches >= 3;
     }
 
     private function normalizeString(mixed $value): ?string
@@ -183,7 +237,6 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
     private function normalizeOption(mixed $value, array $options, bool $nullable = false): ?string
     {
         $value = $this->normalizeString($value);
-
         if ($value === null) {
             return $nullable ? null : $value;
         }
@@ -202,22 +255,15 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
         if ($value === null || $value === '') {
             return null;
         }
-
         if (is_int($value) || is_float($value)) {
             return (float) $value;
         }
 
         $value = trim((string) $value);
-        if ($value === '') {
+        if ($value === '' || in_array(strtolower($value), ['-', '--', 'n/a', 'na'], true)) {
             return null;
         }
-
-        if (in_array(strtolower($value), ['-', '--', 'n/a', 'na'], true)) {
-            return null;
-        }
-
         $value = str_replace(' ', '', $value);
-
         if (str_contains($value, ',') && str_contains($value, '.')) {
             if (strrpos($value, ',') > strrpos($value, '.')) {
                 $value = str_replace('.', '', $value);
@@ -226,11 +272,7 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
                 $value = str_replace(',', '', $value);
             }
         } elseif (str_contains($value, ',')) {
-            if (substr_count($value, ',') > 1) {
-                $value = str_replace(',', '', $value);
-            } else {
-                $value = str_replace(',', '.', $value);
-            }
+            $value = substr_count($value, ',') > 1 ? str_replace(',', '', $value) : str_replace(',', '.', $value);
         }
 
         return is_numeric($value) ? (float) $value : '__INVALID_NUMBER__';
@@ -240,11 +282,7 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
     {
         $value = $this->normalizeString($value);
 
-        if ($value === null) {
-            return null;
-        }
-
-        return preg_replace('/\s+/', '', $value);
+        return $value === null ? null : preg_replace('/\s+/', '', $value);
     }
 
     private function normalizeDateText(mixed $value, int $rowNumber, string $label): ?string
@@ -252,48 +290,49 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
         if ($value === null || $value === '') {
             return null;
         }
-
         if ($value instanceof \DateTimeInterface) {
             return Carbon::instance($value)->format('Y-m-d');
         }
-
         if (is_numeric($value)) {
             try {
                 return Carbon::instance(ExcelDate::excelToDateTimeObject((float) $value))->format('Y-m-d');
-            } catch (\Throwable $exception) {
-                $rawValue = trim((string) $value);
-                $this->warnings[] = sprintf('Baris %d: %s "%s" bukan tanggal valid, disimpan sebagai teks.', $rowNumber, $label, $rawValue);
-
-                return $rawValue;
+            } catch (\Throwable) {
+                $this->errors[] = sprintf('Baris %d: %s bukan tanggal valid.', $rowNumber, $label);
+                return null;
             }
         }
-
         $value = trim((string) $value);
-        if ($value === '') {
-            return null;
-        }
-
         foreach (['Y-m-d', 'd-m-Y', 'd/m/Y', 'm/d/Y', 'd M Y', 'd F Y', 'M Y', 'F Y'] as $format) {
             try {
                 return Carbon::createFromFormat($format, $value)->format('Y-m-d');
-            } catch (\Throwable $exception) {
-                // Try the next format.
+            } catch (\Throwable) {
+                // Continue with the next accepted format.
+            }
+        }
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable) {
+            $this->errors[] = sprintf('Baris %d: %s "%s" bukan tanggal valid.', $rowNumber, $label, $value);
+            return null;
+        }
+    }
+
+    private function containsInvalidNumber(array $payload): bool
+    {
+        foreach (['thickness', 'width', 'diameter', 'qty_pcs', 'est_qty_kg'] as $field) {
+            if (($payload[$field] ?? null) === '__INVALID_NUMBER__') {
+                return true;
             }
         }
 
-        try {
-            return Carbon::parse($value)->format('Y-m-d');
-        } catch (\Throwable $exception) {
-            $this->warnings[] = sprintf('Baris %d: %s "%s" bukan tanggal valid, disimpan sebagai teks.', $rowNumber, $label, $value);
-
-            return $value;
-        }
+        return false;
     }
 
     private function validationAttributes(): array
     {
         return [
             'supplier' => 'Supplier',
+            'number_invoice' => 'Number Invoice',
             'type' => 'TYPE',
             'thickness' => 'Thickness',
             'width' => 'Width',
@@ -301,7 +340,6 @@ class OutstandingMaterialImport implements ToCollection, WithStartRow, SkipsEmpt
             'length' => 'Length',
             'qty_pcs' => 'QTY (PCS)',
             'est_qty_kg' => 'Est QTY (KG)',
-            'number_invoice' => 'Number Invoice',
             'status' => 'Status',
             'estimasi_eta_port' => 'Estimasi ETA Port',
             'estimasi_eta_warehouse' => 'Estimasi ETA Warehouse',

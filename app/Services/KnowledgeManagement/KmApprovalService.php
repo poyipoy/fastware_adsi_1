@@ -9,15 +9,25 @@ use App\Models\KmApprovalEvent;
 use App\Models\KmKategori;
 use App\Models\KmPengajuan;
 use App\Models\User;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 
 class KmApprovalService
 {
     public function __construct(
         private readonly KmDocumentWorkflowService $workflow,
+        private readonly KmAccessService $access,
+        private readonly KmNotificationService $notifications,
+        private readonly KmPointLedgerService $ledger,
+        private readonly KmVersioningService $versions,
+        private readonly KmTargetingService $targeting,
+        private readonly KmPublicationNotificationService $publicationNotifications,
+        private readonly KmGamificationService $gamification,
     ) {
     }
 
@@ -231,8 +241,24 @@ class KmApprovalService
     ): KmPengajuan {
         $from = $locked->documentStatus();
 
+        $organizationTargetsSubmitted = (bool) ($attributes['organization_targets_submitted'] ?? false);
+        $departmentTargets = collect($attributes['target_department_ids'] ?? [])->map('intval')->all();
+        $positionTargets = collect($attributes['target_job_position_ids'] ?? [])->map('intval')->all();
+        unset(
+            $attributes['target_department_ids'],
+            $attributes['target_job_position_ids'],
+            $attributes['organization_targets_submitted'],
+        );
+
         if ($attributes !== []) {
             $locked->fill($attributes)->save();
+        }
+
+        $version = $this->versions->prepareApprovalAction($locked, $actor, $action);
+        if ($action === KmApprovalAction::APPROVED && $version !== null
+            && $organizationTargetsSubmitted
+            && Schema::hasTable('km_document_version_departments')) {
+            $this->targeting->sync($version, $departmentTargets, $positionTargets);
         }
 
         $updated = $transition === null
@@ -240,7 +266,7 @@ class KmApprovalService
             : $transition($locked);
         $to = $updated->documentStatus();
 
-        KmApprovalEvent::query()->create([
+        $eventAttributes = [
             'km_pengajuan_id' => $updated->getKey(),
             'actor_id' => $actor->getKey(),
             'actor_name' => $actor->name,
@@ -251,9 +277,145 @@ class KmApprovalService
             'reason' => $reason,
             'metadata' => $metadata === [] ? null : $metadata,
             'acted_at' => now(),
-        ]);
+        ];
+        if (Schema::hasColumn('km_approval_events', 'document_version_id')) {
+            $eventAttributes['document_version_id'] = $version?->getKey();
+        }
+        $event = KmApprovalEvent::query()->create($eventAttributes);
+
+        $ownerId = (int) $updated->id_user;
+        $notificationData = [
+            'document_id' => $updated->getKey(),
+            'document_version_id' => $version?->getKey(),
+            'title' => $updated->judul,
+        ];
+        if ($action === KmApprovalAction::SUBMITTED) {
+            $this->notifications->recordMany(
+                $this->access->eligibleApproverIds(),
+                'document_submitted',
+                'submitted:'.$updated->getKey().':'.$event->getKey(),
+                $notificationData,
+            );
+        } elseif ($action === KmApprovalAction::APPROVED && $ownerId > 0) {
+            $this->ledger->award(
+                $ownerId,
+                'published_document',
+                'published:'.($version?->getKey() ?? $updated->getKey()).':'.$ownerId,
+                max(0, (int) config('knowledge_management.points.published_document', 25)),
+                (int) $updated->getKey(),
+                null,
+                null,
+                $actor,
+                $version?->getKey(),
+            );
+            $this->notifications->record(
+                $ownerId,
+                'document_approved',
+                'approved:'.$updated->getKey().':'.$event->getKey().':u'.$ownerId,
+                $notificationData,
+            );
+            if ($version !== null) {
+                $this->publicationNotifications->queue($version);
+            }
+            $this->gamification->awardEligible($ownerId);
+        } elseif ($action === KmApprovalAction::REJECTED && $ownerId > 0) {
+            $this->notifications->record(
+                $ownerId,
+                'document_rejected',
+                'rejected:'.$updated->getKey().':'.$event->getKey().':u'.$ownerId,
+                [...$notificationData, 'reason' => $reason],
+            );
+        }
 
         return $updated;
+    }
+
+    public function workingDaysSince(
+        CarbonInterface $submittedAt,
+        ?CarbonInterface $until = null,
+    ): int {
+        $cursor = CarbonImmutable::instance($submittedAt)->startOfDay()->addDay();
+        $end = CarbonImmutable::instance($until ?? now())->startOfDay();
+        $days = 0;
+
+        while ($cursor->lte($end)) {
+            if ($cursor->isWeekday()) {
+                $days++;
+            }
+            $cursor = $cursor->addDay();
+        }
+
+        return $days;
+    }
+
+    public function hasReminderCandidates(): bool
+    {
+        return KmPengajuan::query()
+            ->where('status', KmDocumentStatus::PENDING_APPROVAL->value)
+            ->whereHas('approvalEvents', static fn ($query) => $query
+                ->where('action', KmApprovalAction::SUBMITTED->value)
+                ->where('acted_at', '<=', now()->subDays(2)))
+            ->exists();
+    }
+
+    /**
+     * @return array{documents: int, notification_attempts: int}
+     */
+    public function generateDueReminders(): array
+    {
+        $reminderAt = max(1, (int) config('knowledge_management.approval_sla.reminder_working_days', 2));
+        $dueAt = max($reminderAt, (int) config('knowledge_management.approval_sla.due_working_days', 3));
+        $approverIds = $this->access->eligibleApproverIds();
+        if ($approverIds === []) {
+            return ['documents' => 0, 'notification_attempts' => 0];
+        }
+
+        $documents = KmPengajuan::query()
+            ->select('km_pengajuans.*')
+            ->where('status', KmDocumentStatus::PENDING_APPROVAL->value)
+            ->addSelect([
+                'submit_event_id' => KmApprovalEvent::query()
+                    ->select('id')
+                    ->whereColumn('km_pengajuan_id', 'km_pengajuans.id')
+                    ->where('action', KmApprovalAction::SUBMITTED->value)
+                    ->orderByDesc('acted_at')
+                    ->orderByDesc('id')
+                    ->limit(1),
+                'pending_since' => KmApprovalEvent::query()
+                    ->select('acted_at')
+                    ->whereColumn('km_pengajuan_id', 'km_pengajuans.id')
+                    ->where('action', KmApprovalAction::SUBMITTED->value)
+                    ->orderByDesc('acted_at')
+                    ->orderByDesc('id')
+                    ->limit(1),
+            ])
+            ->lazyById(200, 'km_pengajuans.id', 'id');
+        $documentCount = 0;
+        $attempts = 0;
+
+        foreach ($documents as $document) {
+            if ($document->pending_since === null || $document->submit_event_id === null) {
+                continue;
+            }
+            $workingDays = $this->workingDaysSince(CarbonImmutable::parse($document->pending_since));
+            if ($workingDays < $reminderAt) {
+                continue;
+            }
+
+            $documentCount++;
+            $data = ['document_id' => $document->getKey(), 'title' => $document->judul];
+            $prefix = 'approval_reminder:'.$document->getKey().':'.$document->submit_event_id;
+            $this->notifications->recordMany($approverIds, 'approval_reminder', $prefix, $data);
+            $attempts += count($approverIds);
+
+            if ($workingDays >= $dueAt) {
+                $prefix = 'approval_overdue:'.$document->getKey().':'.$document->submit_event_id;
+                $this->notifications->recordMany($approverIds, 'approval_overdue', $prefix, $data);
+                $attempts += count($approverIds);
+            }
+        }
+
+        return ['documents' => $documentCount, 'notification_attempts' => $attempts];
     }
 
     private function targetFor(KmApprovalAction $action): KmDocumentStatus

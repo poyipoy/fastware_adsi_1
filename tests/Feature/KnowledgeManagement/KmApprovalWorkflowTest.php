@@ -80,6 +80,10 @@ final class KmApprovalWorkflowTest extends KmTestCase
             ->assertOk();
 
         $this->assertStatus($document->refresh(), KmDocumentStatus::PENDING_APPROVAL, 1);
+        $this->assertDatabaseHas('km_notifications', [
+            'user_id' => $approver->getKey(),
+            'type' => 'document_submitted',
+        ]);
 
         $response = $this->actingAs($approver)
             ->withHeader('X-Request-ID', 'http-approve')
@@ -105,6 +109,16 @@ final class KmApprovalWorkflowTest extends KmTestCase
         $this->assertSame(KmDocumentStatus::PUBLISHED->value, $approved->to_status);
         $this->assertNull($approved->reason);
         $this->assertSame('http-approve', $approved->metadata['request_id']);
+        $this->assertSame(25, (int) $owner->refresh()->km_total_poin);
+        $this->assertDatabaseHas('km_point_ledger', [
+            'user_id' => $owner->getKey(),
+            'event_type' => 'published_document',
+            'points' => 25,
+        ]);
+        $this->assertDatabaseHas('km_notifications', [
+            'user_id' => $owner->getKey(),
+            'type' => 'document_approved',
+        ]);
     }
 
     public function test_reject_requires_non_whitespace_reason_and_stores_trimmed_reason(): void
@@ -147,6 +161,10 @@ final class KmApprovalWorkflowTest extends KmTestCase
         $this->assertSame(KmDocumentStatus::PENDING_APPROVAL->value, $event->from_status);
         $this->assertSame(KmDocumentStatus::DRAFT->value, $event->to_status);
         $this->assertSame('http-reject', $event->metadata['request_id']);
+        $this->assertDatabaseHas('km_notifications', [
+            'user_id' => $owner->getKey(),
+            'type' => 'document_rejected',
+        ]);
     }
 
     public function test_unauthorized_approver_cannot_change_document_or_create_event(): void
@@ -290,7 +308,9 @@ final class KmApprovalWorkflowTest extends KmTestCase
     public function test_serialized_stale_approver_attempts_commit_only_one_transition_and_event(): void
     {
         $firstApprover = $this->createApprover();
-        $secondApprover = $this->createUser('MUGI PRAMONO', $firstApprover->role_id);
+        $secondApprover = $this->grantKmApprovalAccess(
+            $this->createUser('Second KM Approver', $firstApprover->role_id),
+        );
         $owner = $this->createUser('KM Document Owner');
         $category = KmKategori::factory()->create();
         $document = KmPengajuan::factory()->pending()->create([
@@ -332,7 +352,9 @@ final class KmApprovalWorkflowTest extends KmTestCase
     public function test_two_parallel_approvers_commit_only_one_transition_and_event(): void
     {
         $firstApprover = $this->createApprover();
-        $secondApprover = $this->createUser('MUGI PRAMONO', $firstApprover->role_id);
+        $secondApprover = $this->grantKmApprovalAccess(
+            $this->createUser('Second KM Approver', $firstApprover->role_id),
+        );
         $owner = $this->createUser('KM Parallel Owner');
         $category = KmKategori::factory()->create();
         $document = KmPengajuan::factory()->pending()->create([
@@ -373,8 +395,12 @@ final class KmApprovalWorkflowTest extends KmTestCase
     private function createApprover(): User
     {
         $role = Role::query()->create(['role' => 'KM APPROVER']);
+        $approver = $this->createUser('KM Test Approver', $role->getKey());
+        $approver->update(['is_active' => false]);
 
-        return $this->createUser('KM Test Approver', $role->getKey());
+        return $this->grantKmApprovalAccess(
+            $approver,
+        );
     }
 
     private function createUser(string $name, ?int $roleId = null): User
@@ -388,10 +414,13 @@ final class KmApprovalWorkflowTest extends KmTestCase
 
     private function draftDocument(User $owner, KmKategori $category): KmPengajuan
     {
-        return KmPengajuan::factory()->draft()->create([
+        $document = KmPengajuan::factory()->draft()->create([
             'id_user' => $owner->getKey(),
             'id_km_kategori' => $category->getKey(),
         ]);
+        $this->attachReadyDraftVersion($document, $owner);
+
+        return $document->refresh();
     }
 
     /**

@@ -21,7 +21,7 @@ class KmDocumentAuthoringRules
                 'integer',
                 'distinct:strict',
                 Rule::notIn([$ownerId]),
-                Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)),
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', false)),
             ],
         ];
     }

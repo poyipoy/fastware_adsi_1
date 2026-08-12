@@ -29,13 +29,29 @@ async function requestJson(url, options = {}) {
 
 function initializeTagPicker(input, hidden) {
     let tags = [];
+    const container = input.closest('[data-km-tag-picker]');
+    const feedback = container.parentElement.querySelector('[data-km-tag-feedback]');
 
     function normalize(value) {
         return value.trim().replace(/\s+/g, ' ');
     }
 
+    function setFeedback(message = '') {
+        if (! feedback) {
+            return;
+        }
+
+        feedback.textContent = message;
+        feedback.hidden = message === '';
+        container.classList.toggle('km-tag-container--invalid', message !== '');
+        if (message) {
+            input.setAttribute('aria-invalid', 'true');
+        } else {
+            input.removeAttribute('aria-invalid');
+        }
+    }
+
     function render() {
-        const container = input.closest('[data-km-tag-picker]');
         container.querySelectorAll('.km-tag-chip').forEach((chip) => chip.remove());
 
         tags.forEach((tag) => {
@@ -49,6 +65,7 @@ function initializeTagPicker(input, hidden) {
             remove.setAttribute('aria-label', `Hapus tag ${tag}`);
             remove.addEventListener('click', () => {
                 tags = tags.filter((value) => value !== tag);
+                setFeedback();
                 render();
             });
 
@@ -60,19 +77,39 @@ function initializeTagPicker(input, hidden) {
         hidden.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    function commit() {
-        const tag = normalize(input.value.replace(/,/g, ''));
-        const exists = tags.some((value) => value.toLocaleLowerCase('id-ID') === tag.toLocaleLowerCase('id-ID'));
+    function commit(rawValue = input.value) {
+        const candidates = String(rawValue)
+            .split(/[,\r\n]+/)
+            .map(normalize)
+            .filter(Boolean);
+        let changed = false;
+        let duplicateTag = '';
 
-        if (tag && tag.length <= 50 && ! exists && tags.length < 10) {
-            tags.push(tag);
+        candidates.forEach((tag) => {
+            const exists = tags.some((value) => value.toLocaleLowerCase('id-ID') === tag.toLocaleLowerCase('id-ID'));
+            if (exists) {
+                duplicateTag ||= tag;
+            } else if (tag.length <= 50 && tags.length < 10) {
+                tags.push(tag);
+                changed = true;
+            }
+        });
+
+        if (candidates.length > 0) {
             input.value = '';
+        }
+        if (changed) {
             render();
         }
+        setFeedback(duplicateTag ? `Tag "${duplicateTag}" sudah ditambahkan. Gunakan tag yang berbeda.` : '');
     }
 
     input.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ',') {
+        const isSeparator = event.key === 'Enter'
+            || event.key === ','
+            || (event.code === 'Comma' && ! event.shiftKey);
+
+        if (isSeparator && ! event.isComposing) {
             event.preventDefault();
             commit();
         } else if (event.key === 'Backspace' && input.value === '' && tags.length > 0) {
@@ -80,7 +117,14 @@ function initializeTagPicker(input, hidden) {
             render();
         }
     });
-    input.closest('form').addEventListener('submit', commit);
+    input.addEventListener('input', () => {
+        if (/[,\r\n]/.test(input.value)) {
+            commit();
+        } else {
+            setFeedback();
+        }
+    });
+    input.closest('form').addEventListener('submit', () => commit());
 
     return {
         set(values) {
@@ -90,6 +134,7 @@ function initializeTagPicker(input, hidden) {
                 .filter(Boolean)
                 .slice(0, 10);
             input.value = '';
+            setFeedback();
             render();
         },
     };
@@ -143,7 +188,7 @@ function initializeCoAuthorPicker(root) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'list-group-item list-group-item-action py-2';
-            button.textContent = user.email ? `${user.name} - ${user.email}` : user.name;
+            button.textContent = user.name;
             button.addEventListener('click', () => {
                 if (selected.size >= 10) {
                     return;
@@ -215,11 +260,22 @@ document.addEventListener('DOMContentLoaded', () => {
     coAuthorPickers.get('create')?.set(null, []);
 
     const editModalElement = document.getElementById('editKmModal');
+    const revisionModalElement = document.getElementById('kmRevisionModal');
+    const revisionForm = document.getElementById('km-revision-form');
 
     document.addEventListener('click', async (event) => {
         const editButton = event.target.closest('[data-km-edit]');
         const deactivateButton = event.target.closest('[data-km-deactivate]');
         const submitButton = event.target.closest('[data-km-submit]');
+        const revisionButton = event.target.closest('[data-km-revise]');
+
+        if (revisionButton && revisionModalElement && revisionForm) {
+            revisionForm.action = routeFor(config.majorRevisionUrl, revisionButton.dataset.kmRevise);
+            document.getElementById('km-revision-document-title').textContent = revisionButton.dataset.kmDocumentTitle ?? '';
+            document.getElementById('km-revision-note').value = '';
+            bootstrap.Modal.getOrCreateInstance(revisionModalElement).show();
+            return;
+        }
 
         try {
             if (editButton) {
@@ -241,13 +297,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileInput.value = '';
                 fileInput.required = ! data.has_file;
                 fileLink.hidden = ! data.has_file;
-                fileName.href = data.download_url || '#';
-                fileName.textContent = data.file_name || 'Unduh file tersimpan';
-                fileName.target = '_blank';
-                fileName.rel = 'noopener';
-                fileState.textContent = data.has_file
-                    ? 'File tersimpan di penyimpanan privat.'
-                    : 'Unggah PDF, PPT, atau PPTX sebelum menyimpan.';
+                fileName.textContent = data.file_name || 'File tersimpan';
+                fileState.textContent = data.processing_state === 'pending_processing'
+                    ? 'File Office tersimpan privat dan masih menunggu konversi. Draf belum dapat dikirim.'
+                    : data.has_file
+                        ? 'File tersimpan di penyimpanan privat. Unduhan dinonaktifkan.'
+                        : 'Unggah PDF, PPT, atau PPTX untuk menyimpan draf.';
 
                 bootstrap.Modal.getOrCreateInstance(editModalElement).show();
                 initDraftAutosave({

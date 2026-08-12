@@ -48,6 +48,14 @@ final class KmAuthorizationTest extends KmTestCase
         $this->postJson(route('kmSuka.like'), ['id_km_pengajuan' => 999999])->assertUnauthorized();
     }
 
+    public function test_regular_authenticated_employee_can_open_dashboard_and_authoring_page(): void
+    {
+        $employee = $this->user(1100, 'Regular KM Author');
+
+        $this->actingAs($employee)->get(route('dsKnowlege'))->assertOk();
+        $this->actingAs($employee)->get(route('pengajuanKM'))->assertOk();
+    }
+
     public function test_owner_can_edit_and_inspect_own_draft_without_private_metadata_in_json(): void
     {
         $owner = $this->user(1101, 'Document Owner');
@@ -67,8 +75,8 @@ final class KmAuthorizationTest extends KmTestCase
         $edit->assertOk()
             ->assertJsonPath('id', $document->getKey())
             ->assertJsonPath('has_file', true)
-            ->assertJsonPath('preview_url', route('km.documents.preview', $document))
-            ->assertJsonPath('download_url', route('km.documents.download', $document));
+            ->assertJsonPath('preview_url', route('km.documents.preview', $document));
+        $this->assertArrayNotHasKey('download_url', $edit->json());
         $this->assertSafeDocumentPayload($edit->json());
 
         $show = $this->actingAs($owner)->getJson(route('showPersetujuan', $document));
@@ -127,6 +135,7 @@ final class KmAuthorizationTest extends KmTestCase
             ]),
             'saveTransaction' => fn () => $this->postJson(route('kmTransaksi.saveTransaction'), [
                 'id_km_pengajuan' => $document->getKey(),
+                'acknowledged' => true,
             ]),
             'like' => fn () => $this->postJson(route('kmSuka.like'), [
                 'id_km_pengajuan' => $document->getKey(),
@@ -157,7 +166,7 @@ final class KmAuthorizationTest extends KmTestCase
     public function test_approver_can_open_pending_document_but_regular_employee_cannot(): void
     {
         $owner = $this->user(1105, 'Pending Owner');
-        $approver = $this->user(1106, 'MUGI PRAMONO');
+        $approver = $this->grantKmApprovalAccess($this->user(1106, 'HRGA Legal Approver'));
         $employee = $this->user(1107, 'Regular Employee');
         $document = KmPengajuan::factory()->pending()->for($owner, 'user')->create();
 

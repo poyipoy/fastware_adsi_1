@@ -9,6 +9,8 @@
 >
 > **Amendment — Tanpa Queue Worker:** Sistem tidak menggunakan Laravel queue worker, Horizon, Redis queue, Supervisor-managed worker, atau daemon pemrosesan persisten. Proses ringan dilakukan sinkron pada request setelah validasi dan transaction safety. Proses berkala atau berat dijalankan melalui Laravel Scheduler/cron sebagai perintah Artisan berumur pendek, atau secara manual oleh administrator. Bila scheduler tidak dikonfigurasi, pemrosesan dokumen, reminder, reconciliation, dan sinkronisasi berkala tidak berjalan otomatis.
 
+> **Amendment 29 Juli 2026 — Approval dan notifikasi sosial:** Hak approval hanya diberikan kepada akun login-enabled dengan assignment aktif pada job position aktif bernama persis `HRGA & Legal Staff`, atau user ID `91`. Hak administrator/oversight tidak otomatis memberi approval. Setiap reaction baru pada insight mengirim notifikasi in-app kepada penulis insight, kecuali reaction diri sendiri; perubahan jenis dan penghapusan reaction tidak mengirim notifikasi.
+
 ---
 
 ## Ringkasan Status
@@ -17,7 +19,7 @@
 |---|---|---|
 | KM-DEC-001 | Versioning opsi B | Approved |
 | KM-DEC-002 | Self-hosted conversion/OCR opsi B tanpa queue worker | Approved direction; menggunakan scheduled/manual Artisan command dan tetap conditional pada infrastructure/security gates |
-| KM-DEC-003 | Approval satu tahap oleh HRGA Staff | Approved |
+| KM-DEC-003 | Approval satu tahap oleh posisi aktif `HRGA & Legal Staff` atau user ID 91 | Approved |
 | KM-DEC-004 | Progress dipisahkan dari completion resmi | Approved |
 | KM-DEC-005 | Master organisasi menggunakan `mst_job_position` | Approved; schema dan data contract wajib divalidasi |
 | KM-DEC-006 | Notifikasi in-app/database saja | Approved |
@@ -211,24 +213,21 @@ Completion resmi tercapai jika seluruh kondisi berikut terpenuhi:
 
 ## KM-DEC-003 — Approval Workflow
 
-**Keputusan utama:** satu tahap approval oleh HRGA Staff.
+**Keputusan utama:** satu tahap approval oleh akun login-enabled yang mempunyai assignment aktif pada job position aktif bernama persis `HRGA & Legal Staff`, atau user ID `91`.
 
 ### Detail keputusan yang disetujui
 
-- HRGA Staff direpresentasikan sebagai role aplikasi, bukan string department.
-- Gunakan ability:
-  - `km.approve-document`;
-  - `km.request-revision`;
-  - `km.reject-document`.
-- Seluruh user aktif dengan role HRGA Staff dan ability approval menggunakan shared approval inbox pada aplikasi.
+- Assignment posisi harus berada dalam periode efektif: `effective_from` wajib terisi, tidak berada di masa depan, dan `effective_until` belum lewat.
+- Master job position harus aktif dan nama harus cocok persis; nama yang hampir sama tidak dianggap memenuhi aturan.
+- User ID `91` adalah pengecualian identitas stabil untuk SITI MARIA ULFA ketika akun tersebut login-enabled.
+- Administrator, ability oversight, atau role RBAC lain tidak otomatis memperoleh hak approval.
+- Antrean, detail pending milik pengguna lain, approve, reject, bulk approval, notifikasi, dan reminder SLA memakai himpunan approver yang sama.
 - Keputusan pertama yang valid mengunci approval request.
 - Submitter tidak dapat menyetujui dokumennya sendiri.
-- Fallback approver adalah HRGA Supervisor atau KM Administrator.
 - Bila tidak ada approver aktif, status menjadi `approval_blocked`.
 - SLA approval: 3 hari kerja.
 - Reminder: 1 hari kerja sebelum due date.
-- Escalation: overdue ditampilkan kepada HRGA Supervisor.
-- Delegasi dilakukan melalui reassignment formal oleh HRGA Supervisor/KM Admin.
+- Tidak ada fallback atau shared inbox yang memperluas approver di luar aturan sistem ini.
 
 ### Status utama
 
@@ -402,7 +401,7 @@ Hanya `completed` dan `exempted` yang dianggap compliant.
 
 | Event | Recipient |
 |---|---|
-| Dokumen diajukan | HRGA Staff approver |
+| Dokumen diajukan | Approver sistem: posisi aktif `HRGA & Legal Staff` atau user ID 91 |
 | Dokumen approved | Document owner |
 | Revisi diminta | Document owner |
 | Dokumen rejected | Document owner |

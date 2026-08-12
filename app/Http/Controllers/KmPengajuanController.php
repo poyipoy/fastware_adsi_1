@@ -10,12 +10,16 @@ use App\Http\Requests\KnowledgeManagement\AddKmInsightRequest;
 use App\Http\Requests\KnowledgeManagement\ApproveKmDocumentRequest;
 use App\Http\Requests\KnowledgeManagement\BulkKmApprovalRequest;
 use App\Http\Requests\KnowledgeManagement\CompleteKmReadingRequest;
+use App\Http\Requests\KnowledgeManagement\KmApprovalQueueRequest;
 use App\Http\Requests\KnowledgeManagement\KmDashboardFilterRequest;
 use App\Http\Requests\KnowledgeManagement\KmDocumentInteractionRequest;
 use App\Http\Requests\KnowledgeManagement\MarkKmReadingRequest;
 use App\Http\Requests\KnowledgeManagement\StoreKmDocumentRequest;
 use App\Http\Requests\KnowledgeManagement\UpdateKmDocumentRequest;
+use App\Http\Requests\KnowledgeManagement\UpdateKmReadingProgressRequest;
 use App\Models\KmPengajuan;
+use App\Models\MstDepartment;
+use App\Models\MstJobPosition;
 use App\Models\User;
 use App\Services\KnowledgeManagement\KmAccessService;
 use App\Services\KnowledgeManagement\KmApprovalService;
@@ -24,11 +28,14 @@ use App\Services\KnowledgeManagement\KmDocumentAuthoringService;
 use App\Services\KnowledgeManagement\KmDocumentQueryService;
 use App\Services\KnowledgeManagement\KmFileService;
 use App\Services\KnowledgeManagement\KmInteractionService;
+use App\Services\KnowledgeManagement\KmMandatoryMaterialService;
 use App\Services\KnowledgeManagement\KmReadingService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -45,6 +52,7 @@ class KmPengajuanController extends Controller
         private readonly KmDocumentAuthoringService $authoring,
         private readonly KmDocumentQueryService $documents,
         private readonly KmInteractionService $interactions,
+        private readonly KmMandatoryMaterialService $mandatoryMaterials,
     ) {
     }
 
@@ -59,15 +67,32 @@ class KmPengajuanController extends Controller
         ]);
     }
 
-    public function persetujuanKM(Request $request): View
+    public function persetujuanKM(KmApprovalQueueRequest $request): View
     {
         $this->authorize('viewAny', KmPengajuan::class);
         abort_unless($this->access->canApprove($request->user()), 403);
 
+        $sort = $request->sortBy();
+        try {
+            if ($this->approval->hasReminderCandidates()
+                && Cache::add(
+                    'km:approval-reminder-sweep',
+                    true,
+                    now()->addMinutes((int) config('knowledge_management.approval_sla.lazy_sweep_cache_minutes', 15)),
+                )) {
+                $this->approval->generateDueReminders();
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
         return view('knowlege_management.persetujuanKM', [
-            'km' => $this->documents->paginateApprovals(),
+            'km' => $this->documents->paginateApprovals($sort),
+            'approvalSort' => $sort,
             'documentStatuses' => KmDocumentStatus::class,
             'kategoris' => $this->documents->categories(),
+            'departments' => MstDepartment::query()->active()->orderBy('name')->get(['id', 'name']),
+            'jobPositions' => MstJobPosition::query()->active()->orderBy('position_name')->get(['id', 'position_name', 'department_id']),
         ]);
     }
 
@@ -150,10 +175,19 @@ class KmPengajuanController extends Controller
             'actor_name' => $event->actor_name,
             'acted_at' => $event->acted_at?->toIso8601String(),
         ])->values();
+        $version = $document->currentVersion;
+        $payload['target_department_ids'] = Schema::hasTable('km_document_version_departments')
+            ? ($version?->targetDepartments?->pluck('id')->map('intval')->values() ?? [])
+            : [];
+        $payload['target_job_position_ids'] = Schema::hasTable('km_document_version_job_positions')
+            ? ($version?->targetJobPositions?->pluck('id')->map('intval')->values() ?? [])
+            : [];
 
         return response()->json([
             'km' => $payload,
             'kategoris' => $this->documents->categories(),
+            'departments' => MstDepartment::query()->active()->orderBy('name')->get(['id', 'name']),
+            'job_positions' => MstJobPosition::query()->active()->orderBy('position_name')->get(['id', 'position_name', 'department_id']),
         ]);
     }
 
@@ -165,6 +199,9 @@ class KmPengajuanController extends Controller
             'id_km_kategori',
             'judul',
             'keterangan',
+            'target_department_ids',
+            'target_job_position_ids',
+            'organization_targets_submitted',
         ]);
 
         try {
@@ -228,13 +265,29 @@ class KmPengajuanController extends Controller
     {
         $this->authorize('viewAny', KmPengajuan::class);
 
+        $assignmentId = $request->validated('assignment');
+        $mandatoryContext = $assignmentId === null
+            ? null
+            : $this->mandatoryMaterials->deepLinkContext(
+                $request->user(),
+                (int) $assignmentId,
+                $request->validated('document') === null
+                    ? null
+                    : (int) $request->validated('document'),
+            );
+
         $pengajuans = $this->dashboardQuery->paginate($request, $request->user());
-        $references = $this->documents->dashboardReferences();
+        $mandatoryAssignments = $request->validated('mandatory') === true
+            ? $this->mandatoryMaterials->paginateActive($request, $request->user())
+            : null;
+        $references = $this->documents->dashboardReferences($request->user());
 
         return view('dashboard.dsKnowlege', [
             'pengajuans' => $pengajuans,
             ...$references,
             'filters' => $request->safe()->except('page'),
+            'mandatoryContext' => $mandatoryContext,
+            'mandatoryAssignments' => $mandatoryAssignments,
         ]);
     }
 
@@ -245,29 +298,69 @@ class KmPengajuanController extends Controller
         return $this->files->streamPreview($kmPengajuan);
     }
 
-    public function download(KmPengajuan $kmPengajuan): BinaryFileResponse
+    public function download(KmPengajuan $kmPengajuan): never
     {
-        $this->authorize('view', $kmPengajuan);
+        $this->authorize('download', $kmPengajuan);
 
-        return $this->files->streamDownload($kmPengajuan);
+        abort(403, 'Unduhan materi Knowledge Management dinonaktifkan.');
     }
 
     public function markAsRead(MarkKmReadingRequest $request): JsonResponse
     {
-        $document = $this->documents->find($request->integer('id_km_pengajuan'));
-        $this->authorize('view', $document);
-        $result = $this->reading->markStarted($request->user(), $document);
+        $document = $request->document();
+        $version = $request->version();
+        $version === null
+            ? $this->authorize('view', $document)
+            : $this->authorize('viewVersion', [$document, $version]);
+        $result = $this->reading->markStarted($request->user(), $document, $version);
+
+        return response()->json(['success' => true, ...$result]);
+    }
+
+    public function updateProgress(
+        UpdateKmReadingProgressRequest $request,
+        KmPengajuan $kmPengajuan,
+    ): JsonResponse {
+        $version = $request->version();
+        $version === null
+            ? $this->authorize('view', $kmPengajuan)
+            : $this->authorize('viewVersion', [$kmPengajuan, $version]);
+
+        try {
+            $result = $this->reading->updateProgress(
+                $request->user(),
+                $kmPengajuan,
+                $request->safe()->only([
+                    'last_page',
+                    'pages_total',
+                    'pages',
+                    'active_delta',
+                    'session_token',
+                    'device_token',
+                    'session_active_seconds',
+                ]),
+                $version,
+            );
+        } catch (DomainException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
 
         return response()->json(['success' => true, ...$result]);
     }
 
     public function saveTransaction(CompleteKmReadingRequest $request): JsonResponse
     {
-        $document = $this->documents->find($request->integer('id_km_pengajuan'));
-        $this->authorize('completeReading', $document);
+        $document = $request->document();
+        $version = $request->version();
+        $version === null
+            ? $this->authorize('completeReading', $document)
+            : $this->authorize('viewVersion', [$document, $version]);
 
         try {
-            $result = $this->reading->complete($request->user(), $document);
+            $result = $this->reading->complete($request->user(), $document, $version);
         } catch (DomainException $exception) {
             return response()->json([
                 'success' => false,
@@ -306,6 +399,8 @@ class KmPengajuanController extends Controller
             $request->user(),
             $request->document(),
             $request->string('content')->toString(),
+            $request->validated('parent_id'),
+            array_map('intval', $request->validated('mention_ids', [])),
         );
 
         return back()->with('success', 'Insight berhasil ditambahkan.');
@@ -316,29 +411,43 @@ class KmPengajuanController extends Controller
      */
     private function documentPayload(KmPengajuan $document): array
     {
-        $hasFile = $document->hasCompletePrivateFileMetadata();
+        $version = $document->currentVersion;
+        $usesRevision = $version !== null && $document->hasEditableDraftVersion();
+        $hasFile = $usesRevision
+            ? $version->hasOriginalFile()
+            : $document->hasCompletePrivateFileMetadata();
+        $tags = $usesRevision ? $version->tags : $document->tags;
+        $coAuthors = $usesRevision ? $version->coAuthors : $document->coAuthors;
 
         return [
             'id' => $document->getKey(),
-            'judul' => $document->judul,
-            'keterangan' => $document->keterangan,
-            'reading_minutes' => $document->reading_minutes,
-            'tags_csv' => $document->tags->pluck('name')->join(','),
-            'co_authors' => $document->coAuthors
+            'judul' => $usesRevision ? $version->title : $document->judul,
+            'keterangan' => $usesRevision ? $version->synopsis : $document->keterangan,
+            'reading_minutes' => $usesRevision ? $version->reading_minutes : $document->reading_minutes,
+            'tags_csv' => $tags->pluck('name')->join(','),
+            'co_authors' => $coAuthors
                 ->map(fn (User $user): array => [
                     'id' => (int) $user->getKey(),
                     'name' => $user->name,
-                    'email' => $user->email,
                 ])
                 ->values(),
             'draft_revision' => (int) $document->draft_revision,
             'file' => $hasFile ? basename((string) $document->file) : null,
-            'file_name' => $document->file_original_name ?: $document->file_name,
+            'file_name' => $usesRevision
+                ? $version->original_name
+                : ($document->file_original_name ?: $document->file_name),
             'status' => $document->status,
             'has_file' => $hasFile,
-            'previewable' => $hasFile && $document->isPreviewableFile(),
-            'preview_url' => $hasFile ? route('km.documents.preview', $document) : null,
-            'download_url' => $hasFile ? route('km.documents.download', $document) : null,
+            'previewable' => $usesRevision ? $version->isReady() : ($hasFile && $document->isPreviewableFile()),
+            'preview_url' => $usesRevision && $version->isReady()
+                ? route('km.document-versions.preview', [$document, $version])
+                : ($hasFile ? route('km.documents.preview', $document) : null),
+            'processing_state' => $usesRevision
+                ? $version->processing_status->value
+                : $document->processingState(),
+            'ready_for_submission' => $usesRevision
+                ? $version->isReady()
+                : $document->isReadyForSubmission(),
         ];
     }
 

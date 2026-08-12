@@ -3,6 +3,10 @@
 namespace Tests\Feature\KnowledgeManagement;
 
 use App\Enums\KnowledgeManagement\KmDocumentStatus;
+use App\Enums\KnowledgeManagement\KmProcessingStatus;
+use App\Enums\KnowledgeManagement\KmVersionChangeType;
+use App\Enums\KnowledgeManagement\KmVersionStatus;
+use App\Models\KmDocumentVersion;
 use App\Models\KmPengajuan;
 use App\Models\User;
 use App\Services\KnowledgeManagement\KmFileService;
@@ -34,7 +38,7 @@ final class KmPrivateFileAccessTest extends KmTestCase
         parent::tearDown();
     }
 
-    public function test_authorized_employee_receives_pdf_inline_and_download_as_attachment_with_security_headers(): void
+    public function test_authorized_employee_receives_pdf_inline_but_download_is_forbidden(): void
     {
         $owner = $this->user(2101, 'PDF Owner');
         $employee = $this->user(2102, 'PDF Reader');
@@ -57,13 +61,8 @@ final class KmPrivateFileAccessTest extends KmTestCase
         $this->assertStringContainsString('no-store', (string) $preview->headers->get('Cache-Control'));
 
         $download = $this->actingAs($employee)->get(route('km.documents.download', $document));
-        $download->assertOk()
-            ->assertHeader('Content-Type', 'application/pdf')
-            ->assertHeader('X-Content-Type-Options', 'nosniff');
-        $this->assertStringStartsWith(
-            'attachment;',
-            (string) $download->headers->get('Content-Disposition'),
-        );
+        $download->assertForbidden();
+        $this->assertFalse($download->headers->has('Content-Disposition'));
 
         $queryAttempt = $this->actingAs($employee)->get(
             route('km.documents.preview', $document).'?path=../../.env',
@@ -75,7 +74,7 @@ final class KmPrivateFileAccessTest extends KmTestCase
         );
     }
 
-    public function test_office_document_preview_is_415_but_authorized_download_still_works(): void
+    public function test_office_document_preview_is_415_and_download_is_forbidden(): void
     {
         $owner = $this->user(2103, 'Office Owner');
         $employee = $this->user(2104, 'Office Reader');
@@ -92,16 +91,113 @@ final class KmPrivateFileAccessTest extends KmTestCase
 
         $download = $this->actingAs($employee)
             ->get(route('km.documents.download', $document));
-        $download->assertOk()
-            ->assertHeader(
-                'Content-Type',
-                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            )
-            ->assertHeader('X-Content-Type-Options', 'nosniff');
-        $this->assertStringStartsWith(
-            'attachment;',
-            (string) $download->headers->get('Content-Disposition'),
+        $download->assertForbidden();
+        $this->assertFalse($download->headers->has('Content-Disposition'));
+    }
+
+    public function test_ready_office_version_streams_its_normalized_pdf_inline(): void
+    {
+        $owner = $this->user(2126, 'Converted Office Owner');
+        $employee = $this->user(2127, 'Converted Office Reader');
+        $document = $this->privateDocument(
+            $owner,
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'pptx',
+            'office-binary-content',
         );
+        $pdf = "%PDF-1.4\nconverted office preview\n%%EOF";
+        $version = KmDocumentVersion::query()->create([
+            'km_pengajuan_id' => $document->getKey(),
+            'version_major' => 1,
+            'version_minor' => 0,
+            'change_type' => KmVersionChangeType::MAJOR,
+            'change_note' => 'Versi Office berhasil diproses.',
+            'version_status' => KmVersionStatus::PUBLISHED,
+            'title' => $document->judul,
+            'synopsis' => $document->keterangan,
+            'audience' => 'All Employee',
+            'original_disk' => $document->file_disk,
+            'original_path' => $document->file_path,
+            'original_name' => $document->file_original_name,
+            'original_mime_type' => $document->file_mime_type,
+            'original_size_bytes' => $document->file_size_bytes,
+            'original_checksum_sha256' => $document->file_checksum_sha256,
+            'normalized_pdf_disk' => KmFileService::DISK,
+            'normalized_pdf_path' => 'documents/'.$document->getKey().'/versions/1/normalized.pdf',
+            'normalized_pdf_size_bytes' => strlen($pdf),
+            'normalized_pdf_checksum_sha256' => hash('sha256', $pdf),
+            'processing_status' => KmProcessingStatus::READY,
+            'antivirus_status' => 'clean',
+            'processing_attempts' => 1,
+            'created_by' => $owner->getKey(),
+            'published_at' => now(),
+        ]);
+        $version->forceFill([
+            'normalized_pdf_path' => 'documents/'.$document->getKey().'/versions/'.$version->getKey().'/normalized.pdf',
+        ])->save();
+        Storage::disk(KmFileService::DISK)->put((string) $version->normalized_pdf_path, $pdf);
+        $document->forceFill([
+            'current_version_id' => $version->getKey(),
+            'published_version_id' => $version->getKey(),
+        ])->save();
+
+        $this->assertTrue($document->refresh()->isPreviewableFile());
+        $response = $this->actingAs($employee)
+            ->get(route('km.documents.preview', $document));
+
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith(
+            'inline;',
+            (string) $response->headers->get('Content-Disposition'),
+        );
+        $this->assertSame(
+            Storage::disk(KmFileService::DISK)->path((string) $version->normalized_pdf_path),
+            $response->baseResponse->getFile()->getPathname(),
+        );
+    }
+
+    public function test_pending_version_never_falls_back_to_the_raw_pdf(): void
+    {
+        $owner = $this->user(2125, 'Pending Version Owner');
+        $document = $this->privateDocument(
+            $owner,
+            'application/pdf',
+            'pdf',
+            "%PDF-1.4\nraw file must not be streamed\n%%EOF",
+        );
+        $version = KmDocumentVersion::query()->create([
+            'km_pengajuan_id' => $document->getKey(),
+            'version_major' => 1,
+            'version_minor' => 0,
+            'change_type' => KmVersionChangeType::MAJOR,
+            'change_note' => 'Versi menunggu pemrosesan.',
+            'version_status' => KmVersionStatus::PUBLISHED,
+            'title' => $document->judul,
+            'synopsis' => $document->keterangan,
+            'audience' => 'All Employee',
+            'original_disk' => $document->file_disk,
+            'original_path' => $document->file_path,
+            'original_name' => $document->file_original_name,
+            'original_mime_type' => $document->file_mime_type,
+            'original_size_bytes' => $document->file_size_bytes,
+            'original_checksum_sha256' => $document->file_checksum_sha256,
+            'processing_status' => KmProcessingStatus::PENDING,
+            'antivirus_status' => 'pending',
+            'processing_attempts' => 0,
+            'created_by' => $owner->getKey(),
+            'published_at' => now(),
+        ]);
+        $document->forceFill([
+            'current_version_id' => $version->getKey(),
+            'published_version_id' => $version->getKey(),
+        ])->save();
+
+        $response = $this->actingAs($owner)
+            ->get(route('km.documents.preview', $document->refresh()));
+
+        $response->assertStatus(415);
+        $this->assertFalse($response->headers->has('Content-Disposition'));
     }
 
     public function test_legacy_pdf_mime_alias_is_normalized_for_preview_consumers(): void
@@ -139,7 +235,7 @@ final class KmPrivateFileAccessTest extends KmTestCase
             'file_checksum_sha256' => hash('sha256', 'secret'),
         ]);
         $this->actingAs($employee)
-            ->get(route('km.documents.download', $unsafe))
+            ->get(route('km.documents.preview', $unsafe))
             ->assertNotFound();
 
         $crossDocument = KmPengajuan::factory()->published()->for($owner, 'user')->create([
@@ -158,7 +254,7 @@ final class KmPrivateFileAccessTest extends KmTestCase
             'file_migrated_at' => now(),
         ])->save();
         $this->actingAs($employee)
-            ->get(route('km.documents.download', $crossDocument))
+            ->get(route('km.documents.preview', $crossDocument))
             ->assertNotFound();
 
         $missing = KmPengajuan::factory()->published()->for($owner, 'user')->create([
@@ -173,7 +269,7 @@ final class KmPrivateFileAccessTest extends KmTestCase
             'file_checksum_sha256' => hash('sha256', 'missing'),
         ])->save();
         $this->actingAs($employee)
-            ->get(route('km.documents.download', $missing))
+            ->get(route('km.documents.preview', $missing))
             ->assertNotFound();
 
         $mismatch = $this->privateDocument(
@@ -184,7 +280,7 @@ final class KmPrivateFileAccessTest extends KmTestCase
         );
         $mismatch->forceFill(['file_checksum_sha256' => str_repeat('0', 64)])->save();
         $this->actingAs($employee)
-            ->get(route('km.documents.download', $mismatch))
+            ->get(route('km.documents.preview', $mismatch))
             ->assertStatus(409);
     }
 
@@ -208,10 +304,10 @@ final class KmPrivateFileAccessTest extends KmTestCase
             ->assertForbidden();
     }
 
-    public function test_owner_can_stream_own_draft_and_approver_can_stream_pending_private_document(): void
+    public function test_owner_and_approver_can_preview_allowed_documents_but_cannot_download_them(): void
     {
         $owner = $this->user(2113, 'Non Published Owner');
-        $approver = $this->user(2114, 'MUGI PRAMONO');
+        $approver = $this->grantKmApprovalAccess($this->user(2114, 'HRGA Legal Approver'));
         $employee = $this->user(2115, 'Non Published Employee');
         $draft = $this->privateDocument(
             $owner,
@@ -227,6 +323,9 @@ final class KmPrivateFileAccessTest extends KmTestCase
         $this->actingAs($owner)
             ->get(route('km.documents.preview', $draft))
             ->assertOk();
+        $this->actingAs($owner)
+            ->get(route('km.documents.download', $draft))
+            ->assertForbidden();
 
         $pending = $this->privateDocument(
             $owner,
@@ -240,8 +339,11 @@ final class KmPrivateFileAccessTest extends KmTestCase
         ])->save();
 
         $this->actingAs($approver)
-            ->get(route('km.documents.download', $pending))
+            ->get(route('km.documents.preview', $pending))
             ->assertOk();
+        $this->actingAs($approver)
+            ->get(route('km.documents.download', $pending))
+            ->assertForbidden();
         $this->actingAs($employee)
             ->get(route('km.documents.download', $pending))
             ->assertForbidden();

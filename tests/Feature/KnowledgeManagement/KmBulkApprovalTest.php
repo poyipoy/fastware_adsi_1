@@ -273,7 +273,9 @@ final class KmBulkApprovalTest extends KmTestCase
     public function test_overlapping_parallel_batches_commit_only_one_complete_batch(): void
     {
         $firstApprover = $this->createApprover();
-        $secondApprover = $this->createUser('YULMAI RIDO WINANDA', $firstApprover->role_id);
+        $secondApprover = $this->grantKmApprovalAccess(
+            $this->createUser('YULMAI RIDO WINANDA', $firstApprover->role_id),
+        );
         $owner = $this->createUser('Pemilik Paralel');
         $category = KmKategori::factory()->create();
         $documents = $this->pendingDocuments(3, $owner)->sortBy('id')->values();
@@ -337,7 +339,9 @@ final class KmBulkApprovalTest extends KmTestCase
     {
         $role = Role::query()->create(['role' => 'KM APPROVER']);
 
-        return $this->createUser('MUGI PRAMONO', $role->getKey());
+        return $this->grantKmApprovalAccess(
+            $this->createUser('KM Bulk Approver', $role->getKey()),
+        );
     }
 
     private function createUser(string $name, ?int $roleId = null): User

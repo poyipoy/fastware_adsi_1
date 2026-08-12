@@ -34,7 +34,12 @@ class UpdateKmDocumentRequest extends FormRequest
             'id' => ['required', 'integer', 'exists:km_pengajuans,id'],
             'judul' => ['required', 'string', 'max:255'],
             'keterangan' => ['required', 'string', 'max:3000'],
-            'file' => [$filePresenceRule, 'file', 'mimes:pdf,ppt,pptx', 'max:12048'],
+            'file' => [
+                $filePresenceRule,
+                'file',
+                'mimes:pdf,ppt,pptx',
+                'max:'.(int) config('knowledge_management.upload.maximum_kilobytes', 51_200),
+            ],
         ], KmDocumentAuthoringRules::rules($ownerId));
     }
 

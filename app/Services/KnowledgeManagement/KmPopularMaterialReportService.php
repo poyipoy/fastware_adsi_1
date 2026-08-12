@@ -150,7 +150,7 @@ class KmPopularMaterialReportService
 
     private function authorize(User $actor): void
     {
-        if (! $this->access->canApprove($actor)) {
+        if (! $this->access->canAccessKnowledgeOversight($actor)) {
             throw new AuthorizationException('Anda tidak berhak melihat laporan materi populer.');
         }
     }

@@ -11,7 +11,7 @@
 @endpush
 
 @section('content')
-<x-km.shell active="submissions">
+<x-km.shell>
     <x-km.page-header
         title="Pengajuan Saya"
         description="Kelola draf dan kirim materi pengetahuan Anda untuk persetujuan.">
@@ -79,7 +79,20 @@
                                 <tr>
                                     <td>{{ $km->firstItem() + $loop->index }}</td>
                                     <td>{{ $item->user?->name ?? '-' }}</td>
-                                    <td><span class="km-table-title">{{ $item->judul }}</span></td>
+                                    <td>
+                                        <span class="km-table-title">{{ $item->judul }}</span>
+                                        @if ($item->currentVersion)
+                                            <span class="badge text-bg-light border ms-1">
+                                                v{{ $item->currentVersion->number() }}
+                                            </span>
+                                        @endif
+                                        @if ($item->processingState() === 'pending_processing')
+                                            <span class="d-block text-warning-emphasis small mt-1">
+                                                <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                                                Menunggu konversi
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td><x-km.status-badge :status="$item->status" /></td>
                                     <td>
                                         <div class="km-action-group text-nowrap">
@@ -88,6 +101,14 @@
                                                     data-km-edit="{{ $item->id }}" title="Edit"
                                                     aria-label="Edit draf {{ $item->judul }}">
                                                     <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                </button>
+                                            @endcan
+                                            @can('revise', $item)
+                                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                                    data-km-revise="{{ $item->id }}"
+                                                    data-km-document-title="{{ $item->judul }}">
+                                                    <i class="bi bi-files" aria-hidden="true"></i>
+                                                    Buat Revisi
                                                 </button>
                                             @endcan
                                             @can('deactivate', $item)
@@ -99,7 +120,12 @@
                                             @endcan
                                             @can('submit', $item)
                                                 <button type="button" class="btn btn-primary btn-sm"
-                                                    data-km-submit="{{ $item->id }}" title="Kirim untuk persetujuan"
+                                                    data-km-submit="{{ $item->id }}" title="{{ $item->isReadyForSubmission()
+                                                        ? 'Kirim untuk persetujuan'
+                                                        : ($item->isOfficeFile() && $item->processingState() === 'ready'
+                                                            ? 'Submission Office belum diaktifkan administrator'
+                                                            : 'File masih menunggu konversi') }}"
+                                                    @disabled(! $item->isReadyForSubmission())
                                                     aria-label="Kirim {{ $item->judul }} untuk persetujuan">
                                                     <i class="bi bi-send" aria-hidden="true"></i>
                                                     Kirim
@@ -119,15 +145,14 @@
 
 <div class="modal fade" id="kmModal" tabindex="-1" aria-labelledby="kmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
-        <div class="modal-content">
+        <form action="{{ route('storeKM') }}" method="POST" enctype="multipart/form-data"
+            class="modal-content" id="km-create-form" data-km-submit-protection>
+            @csrf
             <div class="modal-header">
                 <h2 class="modal-title fs-5" id="kmModalLabel">Buat Draf KM</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
-            <form action="{{ route('storeKM') }}" method="POST" enctype="multipart/form-data"
-                id="km-create-form" data-km-submit-protection>
-                @csrf
-                <div class="modal-body">
+            <div class="modal-body">
                     <div class="mb-3">
                         <label for="judul" class="form-label">
                             Judul <span class="km-field-required" aria-hidden="true">*</span>
@@ -158,7 +183,7 @@
                             id="file" name="file" accept=".ppt,.pptx,.pdf" required
                             aria-describedby="file-help @error('file') file-error @enderror"
                             @error('file') aria-invalid="true" @enderror>
-                        <div class="form-text" id="file-help">PDF mendukung preview dan thumbnail otomatis. PPT/PPTX hanya dapat diunduh.</div>
+                        <div class="form-text" id="file-help">PDF diproses untuk pratinjau dan thumbnail otomatis. PPT/PPTX dapat dipratinjau setelah konversi selesai; file asli tidak dapat diunduh.</div>
                         @error('file')
                             <div class="invalid-feedback" id="file-error">{{ $message }}</div>
                         @enderror
@@ -176,8 +201,11 @@
                     <div class="mb-3">
                         <label for="km-tags-input" class="form-label">Tag</label>
                         <div class="km-tag-container" data-km-tag-picker>
-                            <input type="text" id="km-tags-input" class="form-control" maxlength="50" placeholder="Ketik lalu tekan Enter atau koma">
+                            <input type="text" id="km-tags-input" class="form-control" maxlength="50"
+                                placeholder="Ketik lalu tekan Enter atau koma" aria-describedby="km-tags-feedback">
                         </div>
+                        <div id="km-tags-feedback" class="km-tag-feedback" data-km-tag-feedback
+                            role="status" aria-live="polite" hidden></div>
                         <input type="hidden" id="km-tags-csv" name="tags_csv" value="{{ old('tags_csv') }}">
                     </div>
                     <div class="mb-3 km-coauthor-picker" data-km-coauthor-picker="create">
@@ -187,32 +215,30 @@
                         <div class="d-flex flex-wrap gap-1 mt-2" data-km-coauthor-selected></div>
                         <div data-km-coauthor-inputs></div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg" aria-hidden="true"></i>
-                        Simpan Draf
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                    Simpan Draf
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
 <div class="modal fade" id="editKmModal" tabindex="-1" aria-labelledby="editKmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
-        <div class="modal-content">
+        <form action="{{ route('updateKM') }}" method="POST" enctype="multipart/form-data"
+            class="modal-content" id="km-draft-form" data-km-submit-protection>
+            @csrf
+            @method('PUT')
+            <input type="hidden" id="editId" name="id">
             <div class="modal-header">
                 <h2 class="modal-title fs-5" id="editKmModalLabel">Edit Draf KM</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
-            <form action="{{ route('updateKM') }}" method="POST" enctype="multipart/form-data"
-                id="km-draft-form" data-km-submit-protection>
-                @csrf
-                @method('PUT')
-                <input type="hidden" id="editId" name="id">
-                <div class="modal-body">
+            <div class="modal-body">
                     <div class="mb-3">
                         <label for="editJudul" class="form-label">
                             Judul <span class="km-field-required" aria-hidden="true">*</span>
@@ -247,8 +273,11 @@
                     <div class="mb-3">
                         <label for="edit-km-tags-input" class="form-label">Tag</label>
                         <div class="km-tag-container" data-km-tag-picker>
-                            <input type="text" id="edit-km-tags-input" class="form-control" maxlength="50" placeholder="Ketik lalu tekan Enter atau koma">
+                            <input type="text" id="edit-km-tags-input" class="form-control" maxlength="50"
+                                placeholder="Ketik lalu tekan Enter atau koma" aria-describedby="edit-km-tags-feedback">
                         </div>
+                        <div id="edit-km-tags-feedback" class="km-tag-feedback" data-km-tag-feedback
+                            role="status" aria-live="polite" hidden></div>
                         <input type="hidden" id="edit-km-tags-csv" name="tags_csv" value="">
                     </div>
                     <div class="mb-3 km-coauthor-picker" data-km-coauthor-picker="edit">
@@ -263,20 +292,49 @@
                         <label for="editFile" id="editFileLabel" class="form-label">File Pengajuan</label>
                         <input class="form-control" type="file" id="editFile" name="file" accept=".ppt,.pptx,.pdf">
                         <div id="editFileLink" class="mt-2" hidden>
-                            <a id="editFileName" href="#">Unduh file tersimpan</a>
+                            <span id="editFileName" class="fw-semibold"></span>
                         </div>
                         <div id="editFileState" class="form-text"></div>
                     </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="kmRevisionModal" tabindex="-1" aria-labelledby="kmRevisionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" class="modal-content" id="km-revision-form">
+            @csrf
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="kmRevisionModalLabel">Buat Revisi Major</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" id="km-revision-document-title"></p>
+                <label for="km-revision-note" class="form-label">
+                    Catatan perubahan <span class="km-field-required" aria-hidden="true">*</span>
+                </label>
+                <textarea class="form-control" id="km-revision-note" name="change_note" rows="4"
+                    minlength="5" maxlength="2000" required></textarea>
+                <div class="form-text">
+                    Revisi file atau isi akan menaikkan versi major dan wajib melalui persetujuan ulang.
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg" aria-hidden="true"></i>
-                        Simpan Perubahan
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-files" aria-hidden="true"></i>
+                    Buat Draf Revisi
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -288,6 +346,7 @@ window.kmAuthoringConfig = {
     submitUrl: @js(route('kirimKM', ['id' => '__KM_ID__'])),
     autosaveUrl: @js(route('km.documents.autosave', ['kmPengajuan' => '__KM_ID__'])),
     coAuthorOptionsUrl: @js(route('km.co-authors.options')),
+    majorRevisionUrl: @js(route('km.document-versions.major.store', ['kmPengajuan' => '__KM_ID__'])),
 };
 </script>
 </x-km.shell>

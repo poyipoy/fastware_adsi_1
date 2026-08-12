@@ -303,7 +303,9 @@
 .om-table-wrap {
     max-height: 70vh;
     overflow: auto;
-    overscroll-behavior: contain;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+    position: relative;
     border: 1px solid var(--om-gray-200);
     border-radius: var(--om-radius);
 }
@@ -330,6 +332,11 @@
     position: sticky;
     top: 0;
     z-index: 3;
+}
+
+.om-table thead tr:first-child th {
+    z-index: 4;
+    background: var(--om-gray-50);
 }
 
 .om-table tbody td {
@@ -363,8 +370,23 @@
     text-transform: none !important;
     letter-spacing: 0 !important;
     position: sticky;
-    top: 40px;
+    top: var(--om-table-header-height, 0px);
     z-index: 2;
+}
+
+/* DataTables' sorting selectors are more specific than the base sticky rule. */
+table.om-table.dataTable thead > tr:first-child > th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 4 !important;
+    background: var(--om-gray-50) !important;
+}
+
+table.om-table.dataTable thead > tr.om-filter-row > th {
+    position: sticky !important;
+    top: var(--om-table-header-height, 0px) !important;
+    z-index: 3 !important;
+    background: #fff !important;
 }
 
 .om-inline-filter {
@@ -571,24 +593,6 @@
     color: #fff;
 }
 
-.om-action-btn--edit {
-    border-color: var(--om-warning);
-    color: var(--om-warning);
-}
-.om-action-btn--edit:hover {
-    background: var(--om-warning);
-    color: #fff;
-}
-
-.om-action-btn--delete {
-    border-color: var(--om-danger);
-    color: var(--om-danger);
-}
-.om-action-btn--delete:hover {
-    background: var(--om-danger);
-    color: #fff;
-}
-
 /* --------------------------------------------------------------------------
    7. Detail Page — Sections
    -------------------------------------------------------------------------- */
@@ -750,7 +754,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   9. Import Modal Refinement
+   9. Modal refinement
    -------------------------------------------------------------------------- */
 .om-modal .modal-content {
     border: none;
@@ -916,7 +920,7 @@
             </div>
         @endif
 
-        @if ($errors->any())
+        @if (!empty($errors) && $errors->any())
             <div class="alert alert-danger alert-dismissible fade show om-alert" role="alert">
                 <ul class="mb-0">
                     @foreach ($errors->all() as $error)
@@ -980,9 +984,11 @@
                                 <i class="bi bi-download me-1"></i>Template
                             </a>
                         @endif
-                        <a href="{{ route('outstanding-materials.export') }}" id="btnOutstandingExport" class="btn btn-success">
-                            <i class="bi bi-file-earmark-excel me-1"></i>Export
-                        </a>
+                        @if ($canExportOutstandingMaterials)
+                            <a href="{{ route('outstanding-materials.export') }}" id="btnOutstandingExport" class="btn btn-success">
+                                <i class="bi bi-file-earmark-excel me-1"></i>Export
+                            </a>
+                        @endif
                         <button type="button" id="btnOutstandingReset" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
                         </button>
@@ -1169,40 +1175,34 @@
 <div class="modal fade om-modal" id="importOutstandingMaterialModal" tabindex="-1" aria-labelledby="importOutstandingMaterialModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="outstandingImportForm" method="POST" action="{{ route('outstanding-materials.import') }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('outstanding-materials.import') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title" id="importOutstandingMaterialModalLabel">
-                        <i class="bi bi-upload me-2"></i>Import Outstanding Material
-                    </h5>
+                    <h5 class="modal-title" id="importOutstandingMaterialModalLabel"><i class="bi bi-upload me-2"></i>Import Multi-Invoice</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="import_file" class="form-label">File Excel / CSV</label>
-                        <input type="file" class="form-control" id="import_file" name="import_file" accept=".xlsx,.xls,.csv" required>
-                    </div>
-                    <p class="text-muted small mb-0">
-                        <i class="bi bi-info-circle me-1"></i>Data diproses mulai dari baris setelah header. Kolom NO diabaikan.
-                    </p>
+                    <label for="import_file" class="form-label">File Excel / CSV</label>
+                    <input type="file" class="form-control" id="import_file" name="import_file" accept=".xlsx,.xls,.csv" required>
+                    <div class="form-text mt-2">Satu file dapat berisi banyak supplier, invoice, dan material. Setiap baris valid akan ditambahkan, termasuk material yang datanya sama persis. Preview akan muncul sebelum data disimpan.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-upload me-1"></i>Import
-                    </button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i>Preview Import</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 @endif
+
 @endsection
 
 @push('scripts')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="{{ asset('assets/js/outstanding-materials/sticky-table.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.DataTable === 'undefined') {
@@ -1211,9 +1211,6 @@
         }
 
         const $ = window.jQuery;
-        const importForm = $('#outstandingImportForm');
-        const exportButton = $('#btnOutstandingExport');
-        let confirmedImportSubmit = false;
         let table = null;
 
         function formatDisplayDate(value) {
@@ -1255,7 +1252,7 @@
 
         function reloadWithFilters() {
             table.ajax.reload();
-            exportButton.attr('href', exportUrl());
+            syncExportUrl();
         }
 
         function currentFilters() {
@@ -1284,7 +1281,12 @@
             };
         }
 
-        function exportUrl() {
+        function syncExportUrl() {
+            const exportButton = $('#btnOutstandingExport');
+            if (!exportButton.length) {
+                return;
+            }
+
             const params = new URLSearchParams();
             Object.entries(currentFilters()).forEach(function ([key, value]) {
                 if (value) {
@@ -1293,7 +1295,10 @@
             });
 
             const query = params.toString();
-            return '{{ route('outstanding-materials.export') }}' + (query ? '?' + query : '');
+            exportButton.attr(
+                'href',
+                '{{ route('outstanding-materials.export') }}' + (query ? '?' + query : ''),
+            );
         }
 
         table = $('#outstandingMaterialTable').DataTable({
@@ -1362,6 +1367,11 @@
                 $('[data-bs-toggle="tooltip"]').tooltip();
             },
         });
+
+        if (window.OutstandingMaterialStickyTable) {
+            window.OutstandingMaterialStickyTable.install('#outstandingMaterialTable');
+        }
+        syncExportUrl();
 
         // Prevent sort when clicking on filter controls
         $('#outstandingMaterialTable thead').on('click keydown', 'input, select, button', function (event) {
@@ -1436,74 +1446,8 @@
             reloadWithFilters();
         });
 
-        // Export sync
-        table.on('search.dt draw.dt', function () {
-            exportButton.attr('href', exportUrl());
-        });
+        table.on('search.dt draw.dt', syncExportUrl);
 
-        exportButton.on('click', function () {
-            exportButton.attr('href', exportUrl());
-        });
-
-        // Delete confirmation
-        $(document).on('submit', '.js-outstanding-delete-form', function (event) {
-            event.preventDefault();
-
-            const form = this;
-            const supplier = form.dataset.supplier || '-';
-            const type = form.dataset.type || '-';
-            const invoice = form.dataset.invoice || '-';
-
-            Swal.fire({
-                title: 'Delete Outstanding Material?',
-                html: 'Data <strong>' + supplier + '</strong> - <strong>' + type + '</strong><br>Invoice: <strong>' + invoice + '</strong>',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel',
-            }).then(function (result) {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        });
-
-        // Import confirmation
-        importForm.on('submit', function (event) {
-            if (confirmedImportSubmit) {
-                return;
-            }
-
-            event.preventDefault();
-
-            const fileInput = document.getElementById('import_file');
-            if (!fileInput || fileInput.files.length === 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'File belum dipilih',
-                    text: 'Pilih file Excel atau CSV terlebih dahulu sebelum import.',
-                });
-                return;
-            }
-
-            Swal.fire({
-                title: 'Import Outstanding Material?',
-                text: 'Data valid dari file akan ditambahkan sebagai record baru.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#2563eb',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Yes, import',
-                cancelButtonText: 'Cancel',
-            }).then(function (result) {
-                if (result.isConfirmed) {
-                    confirmedImportSubmit = true;
-                    importForm.get(0).submit();
-                }
-            });
-        });
     });
 </script>
 @endpush

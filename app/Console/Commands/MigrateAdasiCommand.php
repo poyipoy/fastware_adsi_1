@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserJobPosition;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class MigrateAdasiCommand extends Command
 {
@@ -213,7 +214,7 @@ class MigrateAdasiCommand extends Command
                         // Assign user to job position
                         UserJobPosition::updateOrCreate(
                             ['user_id' => $user->id, 'mst_job_position_id' => $jobPos->id],
-                            ['is_active' => true]
+                            $this->activeJobPositionAssignmentValues(),
                         );
                     } else {
                         $this->line("  -> Maps to Job Position: $jpName (Sec: $sName, Dept: $dName)");
@@ -336,6 +337,20 @@ class MigrateAdasiCommand extends Command
         }
 
         return 0;
+    }
+
+    /** @return array<string, bool|string> */
+    protected function activeJobPositionAssignmentValues(): array
+    {
+        $values = ['is_active' => true];
+        if (Schema::hasColumn('user_job_positions', 'effective_from')) {
+            $values['effective_from'] = today()->toDateString();
+        }
+        if (Schema::hasColumn('user_job_positions', 'assignment_source')) {
+            $values['assignment_source'] = 'adasi_import';
+        }
+
+        return $values;
     }
 
     private function normalizeName($name)

@@ -3,13 +3,17 @@
 namespace App\Services\KnowledgeManagement;
 
 use App\Enums\KnowledgeManagement\KmThumbnailStatus;
-use App\Jobs\KnowledgeManagement\GenerateKmPdfThumbnail;
 use App\Models\KmPengajuan;
+use App\Models\KmDocumentVersion;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class KmFileService
@@ -109,26 +113,6 @@ class KmFileService
         ];
     }
 
-    /**
-     * Dispatch thumbnail setelah response; pemanggil harus sudah menyelesaikan transaction dokumen.
-     */
-    public function dispatchThumbnailJobIfPdf(KmPengajuan $document): void
-    {
-        if (! in_array($document->file_mime_type, ['application/pdf', 'application/x-pdf'], true)) {
-            return;
-        }
-
-        if (empty($document->file_checksum_sha256)) {
-            return;
-        }
-
-        GenerateKmPdfThumbnail::dispatch(
-            $document->getKey(),
-            (string) $document->file_checksum_sha256
-        )->onQueue((string) config('knowledge_management.queue.thumbnail_job', 'default'))
-            ->afterResponse();
-    }
-
     private function hasPdfSignature(UploadedFile $file): bool
     {
         $stream = fopen($file->getPathname(), 'rb');
@@ -152,10 +136,22 @@ class KmFileService
 
     public function streamPreview(KmPengajuan $document): BinaryFileResponse
     {
+        if (Schema::hasTable('km_document_versions')) {
+            $versionId = $document->published_version_id ?? $document->current_version_id;
+            if ($versionId !== null) {
+                $version = KmDocumentVersion::query()->find($versionId);
+                if ($version === null) {
+                    abort(404, 'Versi dokumen tidak tersedia.');
+                }
+
+                return $this->streamVersionPreview($version);
+            }
+        }
+
         $path = $this->verifiedLocalPath($document);
 
         if (! $document->isPreviewableFile()) {
-            abort(415, 'Preview hanya tersedia untuk dokumen PDF. Gunakan tombol download.');
+            abort(415, 'Preview hanya tersedia untuk dokumen PDF. Unduhan dinonaktifkan.');
         }
 
         $response = response()->file($path, $this->securityHeaders($document));
@@ -168,12 +164,53 @@ class KmFileService
         return $response;
     }
 
-    public function streamDownload(KmPengajuan $document): BinaryFileResponse
+    public function streamVersionPreview(KmDocumentVersion $version): BinaryFileResponse
     {
+        if (! $version->isReady()) {
+            abort(415, 'Versi dokumen belum siap dipratinjau.');
+        }
+        $path = $this->verifiedVersionPdfPath($version);
+        $name = pathinfo((string) $version->original_name, PATHINFO_FILENAME);
+        $name = preg_replace('/[\x00-\x1F\x7F]+/u', '', basename($name)) ?: 'dokumen-km-'.$version->km_pengajuan_id;
+        $response = response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'Pragma' => 'no-cache',
+        ]);
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE, $name.'.pdf');
+        $response->setPrivate();
+
+        return $response;
+    }
+
+    public function streamAdminRecovery(
+        KmDocumentVersion $version,
+        User $actor,
+        string $reason,
+        string $requestId,
+    ): BinaryFileResponse {
+        if ($version->processing_status !== \App\Enums\KnowledgeManagement\KmProcessingStatus::FAILED
+            || $version->antivirus_status !== 'clean') {
+            abort(409, 'Recovery hanya tersedia untuk file bersih yang gagal diproses.');
+        }
+        $path = $this->verifiedVersionOriginalPath($version);
+        DB::table('km_document_recovery_audits')->insert([
+            'document_version_id' => $version->getKey(),
+            'actor_id' => $actor->getKey(),
+            'reason' => trim($reason),
+            'checksum_sha256' => $version->original_checksum_sha256,
+            'request_id' => $requestId,
+            'created_at' => now(),
+        ]);
         $response = response()->download(
-            $this->verifiedLocalPath($document),
-            $this->safeDownloadName($document),
-            $this->securityHeaders($document),
+            $path,
+            basename((string) $version->original_name),
+            [
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, no-store, max-age=0',
+                'Pragma' => 'no-cache',
+            ],
         );
         $response->setPrivate();
 
@@ -200,6 +237,58 @@ class KmFileService
         return $path;
     }
 
+    private function verifiedVersionPdfPath(KmDocumentVersion $version): string
+    {
+        if ($version->normalized_pdf_disk !== self::DISK
+            || ! is_string($version->normalized_pdf_path)
+            || ! $this->isSafeVersionPdfPath($version)
+            || ! Storage::disk(self::DISK)->exists($version->normalized_pdf_path)) {
+            abort(404, 'PDF versi tidak tersedia pada private storage.');
+        }
+        $path = Storage::disk(self::DISK)->path($version->normalized_pdf_path);
+        $checksum = hash_file('sha256', $path);
+        if ($checksum === false
+            || ! is_string($version->normalized_pdf_checksum_sha256)
+            || ! hash_equals($version->normalized_pdf_checksum_sha256, $checksum)) {
+            abort(409, 'Checksum PDF versi tidak sesuai.');
+        }
+
+        return $path;
+    }
+
+    private function verifiedVersionOriginalPath(KmDocumentVersion $version): string
+    {
+        if ($version->original_disk !== self::DISK
+            || ! is_string($version->original_path)
+            || ! $this->isSafePrivatePath($version->original_path, (int) $version->km_pengajuan_id)
+            || ! Storage::disk(self::DISK)->exists($version->original_path)) {
+            abort(404, 'File original versi tidak tersedia.');
+        }
+        $path = Storage::disk(self::DISK)->path($version->original_path);
+        $checksum = hash_file('sha256', $path);
+        if ($checksum === false
+            || ! is_string($version->original_checksum_sha256)
+            || ! hash_equals($version->original_checksum_sha256, $checksum)) {
+            abort(409, 'Checksum file original versi tidak sesuai.');
+        }
+
+        return $path;
+    }
+
+    private function isSafeVersionPdfPath(KmDocumentVersion $version): bool
+    {
+        $path = str_replace('\\', '/', (string) $version->normalized_pdf_path);
+        if ($path === (string) $version->original_path) {
+            return $this->isSafePrivatePath($path, (int) $version->km_pengajuan_id);
+        }
+
+        return preg_match(
+            '#^documents/'.preg_quote((string) $version->km_pengajuan_id, '#')
+            .'/versions/'.preg_quote((string) $version->getKey(), '#').'/normalized\.pdf$#',
+            $path,
+        ) === 1;
+    }
+
     /**
      * @return array<string, string>
      */
@@ -213,6 +302,17 @@ class KmFileService
             'Cache-Control' => 'private, no-store, max-age=0',
             'Pragma' => 'no-cache',
         ];
+    }
+
+    public function hasVerifiedVersionPdf(KmDocumentVersion $version): bool
+    {
+        try {
+            $this->verifiedVersionPdfPath($version);
+
+            return true;
+        } catch (HttpExceptionInterface) {
+            return false;
+        }
     }
 
     private function safeDownloadName(KmPengajuan $document): string

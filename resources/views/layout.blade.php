@@ -128,7 +128,7 @@
         }
     </style>
 
-<body>
+<body class="@yield('bodyClass')">
     <header id="header" class="fixed-top">
         <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
             @csrf
@@ -169,41 +169,7 @@
                         @endif
 
                         <!-- Dropdown Dashboard -->
-                        @if (in_array(auth()->user()->name, [
-                                'ADMINSTRATOR',
-                                'ANDI SIMPONI',
-                                'MUGI PRAMONO',                                
-                                'ADHI PRASETIYO',
-                                'AHMAD RIDWAN',
-                                'ANDIK TOTOK SISWOYO',
-                                'ARY RODJO PRASETYO',
-                                'DANIA ISNAWATI',
-                                'DINA NIMAS AYU NAWAWULAN PRIHANTINI',
-                                'DWI KUNTORO',
-                                'HARDI SAPUTRA',
-                                'HUSEIN ABDULLAH',
-                                'ILHAM CHOLID',
-                                'JESSICA PAUNE',
-                                'JUN JOHAMIN PD',
-                                'KUSTIONO',
-                                'LINA UNIARSIH',
-                                'M. RIDWAN GUNAWAN',
-                                'MARTINUS CAHYO RAHASTO',
-                                'MUHAMMAD MAHBUB',
-                                'NUR DWITA SURA WIJAYA',
-                                'PUTRI ANINDIA',
-                                'RAGIL ISHA RAHMANTO',
-                                'RICHARDUS CHRISTIAN',                                
-                                'SENDY PRABOWO',
-                                'SITI MARIA ULFA',
-                                'WULYO EKO PRASETYO',
-                                'YAN WELEM MANGINSELA',
-                                'YULMAI RIDO WINANDA',
-                                'YUNASIS PALGUNADI',
-                                'ABDUR RAHMAN AL FAAIZ',
-                                'SONY STIAWAN',
-                                'HERLIANA',
-                            ]))
+                        @if (data_get($dashboardMenu, 'dashboard.visible', false))
 
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle font-si" href="#" id="navbarDropdown2"
@@ -363,6 +329,9 @@
                                         <li><a class="dropdown-item" href="{{ route('dashboardSS') }}">Sumbang
                                                 Saran</a>
                                         </li>
+                                    @endif
+
+                                    @if (collect(data_get($dashboardMenu, 'dashboard.items', []))->contains('key', 'knowledge_management'))
                                         <li><a class="dropdown-item" href="{{ route('dsKnowlege') }}">Knowledge
                                                 Management</a></li>
                                     @endif
@@ -381,32 +350,70 @@
                                                 Barang</a></li>
                                     @endif
 
-                                    <li>
-                                        <a class="dropdown-item" href="{{ route('dashboardTCPD') }}">Dashboard TCPD</a>
-                                    </li>
+                                    @if (collect(data_get($dashboardMenu, 'dashboard.items', []))->contains('key', 'dashboard_tcpd'))
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('dashboardTCPD') }}">Dashboard TCPD</a>
+                                        </li>
+                                    @endif
 
-                                    <li>
-                                        <a class="dropdown-item" href="{{ route('feedback.dashboard') }}">Dashboard Feedback</a>
-                                    </li>
+                                    @if (data_get($dashboardMenu, 'dashboard.show_legacy_items', false))
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('feedback.dashboard') }}">Dashboard Feedback</a>
+                                        </li>
+                                    @endif
 
-                                    <li>
-                                        <a class="dropdown-item dropdown-toggle" href="#" id="bopmDropdown"
-                                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                            Dashboard Price Material
-                                        </a>
-                                        <ul class="dropdown-menu" aria-labelledby="bopmDropdown">
-                                            <li>
-                                                <a class="dropdown-item" href="{{ route('bopm.dashboard.index') }}">
-                                                    Price Material DAIDO
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </li>
+                                    @if (data_get($dashboardMenu, 'dashboard.show_legacy_items', false)
+                                        || collect(data_get($dashboardMenu, 'dashboard.items', []))->contains('key', 'dashboard_bopm'))
+                                        <li>
+                                            <a class="dropdown-item dropdown-toggle" href="#" id="bopmDropdown"
+                                                role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                Dashboard Price Material
+                                            </a>
+                                            <ul class="dropdown-menu" aria-labelledby="bopmDropdown">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('bopm.dashboard.index') }}">
+                                                        Price Material DAIDO
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    @endif
 
-                                    <li><a class="dropdown-item" href="{{ route('salesvisit.dashboard') }}">Dashboard Sales Visit</a></li>
+                                    @if (data_get($dashboardMenu, 'dashboard.show_legacy_items', false))
+                                        <li><a class="dropdown-item" href="{{ route('salesvisit.dashboard') }}">Dashboard Sales Visit</a></li>
+                                    @endif
 
                                     {{-- <li><a class="dropdown-item" href="{{ route('reportpatrol') }}">Safety Patrol</a>
                                 </li> --}}
+                                </ul>
+                            </li>
+                        @endif
+                        @php
+                            $warehouseMenuVisible = auth()->check() && (
+                                Gate::allows('warehouse.dashboard.view')
+                                || Gate::allows('warehouse.stock-in.create')
+                                || Gate::allows('warehouse.stock-out.create')
+                                || Gate::allows('warehouse.master.manage')
+                                || Gate::allows('warehouse.transaction.view')
+                                || Gate::allows('warehouse.report.export')
+                            );
+                        @endphp
+                        @if ($warehouseMenuVisible)
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle font-si {{ request()->routeIs('warehouse.*') ? 'active' : '' }}"
+                                    href="#" id="warehouseNavbarDropdown" role="button" data-bs-toggle="dropdown"
+                                    aria-expanded="{{ request()->routeIs('warehouse.*') ? 'true' : 'false' }}">
+                                    Warehouse
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="warehouseNavbarDropdown">
+                                    @can('warehouse.dashboard.view')
+                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.dashboard') ? 'active' : '' }}"
+                                                href="{{ route('warehouse.dashboard') }}">Dashboard Consumable</a></li>
+                                    @endcan
+                                    @if (Gate::allows('warehouse.stock-in.create') || Gate::allows('warehouse.stock-out.create'))
+                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.*') ? 'active' : '' }}"
+                                                href="{{ route('warehouse.transactions.create') }}">Form Stock In/Out</a></li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif
@@ -1205,8 +1212,10 @@
 
                                 @php
                                     $itemCodeUserName = auth()->user()->name ?? '';
-                                    $itemCodeCanForm = \App\Enums\ProcurementMenuAccessGroup::ITEM_CODE_FORM->hasAccess($itemCodeUserName);
+                                    $itemCodeCanForm = \App\Enums\ProcurementMenuAccessGroup::ITEM_CODE_FORM->hasAccess($itemCodeUserName)
+                                        || \App\Enums\ProcurementMenuAccessGroup::ITEM_CODE_SPECIAL_REQUESTER->hasAccess($itemCodeUserName);
                                     $itemCodeCanApproval = \App\Enums\ProcurementMenuAccessGroup::ITEM_CODE_APPROVAL->hasAccess($itemCodeUserName);
+                                    $itemCodeCanPriceReview = \App\Enums\ProcurementMenuAccessGroup::ITEM_CODE_PRICE_REVIEWER->hasAccess($itemCodeUserName);
                                 @endphp
                                 <li>
                                     <a class="dropdown-item dropdown-toggle" href="#" id="childDropdown"
@@ -1223,10 +1232,15 @@
                                             <li><a class="dropdown-item" href="{{ route('item-code.approval') }}">Persetujuan
                                                     Item Code</a></li>
                                         @endif
+
+                                        @if ($itemCodeCanPriceReview)
+                                            <li><a class="dropdown-item" href="{{ route('item-code.price-review.index') }}">
+                                                    Review Harga Mamik</a></li>
+                                        @endif
                                     </ul>
                                 </li>
 
-                                @if (\App\Enums\ProcurementMenuAccessGroup::OUTSTANDING_MATERIAL->hasAccess(Auth::user()->name))
+                                @if (app(\App\Services\OutstandingMaterialAccessService::class)->canView(Auth::user()))
                                     <li><a class="dropdown-item" href="{{ route('outstanding-materials.index') }}">Outstanding Material</a></li>
                                 @endif
 
@@ -1873,7 +1887,7 @@
             </div>
         </nav>
     </header>
-    @yield('content');
+    @yield('content')
 
     <!-- ======= Footer ======= -->
     <footer id="footer" class="footer">

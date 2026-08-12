@@ -33,17 +33,17 @@ function updateButton(button, bookmarked) {
 }
 
 function showError(button, message) {
-    const footer = button.closest('.card-footer');
-    if (! footer) {
+    const card = button.closest('.km-document-card');
+    if (! card) {
         return;
     }
 
-    let error = footer.parentElement.querySelector('.km-bookmark-error');
+    let error = card.querySelector('.km-bookmark-error');
     if (! error) {
         error = document.createElement('div');
         error.className = 'km-bookmark-error alert alert-danger py-1 px-2 m-2 small';
         error.setAttribute('role', 'alert');
-        footer.before(error);
+        card.querySelector('.card-body')?.prepend(error);
     }
     error.textContent = message;
 }

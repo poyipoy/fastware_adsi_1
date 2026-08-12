@@ -133,7 +133,7 @@ final class KmPdfViewerTest extends KmTestCase
         $this->assertTrue($response->isRedirect() || $response->status() === 401);
     }
 
-    public function test_authenticated_user_can_download_published_pdf(): void
+    public function test_authenticated_user_cannot_download_published_pdf(): void
     {
         $owner = $this->makeEmployee('DL Owner');
         $reader = $this->makeEmployee('DL Reader');
@@ -141,9 +141,8 @@ final class KmPdfViewerTest extends KmTestCase
 
         $response = $this->actingAs($reader)->get(route('km.documents.download', $document));
 
-        $response->assertOk();
-        $this->assertStringStartsWith('attachment;', (string) $response->headers->get('Content-Disposition'));
-        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertForbidden();
+        $this->assertFalse($response->headers->has('Content-Disposition'));
     }
 
     public function test_guest_cannot_access_download_endpoint(): void
@@ -226,7 +225,7 @@ final class KmPdfViewerTest extends KmTestCase
         $response->assertForbidden();
     }
 
-    public function test_pdf_viewer_uses_one_local_vite_entry_without_progress_logic(): void
+    public function test_pdf_viewer_uses_one_local_vite_entry_with_server_synced_progress(): void
     {
         $package = json_decode(file_get_contents(base_path('package.json')), true, flags: JSON_THROW_ON_ERROR);
         $view = file_get_contents(resource_path('views/dashboard/dsKnowlege.blade.php'));
@@ -235,7 +234,10 @@ final class KmPdfViewerTest extends KmTestCase
 
         $this->assertSame('2.14.305', $package['dependencies']['pdfjs-dist']);
         $this->assertStringContainsString('pdf.worker.min.js?url', $viewer);
-        $this->assertStringNotContainsString('progressUrl', $viewer);
+        $this->assertStringContainsString("method: 'PATCH'", $viewer);
+        $this->assertStringContainsString("document.visibilityState === 'visible'", $viewer);
+        $this->assertStringContainsString('hasReadingLease()', $viewer);
+        $this->assertStringContainsString('completionEligible', $viewer);
         $this->assertStringNotContainsString('openKmDocument', $viewer);
         $this->assertStringContainsString('resources/js/km/dashboard.js', $view);
         $this->assertStringNotContainsString("resources/js/km/pdf-viewer.js'", $view);

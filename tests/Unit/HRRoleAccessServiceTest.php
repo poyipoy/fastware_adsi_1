@@ -9,58 +9,66 @@ use PHPUnit\Framework\TestCase;
 
 class HRRoleAccessServiceTest extends TestCase
 {
-    private HRRoleAccessService $service;
-
-    protected function setUp(): void
+    public function test_only_configured_user_ids_have_full_hr_access(): void
     {
-        parent::setUp();
+        $service = new HRRoleAccessService();
 
-        $this->service = new HRRoleAccessService();
+        $this->assertTrue($service->hasFullAccess($this->user(1, 'ADMINSTRATOR')));
+        $this->assertTrue($service->hasFullAccess($this->user(91, 'SITI MARIA ULFA')));
+        $this->assertFalse($service->hasFullAccess($this->user(99, 'OTHER ADMIN')));
+        $this->assertFalse($service->hasFullAccess(null));
     }
 
-    public function test_section_head_can_only_access_kasie_competency_level(): void
+    public function test_competency_matrix_is_derived_from_active_organization_level(): void
     {
-        $user = $this->userWithRole('MUGI PRAMONO', 'SC Logistics & QC Sec Head', 17);
+        $service = new FakeHRRoleAccessService();
 
-        $this->assertTrue($this->service->canAccessCompetencyLevel($user, 'kasie'));
-        $this->assertFalse($this->service->canAccessCompetencyLevel($user, 'kadept'));
-        $this->assertFalse($this->service->canAccessCompetencyLevel($user, 'hr'));
+        $sectionHead = $this->user(20, 'SECTION HEAD');
+        $departmentHead = $this->user(21, 'DEPARTMENT HEAD');
+        $divisionHead = $this->user(22, 'DIVISION HEAD');
+        $staff = $this->user(23, 'STAFF');
+
+        $this->assertTrue($service->canAccessCompetencyLevel($sectionHead, 'kasie'));
+        $this->assertFalse($service->canAccessCompetencyLevel($sectionHead, 'kadept'));
+        $this->assertTrue($service->canAccessCompetencyLevel($departmentHead, 'kasie'));
+        $this->assertTrue($service->canAccessCompetencyLevel($departmentHead, 'kadept'));
+        $this->assertTrue($service->canAccessCompetencyLevel($divisionHead, 'divhead'));
+        $this->assertFalse($service->canAccessCompetencyLevel($staff, 'kasie'));
     }
 
-    public function test_department_head_can_only_access_kadept_competency_level(): void
+    public function test_role_prefix_check_is_case_and_whitespace_normalized(): void
     {
-        $user = $this->userWithRole('ARY RODJO PRASETYO', 'DH Production Dept Head', 4);
+        $service = new HRRoleAccessService();
+        $user = $this->user(20, 'ANY', '  sc Logistics Sec Head  ');
 
-        $this->assertFalse($this->service->canAccessCompetencyLevel($user, 'kasie'));
-        $this->assertTrue($this->service->canAccessCompetencyLevel($user, 'kadept'));
-        $this->assertFalse($this->service->canAccessCompetencyLevel($user, 'hr'));
+        $this->assertTrue($service->roleStartsWith($user, 'SC'));
+        $this->assertFalse($service->roleStartsWith($user, 'DH'));
     }
 
-    public function test_foreman_and_user_roles_do_not_access_kasie_or_kadept_levels(): void
+    private function user(int $id, string $name, string $role = 'UR Staff'): User
     {
-        $foreman = $this->userWithRole('FOREMAN USER', 'FM QC Foreman', 13);
-        $staff = $this->userWithRole('STAFF USER', 'UR Admin', 54);
-
-        $this->assertFalse($this->service->canAccessCompetencyLevel($foreman, 'kasie'));
-        $this->assertFalse($this->service->canAccessCompetencyLevel($foreman, 'kadept'));
-        $this->assertFalse($this->service->canAccessCompetencyLevel($staff, 'kasie'));
-        $this->assertFalse($this->service->canAccessCompetencyLevel($staff, 'kadept'));
-    }
-
-    public function test_full_access_user_can_access_all_competency_levels(): void
-    {
-        $user = $this->userWithRole('JESSICA PAUNE', 'UR HRGA', 99);
-
-        $this->assertTrue($this->service->canAccessCompetencyLevel($user, 'kasie'));
-        $this->assertTrue($this->service->canAccessCompetencyLevel($user, 'kadept'));
-        $this->assertTrue($this->service->canAccessCompetencyLevel($user, 'hr'));
-    }
-
-    private function userWithRole(string $name, string $roleName, int $roleId): User
-    {
-        $user = new User(['name' => $name, 'role_id' => $roleId]);
-        $user->setRelation('roles', new Role(['role' => $roleName]));
+        $user = new User(['name' => $name]);
+        $user->id = $id;
+        $user->setRelation('roles', new Role(['role' => $role]));
 
         return $user;
+    }
+}
+
+class FakeHRRoleAccessService extends HRRoleAccessService
+{
+    public function isKaSie(?User $user): bool
+    {
+        return $user?->id === 20;
+    }
+
+    public function isKaDept(?User $user): bool
+    {
+        return $user?->id === 21;
+    }
+
+    public function isDivHead(?User $user): bool
+    {
+        return $user?->id === 22;
     }
 }

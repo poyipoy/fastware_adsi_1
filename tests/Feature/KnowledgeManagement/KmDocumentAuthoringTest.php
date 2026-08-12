@@ -25,13 +25,13 @@ class KmDocumentAuthoringTest extends KmTestCase
 
         $this->owner = User::factory()->create([
             'role_id' => $roleId,
-            'is_active' => true,
+            'is_active' => false,
             'km_total_poin' => 0,
         ]);
 
         $this->coAuthorCandidate = User::factory()->create([
             'role_id' => $roleId,
-            'is_active' => true,
+            'is_active' => false,
             'km_total_poin' => 0,
         ]);
 
@@ -211,7 +211,7 @@ class KmDocumentAuthoringTest extends KmTestCase
         $admin = User::factory()->create([
             'id' => 91,
             'role_id' => $this->owner->role_id,
-            'is_active' => true,
+            'is_active' => false,
         ]);
 
         $this->actingAs($admin)
@@ -224,7 +224,7 @@ class KmDocumentAuthoringTest extends KmTestCase
     {
         $inactive = User::factory()->create([
             'role_id' => $this->owner->role_id,
-            'is_active' => false,
+            'is_active' => true,
         ]);
 
         $this->actingAs($this->owner)
@@ -337,6 +337,32 @@ class KmDocumentAuthoringTest extends KmTestCase
             ->getJson(route('km.co-authors.options', ['document_id' => $this->draft->getKey()]))
             ->assertForbidden();
 
+        $additionalCandidates = User::factory()->count(24)->create([
+            'role_id' => $this->owner->role_id,
+            'is_active' => false,
+            'km_total_poin' => 0,
+        ]);
+        $blockedCandidate = User::factory()->create([
+            'role_id' => $this->owner->role_id,
+            'is_active' => true,
+            'km_total_poin' => 0,
+        ]);
+
+        $allOptions = $this->actingAs($this->owner)
+            ->getJson(route('km.co-authors.options', [
+                'document_id' => $this->draft->getKey(),
+            ]));
+        $expectedActiveCount = User::query()
+            ->where('is_active', false)
+            ->whereKeyNot($this->owner->getKey())
+            ->count();
+        $allOptions->assertOk()->assertJsonCount($expectedActiveCount, 'data');
+        $allIds = collect($allOptions->json('data'))->pluck('id');
+        $this->assertTrue($allIds->contains($this->coAuthorCandidate->getKey()));
+        $this->assertTrue($allIds->contains($additionalCandidates->last()->getKey()));
+        $this->assertFalse($allIds->contains($this->owner->getKey()));
+        $this->assertFalse($allIds->contains($blockedCandidate->getKey()));
+
         $response = $this->actingAs($this->owner)
             ->getJson(route('km.co-authors.options', [
                 'document_id' => $this->draft->getKey(),
@@ -347,6 +373,5 @@ class KmDocumentAuthoringTest extends KmTestCase
         $ids = collect($response->json('data'))->pluck('id');
         $this->assertTrue($ids->contains($this->coAuthorCandidate->getKey()));
         $this->assertFalse($ids->contains($this->owner->getKey()));
-        $this->assertLessThanOrEqual(20, $ids->count());
     }
 }

@@ -12,9 +12,38 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('km:send-approval-reminders')
+            ->weekdays()
+            ->at('08:00')
+            ->withoutOverlapping();
+
+        $schedule->command('km:reconcile-points')
+            ->dailyAt('08:15')
+            ->withoutOverlapping();
+
+        $schedule->command('km:process-pending-documents --limit=1')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+        $schedule->command('km:cleanup-temporary-files')
+            ->hourly()
+            ->withoutOverlapping();
+
+        $schedule->command('km:dispatch-publication-notifications --limit=5')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
+
+        $schedule->command('km:send-assignment-reminders')
+            ->dailyAt('08:30')
+            ->withoutOverlapping();
+
+        $schedule->command('km:sync-hris --limit=50')
+            ->hourly()
+            ->when(static fn (): bool => (bool) config('knowledge_management.hris.enabled', false)
+                && collect(config('knowledge_management.hris.gates', []))->every(static fn ($gate): bool => (bool) $gate))
+            ->withoutOverlapping();
     }
-    
+
     /**
      * The application's route middleware.
      *

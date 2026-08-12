@@ -26,7 +26,7 @@ class KmCoAuthorOptionsController extends Controller
 
         $users = User::query()
             ->select(['id', 'name', 'email'])
-            ->where('is_active', true)
+            ->where('is_active', false)
             ->whereKeyNot($ownerId)
             ->when($request->validated('q'), function ($query, string $value): void {
                 $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value).'%';
@@ -38,7 +38,7 @@ class KmCoAuthorOptionsController extends Controller
                 });
             })
             ->orderBy('name')
-            ->limit(20)
+            ->orderBy('id')
             ->get();
 
         return response()->json(['data' => $users]);

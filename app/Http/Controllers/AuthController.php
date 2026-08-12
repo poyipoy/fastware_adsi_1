@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-// use App\Models\TcJobPosition; // DISABLED
 use App\Models\TcPeopleDevelopment;
+use App\Services\HR\TrainingEvaluationService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly TrainingEvaluationService $trainingEvaluation,
+    ) {
+    }
+
     // showpagelogin
     public function showLoginForm()
     {
@@ -26,21 +32,58 @@ class AuthController extends Controller
         $role = $user->roles;
         $jobPositions = $user->jobPositions;
 
-        // Query TcPeopleDevelopment untuk pengguna yang sedang login
-        $dataTcPeopleDevelopment = TcPeopleDevelopment::where('id_user', $user->id)
+        $dataTcPeopleDevelopment = TcPeopleDevelopment::query()
+            ->with([
+                'user:id,npk,name',
+                'participants:id,npk,name',
+                'section:id,name',
+            ])
             ->where('status_2', 'Done')
-            ->get();
+            ->where(function (Builder $query) use ($user): void {
+                $query
+                    ->where(function (Builder $training) use ($user): void {
+                        $training
+                            ->where(function (Builder $regular): void {
+                                $regular
+                                    ->where('is_sharing_knowledge', false)
+                                    ->orWhereNull('is_sharing_knowledge');
+                            })
+                            ->where('id_user', $user->id);
+                    })
+                    ->orWhere(function (Builder $sharing) use ($user): void {
+                        $sharing
+                            ->where('is_sharing_knowledge', true)
+                            ->whereNotNull('dievaluasi')
+                            ->where('dievaluasi', '<>', '')
+                            ->whereNotNull('tgl_pengajuan')
+                            ->where(function (Builder $participant) use ($user): void {
+                                $participant
+                                    ->whereHas('participants', fn (Builder $users) => $users->whereKey($user->id))
+                                    ->orWhere(function (Builder $legacy) use ($user): void {
+                                        $legacy
+                                            ->whereDoesntHave('participants')
+                                            ->where('id_user', $user->id);
+                                    });
+                            });
+                    });
+            })
+            ->latest('id')
+            ->get()
+            ->map(fn (TcPeopleDevelopment $training): array => $this->trainingEvaluation->payload($training));
 
         return view('auth.dataDiri', compact('user', 'role', 'jobPositions', 'dataTcPeopleDevelopment'));
     }
 
     public function showEvaluasiPDF($id)
     {
-        // Ambil data evaluasi beserta data user terkait
-        $data = TcPeopleDevelopment::with('user')->findOrFail($id);
+        $data = TcPeopleDevelopment::with([
+            'user:id,npk,name',
+            'participants:id,npk,name',
+            'section:id,name',
+        ])->findOrFail($id);
+        $this->trainingEvaluation->assertCanViewResult(Auth::user(), $data);
 
-        // Return JSON response
-        return response()->json($data);
+        return response()->json($this->trainingEvaluation->payload($data));
     }
 
     public function login(Request $request)

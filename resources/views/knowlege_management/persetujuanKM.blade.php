@@ -31,7 +31,7 @@
         }
     @endphp
 
-    <x-km.shell active="approvals">
+    <x-km.shell>
         <div data-km-approval-page
             data-detail-url-template="{{ route('showPersetujuan', ['id' => '__KM_ID__']) }}">
             <x-km.page-header
@@ -52,7 +52,7 @@
                     <div class="km-panel__header">
                         <div>
                             <h2 class="km-panel__title" id="km-approval-list-title">Antrean Persetujuan</h2>
-                            <p class="text-muted small mb-0">Kategori dipilih per dokumen sebelum batch disetujui.</p>
+                            <p class="text-muted small mb-0">Kategori dipilih per dokumen sebelum batch disetujui. SLA antrean dihitung dalam hari kerja Senin–Jumat.</p>
                         </div>
                         @if (! $km->isEmpty())
                             <span class="text-muted small">{{ $km->total() }} dokumen</span>
@@ -128,6 +128,18 @@
                                         <th scope="col">Judul</th>
                                         <th scope="col" style="min-width: 220px;">Kategori batch</th>
                                         <th scope="col">Status</th>
+                                        <th scope="col" aria-sort="{{ $approvalSort === 'oldest' ? 'ascending' : 'descending' }}">
+                                            <a class="km-sort-link" href="{{ route('persetujuanKM', [
+                                                ...request()->except(['sort', 'page']),
+                                                'sort' => $approvalSort === 'oldest' ? 'newest' : 'oldest',
+                                            ]) }}">
+                                                Menunggu
+                                                <i class="bi {{ $approvalSort === 'oldest' ? 'bi-sort-up' : 'bi-sort-down' }}" aria-hidden="true"></i>
+                                                <span class="visually-hidden">
+                                                    {{ $approvalSort === 'oldest' ? 'Urutkan terbaru lebih dahulu' : 'Urutkan terlama lebih dahulu' }}
+                                                </span>
+                                            </a>
+                                        </th>
                                         <th scope="col">Aksi</th>
                                     </tr>
                                 </thead>
@@ -180,6 +192,21 @@
                                             </td>
                                             <td>
                                                 <x-km.status-badge :status="$item->status" />
+                                            </td>
+                                            <td>
+                                                @if ($isPendingApproval)
+                                                    <span class="d-block">{{ (int) $item->waiting_working_days }} hari kerja</span>
+                                                    @if ($item->approval_overdue)
+                                                        <span class="km-status km-status--overdue mt-1">
+                                                            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                                                            Terlambat
+                                                        </span>
+                                                    @else
+                                                        <span class="km-table-meta">Dalam SLA</span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-wrap gap-1">
@@ -311,6 +338,7 @@
                                         <button type="button" id="editFileButton" class="btn btn-outline-primary btn-sm">
                                             Tampilkan Buku
                                         </button>
+                                        <div id="editFileState" class="form-text"></div>
                                     </div>
 
                                     <div class="mb-3">
@@ -354,6 +382,34 @@
                                             @enderror
                                         @endif
                                     </div>
+
+                                    <fieldset class="border rounded-2 p-3 mb-3">
+                                        <input type="hidden" name="organization_targets_submitted" value="1">
+                                        <legend class="float-none w-auto px-1 fs-6 mb-1">Target organisasi <span class="fw-normal text-muted">(opsional)</span></legend>
+                                        <p class="form-text mt-0">Kosongkan keduanya agar materi mengikuti audience saja. Jika dipilih, pengguna harus cocok dengan sedikitnya satu departemen atau posisi.</p>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="editTargetDepartments" class="form-label">Departemen</label>
+                                                <select id="editTargetDepartments" name="target_department_ids[]" class="form-select" multiple size="5">
+                                                    @foreach ($departments as $department)
+                                                        <option value="{{ $department->id }}" @selected(in_array((int) $department->id, array_map('intval', old('target_department_ids', [])), true))>
+                                                            {{ $department->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="editTargetJobPositions" class="form-label">Job position</label>
+                                                <select id="editTargetJobPositions" name="target_job_position_ids[]" class="form-select" multiple size="5">
+                                                    @foreach ($jobPositions as $jobPosition)
+                                                        <option value="{{ $jobPosition->id }}" @selected(in_array((int) $jobPosition->id, array_map('intval', old('target_job_position_ids', [])), true))>
+                                                            {{ $jobPosition->position_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </fieldset>
 
                                     <div class="mb-3" id="rejectReasonGroup"
                                         @if ($oldApprovalAction !== 'rejected') hidden @endif>

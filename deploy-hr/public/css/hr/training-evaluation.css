@@ -1,0 +1,85 @@
+.training-evaluation-page {
+    max-width: 1080px;
+    padding-bottom: 72px;
+}
+
+.training-evaluation-page .evaluation-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+}
+
+.training-evaluation-page .evaluation-section {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--bs-light);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+}
+
+.training-evaluation-page .participant-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0;
+    list-style: none;
+}
+
+.training-evaluation-page .participant-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 44px;
+    padding: 0.625rem 0.75rem;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    overflow-wrap: anywhere;
+}
+
+.training-evaluation-page .evaluation-readonly {
+    min-height: 44px;
+    padding: 0.625rem 0.75rem;
+    color: var(--bs-secondary-color);
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+}
+
+.training-evaluation-page .participant-signature-list {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.training-evaluation-page .participant-signature-list > div + div {
+    margin-top: 0.375rem;
+}
+
+.training-evaluation-page .evaluation-action,
+.training-evaluation-page .form-control,
+.training-evaluation-page .form-select {
+    min-height: 44px;
+}
+
+.training-evaluation-page .form-control:focus,
+.training-evaluation-page .form-select:focus,
+.training-evaluation-page .evaluation-action:focus-visible {
+    outline: 3px solid rgba(var(--bs-primary-rgb), 0.25);
+    outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+    .training-evaluation-page .participant-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .training-evaluation-page *,
+    .training-evaluation-page *::before,
+    .training-evaluation-page *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

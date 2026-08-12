@@ -5,13 +5,21 @@ namespace App\Services;
 use App\Enums\HRMenuAccessGroup;
 use App\Models\User;
 use App\Services\HR\HRRoleAccessService;
+use App\Services\KnowledgeManagement\KmAccessService;
 use Illuminate\Support\Collection;
 
 class HRMenuService
 {
-    public function __construct(private ?HRRoleAccessService $roleAccess = null)
-    {
-        $this->roleAccess ??= new HRRoleAccessService();
+    private HRRoleAccessService $roleAccess;
+
+    private KmAccessService $kmAccess;
+
+    public function __construct(
+        ?HRRoleAccessService $roleAccess = null,
+        ?KmAccessService $kmAccess = null,
+    ) {
+        $this->roleAccess = $roleAccess ?? new HRRoleAccessService();
+        $this->kmAccess = $kmAccess ?? new KmAccessService($this->roleAccess);
     }
 
     /**
@@ -62,8 +70,8 @@ class HRMenuService
      */
     private function getKnowledgeManagementMenu(User $user): array
     {
-        $showForm = HRMenuAccessGroup::KNOWLEDGE_MANAGEMENT->hasAccessForUser($user);
-        $showApproval = HRMenuAccessGroup::KNOWLEDGE_APPROVAL->hasAccessForUser($user);
+        $showForm = $this->kmAccess->canCreate($user);
+        $showApproval = $this->kmAccess->canApprove($user);
 
         return [
             'show_form' => $showForm,
@@ -166,7 +174,8 @@ class HRMenuService
      */
     public function hasAnyAccess(User $user): bool
     {
-        return HRMenuAccessGroup::HR_MAIN->hasAccessForUser($user)
+        return $this->kmAccess->canCreate($user)
+            || HRMenuAccessGroup::HR_MAIN->hasAccessForUser($user)
             || $this->canAccessCompetencyLevel($user, 'kasie')
             || $this->canAccessCompetencyLevel($user, 'kadept')
             || $this->canAccessCompetencyLevel($user, 'hr')

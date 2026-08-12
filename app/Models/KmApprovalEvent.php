@@ -16,6 +16,7 @@ class KmApprovalEvent extends Model
 
     protected $fillable = [
         'km_pengajuan_id',
+        'document_version_id',
         'actor_id',
         'actor_name',
         'actor_role_snapshot',
@@ -30,6 +31,7 @@ class KmApprovalEvent extends Model
     protected $casts = [
         'action' => KmApprovalAction::class,
         'from_status' => 'integer',
+        'document_version_id' => 'integer',
         'to_status' => 'integer',
         'metadata' => 'array',
         'acted_at' => 'datetime',
@@ -54,5 +56,10 @@ class KmApprovalEvent extends Model
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    public function documentVersion(): BelongsTo
+    {
+        return $this->belongsTo(KmDocumentVersion::class, 'document_version_id');
     }
 }

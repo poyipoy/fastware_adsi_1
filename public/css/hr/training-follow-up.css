@@ -1,0 +1,98 @@
+.training-followup-toolbar {
+    --training-toolbar-top: 68px;
+    position: sticky;
+    top: var(--training-toolbar-top);
+    z-index: 990;
+    background: #fff;
+    border: 1px solid #dbe2ea;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.training-followup-toolbar .btn,
+.training-followup-toolbar .form-control,
+.training-followup-toolbar .form-select {
+    min-height: 44px;
+}
+
+.training-followup-table-viewport {
+    --training-head-first-height: 48px;
+    max-height: min(72vh, 760px);
+    overflow: auto;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+}
+
+.training-followup-table-viewport .styled-table { overflow: visible; }
+
+.training-followup-table-viewport .styled-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #e2e8f0;
+}
+
+.training-followup-table-viewport .styled-table thead tr:nth-child(2) th {
+    top: var(--training-head-first-height);
+    z-index: 19;
+}
+
+.training-followup-table-viewport .ts-dropdown,
+.participant-user-wrapper .ts-dropdown,
+.training-followup-participant-dropdown { z-index: 1080; }
+
+.participant-user-wrapper .ts-control,
+.training-followup-inline-participant .ts-control {
+    min-height: 44px;
+}
+
+.training-followup-inline-participant {
+    min-width: 260px;
+}
+
+.training-followup-inline-participant .ts-wrapper {
+    width: 100%;
+}
+
+.training-followup-inline-participant .ts-control {
+    align-items: center;
+    border-color: #ced4da;
+    font-size: 0.875rem;
+}
+
+.training-followup-inline-participant .ts-wrapper.focus .ts-control {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.training-followup-inline-participant .form-text {
+    margin-top: 0.35rem;
+    color: #667085;
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+#btn-table-view,
+#btn-card-view {
+    min-width: 72px;
+    min-height: 44px;
+}
+
+#btn-table-view:focus-visible,
+#btn-card-view:focus-visible,
+.training-followup-toolbar :focus-visible {
+    outline: 3px solid rgba(13, 110, 253, 0.35);
+    outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+    .training-followup-toolbar { margin-inline: -4px; }
+    .training-followup-table-viewport { max-height: 68vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .training-followup-toolbar *,
+    .training-followup-table-viewport * {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

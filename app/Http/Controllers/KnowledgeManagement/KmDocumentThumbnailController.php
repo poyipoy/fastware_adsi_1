@@ -19,13 +19,20 @@ class KmDocumentThumbnailController extends Controller
         $this->authorize('view', $kmPengajuan);
 
         $disk = (string) config('knowledge_management.thumbnail.disk', 'km_private');
-        $isPdf = in_array($kmPengajuan->file_mime_type, ['application/pdf', 'application/x-pdf'], true);
+        $previewVersion = $kmPengajuan->resolvedPreviewVersion();
+        $hasVersionPointer = $kmPengajuan->published_version_id !== null
+            || $kmPengajuan->current_version_id !== null;
+        $isPreviewSourceReady = $hasVersionPointer
+            ? ($previewVersion?->isReady() ?? false)
+            : in_array($kmPengajuan->file_mime_type, ['application/pdf', 'application/x-pdf'], true);
+        $previewChecksum = $previewVersion?->normalized_pdf_checksum_sha256
+            ?? $kmPengajuan->file_checksum_sha256;
         $path = (string) $kmPengajuan->thumbnail_path;
         $checksumMatches = is_string($kmPengajuan->thumbnail_source_checksum)
-            && is_string($kmPengajuan->file_checksum_sha256)
-            && hash_equals($kmPengajuan->file_checksum_sha256, $kmPengajuan->thumbnail_source_checksum);
+            && is_string($previewChecksum)
+            && hash_equals($previewChecksum, $kmPengajuan->thumbnail_source_checksum);
 
-        if ($isPdf
+        if ($isPreviewSourceReady
             && $kmPengajuan->thumbnail_status === KmThumbnailStatus::READY
             && $thumbnails->isSafeThumbnailPath($path, (int) $kmPengajuan->getKey())
             && $checksumMatches

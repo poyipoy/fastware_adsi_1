@@ -7,7 +7,9 @@ use App\Enums\KnowledgeManagement\KmThumbnailStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class KmPengajuan extends Model
 {
@@ -17,11 +19,12 @@ class KmPengajuan extends Model
 
     protected $fillable = [
         'id_user',
+        'current_version_id',
+        'published_version_id',
         'id_km_kategori',
         'judul',
         'keterangan',
         'posisi',
-        'sub_kategori',
         'image',
         'file',
         'file_name',
@@ -50,6 +53,8 @@ class KmPengajuan extends Model
 
     protected $casts = [
         'id_user' => 'integer',
+        'current_version_id' => 'integer',
+        'published_version_id' => 'integer',
         'id_km_kategori' => 'integer',
         'status' => 'integer',
         'file_size_bytes' => 'integer',
@@ -70,8 +75,110 @@ class KmPengajuan extends Model
 
     public function isPreviewableFile(): bool
     {
+        if ($this->published_version_id !== null || $this->current_version_id !== null) {
+            return $this->resolvedPreviewVersion()?->isReady() ?? false;
+        }
+
         return $this->hasCompletePrivateFileMetadata()
             && in_array($this->file_mime_type, ['application/pdf', 'application/x-pdf'], true);
+    }
+
+    public function resolvedPreviewVersion(): ?KmDocumentVersion
+    {
+        if (! Schema::hasTable('km_document_versions')) {
+            return null;
+        }
+
+        $versionId = $this->published_version_id ?? $this->current_version_id;
+        if ($versionId === null) {
+            return null;
+        }
+
+        if ((int) $this->published_version_id === (int) $versionId
+            && $this->relationLoaded('publishedVersion')) {
+            return $this->publishedVersion;
+        }
+
+        if ((int) $this->current_version_id === (int) $versionId
+            && $this->relationLoaded('currentVersion')) {
+            return $this->currentVersion;
+        }
+
+        return KmDocumentVersion::query()->find($versionId);
+    }
+
+    public function isOfficeFile(): bool
+    {
+        return $this->hasCompletePrivateFileMetadata()
+            && in_array(strtolower(pathinfo((string) $this->file_path, PATHINFO_EXTENSION)), ['ppt', 'pptx'], true);
+    }
+
+    public function isReadyForSubmission(): bool
+    {
+        $version = $this->resolvedCurrentVersion();
+        if ($version !== null) {
+            return $version->isReady()
+                && (! $this->isOfficeFile()
+                    || (bool) config('knowledge_management.upload.office_submission_enabled', false));
+        }
+
+        if ($this->isPreviewableFile()) {
+            return true;
+        }
+
+        return $this->isOfficeFile()
+            && (bool) config('knowledge_management.upload.office_submission_enabled', false);
+    }
+
+    public function processingState(): string
+    {
+        $version = $this->resolvedCurrentVersion();
+        if ($version !== null) {
+            return $version->processing_status->value;
+        }
+
+        if ($this->isPreviewableFile()) {
+            return 'ready';
+        }
+
+        return $this->isOfficeFile() ? 'pending_processing' : 'missing';
+    }
+
+    public function hasEditableDraftVersion(): bool
+    {
+        $version = $this->resolvedCurrentVersion();
+
+        return $version !== null
+            && $version->version_status === \App\Enums\KnowledgeManagement\KmVersionStatus::DRAFT;
+    }
+
+    private function resolvedCurrentVersion(): ?KmDocumentVersion
+    {
+        if ($this->current_version_id === null
+            || ! Schema::hasTable('km_document_versions')) {
+            return null;
+        }
+
+        return $this->relationLoaded('currentVersion')
+            ? $this->currentVersion
+            : $this->currentVersion()->first();
+    }
+
+    public function currentVersion(): BelongsTo
+    {
+        return $this->belongsTo(KmDocumentVersion::class, 'current_version_id');
+    }
+
+    public function publishedVersion(): BelongsTo
+    {
+        return $this->belongsTo(KmDocumentVersion::class, 'published_version_id');
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(KmDocumentVersion::class, 'km_pengajuan_id')
+            ->orderByDesc('version_major')
+            ->orderByDesc('version_minor');
     }
 
     public function hasCompletePrivateFileMetadata(): bool
@@ -156,6 +263,11 @@ class KmPengajuan extends Model
     public function approvalEvents(): HasMany
     {
         return $this->hasMany(KmApprovalEvent::class, 'km_pengajuan_id');
+    }
+
+    public function pointLedgerEntries(): HasMany
+    {
+        return $this->hasMany(KmPointLedgerEntry::class, 'km_pengajuan_id');
     }
 
     /**

@@ -3,9 +3,12 @@
 namespace Tests\Feature\KnowledgeManagement;
 
 use App\Enums\KnowledgeManagement\KmDocumentStatus;
+use App\Enums\KnowledgeManagement\KmReadStatus;
+use App\Models\KmBookmark;
 use App\Models\KmKategori;
 use App\Models\KmLihatBuku;
 use App\Models\KmPengajuan;
+use App\Models\KmTag;
 use App\Models\KmTransaksi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -55,6 +58,8 @@ class KmDashboardFilterTest extends KmTestCase
         $response->assertViewIs('dashboard.dsKnowlege');
         $response->assertViewHas('pengajuans');
         $response->assertViewHas('leaderboard');
+        $response->assertViewHas('workspaceSummary');
+        $response->assertViewHas('leaderboardPosition');
         $response->assertViewHas('kategoris');
         $response->assertViewHas('filters');
     }
@@ -332,5 +337,234 @@ class KmDashboardFilterTest extends KmTestCase
             ->get(route('dsKnowlege', ['unsupported_filter' => 'value']))
             ->assertRedirect()
             ->assertSessionHasErrors('query');
+    }
+
+    /** @test */
+    public function notification_target_parameters_are_allowed_and_still_apply_document_visibility(): void
+    {
+        $visible = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'posisi' => 'All Employee',
+        ]);
+        $restricted = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'posisi' => 'HR',
+        ]);
+
+        $visibleResponse = $this->actingAs($this->regularUser)->get(route('dsKnowlege', [
+            'document' => $visible->getKey(),
+            'insight' => 123,
+        ]));
+        $visibleResponse->assertOk();
+        $this->assertSame(
+            [$visible->getKey()],
+            $visibleResponse->viewData('pengajuans')->pluck('id')->all(),
+        );
+
+        $restrictedResponse = $this->get(route('dsKnowlege', [
+            'document' => $restricted->getKey(),
+        ]));
+        $restrictedResponse->assertOk();
+        $this->assertSame(0, $restrictedResponse->viewData('pengajuans')->total());
+    }
+
+    /** @test */
+    public function workspace_summary_only_counts_the_viewers_visible_published_activity(): void
+    {
+        $visibleReading = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'posisi' => 'All Employee',
+        ]);
+        $visibleCompleted = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'posisi' => 'All Employee',
+        ]);
+        $restricted = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'posisi' => 'HR',
+        ]);
+        $inactive = KmPengajuan::factory()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'status' => KmDocumentStatus::INACTIVE->value,
+            'posisi' => 'All Employee',
+        ]);
+
+        KmTransaksi::factory()->create([
+            'id_km_pengajuan' => $visibleReading->getKey(),
+            'id_user' => $this->regularUser->getKey(),
+            'status' => KmReadStatus::READING->value,
+        ]);
+        KmTransaksi::factory()->create([
+            'id_km_pengajuan' => $visibleCompleted->getKey(),
+            'id_user' => $this->regularUser->getKey(),
+            'status' => KmReadStatus::COMPLETED->value,
+        ]);
+        KmTransaksi::factory()->create([
+            'id_km_pengajuan' => $restricted->getKey(),
+            'id_user' => $this->regularUser->getKey(),
+            'status' => KmReadStatus::READING->value,
+        ]);
+        KmTransaksi::factory()->create([
+            'id_km_pengajuan' => $inactive->getKey(),
+            'id_user' => $this->regularUser->getKey(),
+            'status' => KmReadStatus::COMPLETED->value,
+        ]);
+        KmTransaksi::factory()->create([
+            'id_km_pengajuan' => $visibleReading->getKey(),
+            'id_user' => $this->adminUser->getKey(),
+            'status' => KmReadStatus::COMPLETED->value,
+        ]);
+        KmBookmark::query()->create([
+            'user_id' => $this->regularUser->getKey(),
+            'km_pengajuan_id' => $visibleReading->getKey(),
+        ]);
+        KmBookmark::query()->create([
+            'user_id' => $this->regularUser->getKey(),
+            'km_pengajuan_id' => $restricted->getKey(),
+        ]);
+        $this->regularUser->update(['km_total_poin' => 37]);
+
+        $response = $this->actingAs($this->regularUser)->get(route('dsKnowlege'));
+
+        $response->assertOk();
+        $this->assertSame([
+            'reading_count' => 1,
+            'completed_count' => 1,
+            'bookmarked_count' => 1,
+            'points' => 37,
+        ], $response->viewData('workspaceSummary'));
+    }
+
+    /** @test */
+    public function dashboard_multi_tag_filter_keeps_checklist_selection_and_individual_removal_links(): void
+    {
+        $safety = KmTag::factory()->create(['name' => 'Safety', 'slug' => 'safety-dashboard']);
+        $quality = KmTag::factory()->create(['name' => 'Quality', 'slug' => 'quality-dashboard']);
+        $finance = KmTag::factory()->create(['name' => 'Finance', 'slug' => 'finance-dashboard']);
+
+        $safetyDocument = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'judul' => 'Panduan Safety',
+            'posisi' => 'All Employee',
+        ]);
+        $qualityDocument = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'judul' => 'Panduan Quality',
+            'posisi' => 'All Employee',
+        ]);
+        $excludedDocument = KmPengajuan::factory()->published()->create([
+            'id_user' => $this->adminUser->getKey(),
+            'judul' => 'Panduan Finance',
+            'posisi' => 'All Employee',
+        ]);
+
+        $safetyDocument->tags()->attach($safety);
+        $qualityDocument->tags()->attach($quality);
+        $excludedDocument->tags()->attach($finance);
+
+        $response = $this->actingAs($this->regularUser)->get(route('dsKnowlege', [
+            'tag_ids' => [$safety->getKey(), $quality->getKey()],
+        ]));
+
+        $response->assertOk()
+            ->assertSee('2 tag dipilih')
+            ->assertSee('Tag: Safety')
+            ->assertSee('Tag: Quality')
+            ->assertSee('name="tag_ids[]"', false);
+
+        $this->assertSame(
+            [$safetyDocument->getKey(), $qualityDocument->getKey()],
+            $response->viewData('pengajuans')->pluck('id')->sort()->values()->all(),
+        );
+
+        $html = $response->getContent();
+        foreach ([$safety, $quality] as $selectedTag) {
+            $this->assertMatchesRegularExpression(
+                '/name="tag_ids\[\]"\s+value="'.preg_quote((string) $selectedTag->getKey(), '/').'"[\s\S]{0,180}?checked/',
+                $html,
+            );
+        }
+
+        $this->assertSame(1, preg_match(
+            '/href="([^"]+)" class="km-filter-chip"\s+aria-label="Hapus filter Tag: Safety"/',
+            $html,
+            $safetyRemoval,
+        ));
+        parse_str((string) parse_url(html_entity_decode($safetyRemoval[1]), PHP_URL_QUERY), $safetyRemovalQuery);
+        $this->assertSame([(string) $quality->getKey()], $safetyRemovalQuery['tag_ids']);
+
+        $this->assertSame(1, preg_match(
+            '/href="([^"]+)" class="km-filter-chip"\s+aria-label="Hapus filter Tag: Quality"/',
+            $html,
+            $qualityRemoval,
+        ));
+        parse_str((string) parse_url(html_entity_decode($qualityRemoval[1]), PHP_URL_QUERY), $qualityRemovalQuery);
+        $this->assertSame([(string) $safety->getKey()], $qualityRemovalQuery['tag_ids']);
+    }
+
+    /** @test */
+    public function dashboard_shortcuts_follow_existing_km_policies(): void
+    {
+        $this->actingAs($this->regularUser)
+            ->get(route('dsKnowlege'))
+            ->assertOk()
+            ->assertSee('Baca Nanti')
+            ->assertSee('Buat Pengajuan')
+            ->assertSee('Pengajuan Saya')
+            ->assertDontSee('href="'.route('persetujuanKM').'"', false)
+            ->assertDontSee('Materi Populer');
+
+        $oversightUser = User::factory()->create([
+            'name' => 'MUGI PRAMONO',
+            'role_id' => $this->regularUser->role_id,
+            'is_active' => true,
+            'km_total_poin' => 0,
+        ]);
+
+        $this->actingAs($oversightUser)
+            ->get(route('dsKnowlege'))
+            ->assertOk()
+            ->assertSee('Buat Pengajuan')
+            ->assertSee('Pengajuan Saya')
+            ->assertDontSee('href="'.route('persetujuanKM').'"', false)
+            ->assertSee('Materi Populer')
+            ->assertSee('Baca Nanti');
+
+        $approver = User::factory()->create([
+            'name' => 'HRGA Legal Approver',
+            'role_id' => $this->regularUser->role_id,
+            'is_active' => false,
+            'km_total_poin' => 0,
+        ]);
+        $this->grantKmApprovalAccess($approver);
+
+        $this->actingAs($approver)
+            ->get(route('dsKnowlege'))
+            ->assertOk()
+            ->assertSee('Buat Pengajuan')
+            ->assertSee('Pengajuan Saya')
+            ->assertSee('Persetujuan')
+            ->assertDontSee('Materi Populer')
+            ->assertSee('Baca Nanti');
+    }
+
+    /** @test */
+    public function global_leaderboard_uses_unique_rank_and_keeps_viewer_position_outside_top_ten(): void
+    {
+        $this->regularUser->update(['km_total_poin' => 10]);
+        $this->adminUser->update(['km_total_poin' => 100]);
+        User::factory()->count(2)->create(['km_total_poin' => 80, 'is_active' => true]);
+        User::factory()->count(8)->create(['km_total_poin' => 20, 'is_active' => true]);
+
+        $response = $this->actingAs($this->regularUser)->get(route('dsKnowlege'));
+
+        $response->assertOk();
+        $leaders = $response->viewData('leaderboard');
+        $this->assertSame([1, 2, 3, 4], $leaders->take(4)->pluck('leaderboard_rank')->all());
+        $this->assertFalse($leaders->contains('id', $this->regularUser->getKey()));
+        $this->assertSame([
+            'rank' => 12,
+            'points' => 10,
+        ], $response->viewData('leaderboardPosition')['global']);
     }
 }

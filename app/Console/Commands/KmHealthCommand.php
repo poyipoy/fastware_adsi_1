@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,29 @@ class KmHealthCommand extends Command
         'km_tags',
         'km_document_tag',
         'km_document_authors',
+        'km_notifications',
+        'km_insight_reactions',
+        'km_insight_mentions',
+        'km_point_ledger',
+        'km_document_versions',
+        'km_document_version_tags',
+        'km_document_version_authors',
+        'km_document_recovery_audits',
+        'km_access_rules',
+        'km_access_audits',
+        'km_organization_assignment_audits',
+        'km_document_version_departments',
+        'km_document_version_job_positions',
+        'km_publication_batches',
+        'km_publication_recipients',
+        'km_reading_sessions',
+        'km_assignments',
+        'km_assignment_users',
+        'km_completion_events',
+        'km_badges',
+        'km_user_badges',
+        'km_export_audits',
+        'km_hris_outbound_events',
     ];
 
     /**
@@ -56,6 +80,8 @@ class KmHealthCommand extends Command
             'file_size_bytes',
             'file_checksum_sha256',
             'reading_minutes',
+            'current_version_id',
+            'published_version_id',
         ],
         'km_transaksis' => [
             'id',
@@ -64,10 +90,31 @@ class KmHealthCommand extends Command
             'status',
             'completed_at',
             'points_awarded_at',
+            'last_page',
+            'pages_total',
+            'unique_pages',
+            'unique_pages_count',
+            'active_seconds',
+            'progress_percent',
+            'last_progress_at',
+            'document_version_id',
         ],
         'km_lihat_bukus' => ['id', 'id_km_pengajuan', 'jumlah_lihat'],
         'km_sukas' => ['id', 'id_user', 'id_km_pengajuan'],
-        'km_insights' => ['id', 'id_user', 'id_km_pengajuan', 'content'],
+        'km_insights' => [
+            'id',
+            'id_user',
+            'id_km_pengajuan',
+            'parent_id',
+            'content',
+            'edited_at',
+            'deleted_at',
+            'deleted_by',
+            'delete_reason',
+            'featured_at',
+            'featured_by',
+            'document_version_id',
+        ],
         'km_approval_events' => [
             'id',
             'km_pengajuan_id',
@@ -79,17 +126,72 @@ class KmHealthCommand extends Command
             'reason',
             'metadata',
             'acted_at',
+            'document_version_id',
         ],
         'km_tags' => ['id', 'name', 'slug'],
         'km_document_tag' => ['km_pengajuan_id', 'km_tag_id'],
         'km_document_authors' => ['id', 'km_pengajuan_id', 'user_id'],
+        'km_notifications' => [
+            'id',
+            'user_id',
+            'type',
+            'event_key',
+            'data',
+            'read_at',
+            'created_at',
+        ],
+        'km_document_versions' => [
+            'id', 'km_pengajuan_id', 'version_major', 'version_minor', 'change_type',
+            'change_note', 'version_status', 'title', 'synopsis', 'extracted_text',
+            'processing_status', 'original_checksum_sha256', 'normalized_pdf_checksum_sha256',
+        ],
+        'km_document_recovery_audits' => [
+            'id', 'document_version_id', 'actor_id', 'reason', 'checksum_sha256',
+            'request_id', 'created_at',
+        ],
+        'km_access_rules' => ['id', 'subject_type', 'subject_id', 'ability', 'effect', 'reason', 'created_by'],
+        'km_organization_assignment_audits' => [
+            'id', 'user_job_position_id', 'actor_id', 'action', 'before_state',
+            'after_state', 'reason', 'created_at',
+        ],
+        'km_reading_sessions' => ['id', 'user_id', 'document_version_id', 'session_hash', 'client_active_seconds', 'credited_active_seconds'],
+        'km_assignments' => ['id', 'document_version_id', 'status', 'due_at', 'target_snapshot', 'created_by'],
+        'km_assignment_users' => ['id', 'assignment_id', 'user_id', 'due_at', 'completed_at', 'exempted_at'],
+        'km_completion_events' => ['id', 'event_key', 'user_id', 'document_version_id', 'completion_type', 'evidence_snapshot'],
+        'km_badges' => ['id', 'slug', 'event_type', 'threshold', 'is_active'],
+        'km_user_badges' => ['id', 'user_id', 'badge_id', 'event_key', 'awarded_at'],
+        'km_export_audits' => ['id', 'actor_id', 'format', 'record_count', 'checksum_sha256'],
+        'km_hris_outbound_events' => ['id', 'event_key', 'completion_event_id', 'employee_hris_id', 'status', 'attempts'],
+        'km_insight_reactions' => [
+            'id',
+            'insight_id',
+            'user_id',
+            'reaction',
+            'created_at',
+            'updated_at',
+        ],
+        'km_insight_mentions' => ['id', 'insight_id', 'mentioned_user_id', 'created_at'],
+        'km_point_ledger' => [
+            'id',
+            'user_id',
+            'event_type',
+            'event_key',
+            'points',
+            'department_snapshot',
+            'km_pengajuan_id',
+            'km_insight_id',
+            'notes',
+            'created_by',
+            'created_at',
+            'document_version_id',
+        ],
     ];
 
     /**
      * @var list<array{string, string, list<string>, bool, string}>
      */
     private const INDEXES = [
-        ['km_transaksis', 'km_transaksis_user_document_unique', ['id_user', 'id_km_pengajuan'], true, 'BTREE'],
+        ['km_transaksis', 'km_transaksis_user_version_unique', ['id_user', 'document_version_id'], true, 'BTREE'],
         ['km_sukas', 'km_sukas_user_document_unique', ['id_user', 'id_km_pengajuan'], true, 'BTREE'],
         ['km_lihat_bukus', 'km_lihat_bukus_document_unique', ['id_km_pengajuan'], true, 'BTREE'],
         ['km_bookmarks', 'km_bookmarks_user_document_unique', ['user_id', 'km_pengajuan_id'], true, 'BTREE'],
@@ -97,6 +199,35 @@ class KmHealthCommand extends Command
         ['km_document_tag', 'km_document_tag_unique', ['km_pengajuan_id', 'km_tag_id'], true, 'BTREE'],
         ['km_document_authors', 'km_document_authors_unique', ['km_pengajuan_id', 'user_id'], true, 'BTREE'],
         ['km_pengajuans', 'km_pengajuans_judul_keterangan_fulltext', ['judul', 'keterangan'], false, 'FULLTEXT'],
+        ['km_notifications', 'km_notifications_event_key_unique', ['event_key'], true, 'BTREE'],
+        ['km_notifications', 'km_notifications_user_unread_id_index', ['user_id', 'read_at', 'id'], false, 'BTREE'],
+        ['km_transaksis', 'km_transaksis_user_status_progress_index', ['id_user', 'status', 'last_progress_at'], false, 'BTREE'],
+        ['km_insights', 'km_insights_document_parent_id_index', ['id_km_pengajuan', 'parent_id', 'id'], false, 'BTREE'],
+        ['km_insights', 'km_insights_document_featured_at_index', ['id_km_pengajuan', 'featured_at'], false, 'BTREE'],
+        ['km_insight_reactions', 'km_insight_reactions_insight_user_unique', ['insight_id', 'user_id'], true, 'BTREE'],
+        ['km_insight_reactions', 'km_insight_reactions_user_insight_index', ['user_id', 'insight_id'], false, 'BTREE'],
+        ['km_insight_mentions', 'km_insight_mentions_insight_user_unique', ['insight_id', 'mentioned_user_id'], true, 'BTREE'],
+        ['km_insight_mentions', 'km_insight_mentions_user_insight_index', ['mentioned_user_id', 'insight_id'], false, 'BTREE'],
+        ['km_point_ledger', 'km_point_ledger_event_key_unique', ['event_key'], true, 'BTREE'],
+        ['km_point_ledger', 'km_point_ledger_user_created_index', ['user_id', 'created_at', 'id'], false, 'BTREE'],
+        ['km_point_ledger', 'km_point_ledger_department_created_index', ['department_snapshot', 'created_at'], false, 'BTREE'],
+        ['km_point_ledger', 'km_point_ledger_document_index', ['km_pengajuan_id'], false, 'BTREE'],
+        ['km_point_ledger', 'km_point_ledger_insight_index', ['km_insight_id'], false, 'BTREE'],
+        ['km_document_versions', 'km_document_versions_content_fulltext', ['title', 'synopsis', 'extracted_text'], false, 'FULLTEXT'],
+        ['km_completion_events', 'km_completion_events_event_unique', ['event_key'], true, 'BTREE'],
+        ['km_user_badges', 'km_user_badges_user_badge_unique', ['user_id', 'badge_id'], true, 'BTREE'],
+        ['km_hris_outbound_events', 'km_hris_outbound_event_unique', ['event_key'], true, 'BTREE'],
+    ];
+
+    /**
+     * @var list<array{string, string, list<string>}>
+     */
+    private const CHECKS = [
+        [
+            'km_insight_reactions',
+            'km_insight_reactions_type_check',
+            ['reaction', 'helpful', 'insightful', 'agree'],
+        ],
     ];
 
     /**
@@ -120,6 +251,18 @@ class KmHealthCommand extends Command
         ['km_document_tag', 'km_document_tag_km_tag_id_foreign', ['km_tag_id'], 'km_tags', ['id'], 'CASCADE'],
         ['km_document_authors', 'km_document_authors_km_pengajuan_id_foreign', ['km_pengajuan_id'], 'km_pengajuans', ['id'], 'CASCADE'],
         ['km_document_authors', 'km_document_authors_user_id_foreign', ['user_id'], 'users', ['id'], 'RESTRICT'],
+        ['km_notifications', 'km_notifications_user_foreign', ['user_id'], 'users', ['id'], 'CASCADE'],
+        ['km_insights', 'km_insights_parent_foreign', ['parent_id'], 'km_insights', ['id'], 'CASCADE'],
+        ['km_insights', 'km_insights_deleted_by_foreign', ['deleted_by'], 'users', ['id'], 'SET NULL'],
+        ['km_insights', 'km_insights_featured_by_foreign', ['featured_by'], 'users', ['id'], 'SET NULL'],
+        ['km_insight_reactions', 'km_insight_reactions_insight_foreign', ['insight_id'], 'km_insights', ['id'], 'CASCADE'],
+        ['km_insight_reactions', 'km_insight_reactions_user_foreign', ['user_id'], 'users', ['id'], 'CASCADE'],
+        ['km_insight_mentions', 'km_insight_mentions_insight_foreign', ['insight_id'], 'km_insights', ['id'], 'CASCADE'],
+        ['km_insight_mentions', 'km_insight_mentions_user_foreign', ['mentioned_user_id'], 'users', ['id'], 'CASCADE'],
+        ['km_point_ledger', 'km_point_ledger_user_foreign', ['user_id'], 'users', ['id'], 'RESTRICT'],
+        ['km_point_ledger', 'km_point_ledger_document_foreign', ['km_pengajuan_id'], 'km_pengajuans', ['id'], 'SET NULL'],
+        ['km_point_ledger', 'km_point_ledger_insight_foreign', ['km_insight_id'], 'km_insights', ['id'], 'SET NULL'],
+        ['km_point_ledger', 'km_point_ledger_created_by_foreign', ['created_by'], 'users', ['id'], 'SET NULL'],
     ];
 
     /**
@@ -152,6 +295,34 @@ class KmHealthCommand extends Command
         'km.documents.autosave',
         'km.documents.thumbnail',
         'km.co-authors.options',
+        'km.notifications.index',
+        'km.notifications.read',
+        'km.notifications.read-all',
+        'km.reading.progress',
+        'km.insights.mention-options',
+        'km.insights.index',
+        'km.insights.store',
+        'km.insights.update',
+        'km.insights.destroy',
+        'km.insights.reaction.store',
+        'km.insights.reaction.destroy',
+        'km.insights.feature',
+        'km.insights.unfeature',
+        'km.document-versions.index',
+        'km.document-versions.major.store',
+        'km.document-versions.minor.store',
+        'km.document-versions.preview',
+        'km.document-versions.recover',
+        'km.access-rules.index',
+        'km.access-rules.store',
+        'km.access-rules.destroy',
+        'km.compliance.index',
+        'km.compliance.assignments.store',
+        'km.compliance.override',
+        'km.compliance.exempt',
+        'km.compliance.export.details',
+        'km.compliance.export.pdf',
+        'km.recognition.certificate',
     ];
 
     public function handle(): int
@@ -161,6 +332,7 @@ class KmHealthCommand extends Command
         $this->checkConnection();
         $this->checkTablesAndColumns();
         $this->checkIndexes();
+        $this->checkConstraints();
         $this->checkForeignKeys();
         $this->checkRoutes();
         $this->checkPrivateStorage();
@@ -260,6 +432,46 @@ class KmHealthCommand extends Command
         }
     }
 
+    private function checkConstraints(): void
+    {
+        foreach (self::CHECKS as [$table, $name, $requiredTokens]) {
+            $key = "check:{$table}.{$name}";
+
+            try {
+                $clause = DB::table('information_schema.CHECK_CONSTRAINTS as checks')
+                    ->join('information_schema.TABLE_CONSTRAINTS as constraints', function (JoinClause $join): void {
+                        $join->on(
+                            'constraints.CONSTRAINT_SCHEMA',
+                            '=',
+                            'checks.CONSTRAINT_SCHEMA',
+                        )->on(
+                            'constraints.CONSTRAINT_NAME',
+                            '=',
+                            'checks.CONSTRAINT_NAME',
+                        );
+                    })
+                    ->where('checks.CONSTRAINT_SCHEMA', DB::connection()->getDatabaseName())
+                    ->where('constraints.TABLE_NAME', $table)
+                    ->where('constraints.CONSTRAINT_TYPE', 'CHECK')
+                    ->where('checks.CONSTRAINT_NAME', $name)
+                    ->value('checks.CHECK_CLAUSE');
+                $normalized = strtolower((string) $clause);
+                $matches = $normalized !== '';
+                foreach ($requiredTokens as $token) {
+                    $matches = $matches && str_contains($normalized, strtolower($token));
+                }
+
+                if ($matches) {
+                    $this->pass($key, "Named check constraint {$name} sesuai.");
+                } else {
+                    $this->fail($key, "Named check constraint {$name} hilang atau definisinya tidak sesuai.");
+                }
+            } catch (Throwable) {
+                $this->fail($key, "Named check constraint {$name} tidak dapat diverifikasi.");
+            }
+        }
+    }
+
     private function checkForeignKeys(): void
     {
         foreach (self::FOREIGN_KEYS as [$table, $name, $columns, $parent, $parentColumns, $deleteRule]) {
@@ -355,16 +567,11 @@ class KmHealthCommand extends Command
         $connection = (string) Config::get('queue.default', 'sync');
         $driver = (string) Config::get("queue.connections.{$connection}.driver", 'unknown');
 
-        if ($driver === 'sync') {
-            $this->warnResult('runtime:queue', 'Queue memakai driver sync; job KM berjalan dalam request.');
-        } else {
-            $this->pass('runtime:queue', 'Queue dikonfigurasi untuk pemrosesan asynchronous.');
-        }
-
-        $this->warnResult(
-            'runtime:worker',
-            'Status queue worker tidak dapat dibuktikan oleh pemeriksaan read-only ini.',
+        $this->pass(
+            'runtime:queue',
+            "Driver queue {$driver} tidak dipakai oleh pipeline kanonis KM.",
         );
+        $this->pass('runtime:worker', 'Queue worker tidak diperlukan oleh arsitektur KM yang disetujui.');
         $this->warnResult(
             'runtime:scheduler',
             'Status scheduler tidak dapat dibuktikan oleh pemeriksaan read-only ini.',

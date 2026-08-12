@@ -18,7 +18,7 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 {
     use RunsKmWorkers;
 
-    public function test_first_completion_awards_category_points_once_and_replay_is_idempotent(): void
+    public function test_first_completion_awards_flat_ledger_points_once_and_replay_is_idempotent(): void
     {
         $owner = $this->createAdministrator();
         $reader = $this->createReader(['km_total_poin' => 7]);
@@ -27,25 +27,32 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 
         $first = $this->actingAs($reader)->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $document->getKey(),
+            'acknowledged' => true,
         ]);
 
         $first->assertOk()->assertJson([
             'success' => true,
             'already_completed' => false,
-            'points_awarded' => 25,
+            'points_awarded' => 5,
         ]);
 
         $transaction = KmTransaksi::query()->sole();
         $this->assertSame($reader->getKey(), $transaction->id_user);
         $this->assertSame($document->getKey(), $transaction->id_km_pengajuan);
         $this->assertSame(KmReadStatus::COMPLETED->value, $transaction->status);
-        $this->assertSame(25, $transaction->poin);
+        $this->assertSame(5, $transaction->poin);
         $this->assertNotNull($transaction->completed_at);
         $this->assertNotNull($transaction->points_awarded_at);
-        $this->assertSame(32, (int) $reader->refresh()->km_total_poin);
+        $this->assertSame(12, (int) $reader->refresh()->km_total_poin);
+        $this->assertDatabaseHas('km_point_ledger', [
+            'user_id' => $reader->getKey(),
+            'event_key' => 'completion:'.$reader->getKey().':'.$document->getKey(),
+            'points' => 5,
+        ]);
 
         $replay = $this->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $document->getKey(),
+            'acknowledged' => true,
         ]);
 
         $replay->assertOk()->assertJson([
@@ -54,8 +61,9 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
             'points_awarded' => 0,
         ]);
         $this->assertSame(1, KmTransaksi::query()->count());
-        $this->assertSame(32, (int) $reader->refresh()->km_total_poin);
-        $this->assertSame(25, (int) KmTransaksi::query()->value('poin'));
+        $this->assertSame(12, (int) $reader->refresh()->km_total_poin);
+        $this->assertSame(5, (int) KmTransaksi::query()->value('poin'));
+        $this->assertSame(1, DB::table('km_point_ledger')->count());
     }
 
     public function test_historical_completed_transaction_is_never_awarded_again(): void
@@ -74,6 +82,7 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 
         $response = $this->actingAs($reader)->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $document->getKey(),
+            'acknowledged' => true,
         ]);
 
         $response->assertOk()->assertJson([
@@ -115,7 +124,8 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 
         $this->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $document->getKey(),
-        ])->assertOk()->assertJsonPath('points_awarded', 12);
+            'acknowledged' => true,
+        ])->assertOk()->assertJsonPath('points_awarded', 5);
 
         $afterCompletion = $this->postJson(route('kmTransaksi.markAsRead'), [
             'id_km_pengajuan' => $document->getKey(),
@@ -130,10 +140,10 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
         $this->assertSame(1, KmTransaksi::query()->count());
         $this->assertSame(1, DB::table('km_lihat_bukus')->count());
         $this->assertSame(3, (int) DB::table('km_lihat_bukus')->value('jumlah_lihat'));
-        $this->assertSame(12, (int) $reader->refresh()->km_total_poin);
+        $this->assertSame(5, (int) $reader->refresh()->km_total_poin);
     }
 
-    public function test_missing_category_rolls_back_transaction_and_point_changes(): void
+    public function test_flat_completion_points_do_not_depend_on_legacy_category_points(): void
     {
         $owner = $this->createAdministrator();
         $reader = $this->createReader(['km_total_poin' => 14]);
@@ -145,19 +155,16 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 
         $response = $this->actingAs($reader)->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $document->getKey(),
+            'acknowledged' => true,
         ]);
 
-        $response->assertStatus(422)->assertJson([
-            'success' => false,
+        $response->assertOk()->assertJson([
+            'success' => true,
             'already_completed' => false,
-            'points_awarded' => 0,
+            'points_awarded' => 5,
         ]);
-        $this->assertStringContainsString(
-            'Kategori',
-            (string) $response->json('message'),
-        );
-        $this->assertSame(0, KmTransaksi::query()->count());
-        $this->assertSame(14, (int) $reader->refresh()->km_total_poin);
+        $this->assertSame(1, KmTransaksi::query()->count());
+        $this->assertSame(19, (int) $reader->refresh()->km_total_poin);
     }
 
     public function test_completion_rejects_invalid_legacy_read_status_without_awarding_points(): void
@@ -178,6 +185,7 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 
         $this->actingAs($reader)->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $document->getKey(),
+            'acknowledged' => true,
         ])->assertUnprocessable()
             ->assertJsonPath('success', false)
             ->assertJsonPath('points_awarded', 0);
@@ -235,14 +243,17 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 
         $this->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $restricted->getKey(),
+            'acknowledged' => true,
         ])->assertUnauthorized();
 
         $this->actingAs($reader)->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => $restricted->getKey(),
+            'acknowledged' => true,
         ])->assertForbidden();
 
         $this->postJson(route('kmTransaksi.saveTransaction'), [
             'id_km_pengajuan' => 999999,
+            'acknowledged' => true,
         ])->assertUnprocessable()->assertJsonValidationErrors('id_km_pengajuan');
 
         $this->assertSame(0, KmTransaksi::query()->count());
@@ -333,25 +344,27 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
         try {
             $response = $this->actingAs($reader)->postJson(route('kmTransaksi.saveTransaction'), [
                 'id_km_pengajuan' => $document->getKey(),
+                'acknowledged' => true,
             ]);
 
             $response->assertOk()->assertJson([
                 'success' => true,
                 'already_completed' => false,
-                'points_awarded' => 31,
+                'points_awarded' => 5,
             ]);
             $this->assertFalse($armed, 'The second-connection race injection was not exercised.');
             $this->assertSame(1, KmTransaksi::query()->count());
             $this->assertSame(KmReadStatus::COMPLETED->value, (int) KmTransaksi::query()->value('status'));
-            $this->assertSame(31, (int) $reader->refresh()->km_total_poin);
+            $this->assertSame(5, (int) $reader->refresh()->km_total_poin);
 
             $this->postJson(route('kmTransaksi.saveTransaction'), [
                 'id_km_pengajuan' => $document->getKey(),
+                'acknowledged' => true,
             ])->assertOk()->assertJson([
                 'already_completed' => true,
                 'points_awarded' => 0,
             ]);
-            $this->assertSame(31, (int) $reader->refresh()->km_total_poin);
+            $this->assertSame(5, (int) $reader->refresh()->km_total_poin);
         } finally {
             $armed = false;
             DB::connection($raceConnection)->statement('SET SESSION FOREIGN_KEY_CHECKS = 1');
@@ -374,14 +387,14 @@ final class KmReadingPointIdempotencyTest extends KmTestCase
 
         $this->assertEqualsCanonicalizing(
             [
-                ['already_completed' => false, 'points_awarded' => 37],
+                ['already_completed' => false, 'points_awarded' => 5],
                 ['already_completed' => true, 'points_awarded' => 0],
             ],
             $results,
         );
         $this->assertSame(1, KmTransaksi::query()->count());
         $this->assertSame(KmReadStatus::COMPLETED->value, (int) KmTransaksi::query()->value('status'));
-        $this->assertSame(37, (int) $reader->refresh()->km_total_poin);
+        $this->assertSame(5, (int) $reader->refresh()->km_total_poin);
     }
 
     private function createAdministrator(): User

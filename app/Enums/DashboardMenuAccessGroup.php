@@ -218,7 +218,7 @@ enum DashboardMenuAccessGroup: string
                 'MARTINUS CAHYO RAHASTO',
                 'VIVIAN ANGELIKA',
             ],
-            self::DASHBOARD_TCPD => [], // Available for all authenticated users
+            self::DASHBOARD_TCPD => [], // Resolved from active organization mapping by DashboardMenuService.
             self::DASHBOARD_BOPM => [
                 'ADMINSTRATOR',
                 'ILYAS NOOR FIRDAUS',
@@ -274,4 +274,3 @@ enum DashboardMenuAccessGroup: string
         return $this->hasAccessByUser($userName);
     }
 }
-

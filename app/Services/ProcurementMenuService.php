@@ -3,18 +3,42 @@
 namespace App\Services;
 
 use App\Enums\ProcurementMenuAccessGroup;
+use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class ProcurementMenuService
 {
+    public function __construct(
+        private ?OutstandingMaterialAccessService $outstandingMaterialAccess = null,
+    ) {
+    }
+
     /**
      * Get Procurement menu structure with access control
      * 
-     * @param string $userName
+     * @param User|string $user
      * @return Collection
      */
-    public function getMenuStructure(string $userName): Collection
+    public function getMenuStructure(User|string $user): Collection
     {
+        $userName = $user instanceof User
+            ? (string) $user->getAttribute('name')
+            : (string) $user;
+
+        $resolvedUser = $user instanceof User
+            ? $user
+            : (Auth::user() instanceof User && (string) Auth::user()->getAttribute('name') === $userName
+                ? Auth::user()
+                : null);
+
+        // String callers retain the legacy whitelist fallback. Authenticated
+        // object callers (the normal web/API path) use the same Sales-aware
+        // capability service as the route middleware.
+        $outstandingAccess = $resolvedUser
+            ? $this->outstandingMaterialAccess()->canView($resolvedUser)
+            : ProcurementMenuAccessGroup::OUTSTANDING_MATERIAL->hasAccess($userName);
+
         $directItems = [
             [
                 'label' => 'Overview FPB',
@@ -29,7 +53,7 @@ class ProcurementMenuService
             [
                 'label' => 'Outstanding Material',
                 'route' => 'outstanding-materials.index',
-                'visible' => ProcurementMenuAccessGroup::OUTSTANDING_MATERIAL->hasAccess($userName),
+                'visible' => $outstandingAccess,
             ],
         ];
 
@@ -53,6 +77,11 @@ class ProcurementMenuService
             'visible' => true, // Always visible if authenticated
             'items' => $items,
         ]);
+    }
+
+    private function outstandingMaterialAccess(): OutstandingMaterialAccessService
+    {
+        return $this->outstandingMaterialAccess ??= new OutstandingMaterialAccessService();
     }
 
     /**

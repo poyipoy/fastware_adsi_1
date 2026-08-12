@@ -22,9 +22,10 @@ final class KmLegacyRouteCompatibilityTest extends KmTestCase
 
         $role = Role::query()->create(['role' => 'KM APPROVER']);
         $this->approver = User::factory()->create([
-            'name' => 'MUGI PRAMONO',
+            'name' => 'KM Route Approver',
             'role_id' => $role->id,
         ]);
+        $this->grantKmApprovalAccess($this->approver);
     }
 
     public function test_pengajuanKM_route_exists(): void

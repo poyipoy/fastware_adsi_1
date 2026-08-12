@@ -7,30 +7,49 @@ use App\Http\Requests\KnowledgeManagement\KmDashboardFilterRequest;
 use App\Models\KmPengajuan;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 
 class KmDashboardQueryService
 {
     public function __construct(
         private readonly KmAccessService $access,
+        private readonly KmMandatoryMaterialService $mandatoryMaterials,
     ) {
     }
 
     public function paginate(KmDashboardFilterRequest $request, User $user): LengthAwarePaginator
     {
+        $versionSearch = Schema::hasTable('km_document_versions')
+            && Schema::hasColumn('km_pengajuans', 'published_version_id');
         $query = KmPengajuan::query()->select('km_pengajuans.*');
+        if ($versionSearch) {
+            $query->leftJoin(
+                'km_document_versions as published_version',
+                'published_version.id',
+                '=',
+                'km_pengajuans.published_version_id',
+            );
+        }
 
         $this->access->applyPublishedVisibility($query, $user);
+
+        if ($request->validated('document') !== null) {
+            $query->whereKey((int) $request->validated('document'));
+        }
 
         $query
             ->with([
                 'kmKategori:id,nama_kategori',
-                'insights.user:id,name',
                 'tags:id,name,slug',
                 'coAuthors:id,name',
+                'currentVersion',
+                'publishedVersion',
+                'publishedVersion.tags:id,name,slug',
+                'publishedVersion.coAuthors:id,name',
                 'kmTransaksi' => fn ($relation) => $relation
                     ->where('id_user', $user->getKey()),
             ])
-            ->withCount('kmSukas')
+            ->withCount(['kmSukas', 'insights'])
             ->withSum('kmLihatBukus as total_views', 'jumlah_lihat')
             ->withExists([
                 'bookmarks as is_bookmarked' => fn ($relation) => $relation
@@ -40,10 +59,28 @@ class KmDashboardQueryService
             ]);
 
         if ($request->hasSearchQuery()) {
-            $query->whereFullText(
-                ['km_pengajuans.judul', 'km_pengajuans.keterangan'],
-                (string) $request->validated('q'),
-            );
+            if ($versionSearch) {
+                $search = (string) $request->validated('q');
+                $query->where(static function ($searchQuery) use ($search): void {
+                    $searchQuery->whereRaw(
+                        'MATCH (`published_version`.`title`, `published_version`.`synopsis`, '
+                        .'`published_version`.`extracted_text`) AGAINST (? IN NATURAL LANGUAGE MODE)',
+                        [$search],
+                    )->orWhere(static function ($legacy) use ($search): void {
+                        $legacy->whereNull('km_pengajuans.published_version_id')
+                            ->whereRaw(
+                                'MATCH (`km_pengajuans`.`judul`, `km_pengajuans`.`keterangan`) '
+                                .'AGAINST (? IN NATURAL LANGUAGE MODE)',
+                                [$search],
+                            );
+                    });
+                });
+            } else {
+                $query->whereFullText(
+                    ['km_pengajuans.judul', 'km_pengajuans.keterangan'],
+                    (string) $request->validated('q'),
+                );
+            }
         }
 
         $tagIds = $request->validated('tag_ids') ?? [];
@@ -83,12 +120,28 @@ class KmDashboardQueryService
                 ->where('user_id', $user->getKey()));
         }
 
+        if ($request->validated('mandatory') === true) {
+            $mandatoryDocumentIds = $this->mandatoryMaterials->activeDocumentIds($user);
+            if ($mandatoryDocumentIds === []) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('km_pengajuans.id', $mandatoryDocumentIds);
+            }
+        }
+
         match ($request->sortBy()) {
             'relevance' => $query
                 ->selectRaw(
-                    'MATCH (`km_pengajuans`.`judul`, `km_pengajuans`.`keterangan`) '
-                    .'AGAINST (? IN NATURAL LANGUAGE MODE) AS search_relevance',
-                    [(string) $request->validated('q')],
+                    $versionSearch
+                        ? 'GREATEST(COALESCE(MATCH (`published_version`.`title`, `published_version`.`synopsis`, '
+                            .'`published_version`.`extracted_text`) AGAINST (? IN NATURAL LANGUAGE MODE), 0), '
+                            .'COALESCE(MATCH (`km_pengajuans`.`judul`, `km_pengajuans`.`keterangan`) '
+                            .'AGAINST (? IN NATURAL LANGUAGE MODE), 0)) AS search_relevance'
+                        : 'MATCH (`km_pengajuans`.`judul`, `km_pengajuans`.`keterangan`) '
+                            .'AGAINST (? IN NATURAL LANGUAGE MODE) AS search_relevance',
+                    $versionSearch
+                        ? [(string) $request->validated('q'), (string) $request->validated('q')]
+                        : [(string) $request->validated('q')],
                 )
                 ->orderByDesc('search_relevance')
                 ->orderBy('km_pengajuans.id'),
@@ -106,6 +159,9 @@ class KmDashboardQueryService
                 ->orderByDesc('km_pengajuans.id'),
         };
 
-        return $query->paginate($request->perPage())->withQueryString();
+        $paginator = $query->paginate($request->perPage())->withQueryString();
+        $this->mandatoryMaterials->annotateCatalog($paginator->getCollection(), $user);
+
+        return $paginator;
     }
 }

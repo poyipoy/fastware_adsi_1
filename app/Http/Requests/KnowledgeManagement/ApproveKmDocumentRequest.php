@@ -58,6 +58,19 @@ class ApproveKmDocumentRequest extends FormRequest
             'id_km_kategori' => ['required', 'integer', 'exists:km_kategoris,id'],
             'judul' => ['required', 'string', 'max:255'],
             'keterangan' => ['nullable', 'string', 'max:3000'],
+            'target_department_ids' => ['nullable', 'array', 'max:50'],
+            'target_department_ids.*' => [
+                'integer',
+                'distinct:strict',
+                Rule::exists('mst_departments', 'id')->where('is_active', true),
+            ],
+            'target_job_position_ids' => ['nullable', 'array', 'max:100'],
+            'target_job_position_ids.*' => [
+                'integer',
+                'distinct:strict',
+                Rule::exists('mst_job_positions', 'id')->where('is_active', true),
+            ],
+            'organization_targets_submitted' => ['nullable', 'boolean'],
             'reason' => [
                 Rule::requiredIf($this->input('action') === KmApprovalAction::REJECTED->value),
                 'nullable',

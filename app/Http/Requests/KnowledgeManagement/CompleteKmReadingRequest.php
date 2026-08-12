@@ -2,26 +2,21 @@
 
 namespace App\Http\Requests\KnowledgeManagement;
 
-use App\Models\KmPengajuan;
-use Illuminate\Foundation\Http\FormRequest;
-
-class CompleteKmReadingRequest extends FormRequest
+class CompleteKmReadingRequest extends KmDocumentInteractionRequest
 {
-    public function authorize(): bool
-    {
-        if ($this->user() === null) {
-            return false;
-        }
-
-        $document = KmPengajuan::query()->find($this->integer('id_km_pengajuan'));
-
-        return $document === null || $this->user()->can('completeReading', $document);
-    }
-
     public function rules(): array
     {
         return [
-            'id_km_pengajuan' => ['required', 'integer', 'exists:km_pengajuans,id'],
+            ...parent::rules(),
+            'acknowledged' => ['required', 'accepted'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'acknowledged.required' => 'Konfirmasi membaca wajib diberikan.',
+            'acknowledged.accepted' => 'Anda harus mengonfirmasi bahwa dokumen telah dibaca dan dipahami.',
         ];
     }
 }

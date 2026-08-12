@@ -343,7 +343,7 @@ class PenilaianTCController extends Controller
         $tcResults = DB::select('
             SELECT u.id AS id_user, mjp.id AS id_job_position, mjp.position_name AS job_position, 
                 dept.name AS department, sec.name AS section, 
-                \'\' AS department_head_name, \'\' AS section_head_name, u.name, 
+                \'\' AS department_head_name, \'\' AS section_head_name, u.npk, u.name,
                 tcs.id AS id_tc, NULL AS id_sk, NULL AS id_ad, 
                 tcs.keterangan_tc AS keterangan,
                 tcs.id_poin_kategori, 
@@ -369,7 +369,7 @@ class PenilaianTCController extends Controller
         $skResults = DB::select('
             SELECT u.id AS id_user, mjp.id AS id_job_position, mjp.position_name AS job_position, 
                 dept.name AS department, sec.name AS section, 
-                \'\' AS department_head_name, \'\' AS section_head_name, u.name, 
+                \'\' AS department_head_name, \'\' AS section_head_name, u.npk, u.name,
                 NULL AS id_tc, sk.id AS id_sk, NULL AS id_ad, 
                 sk.keterangan_sk AS keterangan, 
                 sk.id_poin_kategori,
@@ -395,7 +395,7 @@ class PenilaianTCController extends Controller
         $adResults = DB::select('
             SELECT u.id AS id_user, mjp.id AS id_job_position, mjp.position_name AS job_position, 
                 dept.name AS department, sec.name AS section, 
-                \'\' AS department_head_name, \'\' AS section_head_name, u.name, 
+                \'\' AS department_head_name, \'\' AS section_head_name, u.npk, u.name,
                 NULL AS id_tc, NULL AS id_sk, ad.id AS id_ad, 
                 ad.keterangan_ad AS keterangan, 
                 ad.id_poin_kategori,
@@ -456,7 +456,7 @@ class PenilaianTCController extends Controller
 
         $results = DB::select('
         (
-            SELECT ujp.id AS user_job_position_id, u.id AS id_user, mjp.position_name AS job_position, dept.name AS department, sec.name AS section, \'\' AS department_head_name, \'\' AS section_head_name, u.name, 
+            SELECT ujp.id AS user_job_position_id, u.id AS id_user, mjp.position_name AS job_position, dept.name AS department, sec.name AS section, \'\' AS department_head_name, \'\' AS section_head_name, u.npk, u.name,
                 tcs.id AS id_tc, NULL AS id_sk, NULL AS id_ad, 
                 tcs.keterangan_tc AS keterangan, 
                 COALESCE(trs.nilai_tc, 0) AS nilai_tc,  
@@ -474,7 +474,7 @@ class PenilaianTCController extends Controller
         )
         UNION ALL
         (
-            SELECT ujp.id AS user_job_position_id, u.id AS id_user, mjp.position_name AS job_position, dept.name AS department, sec.name AS section, \'\' AS department_head_name, \'\' AS section_head_name, u.name, 
+            SELECT ujp.id AS user_job_position_id, u.id AS id_user, mjp.position_name AS job_position, dept.name AS department, sec.name AS section, \'\' AS department_head_name, \'\' AS section_head_name, u.npk, u.name,
                 NULL AS id_tc, sk.id AS id_sk, NULL AS id_ad, 
                 sk.keterangan_sk AS keterangan, 
                 NULL AS nilai_tc,  
@@ -492,7 +492,7 @@ class PenilaianTCController extends Controller
         )
         UNION ALL
         (
-            SELECT ujp.id AS user_job_position_id, u.id AS id_user, mjp.position_name AS job_position, dept.name AS department, sec.name AS section, \'\' AS department_head_name, \'\' AS section_head_name, u.name, 
+            SELECT ujp.id AS user_job_position_id, u.id AS id_user, mjp.position_name AS job_position, dept.name AS department, sec.name AS section, \'\' AS department_head_name, \'\' AS section_head_name, u.npk, u.name,
                 NULL AS id_tc, NULL AS id_sk, ad.id AS id_ad, 
                 ad.keterangan_ad AS keterangan, 
                 NULL AS nilai_tc,  
@@ -721,6 +721,12 @@ class PenilaianTCController extends Controller
 
             Log::info('Data penilaian berhasil disimpan.');
             return response()->json(['success' => 'Data penilaian berhasil disimpan.'], 200);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('Database Query Error:', ['error' => $e->getMessage()]);
+            $msg = ($e->getCode() == 23000 || (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1062))
+                ? 'Data penilaian untuk item kompetensi ini sudah ada pada sistem (duplikat).'
+                : 'Terjadi kesalahan pada database saat menyimpan data.';
+            return response()->json(['error' => $msg], 422);
         } catch (\Exception $e) {
             Log::error('Error while saving penilaian:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Terjadi kesalahan saat menyimpan data.'], 500);
@@ -1553,9 +1559,17 @@ class PenilaianTCController extends Controller
             return response()->json(['success' => false, 'message' => 'Data not found.'], 404);
         }
 
-        // Cek apakah posisi memiliki konfigurasi Div Head (approval_level = 3)
-        // Status 3 bersifat opsional: hanya diteruskan ke Div Head jika ada mapping-nya
-        $hasDivHead = \App\Models\MstPositionApproval::where('position_id', $id_job_position)
+        // ATURAN BISNIS PT. ADSI:
+        // Status Div Head (status = 3) HANYA untuk job position di bawah Departemen Sales!
+        // Selain Departemen Sales, approval mentok di Dept Head (langsung status = 4 / Final)!
+        $isSales = false;
+        if ($jobPos->department && (stripos($jobPos->department->name, 'sales') !== false || stripos($jobPos->department->name, 'marketing') !== false)) {
+            $isSales = true;
+        } elseif (stripos($jobPos->position_name, 'sales') !== false || stripos($jobPos->position_name, 'soh') !== false) {
+            $isSales = true;
+        }
+
+        $hasDivHead = $isSales && \App\Models\MstPositionApproval::where('position_id', $id_job_position)
             ->where('approval_level', 3)
             ->whereNotNull('approver_position_id')
             ->exists();
@@ -1631,12 +1645,12 @@ class PenilaianTCController extends Controller
                 DB::raw('GROUP_CONCAT(DISTINCT sk.keterangan_sk ORDER BY tpt.id_sk ASC) AS keterangan_sks'),
                 DB::raw('GROUP_CONCAT(DISTINCT tpt.id_ad ORDER BY tpt.id_ad ASC) AS id_ads'),
                 DB::raw('GROUP_CONCAT(DISTINCT ad.keterangan_ad ORDER BY tpt.id_ad ASC) AS keterangan_ads'),
-                DB::raw('SUM(tpt.nilai_tc) AS total_nilai_tc'),
-                DB::raw('SUM(tpt.nilai_sk) AS total_nilai_sk'),
-                DB::raw('SUM(tpt.nilai_ad) AS total_nilai_ad'),
-                DB::raw('SUM(tc.nilai) AS standar_nilai_tc'),
-                DB::raw('SUM(sk.nilai) AS standar_nilai_sk'),
-                DB::raw('SUM(ad.nilai) AS standar_nilai_ad')
+                DB::raw('ROUND(AVG(tpt.nilai_tc),2) AS total_nilai_tc'),
+                DB::raw('ROUND(AVG(tpt.nilai_sk),2) AS total_nilai_sk'),
+                DB::raw('ROUND(AVG(tpt.nilai_ad),2) AS total_nilai_ad'),
+                DB::raw('ROUND(AVG(tc.nilai),2) AS standar_nilai_tc'),
+                DB::raw('ROUND(AVG(sk.nilai),2) AS standar_nilai_sk'),
+                DB::raw('ROUND(AVG(ad.nilai),2) AS standar_nilai_ad')
             )
             ->where('tpt.id_job_position', $selectedJobPosition)
             ->when($tahun, function ($query) use ($tahun) {
@@ -1666,7 +1680,7 @@ class PenilaianTCController extends Controller
                     'tpt.id_tc',
                     'tc.keterangan_tc',
                     DB::raw('MAX(tc.nilai) as tc_nilai'), // Menggunakan fungsi agregasi MAX
-                    DB::raw('SUM(tpt.nilai_tc) as total_nilai_tc')
+                    DB::raw('MAX(tpt.nilai_tc) as total_nilai_tc')
                 )
                 ->where('tpt.id_job_position', $jobPosition)
                 ->when($tahun, function ($query) use ($tahun) {
@@ -1693,7 +1707,7 @@ class PenilaianTCController extends Controller
                     'tpt.id_sk',
                     'sk.keterangan_sk',
                     DB::raw('MAX(sk.nilai) as sk_nilai'), // Menggunakan fungsi agregasi MAX
-                    DB::raw('SUM(tpt.nilai_sk) as total_nilai_sk')
+                    DB::raw('MAX(tpt.nilai_sk) as total_nilai_sk')
                 )
                 ->where('tpt.id_job_position', $jobPosition)
                 ->when($tahun, function ($query) use ($tahun) {
@@ -1720,7 +1734,7 @@ class PenilaianTCController extends Controller
                     'tpt.id_ad',
                     'ad.keterangan_ad',
                     DB::raw('MAX(ad.nilai) as ad_nilai'), // Menggunakan fungsi agregasi MAX
-                    DB::raw('SUM(tpt.nilai_ad) as total_nilai_ad')
+                    DB::raw('MAX(tpt.nilai_ad) as total_nilai_ad')
                 )
                 ->where('tpt.id_job_position', $jobPosition)
                 ->when($tahun, function ($query) use ($tahun) {
@@ -1762,7 +1776,7 @@ class PenilaianTCController extends Controller
                 'tpt.id_tc',
                 'tc.keterangan_tc',
                 DB::raw('MAX(tc.nilai) as tc_nilai'), // Menggunakan fungsi agregasi MAX
-                DB::raw('SUM(tpt.nilai_tc) as total_nilai_tc')
+                DB::raw('MAX(tpt.nilai_tc) as total_nilai_tc')
             )
             ->where('tpt.id_user', $id_user)
             ->when($tahun, function ($query) use ($tahun) {
@@ -1792,7 +1806,7 @@ class PenilaianTCController extends Controller
                 'tpt.id_sk',
                 'sk.keterangan_sk',
                 DB::raw('MAX(sk.nilai) as sk_nilai'), // Menggunakan fungsi agregasi MAX
-                DB::raw('SUM(tpt.nilai_sk) as total_nilai_sk')
+                DB::raw('MAX(tpt.nilai_sk) as total_nilai_sk')
             )
             ->where('tpt.id_user', $id_user)
             ->when($tahun, function ($query) use ($tahun) {
@@ -1822,7 +1836,7 @@ class PenilaianTCController extends Controller
                 'tpt.id_ad',
                 'ad.keterangan_ad',
                 DB::raw('MAX(ad.nilai) as ad_nilai'), // Menggunakan fungsi agregasi MAX
-                DB::raw('SUM(tpt.nilai_ad) as total_nilai_ad')
+                DB::raw('MAX(tpt.nilai_ad) as total_nilai_ad')
             )
             ->where('tpt.id_user', $id_user)
             ->when($tahun, function ($query) use ($tahun) {

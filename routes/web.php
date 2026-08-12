@@ -38,6 +38,7 @@ use App\Http\Controllers\SumbangSaranController;
 use App\Http\Controllers\SupplierFormController;
 use App\Http\Controllers\TcController;
 use App\Http\Controllers\TcJobController;
+use App\Http\Controllers\TrainingExportController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -442,8 +443,42 @@ Route::middleware(['web', 'auth'])->group(function () {
         ->name('km.documents.preview');
     Route::get('/km/documents/{kmPengajuan}/download', [KmPengajuanController::class, 'download'])
         ->name('km.documents.download');
+    Route::get('/km/documents/{kmPengajuan}/versions', [\App\Http\Controllers\KnowledgeManagement\KmDocumentVersionController::class, 'index'])
+        ->name('km.document-versions.index');
+    Route::post('/km/documents/{kmPengajuan}/versions/major', [\App\Http\Controllers\KnowledgeManagement\KmDocumentVersionController::class, 'storeMajor'])
+        ->name('km.document-versions.major.store');
+    Route::post('/km/documents/{kmPengajuan}/versions/minor', [\App\Http\Controllers\KnowledgeManagement\KmDocumentVersionController::class, 'storeMinor'])
+        ->name('km.document-versions.minor.store');
+    Route::get('/km/documents/{kmPengajuan}/versions/{version}/preview', [\App\Http\Controllers\KnowledgeManagement\KmDocumentVersionController::class, 'preview'])
+        ->whereNumber('version')->name('km.document-versions.preview');
+    Route::get(
+        '/km/documents/{kmPengajuan}/versions/{version}/thumbnail',
+        \App\Http\Controllers\KnowledgeManagement\KmDocumentVersionThumbnailController::class,
+    )->whereNumber('version')->name('km.document-versions.thumbnail');
+    Route::post('/km/document-versions/{version}/recover-original', [\App\Http\Controllers\KnowledgeManagement\KmDocumentVersionController::class, 'recover'])
+        ->whereNumber('version')->name('km.document-versions.recover');
     Route::post('/km/approvals/bulk', [KmPengajuanController::class, 'bulkApprove'])
         ->name('km.approvals.bulk');
+    Route::get('/km/admin/access', [\App\Http\Controllers\KnowledgeManagement\KmAccessRuleController::class, 'index'])
+        ->name('km.access-rules.index');
+    Route::post('/km/admin/access', [\App\Http\Controllers\KnowledgeManagement\KmAccessRuleController::class, 'store'])
+        ->name('km.access-rules.store');
+    Route::delete('/km/admin/access/{accessRule}', [\App\Http\Controllers\KnowledgeManagement\KmAccessRuleController::class, 'destroy'])
+        ->name('km.access-rules.destroy');
+    Route::get('/km/admin/compliance', [\App\Http\Controllers\KnowledgeManagement\KmComplianceController::class, 'index'])
+        ->name('km.compliance.index');
+    Route::post('/km/admin/compliance/assignments', [\App\Http\Controllers\KnowledgeManagement\KmComplianceController::class, 'store'])
+        ->name('km.compliance.assignments.store');
+    Route::post('/km/admin/compliance/versions/{version}/users/{user}/override', [\App\Http\Controllers\KnowledgeManagement\KmComplianceController::class, 'override'])
+        ->name('km.compliance.override');
+    Route::post('/km/admin/compliance/recipients/{assignmentUser}/exempt', [\App\Http\Controllers\KnowledgeManagement\KmComplianceController::class, 'exempt'])
+        ->name('km.compliance.exempt');
+    Route::get('/km/admin/compliance/export/{format}', [\App\Http\Controllers\KnowledgeManagement\KmComplianceExportController::class, 'details'])
+        ->whereIn('format', ['xlsx', 'csv'])->name('km.compliance.export.details');
+    Route::get('/km/admin/compliance/export-pdf', [\App\Http\Controllers\KnowledgeManagement\KmComplianceExportController::class, 'pdf'])
+        ->name('km.compliance.export.pdf');
+    Route::get('/km/profile/recognition-certificate', [\App\Http\Controllers\KnowledgeManagement\KmRecognitionController::class, 'certificate'])
+        ->name('km.recognition.certificate');
     Route::get('/km/analytics/popular', [KmAnalyticsController::class, 'popular'])
         ->name('km.analytics.popular');
     Route::get('/km/analytics/popular/export/xlsx', [KmAnalyticsController::class, 'exportPopularXlsx'])
@@ -465,7 +500,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/kirimKM/{id}', [KmPengajuanController::class, 'kirimKM'])->name('kirimKM');
     Route::post('/like', [KmPengajuanController::class, 'like'])->name('kmSuka.like');
     Route::post('/unlike', [KmPengajuanController::class, 'unlike'])->name('kmSuka.unlike');
-    Route::post('/insights/add', [KmPengajuanController::class, 'addInsight'])->name('insights.add');
+    Route::post('/insights/add', [KmPengajuanController::class, 'addInsight'])
+        ->middleware('throttle:km-comments')
+        ->name('insights.add');
 
     // ===== KM Jangka Menengah — Fitur Baru =====
 
@@ -495,6 +532,61 @@ Route::middleware(['web', 'auth'])->group(function () {
         '/km/documents/{kmPengajuan}/thumbnail',
         \App\Http\Controllers\KnowledgeManagement\KmDocumentThumbnailController::class
     )->name('km.documents.thumbnail');
+
+    Route::get(
+        '/km/notifications',
+        [\App\Http\Controllers\KnowledgeManagement\KmNotificationController::class, 'index']
+    )->name('km.notifications.index');
+    Route::post(
+        '/km/notifications/{notification}/read',
+        [\App\Http\Controllers\KnowledgeManagement\KmNotificationController::class, 'markRead']
+    )->whereNumber('notification')->name('km.notifications.read');
+    Route::post(
+        '/km/notifications/read-all',
+        [\App\Http\Controllers\KnowledgeManagement\KmNotificationController::class, 'markAllRead']
+    )->name('km.notifications.read-all');
+
+    Route::patch(
+        '/km/documents/{kmPengajuan}/progress',
+        [KmPengajuanController::class, 'updateProgress']
+    )->name('km.reading.progress');
+
+    Route::get(
+        '/km/documents/{kmPengajuan}/insights/mention-options',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'mentionOptions']
+    )->name('km.insights.mention-options');
+    Route::get(
+        '/km/documents/{kmPengajuan}/insights',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'index']
+    )->name('km.insights.index');
+    Route::post(
+        '/km/documents/{kmPengajuan}/insights',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'store']
+    )->middleware('throttle:km-comments')->name('km.insights.store');
+    Route::patch(
+        '/km/insights/{insight}',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'update']
+    )->middleware('throttle:km-comments')->name('km.insights.update');
+    Route::delete(
+        '/km/insights/{insight}',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'destroy']
+    )->middleware('throttle:km-comments')->name('km.insights.destroy');
+    Route::put(
+        '/km/insights/{insight}/reaction',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'react']
+    )->middleware('throttle:km-reactions')->name('km.insights.reaction.store');
+    Route::delete(
+        '/km/insights/{insight}/reaction',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'unreact']
+    )->middleware('throttle:km-reactions')->name('km.insights.reaction.destroy');
+    Route::post(
+        '/km/insights/{insight}/feature',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'feature']
+    )->name('km.insights.feature');
+    Route::delete(
+        '/km/insights/{insight}/feature',
+        [\App\Http\Controllers\KnowledgeManagement\KmInsightController::class, 'unfeature']
+    )->name('km.insights.unfeature');
 
     // // tc
     // Route::get('/job', [TcJobController::class, 'jobShow'])->name('jobShow');
@@ -576,7 +668,11 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/send-pd2/{tahun_aktual}', [PdController::class, 'sendPD2'])->name('sendPD2');
 
     Route::get('/people-development/filter', [PdController::class, 'getFilteredData'])->name('people_development.filter');
-    Route::get('/people-development/export/csv', [PdController::class, 'exportFilteredCsv'])->name('people_development.export.csv');
+    Route::get('/people-development/export/pengajuan', [TrainingExportController::class, 'submissions'])->name('people_development.export.submissions');
+    Route::get('/people-development/export/persetujuan', [TrainingExportController::class, 'approvals'])->name('people_development.export.approvals');
+    Route::get('/people-development/export/tindak-lanjut/{tahun}', [TrainingExportController::class, 'followUp'])->whereNumber('tahun')->name('people_development.export.follow_up');
+    Route::get('/people-development/export/history', [TrainingExportController::class, 'history'])->name('people_development.export.history');
+    Route::get('/people-development/export/csv', [TrainingExportController::class, 'historyCsv'])->name('people_development.export.csv');
 
     Route::get('/trs/edit-penilaian/{id_job_position}', [PenilaianTCController::class, 'editTrs'])->name('penilaian.edit');
     Route::get('/trs/edit-dept/{id_job_position}', [PenilaianTCController::class, 'editTrs2'])->name('penilaian.edit2');
@@ -716,7 +812,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     ])->group(function () {
 
         // --- Form (Pembuat) ---
-        Route::middleware(['role:item_code_form'])->group(function () {
+        Route::middleware(['role:item_code_form,item_code_special_requester'])->group(function () {
             Route::get('/form-item-code', [ItemCodeController::class, 'index'])->name('form');
             Route::get('/form-item-code/next-nomor', [ItemCodeController::class, 'nextNomor'])->name('nextNomor');
             Route::get('/form-item-code/export', [ItemCodeController::class, 'export'])->name('exportForm');
@@ -730,6 +826,16 @@ Route::middleware(['web', 'auth'])->group(function () {
             Route::post('/form-item-code/{id}/cancel', [ItemCodeController::class, 'cancel'])
                 ->middleware('role:item_code_canceller')
                 ->name('cancel');
+        });
+
+        // --- Review Harga Produk Baru Mamik (Ilyas) ---
+        Route::middleware(['role:item_code_price_reviewer'])->group(function () {
+            Route::get('/price-review', [ItemCodeController::class, 'priceReview'])
+                ->name('price-review.index');
+            Route::post('/price-review/{id}/confirm', [ItemCodeController::class, 'confirmPrice'])
+                ->name('price-review.confirm');
+            Route::post('/price-review/{id}/return', [ItemCodeController::class, 'returnPriceReview'])
+                ->name('price-review.return');
         });
 
         // --- Persetujuan (Approver 1, Approver 2, Finisher) ---
@@ -758,6 +864,7 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/form-item-code/{id}/attachment', [ItemCodeController::class, 'attachment'])->name('attachment');
     });
 
+    //Outstanding Materials
     Route::prefix('outstanding-materials')->name('outstanding-materials.')->middleware([
         'auth',
         'role:outstanding_material',
@@ -765,14 +872,23 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/', [OutstandingMaterialController::class, 'index'])->name('index');
         Route::get('/data', [OutstandingMaterialController::class, 'data'])->name('data');
         Route::get('/create', [OutstandingMaterialController::class, 'create'])->name('create');
+        Route::post('/bulk', [OutstandingMaterialController::class, 'storeBatch'])->name('bulk-store');
         Route::post('/', [OutstandingMaterialController::class, 'store'])->name('store');
         Route::get('/export', [OutstandingMaterialController::class, 'export'])->name('export');
         Route::post('/import', [OutstandingMaterialController::class, 'import'])->name('import');
+        Route::get('/import/preview/{token}', [OutstandingMaterialController::class, 'importPreview'])->whereUuid('token')->name('import.preview');
+        Route::post('/import/preview/{token}/execute', [OutstandingMaterialController::class, 'importExecute'])->whereUuid('token')->name('import.preview.execute');
         Route::get('/template', [OutstandingMaterialController::class, 'template'])->name('template');
         Route::get('/show-based-on-invoice', [OutstandingMaterialController::class, 'invoiceIndex'])->name('invoice.index');
         Route::get('/show-based-on-invoice/data', [OutstandingMaterialController::class, 'invoiceData'])->name('invoice.data');
         Route::get('/show-based-on-invoice/materials', [OutstandingMaterialController::class, 'invoiceMaterials'])->name('invoice.materials');
         Route::post('/show-based-on-invoice/update', [OutstandingMaterialController::class, 'updateInvoiceFields'])->name('invoice.update');
+        Route::post('/show-based-on-invoice/documents', [OutstandingMaterialController::class, 'uploadInvoiceDocuments'])->name('invoice.documents.upload');
+        Route::get('/show-based-on-invoice/{outstandingMaterial}/materials', [OutstandingMaterialController::class, 'invoiceMaterialsForAnchor'])->name('invoice.materials.scoped');
+        Route::post('/show-based-on-invoice/{outstandingMaterial}/update', [OutstandingMaterialController::class, 'updateInvoiceFieldsForAnchor'])->name('invoice.update.scoped');
+        Route::post('/show-based-on-invoice/{outstandingMaterial}/documents', [OutstandingMaterialController::class, 'uploadInvoiceDocumentsForAnchor'])->name('invoice.documents.upload.scoped');
+        Route::get('/{outstandingMaterial}/invoice-data', [OutstandingMaterialController::class, 'invoiceDetailData'])->name('invoice-detail.data');
+        Route::get('/{outstandingMaterial}/export', [OutstandingMaterialController::class, 'invoiceDetailExport'])->name('invoice-detail.export');
         Route::get('/{outstandingMaterial}/attachment/{type?}', [OutstandingMaterialController::class, 'attachment'])
             ->whereIn('type', ['attachment', 'packing-list', 'mtc'])
             ->name('attachment');
@@ -820,16 +936,21 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::put('/custom-request/update-no-so', [CustomRequestController::class, 'updateNoSo'])->name('customrequest.updateNoSo');
 
     Route::get('/dashboard-fpb', [DashboardController::class, 'dashboardFPB'])->name('dashboardFPB');
-    Route::get('/dashboard-tcpd', [DashboardController::class, 'dashboardTCPD'])->name('dashboardTCPD');
-    Route::get('/dashboard-tcpd/data', [DashboardController::class, 'getTcpdCompetencyData'])->name('dashboardTCPD.data');
-    Route::get('/dashboard-tcpd/company-data', [DashboardController::class, 'getTcpdCompanyData'])->name('dashboardTCPD.companyData');
-    Route::get('/dashboard-tcpd/export', [DashboardController::class, 'exportTcpdCompetencyData'])->name('dashboardTCPD.export');
-    Route::get('/dashboard-tcpd/company-export', [DashboardController::class, 'exportTcpdCompanyData'])->name('dashboardTCPD.companyExport');
-    Route::get('/dashboard-tcpd/export-all', [DashboardController::class, 'exportTcpdAll'])->name('dashboardTCPD.exportAll');
-    Route::get('/dashboard-tcpd/export-employees', [DashboardController::class, 'exportTcpdEmployeesData'])->name('dashboardTCPD.exportEmployees');
-    Route::get('/dashboard-tcpd/export-top-jobs', [DashboardController::class, 'exportTcpdTopJobs'])->name('dashboardTCPD.exportTopJobs');
-    Route::get('/dashboard-tcpd/export-critical-focus', [DashboardController::class, 'exportTcpdCriticalFocus'])->name('dashboardTCPD.exportCriticalFocus');
-    Route::post('/dashboard-tcpd/clear-cache', [DashboardController::class, 'clearTcpdCache'])->name('dashboardTCPD.clearCache');
+    Route::middleware('can:viewTcpdDashboard')->group(function () {
+        Route::get('/dashboard-tcpd', [DashboardController::class, 'dashboardTCPD'])->name('dashboardTCPD');
+        Route::get('/dashboard-tcpd/data', [DashboardController::class, 'getTcpdCompetencyData'])->name('dashboardTCPD.data');
+        Route::get('/dashboard-tcpd/company-data', [DashboardController::class, 'getTcpdCompanyData'])->name('dashboardTCPD.companyData');
+        Route::get('/dashboard-tcpd/sensitive-data', [DashboardController::class, 'getTcpdSensitiveData'])->name('dashboardTCPD.sensitiveData');
+        Route::get('/dashboard-tcpd/export', [DashboardController::class, 'exportTcpdCompetencyData'])->name('dashboardTCPD.export');
+        Route::get('/dashboard-tcpd/company-export', [DashboardController::class, 'exportTcpdCompanyData'])->name('dashboardTCPD.companyExport');
+        Route::get('/dashboard-tcpd/export-all', [DashboardController::class, 'exportTcpdAll'])->name('dashboardTCPD.exportAll');
+        Route::get('/dashboard-tcpd/export-employees', [DashboardController::class, 'exportTcpdEmployeesData'])->name('dashboardTCPD.exportEmployees');
+        Route::get('/dashboard-tcpd/export-top-jobs', [DashboardController::class, 'exportTcpdTopJobs'])->name('dashboardTCPD.exportTopJobs');
+        Route::get('/dashboard-tcpd/export-critical-focus', [DashboardController::class, 'exportTcpdCriticalFocus'])->name('dashboardTCPD.exportCriticalFocus');
+        Route::post('/dashboard-tcpd/clear-cache', [DashboardController::class, 'clearTcpdCache'])
+            ->middleware('can:clearTcpdDashboardCache')
+            ->name('dashboardTCPD.clearCache');
+    });
 
     // BOPM Dashboard
     Route::get('/dashboard-bopm', [BOPMController::class, 'index'])->name('bopm.dashboard.index');
@@ -948,4 +1069,63 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Modul 4.2 — Year Management API (HR & Administrator only)
     Route::post('/pd/active-year', [\App\Http\Controllers\PdController::class, 'setActiveYear'])->name('pd.active-year.set');
     Route::get('/pd/active-year', [\App\Http\Controllers\PdController::class, 'getActiveYear'])->name('pd.active-year.get');
+
+    // Warehouse Consumable routes. Business endpoints are added by the
+    // mission-specific controllers while this protected shell establishes the
+    // canonical prefix and permission boundary.
+    Route::prefix('warehouse')->name('warehouse.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Warehouse\WarehouseDashboardController::class, 'index'])
+            ->middleware('warehouse.permission:warehouse.dashboard.view')
+            ->name('dashboard');
+
+        Route::get('/transactions/create', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'create'])
+            ->middleware('warehouse.permission:warehouse.stock-out.create')
+            ->name('transactions.create');
+        Route::post('/scans/item', [\App\Http\Controllers\Warehouse\WarehouseScanController::class, 'scanItem'])
+            ->middleware('throttle:warehouse-scan')
+            ->name('scans.item');
+        Route::post('/scans/user', [\App\Http\Controllers\Warehouse\WarehouseScanController::class, 'scanUser'])
+            ->middleware('throttle:warehouse-scan')
+            ->name('scans.user');
+        Route::post('/transactions', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'store'])
+            ->middleware('throttle:warehouse-mutation')
+            ->name('transactions.store');
+        Route::get('/transactions', [\App\Http\Controllers\Warehouse\WarehouseTransactionHistoryController::class, 'index'])
+            ->middleware('warehouse.permission:warehouse.transaction.view')
+            ->name('transactions.index');
+        Route::get('/dashboard/data', [\App\Http\Controllers\Warehouse\WarehouseDashboardController::class, 'data'])
+            ->name('dashboard.data');
+        Route::post('/transactions/{transaction}/reverse', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'reverse'])
+            ->middleware(['warehouse.permission:warehouse.transaction.reverse', 'throttle:warehouse-mutation'])
+            ->name('transactions.reverse');
+        Route::get('/transactions/{transaction}/reverse', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'reverseForm'])
+            ->middleware('warehouse.permission:warehouse.transaction.reverse')
+            ->name('transactions.reverse-form');
+        Route::get('/transactions/{transaction}', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'show'])
+            ->name('transactions.show');
+
+        Route::middleware('warehouse.permission:warehouse.stock-in.create')->group(function () {
+            Route::get('/adjustments/create', [\App\Http\Controllers\Warehouse\WarehouseStockAdjustmentController::class, 'create'])->name('adjustments.create');
+            Route::post('/adjustments', [\App\Http\Controllers\Warehouse\WarehouseStockAdjustmentController::class, 'store'])->middleware('throttle:warehouse-mutation')->name('adjustments.store');
+        });
+        Route::get('/exports/transactions', [\App\Http\Controllers\Warehouse\WarehouseExportController::class, 'transactions'])
+            ->middleware('warehouse.permission:warehouse.report.export')
+            ->name('exports.transactions');
+
+        Route::middleware('warehouse.permission:warehouse.master.manage')->group(function () {
+            Route::get('/consumables', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'index'])->name('consumables.index');
+            Route::get('/consumables/create', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'create'])->name('consumables.create');
+            Route::post('/consumables', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'store'])->name('consumables.store');
+            Route::get('/consumables/{consumable}', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'show'])->name('consumables.show');
+            Route::get('/consumables/{consumable}/edit', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'edit'])->name('consumables.edit');
+            Route::put('/consumables/{consumable}', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'update'])->name('consumables.update');
+            Route::patch('/consumables/{consumable}/status', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'toggleStatus'])->name('consumables.status');
+            Route::post('/consumables/{consumable}/opening-balance', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'openingBalance'])->name('consumables.opening-balance');
+
+            Route::get('/categories', [\App\Http\Controllers\Warehouse\WarehouseCategoryController::class, 'index'])->name('categories.index');
+            Route::post('/categories', [\App\Http\Controllers\Warehouse\WarehouseCategoryController::class, 'store'])->name('categories.store');
+            Route::put('/categories/{category}', [\App\Http\Controllers\Warehouse\WarehouseCategoryController::class, 'update'])->name('categories.update');
+
+        });
+    });
 });

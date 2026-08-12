@@ -114,6 +114,8 @@ if (page) {
     const singleReasonGroup = document.getElementById('rejectReasonGroup');
     const singleReason = document.getElementById('rejectReason');
     const categorySelect = document.getElementById('editKategori');
+    const departmentSelect = document.getElementById('editTargetDepartments');
+    const positionSelect = document.getElementById('editTargetJobPositions');
     const detailUrlTemplate = page.dataset.detailUrlTemplate || '';
     let fileUrl = '';
 
@@ -173,6 +175,8 @@ if (page) {
                 kategori: categorySelect?.value || '',
                 reason: singleReason?.value || '',
                 action: actionInput?.value || '',
+                departments: Array.from(departmentSelect?.selectedOptions || []).map((option) => option.value),
+                positions: Array.from(positionSelect?.selectedOptions || []).map((option) => option.value),
             }
             : null;
 
@@ -209,14 +213,38 @@ if (page) {
                 categorySelect.value = preserved?.kategori ?? data.km.id_km_kategori ?? '';
             }
 
+            const setSelected = (select, values) => {
+                const selected = new Set((values || []).map(String));
+                Array.from(select?.options || []).forEach((option) => {
+                    option.selected = selected.has(String(option.value));
+                });
+            };
+            setSelected(
+                departmentSelect,
+                preserved?.departments ?? data.km.target_department_ids ?? [],
+            );
+            setSelected(
+                positionSelect,
+                preserved?.positions ?? data.km.target_job_position_ids ?? [],
+            );
+
             const fileLink = document.getElementById('editFileLink');
             const fileButton = document.getElementById('editFileButton');
+            const fileState = document.getElementById('editFileState');
             if (data.km.has_file) {
-                fileUrl = data.km.previewable ? data.km.preview_url : data.km.download_url;
-                fileButton.textContent = data.km.previewable ? 'Tampilkan PDF' : 'Unduh Dokumen Office';
+                fileUrl = data.km.previewable ? data.km.preview_url : '';
+                fileButton.textContent = data.km.previewable
+                    ? 'Tampilkan PDF'
+                    : 'Preview dokumen Office tidak tersedia';
+                fileButton.disabled = ! data.km.previewable;
+                fileState.textContent = data.km.previewable
+                    ? 'Dokumen dibuka melalui preview privat. Unduhan dinonaktifkan.'
+                    : 'Unduhan dinonaktifkan sesuai kebijakan Knowledge Management.';
                 fileLink.classList.remove('d-none');
             } else {
                 fileUrl = '';
+                fileButton.disabled = true;
+                fileState.textContent = '';
                 fileLink.classList.add('d-none');
             }
 

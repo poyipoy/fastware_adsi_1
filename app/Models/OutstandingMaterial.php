@@ -22,6 +22,7 @@ class OutstandingMaterial extends Model
 
     protected $fillable = [
         'supplier',
+        'invoice_id',
         'type',
         'thickness',
         'width',
@@ -30,6 +31,7 @@ class OutstandingMaterial extends Model
         'qty_pcs',
         'est_qty_kg',
         'number_invoice',
+        'invoice_identity_key',
         'status',
         'estimasi_eta_port',
         'estimasi_eta_warehouse',
@@ -78,5 +80,10 @@ class OutstandingMaterial extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function invoiceHeader(): BelongsTo
+    {
+        return $this->belongsTo(OutstandingMaterialInvoice::class, 'invoice_id');
     }
 }

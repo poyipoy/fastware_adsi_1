@@ -211,7 +211,7 @@
                                         parseFloat(user.standar_nilai_ad) || 0,
                                     ];
 
-                                    const suggestedMax = 12;
+                                    const suggestedMax = 4;
                                     const suggestedMin = 0;
 
                                     const canvasId = 'radarChart' + index;
@@ -297,10 +297,10 @@
                                                     suggestedMin: suggestedMin,
                                                     suggestedMax: suggestedMax,
                                                     min: 0,
-                                                    max: 12,
+                                                    max: 4,
                                                     ticks: {
                                                         beginAtZero: true,
-                                                        stepSize: 2,
+                                                        stepSize: 1,
                                                         backdropColor: 'transparent', // Bersih tanpa kotak putih
                                                         color: '#64748b',
                                                         font: {
@@ -408,9 +408,9 @@
                             parseFloat(user.standar_nilai_sk) || 0,
                             parseFloat(user.standar_nilai_ad) || 0,
                         ];
-                        chart.options.scales.r.max = 12;
-                        chart.options.scales.r.suggestedMax = 12;
-                        chart.options.scales.r.ticks.stepSize = 2;
+                        chart.options.scales.r.max = 4;
+                        chart.options.scales.r.suggestedMax = 4;
+                        chart.options.scales.r.ticks.stepSize = 1;
                         chart.update();
                     }
                     return;
