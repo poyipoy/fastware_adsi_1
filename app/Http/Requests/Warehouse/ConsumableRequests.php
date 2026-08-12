@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Warehouse;
 
+use App\Models\Warehouse\WarehouseConsumable;
 use App\Services\Warehouse\WarehouseAccessService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -45,5 +46,43 @@ class StoreWarehouseConsumableRequest extends FormRequest
             'storage_location' => is_string($this->storage_location) ? trim($this->storage_location) : $this->storage_location,
             'maximum_stock' => $this->input('maximum_stock') === '' ? null : $this->input('maximum_stock'),
         ]);
+    }
+}
+
+class UpdateWarehouseConsumableRequest extends StoreWarehouseConsumableRequest
+{
+    public function rules(): array
+    {
+        $consumable = $this->route('consumable');
+        $id = $consumable instanceof WarehouseConsumable ? $consumable->getKey() : $consumable;
+
+        return array_replace(parent::rules(), [
+            'item_code' => [
+                'required',
+                'string',
+                'max:50',
+                'regex:/^[^\x00-\x1F\x7F]*$/u',
+                Rule::unique('mst_wh_consumables', 'item_code')->ignore($id),
+                Rule::unique('mst_wh_consumables', 'barcode')->ignore($id),
+            ],
+        ]);
+    }
+}
+
+class StoreWarehouseOpeningBalanceRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return app(WarehouseAccessService::class)->canAdjust($this->user());
+    }
+
+    public function rules(): array
+    {
+        return [
+            'quantity' => ['required', 'integer', 'min:1'],
+            'verified_code' => ['required', 'string', 'max:150'],
+            'reason' => ['required', 'string', 'max:1000'],
+            'idempotency_key' => ['nullable', 'uuid'],
+        ];
     }
 }
