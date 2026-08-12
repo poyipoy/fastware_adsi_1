@@ -1,0 +1,131 @@
+.warehouse-transaction-page { width: 100%; }
+.warehouse-transaction-page .warehouse-page-header { margin-bottom: 20px; }
+.warehouse-form-alert { margin-bottom: 18px; }
+.warehouse-transaction-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 340px); gap: 18px; align-items: start; }
+.warehouse-transaction-card { min-width: 0; overflow: hidden; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: var(--warehouse-surface); box-shadow: 0 3px 12px rgba(23, 34, 56, .04); }
+.warehouse-transaction-body { padding: 22px clamp(16px, 2.4vw, 30px) 26px; }
+.warehouse-type-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.warehouse-type-switch { display: inline-flex; gap: 0; }
+.warehouse-type-button { min-width: 116px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--warehouse-border-strong); background: #fff; color: #41516a; font-weight: 700; }
+.warehouse-type-button:first-child { border-radius: var(--warehouse-radius) 0 0 var(--warehouse-radius); }
+.warehouse-type-button:last-child { border-radius: 0 var(--warehouse-radius) var(--warehouse-radius) 0; }
+.warehouse-type-button:only-child { border-radius: var(--warehouse-radius); }
+.warehouse-type-button + .warehouse-type-button { margin-left: -1px; }
+.warehouse-type-button[aria-pressed="true"] { position: relative; z-index: 1; color: #fff; background: var(--warehouse-navy); border-color: var(--warehouse-navy); }
+.warehouse-type-button[data-warehouse-type="IN"][aria-pressed="true"] { background: var(--warehouse-success); border-color: var(--warehouse-success); }
+.warehouse-type-button[data-warehouse-type="OUT"][aria-pressed="true"] { color: #5f3700; background: var(--warehouse-warning-soft); border-color: #e5a33a; }
+.warehouse-type-caption { color: var(--warehouse-muted); font-size: .82rem; }
+.warehouse-inline-confirmation { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid #f2cc8e; border-radius: var(--warehouse-radius); color: #7b3f00; background: var(--warehouse-warning-soft); font-size: .82rem; }
+.warehouse-stepper { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0 0 30px; padding: 0; list-style: none; }
+.warehouse-stepper li { position: relative; display: grid; grid-template-rows: 32px auto; align-items: start; justify-items: center; row-gap: 8px; min-width: 0; color: #8a96a6; font-size: .76rem; text-align: center; }
+.warehouse-stepper li::after { position: absolute; z-index: 0; top: 15px; left: 50%; width: 100%; height: 2px; background: #dce4ee; content: ''; pointer-events: none; }
+.warehouse-stepper li:last-child::after { display: none; }
+.warehouse-stepper span { position: relative; z-index: 1; display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border: 1px solid #cdd6e2; border-radius: 50%; background: #fff; color: #6e7c8f; font-weight: 700; }
+.warehouse-stepper strong { position: relative; z-index: 1; display: block; max-width: 100%; color: inherit; font-weight: 650; line-height: 1.25; }
+.warehouse-stepper li.is-active, .warehouse-stepper li.is-complete { color: #304b78; }
+.warehouse-stepper li.is-active span, .warehouse-stepper li.is-complete span { border-color: var(--warehouse-navy); color: #fff; background: var(--warehouse-navy); }
+.warehouse-stepper li.is-complete::after { background: var(--warehouse-navy); }
+.warehouse-flow-step[hidden] { display: none !important; }
+.warehouse-flow-step { animation: warehouse-step-in .16s ease-out; }
+@keyframes warehouse-step-in { from { opacity: .35; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+.warehouse-form-section-heading { margin-bottom: 18px; }
+.warehouse-item-result, .warehouse-user-result, .warehouse-confirmation-summary { min-height: 86px; margin-top: 14px; padding: 15px 16px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #f8fafc; }
+.warehouse-item-result.is-valid, .warehouse-user-result.is-valid { border-color: #b9e4d0; background: var(--warehouse-success-soft); }
+.warehouse-preview-content { display: grid; gap: 11px; min-width: 0; }
+.warehouse-preview-title { display: block; min-width: 0; color: var(--warehouse-ink); font-size: .93rem; line-height: 1.35; overflow-wrap: anywhere; }
+.warehouse-preview-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; min-width: 0; margin: 0; }
+.warehouse-preview-fact { min-width: 0; }
+.warehouse-preview-fact-label { display: block; margin: 0; color: var(--warehouse-muted); font-size: .72rem; font-weight: 600; line-height: 1.25; }
+.warehouse-preview-fact-value { min-width: 0; margin: 3px 0 0; color: var(--warehouse-ink); font-size: .84rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.warehouse-preview-fact-value .warehouse-status-badge { max-width: 100%; vertical-align: top; }
+.warehouse-confirmation-summary .warehouse-preview-facts { gap: 12px 22px; }
+.warehouse-scan-group .form-control { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.warehouse-scan-group .btn { display: inline-flex; min-width: 82px; min-height: 44px; align-items: center; justify-content: center; gap: 7px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.warehouse-spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: warehouse-spin .65s linear infinite; }
+@keyframes warehouse-spin { to { transform: rotate(360deg); } }
+.warehouse-detail-grid.warehouse-transaction-fields { margin-top: 2px; }
+.warehouse-transaction-fields > * { grid-column: span 6; }
+.warehouse-transaction-fields > .warehouse-detail-full { grid-column: span 12; }
+.warehouse-transaction-fields.is-single-field > * { grid-column: span 12; }
+.warehouse-quantity-control { display: flex; }
+.warehouse-quantity-control .form-control { min-width: 0; border-radius: 0; text-align: center; }
+.warehouse-quantity-control .btn { width: 44px; flex: 0 0 44px; padding: 0; border-color: var(--warehouse-border); font-size: 1.1rem; }
+.warehouse-quantity-control .btn:first-child { border-radius: var(--warehouse-radius) 0 0 var(--warehouse-radius); }
+.warehouse-quantity-control .btn:last-child { border-radius: 0 var(--warehouse-radius) var(--warehouse-radius) 0; }
+.warehouse-projection { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; padding: 13px 14px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #f8fafc; }
+.warehouse-projection .projection-label { display: block; color: var(--warehouse-muted); font-size: .72rem; }
+.warehouse-projection .projection-value { display: block; margin-top: 3px; color: var(--warehouse-ink); font-weight: 700; }
+.warehouse-projection.is-invalid { border-color: #f1b7b1; background: var(--warehouse-danger-soft); }
+.warehouse-verifier-section { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--warehouse-border); }
+.warehouse-verifier-heading { margin-bottom: 12px; }
+.warehouse-verifier-heading h3 { margin: 0 0 4px; color: var(--warehouse-ink); font-size: 1rem; font-weight: 700; }
+.warehouse-verifier-lock-message { margin-bottom: 14px; padding: 10px 12px; border: 1px solid #d8e1ec; border-radius: var(--warehouse-radius); color: #536277; background: #f5f7fa; font-size: .78rem; }
+.warehouse-verifier-section:not(.is-locked) .warehouse-verifier-lock-message { display: none; }
+.warehouse-verifier-section.is-locked .warehouse-user-result, .warehouse-verifier-section.is-locked .warehouse-confirmation-summary, .warehouse-verifier-section.is-locked .warehouse-confirm-check { opacity: .62; }
+.warehouse-verifier-section .form-control:disabled, .warehouse-verifier-section .btn:disabled { cursor: not-allowed; }
+.warehouse-confirm-check { display: flex; align-items: flex-start; gap: 8px; margin-top: 17px; color: #344054; font-size: .83rem; cursor: pointer; }
+.warehouse-confirm-check input { width: 18px; height: 18px; margin-top: 1px; flex: 0 0 18px; }
+.warehouse-step-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.warehouse-step-actions .btn { min-width: 132px; min-height: 44px; }
+.warehouse-transaction-summary { position: sticky; top: 100px; }
+.warehouse-summary-row { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid #edf1f6; font-size: .82rem; }
+.warehouse-summary-row:last-child { border-bottom: 0; }
+.warehouse-summary-row > span { color: var(--warehouse-muted); }
+.warehouse-summary-row strong { color: var(--warehouse-ink); text-align: right; overflow-wrap: anywhere; }
+.warehouse-summary-value { min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; text-align: right; }
+.warehouse-summary-value > strong { max-width: 100%; }
+.warehouse-summary-subvalue { max-width: 100%; color: var(--warehouse-muted); font-size: .74rem; line-height: 1.3; overflow-wrap: anywhere; }
+.warehouse-summary-item-value { align-items: stretch; text-align: right; }
+.warehouse-summary-item-value > strong, .warehouse-summary-item-value > .warehouse-summary-subvalue { text-align: right; }
+.warehouse-summary-barcode-text { padding-top: 2px; color: #26354d !important; font-size: .72rem; letter-spacing: .02em; }
+.warehouse-summary-barcode { width: 100%; max-width: 240px; min-height: 46px; margin: 6px 0 0 auto; overflow: hidden; border: 1px solid #e4eaf2; border-radius: 5px; background: #fff; }
+.warehouse-summary-barcode-visual { display: flex; width: 100%; height: 48px; min-width: 0; overflow: hidden; background: #fff; }
+.warehouse-summary-barcode-segment { display: block; min-width: 0; height: 100%; background: transparent; }
+.warehouse-summary-barcode-segment.is-bar { background: #111827; }
+.warehouse-summary-barcode svg { display: block; width: 100%; height: 48px; min-width: 0; overflow: hidden; shape-rendering: crispEdges; }
+.warehouse-summary-barcode-fallback { display: block; padding: 6px 8px; color: var(--warehouse-warning-ink, #7b3f00); font-size: .7rem; line-height: 1.3; text-align: left; }
+.warehouse-summary-stock-status { display: flex; max-width: 100%; align-items: center; justify-content: flex-end; gap: 4px; color: var(--warehouse-muted) !important; font-size: .72rem; text-transform: capitalize; }
+.warehouse-summary-stock-status .warehouse-status-badge { max-width: 100%; }
+.warehouse-summary-row [data-warehouse-summary-stock].is-invalid { color: var(--warehouse-danger, #b42318); }
+.warehouse-transaction-layout.is-receipt { grid-template-columns: minmax(0, 860px); justify-content: center; }
+.warehouse-transaction-layout.is-receipt .warehouse-transaction-card { width: 100%; }
+.warehouse-receipt-step { max-width: 680px; margin: 0 auto; padding-top: 4px; text-align: center; }
+.warehouse-receipt-icon { display: inline-flex; width: 48px; height: 48px; align-items: center; justify-content: center; margin-bottom: 12px; border-radius: 50%; color: #fff; background: var(--warehouse-success); font-size: 1.5rem; font-weight: 700; }
+.warehouse-receipt-step h2 { margin: 0 0 5px; color: var(--warehouse-ink); font-size: 1.25rem; }
+.warehouse-receipt-details { display: grid; grid-template-columns: minmax(160px, .78fr) minmax(0, 1.22fr); max-width: 660px; margin: 24px auto 0; overflow: hidden; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #fff; text-align: left; }
+.warehouse-receipt-details dt, .warehouse-receipt-details dd { min-width: 0; margin: 0; padding: 11px 14px; border-bottom: 1px solid #edf1f6; }
+.warehouse-receipt-details dt { color: var(--warehouse-muted); background: #f8fafc; font-size: .78rem; font-weight: 700; }
+.warehouse-receipt-details dd { color: var(--warehouse-ink); font-size: .88rem; overflow-wrap: anywhere; }
+.warehouse-receipt-details dt:last-of-type, .warehouse-receipt-details dd:last-child { border-bottom: 0; }
+.warehouse-receipt-step .warehouse-step-actions { justify-content: center; }
+
+@media (max-width: 991.98px) {
+    .warehouse-transaction-layout { grid-template-columns: 1fr; }
+    .warehouse-transaction-summary { position: static; order: -1; }
+    .warehouse-transaction-summary .warehouse-panel-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+}
+
+@media (max-width: 767.98px) {
+    .warehouse-type-row { align-items: flex-start; flex-direction: column; }
+    .warehouse-type-switch { width: 100%; }
+    .warehouse-type-button { flex: 1 1 50%; }
+    .warehouse-stepper { margin-bottom: 24px; }
+    .warehouse-stepper li { row-gap: 6px; padding-right: 0; }
+    .warehouse-stepper span { margin: 0; }
+    .warehouse-stepper strong { font-size: .68rem; font-weight: 600; line-height: 1.2; }
+    .warehouse-transaction-summary .warehouse-panel-body { grid-template-columns: 1fr; }
+    .warehouse-summary-item-value { align-items: stretch; }
+    .warehouse-summary-barcode { max-width: 100%; }
+    .warehouse-transaction-fields > *, .warehouse-transaction-fields > .warehouse-detail-full { grid-column: span 1; }
+    .warehouse-projection { grid-template-columns: 1fr; }
+    .warehouse-preview-facts { grid-template-columns: 1fr; gap: 10px; }
+    .warehouse-step-actions { justify-content: stretch; }
+    .warehouse-step-actions .btn { flex: 1 1 140px; }
+    .warehouse-receipt-details { grid-template-columns: 1fr; }
+    .warehouse-receipt-details dt { padding-bottom: 3px; border-bottom: 0; }
+    .warehouse-receipt-details dd { padding-top: 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .warehouse-flow-step, .warehouse-spinner { animation: none; }
+}
