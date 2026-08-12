@@ -323,3 +323,11 @@ final class WarehouseStockService
         return (string) ($command->notes ?? '');
     }
 }
+
+final class WarehouseTransactionNumberGenerator
+{
+    public function generate(): string
+    {
+        return 'WH-'.now(config('app.timezone', 'Asia/Jakarta'))->format('Ymd-His').'-'.strtoupper(Str::random(8));
+    }
+}

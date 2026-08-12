@@ -40,14 +40,16 @@
             "app/Data/Warehouse/WarehouseStockData.php",
             "app/Http/Requests/Warehouse/TransactionRequests.php",
             "app/Http/Requests/Warehouse/ScanRequests.php",
-            "app/Http/Requests/Warehouse/ConsumableRequests.php"
+            "app/Http/Requests/Warehouse/ConsumableRequests.php",
+            "app/Services/Warehouse/WarehouseStockService.php"
         ],
         "exclude-from-classmap": [
             "/app/Enums/Warehouse/WarehouseEnums.php",
             "/app/Data/Warehouse/WarehouseStockData.php",
             "/app/Http/Requests/Warehouse/TransactionRequests.php",
             "/app/Http/Requests/Warehouse/ScanRequests.php",
-            "/app/Http/Requests/Warehouse/ConsumableRequests.php"
+            "/app/Http/Requests/Warehouse/ConsumableRequests.php",
+            "/app/Services/Warehouse/WarehouseStockService.php"
         ]
     },
     "autoload-dev": {
