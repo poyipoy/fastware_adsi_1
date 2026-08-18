@@ -413,4 +413,15 @@ Status: `DONE (automated gate passed; browser smoke remains a release step)`
 - Route gate: `24` Warehouse routes; route fingerprint remained identical to the baseline. `routes/web.php` had zero diff.
 - Regression gate: `102` tests and `685` assertions passed. `composer dump-autoload`, `php artisan optimize:clear`, and `php artisan view:cache` passed; no Warehouse autoload warning remained.
 - Safety: no production/local application DB mutation, migration, route edit, or data change was performed. Testing-only database recovery was restricted to `fastware_adsi_1_testing` after runtime guard verification.
-- Artifact note: `warehouse-consumable/` remained out of scope and its source files were not regenerated. Its documentation is now synchronized to this version; the code artifact remains pre-refactor and requires a separate manual regeneration/redeploy if it is still used.
+- Artifact note: `warehouse-consumable/` was intentionally out of scope during the six refactor phases. It was regenerated separately on 2026-08-12 after that refactor was approved for delivery packaging; the artifact now mirrors the post-refactor source and is no longer stale.
+
+## DELIVERY ARTIFACT REGENERATION — 2026-08-12
+
+Status: `DONE (source/package hash verification passed)`
+
+- `warehouse-consumable/runtime/` was rebuilt from the current `main` source. It now contains exactly 58 files and excludes the removed action-bar component, old per-class DTO/enum/request files, nested exception/export folders, standalone number-generator file, and old nested single-view paths.
+- `warehouse-consumable/shared-files/` now contains exactly 10 snapshots, including the current `composer.json` autoload `files` and `exclude-from-classmap` entries required by the consolidated Warehouse classes. Shared files remain deployment-merge inputs and must not be copied wholesale over unrelated production changes.
+- `warehouse-consumable/support/` now contains 39 files, including the current Warehouse tests and all six Warehouse documents. The reader copy under `warehouse-consumable/docs/warehouse-docs/` also contains all six documents.
+- SHA-256 comparison against the source inventory: 107 source artifacts checked, 0 missing, 0 mismatched, 0 stale pre-refactor runtime files. The Warehouse SQL delivery file was unchanged because this refactor has no schema or data change.
+- Verification: PHP lint passed for 85 package runtime/support PHP files; `composer dump-autoload` passed with only pre-existing non-Warehouse PSR-4 warnings; Warehouse route list remained 24 routes. The complete Warehouse suite passed in batches: 102 tests, 685 assertions, zero failures. Unit suite passed 9 tests/31 assertions; UI contract passed 6/211; remaining feature batches passed 87/443.
+- `php artisan view:cache`, frontend build, and JavaScript syntax checks remain the application deployment gates; no route, migration, schema, or production data was changed during regeneration. Browser and physical-scanner QA remain release steps.

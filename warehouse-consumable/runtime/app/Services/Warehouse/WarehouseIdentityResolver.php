@@ -3,7 +3,7 @@
 namespace App\Services\Warehouse;
 
 use App\Enums\Warehouse\WarehouseVerificationStatus;
-use App\Exceptions\Warehouse\WarehouseDomainException;
+use App\Exceptions\WarehouseDomainException;
 use App\Models\User;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseVerificationLog;

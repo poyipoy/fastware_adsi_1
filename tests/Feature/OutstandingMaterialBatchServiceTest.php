@@ -7,6 +7,8 @@ use App\Services\OutstandingMaterialDocumentService;
 use App\Services\OutstandingMaterialIdentityService;
 use App\Services\OutstandingMaterialInvoiceService;
 use App\Http\Controllers\OutstandingMaterialController;
+use App\Models\OutstandingMaterial;
+use App\Models\OutstandingMaterialInvoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Request;
@@ -198,5 +200,127 @@ class OutstandingMaterialBatchServiceTest extends TestCase
             'material_ids' => [$second->id],
             'status' => 'On Shipment',
         ]), $first);
+    }
+
+    public function test_invoice_delete_permanently_removes_exact_scope_and_only_unreferenced_documents(): void
+    {
+        if (!Schema::hasTable('outstanding_materials') || !Schema::hasTable('outstanding_material_invoices')) {
+            $this->markTestSkipped('Outstanding Material schema is not available in this test database.');
+        }
+
+        Storage::fake('local');
+        $identity = new OutstandingMaterialIdentityService();
+        $documents = new OutstandingMaterialDocumentService();
+        $batch = new OutstandingMaterialBatchService($identity, $documents, new OutstandingMaterialInvoiceService($identity));
+        $invoiceMaterials = $batch->create(
+            ['supplier' => 'Delete Supplier', 'number_invoice' => 'INV-DELETE', 'status' => 'Received'],
+            [['type' => 'Plate'], ['type' => 'Pipe']],
+            null,
+            null,
+        );
+        $otherSupplierMaterial = $batch->create(
+            ['supplier' => 'Other Supplier', 'number_invoice' => 'INV-DELETE', 'status' => 'Received'],
+            [['type' => 'Bar']],
+            null,
+            null,
+        )->first();
+
+        $packingPath = 'private/outstanding-materials/packing-list/delete-packing.pdf';
+        $attachmentPath = 'private/outstanding-materials/packing-list/delete-attachment.pdf';
+        $sharedMtcPath = 'private/outstanding-materials/mtc/keep-shared.pdf';
+        Storage::disk('local')->put($packingPath, 'packing');
+        Storage::disk('local')->put($attachmentPath, 'attachment');
+        Storage::disk('local')->put($sharedMtcPath, 'shared mtc');
+
+        $invoiceId = (int) $invoiceMaterials->first()->invoice_id;
+        OutstandingMaterial::query()
+            ->where('invoice_id', $invoiceId)
+            ->update([
+                'attachment_path' => $attachmentPath,
+                'packing_list_path' => $packingPath,
+                'mtc_path' => $sharedMtcPath,
+            ]);
+        OutstandingMaterialInvoice::query()
+            ->whereKey($invoiceId)
+            ->update([
+                'packing_list_path' => $packingPath,
+                'mtc_path' => $sharedMtcPath,
+            ]);
+        $otherSupplierMaterial->update(['mtc_path' => $sharedMtcPath]);
+
+        $alreadyDeleted = $invoiceMaterials->first()->fresh();
+        $alreadyDeleted->delete();
+        $anchor = $invoiceMaterials->last()->fresh();
+
+        $access = new class extends \App\Services\OutstandingMaterialAccessService {
+            public function canView(?User $user): bool { return true; }
+            public function canManage(?User $user): bool { return true; }
+        };
+        Auth::setUser(new User(['name' => 'ADMINISTRATOR']));
+        $controller = new OutstandingMaterialController($access, $documents, $identity, $batch);
+
+        $response = $controller->destroyInvoice($anchor);
+
+        $this->assertSame(route('outstanding-materials.invoice.index'), $response->getTargetUrl());
+        $this->assertDatabaseMissing('outstanding_materials', ['id' => $invoiceMaterials->first()->id]);
+        $this->assertDatabaseMissing('outstanding_materials', ['id' => $invoiceMaterials->last()->id]);
+        $this->assertDatabaseMissing('outstanding_material_invoices', ['id' => $invoiceId]);
+        $this->assertDatabaseHas('outstanding_materials', ['id' => $otherSupplierMaterial->id]);
+        Storage::disk('local')->assertMissing($packingPath);
+        Storage::disk('local')->assertMissing($attachmentPath);
+        Storage::disk('local')->assertExists($sharedMtcPath);
+    }
+
+    public function test_eta_warehouse_search_matches_material_detail_and_invoice_latest_value(): void
+    {
+        if (!Schema::hasTable('outstanding_materials') || !Schema::hasTable('outstanding_material_invoices')) {
+            $this->markTestSkipped('Outstanding Material schema is not available in this test database.');
+        }
+
+        $identity = new OutstandingMaterialIdentityService();
+        $documents = new OutstandingMaterialDocumentService();
+        $batch = new OutstandingMaterialBatchService($identity, $documents, new OutstandingMaterialInvoiceService($identity));
+        $invoiceMaterials = $batch->create(
+            ['supplier' => 'ETA Supplier', 'number_invoice' => 'INV-ETA', 'status' => 'Received'],
+            [['type' => 'Plate'], ['type' => 'Pipe']],
+            null,
+            null,
+        );
+        $invoiceMaterials->first()->update(['estimasi_eta_warehouse' => '2026-08-12']);
+        $invoiceMaterials->last()->update(['estimasi_eta_warehouse' => '2026-09-30']);
+        $batch->create(
+            ['supplier' => 'Other ETA Supplier', 'number_invoice' => 'INV-ETA-OTHER', 'status' => 'Received'],
+            [['type' => 'Bar', 'estimasi_eta_warehouse' => '2026-07-01']],
+            null,
+            null,
+        );
+
+        $access = new class extends \App\Services\OutstandingMaterialAccessService {
+            public function canView(?User $user): bool { return true; }
+            public function canManage(?User $user): bool { return true; }
+        };
+        Auth::setUser(new User(['name' => 'ADMINISTRATOR']));
+        $controller = new OutstandingMaterialController($access, $documents, $identity, $batch);
+
+        $invoiceResponse = $controller->invoiceData(Request::create('/outstanding-materials/show-based-on-invoice/data', 'GET', [
+            'q' => '2026-09-30',
+            'start' => 0,
+            'length' => 25,
+            'draw' => 1,
+        ]));
+        $invoicePayload = $invoiceResponse->getData(true);
+        $this->assertSame(1, $invoicePayload['recordsFiltered']);
+        $this->assertSame('INV-ETA', html_entity_decode($invoicePayload['data'][0]['number_invoice']));
+        $this->assertSame('2026-09-30', $invoicePayload['data'][0]['latest_eta_warehouse']);
+
+        $detailResponse = $controller->invoiceDetailData(Request::create('/outstanding-materials/' . $invoiceMaterials->first()->id . '/invoice-data', 'GET', [
+            'q' => '2026-09-30',
+            'start' => 0,
+            'length' => 25,
+            'draw' => 1,
+        ]), $invoiceMaterials->first()->fresh());
+        $detailPayload = $detailResponse->getData(true);
+        $this->assertSame(1, $detailPayload['recordsFiltered']);
+        $this->assertSame('2026-09-30', $detailPayload['data'][0]['estimasi_eta_warehouse']);
     }
 }

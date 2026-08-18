@@ -227,7 +227,7 @@ class WarehouseUiContractTest extends WarehouseTestCase
     {
         foreach ([
             'resources/views/warehouse/dashboard/index.blade.php',
-            'resources/views/warehouse/categories/index.blade.php',
+            'resources/views/warehouse/categories.blade.php',
             'resources/views/warehouse/consumables/index.blade.php',
             'resources/views/warehouse/transactions/index.blade.php',
         ] as $viewPath) {

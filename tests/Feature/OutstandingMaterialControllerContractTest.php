@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use ReflectionMethod;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class OutstandingMaterialControllerContractTest extends TestCase
@@ -174,6 +175,50 @@ class OutstandingMaterialControllerContractTest extends TestCase
 
             $this->assertStringStartsWith('attachment;', $disposition);
             $this->assertStringContainsString('filename=', $disposition);
+        }
+    }
+
+    public function test_invoice_action_exposes_permanent_delete_only_to_managers(): void
+    {
+        Auth::setUser(new User(['name' => 'ADMINISTRATOR']));
+        $controller = new OutstandingMaterialController(
+            new ContractAccessService(true),
+            new OutstandingMaterialDocumentService(),
+        );
+        $material = new OutstandingMaterial([
+            'supplier' => 'Supplier <A>',
+            'number_invoice' => 'INV-DELETE',
+            'status' => OutstandingMaterial::STATUS_RECEIVED,
+        ]);
+        $material->id = 6;
+
+        $method = new ReflectionMethod($controller, 'invoiceActionCell');
+        $method->setAccessible(true);
+        $managerActions = $method->invoke($controller, $material, 'INV-DELETE', 3, 'Supplier <A>', true, false);
+        $viewerActions = $method->invoke($controller, $material, 'INV-DELETE', 3, 'Supplier <A>', false, false);
+
+        $this->assertStringContainsString('js-outstanding-invoice-delete-form', $managerActions);
+        $this->assertStringContainsString('data-material-count="3"', $managerActions);
+        $this->assertStringContainsString('/outstanding-materials/show-based-on-invoice/6', $managerActions);
+        $this->assertStringContainsString('Supplier &lt;A&gt;', $managerActions);
+        $this->assertStringNotContainsString('js-outstanding-invoice-delete-form', $viewerActions);
+    }
+
+    public function test_invoice_delete_requires_manage_access(): void
+    {
+        Auth::setUser(new User(['name' => 'Sales Viewer']));
+        $controller = new OutstandingMaterialController(
+            new ContractAccessService(false),
+            new OutstandingMaterialDocumentService(),
+        );
+        $material = new OutstandingMaterial(['number_invoice' => 'INV-DELETE']);
+        $material->id = 7;
+
+        try {
+            $controller->destroyInvoice($material);
+            $this->fail('Invoice deletion must require manage access.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
         }
     }
 }

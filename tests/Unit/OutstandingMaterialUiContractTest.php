@@ -36,6 +36,34 @@ class OutstandingMaterialUiContractTest extends TestCase
         $this->assertStringContainsString('document.fonts.ready', $script);
         $this->assertStringContainsString('init.dt draw.dt column-sizing.dt', $script);
         $this->assertStringContainsString('.om-table-wrap', $script);
+        $this->assertStringContainsString('om-column-header', $script);
+        $this->assertStringContainsString('--om-table-filter-height', $script);
+        $this->assertStringContainsString('pinCells(rows.columnHeaderRow, filterHeight, 5)', $script);
+        $this->assertStringContainsString("cell.style.setProperty('position', 'sticky', 'important')", $script);
+    }
+
+    public function test_material_filters_precede_sticky_column_headers(): void
+    {
+        foreach (['index.blade.php', 'show.blade.php'] as $view) {
+            $blade = file_get_contents(resource_path('views/outstanding_materials/' . $view));
+            $filterPosition = strpos($blade, '<tr class="om-filter-row">');
+            $headerPosition = strpos($blade, '<tr class="om-column-header">');
+
+            $this->assertNotFalse($filterPosition, $view);
+            $this->assertNotFalse($headerPosition, $view);
+            $this->assertLessThan($headerPosition, $filterPosition, $view);
+            $this->assertStringContainsString('--om-table-filter-height', $blade, $view);
+            $this->assertStringContainsString('orderCellsTop:false', str_replace(' ', '', $blade), $view);
+        }
+
+        $invoice = file_get_contents(resource_path('views/outstanding_materials/invoice.blade.php'));
+        $this->assertStringContainsString('<tr class="om-column-header">', $invoice);
+
+        foreach (['index.blade.php', 'show.blade.php', 'invoice.blade.php'] as $view) {
+            $blade = file_get_contents(resource_path('views/outstanding_materials/' . $view));
+
+            $this->assertStringContainsString("sticky-table.js') }}?v={{ filemtime", $blade, $view);
+        }
     }
 
     public function test_invoice_modal_selection_contract_supports_rows_and_select_all(): void
@@ -96,5 +124,28 @@ class OutstandingMaterialUiContractTest extends TestCase
         $this->assertStringContainsString("icon: 'warning'", $script);
         $this->assertStringContainsString('showCancelButton', $script);
         $this->assertStringContainsString('HTMLFormElement.prototype.submit.call(form)', $script);
+        $this->assertStringContainsString('js-outstanding-invoice-delete-form', $script);
+        $this->assertStringContainsString('Hapus Invoice Permanen?', $script);
+        $this->assertStringContainsString(".js-outstanding-invoice-delete-form [type=\"submit\"]", $script);
+        $this->assertStringContainsString('confirmationPending', $script);
+
+        foreach (['invoice.blade.php', 'show.blade.php'] as $view) {
+            $blade = file_get_contents(resource_path('views/outstanding_materials/' . $view));
+
+            $this->assertStringContainsString("delete-confirmation.js') }}?v={{ filemtime", $blade, $view);
+        }
+    }
+
+    public function test_total_material_kpi_includes_kg_without_a_duplicate_detail_card(): void
+    {
+        $index = file_get_contents(resource_path('views/outstanding_materials/index.blade.php'));
+        $detail = file_get_contents(resource_path('views/outstanding_materials/show.blade.php'));
+
+        foreach ([$index, $detail] as $view) {
+            $this->assertStringContainsString('Total KG:', $view);
+            $this->assertStringContainsString('om-summary-meta', $view);
+        }
+
+        $this->assertStringNotContainsString('Estimated KG', $detail);
     }
 }

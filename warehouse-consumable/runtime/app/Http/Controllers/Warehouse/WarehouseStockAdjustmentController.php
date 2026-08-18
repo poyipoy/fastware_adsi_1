@@ -12,7 +12,7 @@ class WarehouseStockAdjustmentController extends Controller
 {
     public function create()
     {
-        return view('warehouse.adjustments.create', [
+        return view('warehouse.adjustments-create', [
             'consumables' => WarehouseConsumable::query()->where('is_active', true)->orderBy('item_name')->get(),
         ]);
     }

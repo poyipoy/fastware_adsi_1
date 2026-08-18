@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Warehouse;
 
-use App\Exceptions\Warehouse\WarehouseDomainException;
+use App\Exceptions\WarehouseDomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\ScanWarehouseItemRequest;
 use App\Http\Requests\Warehouse\ScanWarehouseUserRequest;

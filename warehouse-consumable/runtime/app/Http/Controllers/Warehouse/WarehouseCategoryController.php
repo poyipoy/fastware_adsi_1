@@ -10,7 +10,7 @@ class WarehouseCategoryController extends Controller
 {
     public function index()
     {
-        return view('warehouse.categories.index', ['categories' => WarehouseConsumableCategory::query()->orderBy('name')->paginate(20)]);
+        return view('warehouse.categories', ['categories' => WarehouseConsumableCategory::query()->orderBy('name')->paginate(20)]);
     }
 
     public function store(StoreWarehouseCategoryRequest $request)

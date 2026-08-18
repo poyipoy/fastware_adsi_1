@@ -2,7 +2,7 @@
 
 namespace App\Services\Warehouse;
 
-use App\Exceptions\Warehouse\WarehouseDomainException;
+use App\Exceptions\WarehouseDomainException;
 
 final class WarehouseQuantity
 {

@@ -884,6 +884,7 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/show-based-on-invoice/materials', [OutstandingMaterialController::class, 'invoiceMaterials'])->name('invoice.materials');
         Route::post('/show-based-on-invoice/update', [OutstandingMaterialController::class, 'updateInvoiceFields'])->name('invoice.update');
         Route::post('/show-based-on-invoice/documents', [OutstandingMaterialController::class, 'uploadInvoiceDocuments'])->name('invoice.documents.upload');
+        Route::delete('/show-based-on-invoice/{outstandingMaterial}', [OutstandingMaterialController::class, 'destroyInvoice'])->name('invoice.destroy');
         Route::get('/show-based-on-invoice/{outstandingMaterial}/materials', [OutstandingMaterialController::class, 'invoiceMaterialsForAnchor'])->name('invoice.materials.scoped');
         Route::post('/show-based-on-invoice/{outstandingMaterial}/update', [OutstandingMaterialController::class, 'updateInvoiceFieldsForAnchor'])->name('invoice.update.scoped');
         Route::post('/show-based-on-invoice/{outstandingMaterial}/documents', [OutstandingMaterialController::class, 'uploadInvoiceDocumentsForAnchor'])->name('invoice.documents.upload.scoped');

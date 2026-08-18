@@ -5,7 +5,7 @@ namespace App\Services\Warehouse;
 use App\Data\Warehouse\WarehouseStockCommand;
 use App\Data\Warehouse\WarehouseStockResult;
 use App\Enums\Warehouse\WarehouseTransactionType;
-use App\Exceptions\Warehouse\WarehouseDomainException;
+use App\Exceptions\WarehouseDomainException;
 use App\Models\User;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockTransaction;
@@ -321,5 +321,13 @@ final class WarehouseStockService
         }
 
         return (string) ($command->notes ?? '');
+    }
+}
+
+final class WarehouseTransactionNumberGenerator
+{
+    public function generate(): string
+    {
+        return 'WH-'.now(config('app.timezone', 'Asia/Jakarta'))->format('Ymd-His').'-'.strtoupper(Str::random(8));
     }
 }
