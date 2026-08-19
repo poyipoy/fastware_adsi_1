@@ -28,6 +28,8 @@ class WarehouseStockServiceTest extends WarehouseTestCase
             'unit' => 'roll',
             'allow_fraction' => false,
             'current_stock' => '10.000',
+            'stock_ds8' => '10.000',
+            'storage_location' => 'DS8',
             'minimum_stock' => '2.000',
             'is_active' => true,
         ]);
@@ -43,6 +45,7 @@ class WarehouseStockServiceTest extends WarehouseTestCase
             createdBy: (int) $actor->getKey(),
             idempotencyKey: '11111111-1111-4111-8111-111111111111',
             verificationCodeHash: hash('sha256', 'CARD-TEST-1'),
+            sourceLocation: 'DS8',
         ));
 
         $this->assertFalse($result->idempotentReplay);
@@ -67,6 +70,8 @@ class WarehouseStockServiceTest extends WarehouseTestCase
             'item_name' => 'Overdraw Item',
             'unit' => 'pcs',
             'current_stock' => '1.000',
+            'stock_ds8' => '1.000',
+            'storage_location' => 'DS8',
             'minimum_stock' => '0.000',
             'is_active' => true,
         ]);
@@ -83,6 +88,7 @@ class WarehouseStockServiceTest extends WarehouseTestCase
             purpose: 'Testing',
             createdBy: (int) $actor->getKey(),
             idempotencyKey: '22222222-2222-4222-8222-222222222222',
+            sourceLocation: 'DS8',
         ));
 
         $this->assertSame(0, WarehouseStockTransaction::query()->count());
@@ -98,6 +104,7 @@ class WarehouseStockServiceTest extends WarehouseTestCase
             'item_name' => 'Idempotent Item',
             'unit' => 'pcs',
             'current_stock' => '0.000',
+            'storage_location' => 'DS8',
             'minimum_stock' => '0.000',
             'is_active' => true,
         ]);
@@ -169,6 +176,7 @@ class WarehouseStockServiceTest extends WarehouseTestCase
                 verifiedUserId: (int) $verified->getKey(),
                 createdBy: (int) $actor->getKey(),
                 idempotencyKey: '77777777-7777-4777-8777-777777777777',
+                sourceLocation: 'DS8',
             ));
             $this->fail('Stock Out must be rejected for a verifier without Warehouse access.');
         } catch (WarehouseDomainException $exception) {

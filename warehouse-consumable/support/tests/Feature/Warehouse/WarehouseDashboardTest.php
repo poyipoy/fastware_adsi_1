@@ -58,14 +58,14 @@ class WarehouseDashboardTest extends WarehouseTestCase
             ->assertSessionHasErrors('trend_date_to');
     }
 
-    public function test_trend_filter_only_changes_trend_data(): void
+    public function test_analytics_filter_changes_trend_and_top_usage_but_not_inventory_kpis(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta'));
 
         try {
             $employee = $this->createUser();
             $inPeriodItem = WarehouseConsumable::factory()->create(['item_name' => 'Trend In Period']);
-            $defaultUsageItem = WarehouseConsumable::factory()->create(['item_name' => 'Default Usage Item']);
+            $defaultUsageItem = WarehouseConsumable::factory()->create(['item_name' => 'Default Usage Item', 'machine_type' => 'Press']);
             $lowStockItem = WarehouseConsumable::factory()->create(['item_name' => 'Low Stock Item', 'current_stock' => '1.000', 'minimum_stock' => '2.000']);
 
             $this->transaction($employee, $inPeriodItem, WarehouseTransactionType::IN, '2.000', CarbonImmutable::parse('2026-08-07 08:00:00', 'Asia/Jakarta'));
@@ -78,8 +78,8 @@ class WarehouseDashboardTest extends WarehouseTestCase
 
             $trend = $response->viewData('trend');
             $topUsage = $response->viewData('topUsage');
+            $topMachineUsage = $response->viewData('topMachineUsage');
             $lowStock = $response->viewData('lowStock');
-            $recentTransactions = $response->viewData('recentTransactions');
             $summary = $response->viewData('summary');
 
             $response->assertOk()
@@ -87,9 +87,9 @@ class WarehouseDashboardTest extends WarehouseTestCase
                 ->assertSee('value="2026-08-07"', false);
             self::assertSame(['2026-08-07'], $trend->keys()->all());
             self::assertSame('2.000', (string) $trend->get('2026-08-07')->get('IN')->quantity);
-            self::assertTrue($topUsage->pluck('id')->contains($defaultUsageItem->id));
+            self::assertFalse($topUsage->pluck('id')->contains($defaultUsageItem->id));
+            self::assertTrue($topMachineUsage->isEmpty());
             self::assertTrue($lowStock->getCollection()->pluck('id')->contains($lowStockItem->id));
-            self::assertTrue($recentTransactions->getCollection()->pluck('consumable_id')->contains($defaultUsageItem->id));
             self::assertSame('2026-07-13', $summary['period']['from']);
         } finally {
             CarbonImmutable::setTestNow();
@@ -102,130 +102,50 @@ class WarehouseDashboardTest extends WarehouseTestCase
 
         $this->actingAs($employee)->get(route('warehouse.dashboard'))
             ->assertOk()
-            ->assertSee('Belum ada transaksi bulan ini.')
-            ->assertSee('Belum ada Stock Out')
+            ->assertSee('Belum ada pergerakan')
+            ->assertSee('Belum ada data Stock Out pada periode ini.')
             ->assertSee('Tren Stock In/Out')
-            ->assertSee('>Filter<', false)
+            ->assertSee('Filter periode')
             ->assertDontSee('Filter Dashboard');
     }
 
-    public function test_recent_transactions_show_adjustment_direction(): void
+    public function test_dashboard_combines_item_and_machine_stock_out_labels_in_one_chart(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta'));
 
         try {
             $employee = $this->createUser();
-            $item = WarehouseConsumable::factory()->create(['item_name' => 'Adjustment Direction Item']);
+            $item = WarehouseConsumable::factory()->create(['item_name' => 'Dashboard Item', 'machine_type' => null]);
+            $machineItem = WarehouseConsumable::factory()->create(['item_name' => 'Machine Item', 'machine_type' => 'Press']);
 
-            WarehouseStockTransaction::factory()->create([
-                'transaction_type' => WarehouseTransactionType::ADJUSTMENT,
-                'consumable_id' => $item->id,
-                'quantity' => '5.000',
-                'stock_before' => '10.000',
-                'stock_after' => '15.000',
-                'verified_user_id' => $employee->id,
-                'created_by' => $employee->id,
-                'transaction_at' => CarbonImmutable::parse('2026-08-11 08:00:00', 'Asia/Jakarta'),
-            ]);
-            WarehouseStockTransaction::factory()->create([
-                'transaction_type' => WarehouseTransactionType::ADJUSTMENT,
-                'consumable_id' => $item->id,
-                'quantity' => '2.000',
-                'stock_before' => '15.000',
-                'stock_after' => '13.000',
-                'verified_user_id' => $employee->id,
-                'created_by' => $employee->id,
-                'transaction_at' => CarbonImmutable::parse('2026-08-11 09:00:00', 'Asia/Jakarta'),
-            ]);
+            $this->transaction($employee, $item, WarehouseTransactionType::OUT, '2.000', CarbonImmutable::now('Asia/Jakarta'));
+            $this->transaction($employee, $machineItem, WarehouseTransactionType::OUT, '5.000', CarbonImmutable::now('Asia/Jakarta'));
 
-            $this->actingAs($employee)->get(route('warehouse.dashboard'))
-                ->assertOk()
-                ->assertSee('class="d-block warehouse-transaction-direction">Stock In</small>', false)
-                ->assertSee('class="d-block warehouse-transaction-direction">Stock Out</small>', false);
+            $response = $this->actingAs($employee)->get(route('warehouse.dashboard'));
+
+            $response->assertOk()
+                ->assertSee('warehouse-top-stock-out-data', false)
+                ->assertDontSee('warehouse-top-item-data', false)
+                ->assertDontSee('warehouse-top-machine-data', false)
+                ->assertSee('Item · Dashboard Item', false)
+                ->assertSee('Tipe Mesin · Press', false)
+                ->assertSee('Dashboard Item')
+                ->assertSee('Press');
         } finally {
             CarbonImmutable::setTestNow();
         }
     }
 
-    public function test_dashboard_recent_transactions_are_limited_to_current_month_and_ignore_trend_filter(): void
+    public function test_dashboard_removes_recent_transactions_panel(): void
     {
-        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta'));
+        $employee = $this->createUser();
 
-        try {
-            $employee = $this->createUser();
-            $currentIn = WarehouseConsumable::factory()->create(['item_name' => 'Current Month In']);
-            $currentOut = WarehouseConsumable::factory()->create(['item_name' => 'Current Month Out']);
-            $previousMonth = WarehouseConsumable::factory()->create(['item_name' => 'Previous Month Movement']);
-            $nextMonth = WarehouseConsumable::factory()->create(['item_name' => 'Next Month Movement']);
+        $response = $this->actingAs($employee)->get(route('warehouse.dashboard'));
 
-            $this->transaction($employee, $currentIn, WarehouseTransactionType::IN, '2.000', CarbonImmutable::parse('2026-08-01 00:00:00', 'Asia/Jakarta'));
-            $this->transaction($employee, $currentOut, WarehouseTransactionType::OUT, '1.000', CarbonImmutable::parse('2026-08-31 23:59:59', 'Asia/Jakarta'));
-            $this->transaction($employee, $previousMonth, WarehouseTransactionType::IN, '5.000', CarbonImmutable::parse('2026-07-31 23:59:59', 'Asia/Jakarta'));
-            $this->transaction($employee, $nextMonth, WarehouseTransactionType::OUT, '7.000', CarbonImmutable::parse('2026-09-01 00:00:00', 'Asia/Jakarta'));
-
-            $response = $this->actingAs($employee)->get(route('warehouse.dashboard', [
-                'trend_date_from' => '2026-07-01',
-                'trend_date_to' => '2026-07-31',
-            ]));
-
-            $recentTransactions = $response->viewData('recentTransactions');
-
-            $response->assertOk()
-                ->assertSee('Pergerakan bulan berjalan.')
-                ->assertSee('Agustus 2026');
-            self::assertSame(2, $recentTransactions->total());
-            self::assertSame(
-                [$currentIn->id, $currentOut->id],
-                $recentTransactions->getCollection()->pluck('consumable_id')->sort()->values()->all(),
-            );
-        } finally {
-            CarbonImmutable::setTestNow();
-        }
-    }
-
-    public function test_dashboard_recent_transactions_paginate_current_month_and_keep_trend_query_string(): void
-    {
-        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta'));
-
-        try {
-            $employee = $this->createUser();
-            $item = WarehouseConsumable::factory()->create(['item_name' => 'Paginated Month Item']);
-            $monthStart = CarbonImmutable::parse('2026-08-01 00:00:00', 'Asia/Jakarta');
-
-            for ($index = 1; $index <= 11; $index++) {
-                $this->transaction(
-                    $employee,
-                    $item,
-                    $index % 2 === 0 ? WarehouseTransactionType::OUT : WarehouseTransactionType::IN,
-                    '1.000',
-                    $monthStart->addMinutes($index),
-                );
-            }
-
-            $response = $this->actingAs($employee)->get(route('warehouse.dashboard', [
-                'trend_date_from' => '2026-07-01',
-                'trend_date_to' => '2026-07-31',
-                'transaction_page' => 2,
-            ]));
-
-            $recentTransactions = $response->viewData('recentTransactions');
-            $secondPageUrl = html_entity_decode($recentTransactions->url(2));
-
-            $response->assertOk()
-                ->assertSee('class="page-link"', false)
-                ->assertSee('Sebelumnya')
-                ->assertSee('Berikutnya')
-                ->assertDontSee('w-5 h-5', false);
-            self::assertSame(2, $recentTransactions->currentPage());
-            self::assertSame(10, $recentTransactions->perPage());
-            self::assertSame(11, $recentTransactions->total());
-            self::assertCount(1, $recentTransactions->items());
-            self::assertStringContainsString('transaction_page=2', $secondPageUrl);
-            self::assertStringContainsString('trend_date_from=2026-07-01', $secondPageUrl);
-            self::assertStringContainsString('trend_date_to=2026-07-31', $secondPageUrl);
-        } finally {
-            CarbonImmutable::setTestNow();
-        }
+        $response->assertOk()
+            ->assertDontSee('Transaksi Terbaru')
+            ->assertDontSee('Pergerakan bulan berjalan.');
+        self::assertArrayNotHasKey('recentTransactions', $response->original->getData());
     }
 
     public function test_dashboard_data_keeps_today_compatibility_keys_and_exposes_current_month(): void
@@ -243,6 +163,7 @@ class WarehouseDashboardTest extends WarehouseTestCase
                 ->assertJsonPath('summary.current_month.to', '2026-08-31')
                 ->assertJsonPath('summary.current_month.label', 'August 2026')
                 ->assertJsonStructure([
+                    'top_usage_by_machine_type',
                     'summary' => [
                         'stock_in_today' => ['quantity', 'transaction_count'],
                         'stock_out_today' => ['quantity', 'transaction_count'],

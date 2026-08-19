@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Warehouse;
 
+use App\Exceptions\WarehouseDomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\StoreWarehouseAdjustmentRequest;
 use App\Models\Warehouse\WarehouseConsumable;
@@ -26,6 +27,7 @@ class WarehouseStockAdjustmentController extends Controller
             $verified = $identity->resolveUserForDirection(
                 (string) $request->input('verified_code'),
                 $direction,
+                true,
             );
 
             if ($item === null || $verified === null) {
@@ -41,8 +43,10 @@ class WarehouseStockAdjustmentController extends Controller
                 reasonCategory: (string) $request->input('reason_category'),
                 reason: (string) $request->input('reason'),
                 idempotencyKey: (string) $request->input('idempotency_key'),
+                itemCondition: (string) $request->input('item_condition'),
+                storageLocation: (string) $request->input('storage_location'),
             );
-        } catch (\Throwable $exception) {
+        } catch (WarehouseDomainException|\InvalidArgumentException $exception) {
             return back()->withInput()->withErrors(['adjustment' => $exception->getMessage()]);
         }
 

@@ -75,11 +75,9 @@ class WarehouseDashboardQueryTest extends WarehouseTestCase
                 transactionType: WarehouseTransactionType::ADJUSTMENT->value,
             );
             $summary = app(WarehouseDashboardService::class)->summary($filter);
-            $recentTransactions = app(WarehouseDashboardService::class)->recentTransactions(WarehouseDashboardFilter::currentMonth());
 
             self::assertSame(['quantity' => '2.000', 'transaction_count' => 1], $summary['stock_in_month']);
             self::assertSame(['quantity' => '3.000', 'transaction_count' => 1], $summary['stock_out_month']);
-            self::assertSame(2, $recentTransactions->total());
             self::assertSame([
                 'from' => '2026-08-01',
                 'to' => '2026-08-31',

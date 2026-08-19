@@ -4,6 +4,7 @@ namespace Tests\Feature\Warehouse;
 
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockTransaction;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class WarehouseAdjustmentTest extends WarehouseTestCase
@@ -30,7 +31,7 @@ class WarehouseAdjustmentTest extends WarehouseTestCase
         $item = WarehouseConsumable::factory()->create(['current_stock' => '3.000']);
 
         $response = $this->actingAs($pic)->post(route('warehouse.adjustments.store'), [
-            'consumable_id' => $item->id, 'direction' => 'OUT', 'quantity' => '1', 'reason_category' => 'damaged', 'reason' => 'Damaged during handling', 'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
+            'consumable_id' => $item->id, 'direction' => 'OUT', 'item_condition' => 'NEW', 'storage_location' => 'DS8', 'quantity' => '1', 'reason_category' => 'damaged', 'reason' => 'Damaged during handling', 'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
         $response->assertRedirect(route('warehouse.dashboard'));
@@ -45,7 +46,7 @@ class WarehouseAdjustmentTest extends WarehouseTestCase
         $this->createPicPosition($pic);
         $item = WarehouseConsumable::factory()->create();
 
-        $this->actingAs($pic)->post(route('warehouse.adjustments.store'), ['consumable_id' => $item->id, 'direction' => 'IN', 'quantity' => '1', 'reason_category' => 'opening_balance', 'verified_code' => 'missing', 'idempotency_key' => (string) Str::uuid()])->assertSessionHasErrors('reason');
+        $this->actingAs($pic)->post(route('warehouse.adjustments.store'), ['consumable_id' => $item->id, 'direction' => 'IN', 'item_condition' => 'NEW', 'storage_location' => 'DS8', 'quantity' => '1', 'reason_category' => 'opening_balance', 'verified_code' => 'missing', 'idempotency_key' => (string) Str::uuid()])->assertSessionHasErrors('reason');
     }
 
     public function test_adjustment_rejects_verifier_without_warehouse_access(): void
@@ -59,6 +60,8 @@ class WarehouseAdjustmentTest extends WarehouseTestCase
         $this->actingAs($pic)->post(route('warehouse.adjustments.store'), [
             'consumable_id' => $item->id,
             'direction' => 'OUT',
+            'item_condition' => 'NEW',
+            'storage_location' => 'DS8',
             'quantity' => '1',
             'reason_category' => 'damaged',
             'reason' => 'Damaged during handling',
@@ -67,6 +70,33 @@ class WarehouseAdjustmentTest extends WarehouseTestCase
         ])->assertSessionHasErrors('adjustment');
 
         $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '3.000']);
+        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+    }
+
+    public function test_adjustment_rejects_warehouse_user_who_is_not_a_restricted_verifier(): void
+    {
+        $pic = $this->createUser();
+        $this->createPicPosition($pic);
+        $verified = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $verified->id)->delete();
+        $item = WarehouseConsumable::factory()->create(['current_stock' => '3.000']);
+
+        $this->actingAs($pic)->post(route('warehouse.adjustments.store'), [
+            'consumable_id' => $item->id,
+            'direction' => 'OUT',
+            'item_condition' => 'NEW',
+            'storage_location' => 'DS8',
+            'quantity' => '1',
+            'reason_category' => 'damaged',
+            'reason' => 'Damaged during handling',
+            'verified_code' => (string) $verified->npk,
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertSessionHasErrors('adjustment');
+
+        $this->assertDatabaseHas('mst_wh_consumables', [
+            'id' => $item->id,
+            'current_stock' => '3.000',
+        ]);
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
     }
 }

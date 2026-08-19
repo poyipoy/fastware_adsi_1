@@ -6,6 +6,7 @@ use App\Data\Warehouse\WarehouseStockCommand;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Exceptions\WarehouseDomainException;
 use App\Models\User;
+use App\Models\Warehouse\WarehouseRestrictedVerifier;
 use App\Models\Warehouse\WarehouseStockTransaction;
 
 final class WarehouseVerifierPolicy
@@ -29,12 +30,23 @@ final class WarehouseVerifierPolicy
         return $direction;
     }
 
-    public function assertUserCanVerify(User $user, string $direction): User
+    public function assertUserCanVerify(User $user, string $direction, bool $restricted = false): User
     {
         $direction = $this->normalizeDirection($direction);
         if (! $this->access->hasModuleAccess($user)) {
             throw new WarehouseDomainException(
                 'NPK karyawan tidak memiliki akses Warehouse untuk memverifikasi '.$this->label($direction).'.',
+                422,
+            );
+        }
+
+        if ($restricted && ! WarehouseRestrictedVerifier::query()
+            ->where('user_id', $user->getKey())
+            ->where('scope', 'ALL')
+            ->where('is_active', true)
+            ->exists()) {
+            throw new WarehouseDomainException(
+                'NPK karyawan tidak terdaftar sebagai verifikator Transfer/Adjustment.',
                 422,
             );
         }
@@ -51,7 +63,18 @@ final class WarehouseVerifierPolicy
             WarehouseTransactionType::OUT => self::DIRECTION_OUT,
             WarehouseTransactionType::ADJUSTMENT => $this->normalizeDirection((string) $command->adjustmentDirection),
             WarehouseTransactionType::REVERSAL => $this->directionForReversal($original),
+            WarehouseTransactionType::TRANSFER => self::DIRECTION_OUT,
         };
+    }
+
+    public function commandRequiresRestrictedVerifier(
+        WarehouseStockCommand $command,
+        ?WarehouseStockTransaction $original = null,
+    ): bool {
+        return $command->type === WarehouseTransactionType::TRANSFER
+            || $command->type === WarehouseTransactionType::ADJUSTMENT
+            || ($command->type === WarehouseTransactionType::REVERSAL
+                && $original?->transaction_type === WarehouseTransactionType::ADJUSTMENT);
     }
 
     public function directionForReversal(?WarehouseStockTransaction $original): string

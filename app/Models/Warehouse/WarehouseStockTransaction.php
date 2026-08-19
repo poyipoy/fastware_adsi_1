@@ -2,11 +2,13 @@
 
 namespace App\Models\Warehouse;
 
+use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class WarehouseStockTransaction extends Model
 {
@@ -17,7 +19,11 @@ class WarehouseStockTransaction extends Model
     protected $fillable = [
         'transaction_number',
         'idempotency_key',
+        'operation_key',
         'transaction_type',
+        'item_condition',
+        'from_location',
+        'to_location',
         'consumable_id',
         'quantity',
         'stock_before',
@@ -37,6 +43,7 @@ class WarehouseStockTransaction extends Model
 
     protected $casts = [
         'transaction_type' => WarehouseTransactionType::class,
+        'item_condition' => WarehouseItemCondition::class,
         'quantity' => 'decimal:3',
         'stock_before' => 'decimal:3',
         'stock_after' => 'decimal:3',
@@ -63,8 +70,8 @@ class WarehouseStockTransaction extends Model
         return $this->belongsTo(self::class, 'reversal_of_id');
     }
 
-    public function reversal(): BelongsTo
+    public function reversal(): HasOne
     {
-        return $this->belongsTo(self::class, 'reversal_of_id');
+        return $this->hasOne(self::class, 'reversal_of_id');
     }
 }

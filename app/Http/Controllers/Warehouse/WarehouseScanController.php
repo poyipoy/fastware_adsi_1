@@ -8,6 +8,7 @@ use App\Http\Requests\Warehouse\ScanWarehouseItemRequest;
 use App\Http\Requests\Warehouse\ScanWarehouseUserRequest;
 use App\Services\Warehouse\WarehouseIdentityResolver;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class WarehouseScanController extends Controller
 {
@@ -28,11 +29,20 @@ class WarehouseScanController extends Controller
             return response()->json(['message' => 'Barcode item tidak ditemukan atau tidak aktif.'], 404);
         }
 
+        $photoUrl = $item->photo_path
+            ? Storage::disk((string) config('warehouse.photos.disk', 'public'))->url($item->photo_path)
+            : null;
+
         return response()->json(['data' => [
             'id' => $item->getKey(), 'item_code' => $item->item_code, 'barcode' => $item->barcode,
             'item_name' => $item->item_name, 'category' => $item->category?->name, 'unit' => $item->unit,
+            'machine_type' => $item->machine_type, 'photo_url' => $photoUrl,
             'allow_fraction' => (bool) $item->allow_fraction, 'current_stock' => (string) $item->current_stock,
             'minimum_stock' => (string) $item->minimum_stock, 'storage_location' => $item->storage_location,
+            'stock_ds8' => (string) $item->stock_ds8, 'stock_deltamas' => (string) $item->stock_deltamas,
+            'stock_new_ds8' => $item->availableAt('DS8', \App\Enums\Warehouse\WarehouseItemCondition::NEW),
+            'stock_new_deltamas' => $item->availableAt('Deltamas', \App\Enums\Warehouse\WarehouseItemCondition::NEW),
+            'stock_used_ds8' => (string) $item->stock_used_ds8, 'stock_used_deltamas' => (string) $item->stock_used_deltamas,
             'stock_status' => $item->stock_status,
         ]]);
     }
@@ -41,7 +51,12 @@ class WarehouseScanController extends Controller
     {
         $code = (string) $request->input('code');
         try {
-            $user = $resolver->resolveUserForDirection($code, (string) $request->input('type'));
+            $type = (string) $request->input('type');
+            $user = $resolver->resolveUserForDirection(
+                $code,
+                in_array($type, ['ADJUSTMENT', 'TRANSFER'], true) ? 'OUT' : $type,
+                in_array($type, ['ADJUSTMENT', 'TRANSFER'], true),
+            );
         } catch (\InvalidArgumentException $exception) {
             $resolver->logFailure($code, 'Invalid employee scan', $request->ip(), $request->userAgent());
 

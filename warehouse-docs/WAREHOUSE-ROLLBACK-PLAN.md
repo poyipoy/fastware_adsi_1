@@ -1,27 +1,35 @@
 # Warehouse Consumable — Rollback Plan
 
-## Structure refactor rollback
+## Prinsip utama
 
-- The refactor is represented by six commits ending at `9bf70d5`; roll back the application artifact to the last approved source release if a structural regression is found.
-- Do not delete Warehouse tables or transaction history as part of an application rollback. This refactor made no schema or data changes.
-- If `warehouse-consumable/` is used as a separate deployment artifact, regenerate or restore that artifact independently; it was intentionally outside the refactor scope.
+Revisi Tahap 2 menambah data audit dan saldo per lokasi/kondisi. Setelah transaksi Revisi 2 tercatat, rollback schema dapat menghilangkan informasi `TRANSFER`, `item_condition`, lokasi asal/tujuan, foto, tipe mesin, serta breakdown saldo. Karena itu produksi mengutamakan **stop write + forward fix**, bukan rollback migration otomatis.
+
+## Trigger
+
+Hentikan release bila migration preflight gagal, saldo total tidak sama dengan jumlah lokasi, verifier terbatas tidak tepat, route/view/build gagal, atau smoke test menemukan mutasi parsial/otorisasi bocor.
 
 ## Application rollback
 
-1. Stop the release and preserve the execution log, test output, and failing transaction number.
-2. Roll back the application release to the last known-good artifact without deleting Warehouse transaction history.
-3. Keep the Warehouse tables when the previous application can safely ignore them; do not delete data as an incident response.
+1. Nonaktifkan sementara mutasi Warehouse dan catat waktu, user, item, operation key, serta transaction number terakhir tanpa menyimpan raw scan.
+2. Simpan log aplikasi, hasil preflight, `migrate:status`, checksum artifact, dan backup database/foto.
+3. Jika **belum ada transaksi Revisi 2**, restore artifact aplikasi sebelumnya melalui prosedur deploy normal; biarkan kolom tambahan tetap ada sampai keputusan schema dibuat.
+4. Jika sudah ada transaksi Bekas/Transfer atau saldo sudah tersebar antar lokasi, jangan jalankan aplikasi lama yang enum/model-nya tidak memahami data tersebut. Gunakan forward fix atau build compatibility yang direview.
 
-## Schema rollback (testing rehearsal only)
+## Schema rollback
 
-The five Warehouse migrations may be rolled back in reverse dependency order only on a database whose name ends in `_testing`. Re-run the migration and the targeted Warehouse suite after the rehearsal. Never use this destructive sequence on production.
+- Jangan menjalankan `migrate:rollback` umum pada checkout ini.
+- Empat migration Revisi 2 hanya boleh direhearsal pada database berakhiran `_testing` atau dilakukan di produksi setelah incident owner menyetujui potensi kehilangan data dan backup restore telah diuji.
+- Urutan down adalah kebalikan: seed verifier, tabel verifier, kolom audit transaksi, lalu kolom inventory master.
+- Migration inventory pertama menjatuhkan kolom per-lokasi/kondisi, `machine_type`, dan `photo_path`; migration transaksi menjatuhkan `operation_key`, `item_condition`, dan from/to location. Down bukan mekanisme pemulihan data.
+- File foto pada disk tidak otomatis dipulihkan/dihapus oleh migration. Pertahankan backup `storage/app/public/warehouse/consumables` sampai incident ditutup.
 
-## Data and operational recovery
+## Koreksi operasional
 
-- If a movement is wrong, use the authorized reversal workflow; do not delete or edit the original row.
-- If the current stock is inconsistent, stop further mutations, capture the item and transaction evidence, and use a restricted adjustment after the incident owner approves the reason.
-- Restore from the normal database backup only under the application's approved database recovery procedure.
+- Transaksi IN/OUT/Adjustment yang salah dikoreksi dengan reversal terotorisasi; baris asal tetap immutable.
+- Transfer salah dikoreksi dengan transfer balik oleh RAGIL/ARY dan alasan yang jelas; transfer tidak dapat direversal.
+- Jika ada mismatch saldo, hentikan mutasi item, audit ledger dan operation key, lalu lakukan restricted Adjustment hanya setelah persetujuan incident owner.
+- Jangan mengubah saldo, kondisi, lokasi, transaction type, atau restricted verifier langsung melalui SQL.
 
 ## Resume
 
-Update `warehouse-docs/WAREHOUSE-EXECUTION-LOG.md` with the failed gate, baseline comparison, decision, and next mission. Resume from the first mission not marked `DONE`; do not infer progress from file timestamps.
+Sebelum membuka kembali Warehouse, buktikan semua invariant saldo, jalankan targeted suite/build/view cache, ulangi smoke role/scanner/mobile, dan tambahkan keputusan serta evidence ke `WAREHOUSE-EXECUTION-LOG.md`.

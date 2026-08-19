@@ -15,6 +15,8 @@ class WarehouseNavigationAccessTest extends WarehouseTestCase
         'warehouse.master.manage',
         'warehouse.transaction.view',
         'warehouse.transaction.reverse',
+        'warehouse.transfer.create',
+        'warehouse.report.view',
         'warehouse.report.export',
     ];
 
@@ -46,6 +48,8 @@ class WarehouseNavigationAccessTest extends WarehouseTestCase
                 ->assertOk()
                 ->assertSee('data-warehouse-type="IN"', false)
                 ->assertSee('data-warehouse-type="OUT"', false);
+            $this->actingAs($user)->get(route('warehouse.transfers.create'))->assertOk();
+            $this->actingAs($user)->get(route('warehouse.reports.index'))->assertOk();
         }
     }
 

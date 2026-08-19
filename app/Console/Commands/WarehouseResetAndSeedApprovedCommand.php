@@ -39,8 +39,7 @@ class WarehouseResetAndSeedApprovedCommand extends Command
     public function handle(
         WarehouseResetBackupService $backupService,
         WarehouseApprovedBarcodeDataSeeder $approvedSeeder,
-    ): int
-    {
+    ): int {
         try {
             $database = $this->guardEnvironment();
             $this->guardSchema();
@@ -204,11 +203,17 @@ class WarehouseResetAndSeedApprovedCommand extends Command
                 || (string) $item->unit !== 'pcs'
                 || (bool) $item->allow_fraction
                 || (string) $item->current_stock !== '0.000'
+                || (string) $item->stock_deltamas !== '0.000'
+                || (string) $item->stock_ds8 !== '0.000'
+                || (string) $item->stock_used_deltamas !== '0.000'
+                || (string) $item->stock_used_ds8 !== '0.000'
                 || (string) $item->minimum_stock !== '0.000'
                 || $item->maximum_stock !== null
                 || $item->storage_location !== null
+                || $item->machine_type !== null
                 || $item->category_id !== null
                 || $item->description !== null
+                || $item->photo_path !== null
                 || ! (bool) $item->is_active) {
                 throw new RuntimeException('Validasi master barang PDF gagal.');
             }

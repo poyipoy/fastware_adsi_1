@@ -20,7 +20,7 @@ class WarehouseDashboardFilterRequest extends FormRequest
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'trend_date_from' => ['nullable', 'date_format:Y-m-d'],
             'trend_date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:trend_date_from'],
-            'transaction_type' => ['nullable', Rule::in(['IN', 'OUT', 'ADJUSTMENT', 'REVERSAL'])],
+            'transaction_type' => ['nullable', Rule::in(['IN', 'OUT', 'ADJUSTMENT', 'REVERSAL', 'TRANSFER'])],
             'category_id' => ['nullable', 'integer', 'exists:mst_wh_consumable_categories,id'],
             'consumable_id' => ['nullable', 'integer', 'exists:mst_wh_consumables,id'],
             'section' => ['nullable', 'string', 'max:120'],

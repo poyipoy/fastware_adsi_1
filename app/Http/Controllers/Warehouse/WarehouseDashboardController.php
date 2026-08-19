@@ -26,13 +26,15 @@ class WarehouseDashboardController extends Controller
             'canStockIn' => $access->can($request->user(), 'warehouse.stock-in.create'),
             'canStockOut' => $access->can($request->user(), 'warehouse.stock-out.create'),
             'canAdjust' => $access->canAdjust($request->user()),
+            'canTransfer' => $access->can($request->user(), 'warehouse.transfer.create'),
+            'canViewReport' => $access->can($request->user(), 'warehouse.report.view'),
             'trendFilter' => $trendFilter,
             'summary' => $dashboard->summary($dashboardFilter),
             'currentMonthLabel' => $currentMonth->from->copy()->locale('id')->translatedFormat('F Y'),
             'trend' => $dashboard->movementTrendForView($trendFilter),
-            'topUsage' => $dashboard->topUsage($dashboardFilter),
+            'topUsage' => $dashboard->topUsage($trendFilter),
+            'topMachineUsage' => $dashboard->topUsageByMachineType($trendFilter),
             'lowStock' => $dashboard->lowStock($dashboardFilter),
-            'recentTransactions' => $dashboard->recentTransactions($currentMonth),
         ]);
     }
 
@@ -46,6 +48,7 @@ class WarehouseDashboardController extends Controller
             'summary' => $dashboard->summary($filter),
             'trend' => $dashboard->movementTrend($filter),
             'top_usage' => $dashboard->topUsage($filter),
+            'top_usage_by_machine_type' => $dashboard->topUsageByMachineType($filter),
         ]);
     }
 }

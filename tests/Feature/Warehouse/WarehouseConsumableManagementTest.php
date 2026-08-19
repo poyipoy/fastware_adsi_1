@@ -138,6 +138,7 @@ class WarehouseConsumableManagementTest extends WarehouseTestCase
 
         $response = $this->actingAs($pic)->post(route('warehouse.consumables.opening-balance', $item), [
             'quantity' => '12',
+            'storage_location' => 'DS8',
             'verified_code' => (string) $verified->npk,
             'reason' => 'Initial physical count',
             'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
@@ -158,6 +159,7 @@ class WarehouseConsumableManagementTest extends WarehouseTestCase
 
         $this->actingAs($pic)->post(route('warehouse.consumables.opening-balance', $item), [
             'quantity' => '12',
+            'storage_location' => 'DS8',
             'verified_code' => (string) $verified->npk,
             'reason' => 'Initial count',
             'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),

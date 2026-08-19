@@ -1,0 +1,29 @@
+.warehouse-report-page { width: 100%; }
+.warehouse-report-filter { max-width: 460px; margin-bottom: 18px; }
+.warehouse-report-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.warehouse-report-context { margin: 0 0 18px; color: var(--warehouse-muted); font-size: .86rem; }
+.warehouse-report-matrix-card { overflow: hidden; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #fff; box-shadow: 0 3px 12px rgba(23, 34, 56, .04); }
+.warehouse-report-matrix-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--warehouse-border); }
+.warehouse-report-matrix-header h2 { margin: 0; color: var(--warehouse-ink); font-size: 1rem; font-weight: 700; }
+.warehouse-report-matrix-wrap { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+.warehouse-report-matrix { width: max-content; min-width: max(980px, 100%); margin: 0; border-collapse: separate; border-spacing: 0; color: #334258; font-size: .82rem; font-variant-numeric: tabular-nums; }
+.warehouse-report-matrix th, .warehouse-report-matrix td { min-width: 104px; padding: 11px 10px; border-right: 1px solid #edf1f6; border-bottom: 1px solid var(--warehouse-border); vertical-align: middle; text-align: right; white-space: nowrap; }
+.warehouse-report-matrix thead th { color: #27364c; font-size: .74rem; font-weight: 700; }
+.warehouse-report-matrix thead tr:first-child th { padding-top: 13px; padding-bottom: 13px; background: #eef3fa; text-align: center; }
+.warehouse-report-matrix thead tr:nth-child(2) th { background: #f8fafc; }
+.warehouse-report-matrix tbody tr:last-child th, .warehouse-report-matrix tbody tr:last-child td { border-bottom: 0; }
+.warehouse-report-matrix tbody tr:hover .warehouse-report-item-column { background: #f8fafc; }
+.warehouse-report-item-column { position: sticky; left: 0; z-index: 3; width: 220px; min-width: 220px !important; max-width: 280px; background: #fff; text-align: left !important; white-space: normal !important; overflow-wrap: anywhere; }
+.warehouse-report-matrix thead .warehouse-report-item-column { z-index: 5; background: #eef3fa; }
+.warehouse-report-month-heading { min-width: 416px !important; border-left: 2px solid var(--warehouse-border) !important; }
+.warehouse-report-month-start { border-left: 2px solid var(--warehouse-border) !important; }
+.warehouse-report-ending-column { background: #f8fafc; color: var(--warehouse-ink); }
+.warehouse-report-summary-column { min-width: 112px !important; background: #eef3fa !important; color: var(--warehouse-ink); }
+.warehouse-report-matrix-empty { padding: 22px; }
+
+@media (max-width: 767.98px) {
+    .warehouse-report-filter-row { grid-template-columns: 1fr; }
+    .warehouse-report-matrix-header { padding: 14px; }
+    .warehouse-report-matrix th, .warehouse-report-matrix td { padding: 10px 8px; }
+    .warehouse-report-item-column { width: 180px; min-width: 180px !important; }
+}

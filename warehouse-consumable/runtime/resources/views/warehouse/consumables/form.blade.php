@@ -21,7 +21,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ $consumable->exists ? route('warehouse.consumables.update', $consumable) : route('warehouse.consumables.store') }}" class="warehouse-panel warehouse-form-card" aria-label="Formulir Master Consumable">
+        <form method="POST" enctype="multipart/form-data" action="{{ $consumable->exists ? route('warehouse.consumables.update', $consumable) : route('warehouse.consumables.store') }}" class="warehouse-panel warehouse-form-card" aria-label="Formulir Master Consumable">
             @csrf
             @if ($consumable->exists)
                 @method('PUT')
@@ -42,6 +42,16 @@
                         <div class="warehouse-form-field">
                             <label class="form-label warehouse-required" for="item_name">Nama barang</label>
                             <input class="form-control" id="item_name" name="item_name" value="{{ old('item_name', $consumable->item_name) }}" required @error('item_name') aria-invalid="true" @enderror>
+                        </div>
+                        <div class="warehouse-form-field">
+                            <label class="form-label" for="machine_type">Tipe mesin</label>
+                            <input class="form-control" id="machine_type" name="machine_type" value="{{ old('machine_type', $consumable->machine_type) }}" maxlength="120" placeholder="Contoh: Cutting, Press, Welding">
+                        </div>
+                        <div class="warehouse-form-field">
+                            <label class="form-label" for="photo">Foto barang</label>
+                            <input class="form-control" id="photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" aria-describedby="photo-help">
+                            <div class="warehouse-help" id="photo-help">JPG, JPEG, PNG, atau WebP. Maksimal 5 MB. Kosongkan untuk mempertahankan foto saat ini.</div>
+                            @if($consumable->photo_path)<img class="warehouse-master-photo-preview mt-2" src="{{ \Illuminate\Support\Facades\Storage::disk(config('warehouse.photos.disk', 'public'))->url($consumable->photo_path) }}" alt="Foto {{ $consumable->item_name }}" width="240" height="165">@endif
                         </div>
                     </div>
                 </section>
@@ -70,7 +80,7 @@
                                     <option value="{{ $storageLocation }}" @selected((string) $selectedStorageLocation === (string) $storageLocation)>{{ $storageLocation }}</option>
                                 @endforeach
                             </select>
-                            <div class="warehouse-help" id="storage-location-help">Opsional. Pilih DS8 atau Deltamas; lokasi akan menjadi lokasi aktif setelah Stock In berhasil.</div>
+                            <div class="warehouse-help" id="storage-location-help">Lokasi default untuk prefill. Saldo aktual tetap dipisahkan antara DS8 dan Deltamas.</div>
                         </div>
                     </div>
                 </section>

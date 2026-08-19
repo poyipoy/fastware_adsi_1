@@ -8,6 +8,7 @@ enum WarehouseTransactionType: string
     case OUT = 'OUT';
     case ADJUSTMENT = 'ADJUSTMENT';
     case REVERSAL = 'REVERSAL';
+    case TRANSFER = 'TRANSFER';
 
     public function isInbound(): bool
     {
@@ -18,6 +19,22 @@ enum WarehouseTransactionType: string
     {
         return $this === self::OUT;
     }
+}
+
+enum WarehouseItemCondition: string
+{
+    case NEW = 'NEW';
+    case USED = 'USED';
+
+    public function label(): string
+    {
+        return $this === self::NEW ? 'Baru' : 'Bekas';
+    }
+}
+
+enum WarehouseVerificationScope: string
+{
+    case ALL = 'ALL';
 }
 
 enum WarehouseVerificationStatus: string

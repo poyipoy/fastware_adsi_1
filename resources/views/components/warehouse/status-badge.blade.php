@@ -9,6 +9,7 @@
                 'OUT' => 'Keluar',
                 'ADJUSTMENT' => 'Penyesuaian',
                 'REVERSAL' => 'Pembatalan',
+                'TRANSFER' => 'Transfer',
                 default => $status,
             },
             'stock' => match ($value) {
@@ -31,6 +32,7 @@
             'IN', 'HEALTHY', 'ACTIVE', 'SUCCESS' => 'success',
             'OUT', 'LOW', 'WARNING', 'PENDING' => 'warning',
             'DANGER', 'ERROR', 'INACTIVE', 'REVERSED' => 'danger',
+            'TRANSFER' => 'neutral',
             default => 'neutral',
         };
 @endphp

@@ -18,13 +18,16 @@ class WarehouseTransactionExportRequest extends FormRequest
         return [
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
-            'transaction_type' => ['nullable', Rule::in(['IN', 'OUT', 'ADJUSTMENT', 'REVERSAL'])],
+            'workspace' => ['nullable', Rule::in(array_merge(['all'], array_keys((array) config('warehouse.history_workspaces', []))))],
+            'transaction_type' => ['nullable', Rule::in(['IN', 'OUT', 'ADJUSTMENT', 'REVERSAL', 'TRANSFER'])],
+            'item_condition' => ['nullable', Rule::in(['NEW', 'USED'])],
             'consumable_id' => ['nullable', 'integer', 'exists:mst_wh_consumables,id'],
             'category_id' => ['nullable', 'integer', 'exists:mst_wh_consumable_categories,id'],
             'verified_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'section' => ['nullable', 'string', 'max:120'],
             'reference_number' => ['nullable', 'string', 'max:120'],
             'transaction_number' => ['nullable', 'string', 'max:40'],
+            'operation_key' => ['nullable', 'string', 'max:36'],
         ];
     }
 }

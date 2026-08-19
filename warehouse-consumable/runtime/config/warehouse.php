@@ -19,7 +19,24 @@ return [
 
     'transaction' => [
         'require_storage_location_for_in' => true,
+        'require_source_location_for_out' => true,
         'duplicate_submission_ttl_seconds' => 30,
+    ],
+
+    'catalog' => [
+        'per_page' => 16,
+    ],
+
+    'photos' => [
+        'disk' => 'public',
+        'directory' => 'warehouse/consumables',
+        'max_kilobytes' => 5120,
+        'mimes' => ['jpg', 'jpeg', 'png', 'webp'],
+    ],
+
+    'history_workspaces' => [
+        'foreman_1' => ['label' => 'Foreman 1', 'npk' => 5488],
+        'foreman_2' => ['label' => 'Foreman 2', 'npk' => 5472],
     ],
 
     'storage_locations' => [

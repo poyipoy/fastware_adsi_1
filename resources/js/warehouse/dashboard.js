@@ -16,9 +16,45 @@
         target.addEventListener('hidden.bs.collapse', () => toggle.setAttribute('aria-expanded', 'false'));
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialiseTrendFilter, { once: true });
-    } else {
+    const initialiseCharts = () => {
+        if (typeof window.Chart !== 'function') {
+            return;
+        }
+
+        document.querySelectorAll('[data-warehouse-bar-chart]').forEach((canvas) => {
+            const source = document.getElementById(canvas.dataset.source || '');
+            if (!source) return;
+
+            let data;
+            try { data = JSON.parse(source.textContent || '{}'); } catch { return; }
+            if (!Array.isArray(data.labels) || data.labels.length === 0) {
+                canvas.closest('.warehouse-chart-frame')?.setAttribute('hidden', 'hidden');
+                return;
+            }
+
+            new window.Chart(canvas, {
+                type: 'bar',
+                data: { labels: data.labels, datasets: [{ label: 'Jumlah Stock Out', data: data.values, backgroundColor: '#2d5fb8', borderRadius: 4 }] },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : undefined,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } },
+                },
+            });
+        });
+    };
+
+    const initialise = () => {
         initialiseTrendFilter();
+        initialiseCharts();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialise, { once: true });
+    } else {
+        initialise();
     }
 })();

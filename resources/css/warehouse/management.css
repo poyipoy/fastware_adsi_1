@@ -37,3 +37,45 @@
     .warehouse-permission-form { min-width: 0; align-items: stretch; flex-direction: column; }
     .warehouse-permission-form .btn { width: 100%; }
 }
+.warehouse-master-photo-preview { display: block; width: min(100%, 320px); height: auto; aspect-ratio: 16 / 11; object-fit: cover; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #eef2f7; }
+.warehouse-workspace-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; }
+.warehouse-workspace-tabs a { display: inline-flex; min-height: 44px; align-items: center; padding: 8px 14px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #fff; color: #40516a; font-size: .82rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.warehouse-workspace-tabs a.is-active { color: #fff; background: var(--warehouse-navy); border-color: var(--warehouse-navy); }
+.warehouse-history-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.warehouse-history-totals article { padding: 13px 14px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #fff; }
+.warehouse-history-totals span { display: block; color: var(--warehouse-muted); font-size: .72rem; }
+.warehouse-history-totals strong { display: block; margin-top: 3px; color: var(--warehouse-ink); font-size: 1.1rem; }
+.warehouse-history-totals-footer { margin: 0; }
+.warehouse-table tfoot > tr > td { padding: 14px; background: #f8fafc; }
+.warehouse-history-totals-mobile { width: 100%; margin: 4px 0 0; padding-top: 12px; border-top: 1px solid var(--warehouse-border); }
+.warehouse-transfer-form { max-width: 1080px; }
+.warehouse-transfer-form .card-footer .btn { min-height: 44px; }
+.warehouse-transfer-balance { padding: 16px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #f8fafc; }
+.warehouse-transfer-balance-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.warehouse-transfer-balance-heading h2 { margin: 0; color: var(--warehouse-ink); font-size: 1rem; font-weight: 700; }
+.warehouse-transfer-balance-heading p { margin: 4px 0 0; color: var(--warehouse-muted); font-size: .78rem; }
+.warehouse-transfer-balance-heading > span { color: var(--warehouse-muted); font-size: .78rem; font-weight: 700; }
+.warehouse-transfer-location-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.warehouse-transfer-location-grid article { padding: 12px; border: 1px solid #dce4ee; border-radius: var(--warehouse-radius); background: #fff; }
+.warehouse-transfer-location-grid h3 { margin: 0 0 9px; color: #2d4f86; font-size: .86rem; font-weight: 700; }
+.warehouse-transfer-location-grid dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.warehouse-transfer-location-grid dl div { min-width: 0; }
+.warehouse-transfer-location-grid dt { color: var(--warehouse-muted); font-size: .7rem; font-weight: 600; }
+.warehouse-transfer-location-grid dd { margin: 2px 0 0; color: var(--warehouse-ink); font-size: .88rem; font-weight: 700; overflow-wrap: anywhere; }
+.warehouse-transfer-projection { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 12px; padding: 12px; border: 1px solid #dce4ee; border-radius: var(--warehouse-radius); background: #fff; }
+.warehouse-transfer-projection div span { display: block; color: var(--warehouse-muted); font-size: .7rem; }
+.warehouse-transfer-projection div strong { display: block; margin-top: 2px; color: var(--warehouse-ink); }
+.warehouse-transfer-projection p { grid-column: 1 / -1; margin: 0; color: var(--warehouse-muted); font-size: .78rem; }
+.warehouse-transfer-projection.is-invalid { border-color: #f1b7b1; background: var(--warehouse-danger-soft); }
+.warehouse-transfer-form .warehouse-scan-group .btn { min-width: 96px; min-height: 44px; }
+.warehouse-transfer-verifier-result { min-height: 44px; margin-top: 10px; padding: 11px 12px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); color: var(--warehouse-muted); background: #f8fafc; font-size: .8rem; }
+.warehouse-transfer-verifier-result.is-valid { border-color: #b9e4d0; color: #16603c; background: var(--warehouse-success-soft); }
+.warehouse-transfer-verifier-result.is-invalid { border-color: #f1b7b1; color: #9f2d24; background: var(--warehouse-danger-soft); }
+.warehouse-transfer-form .warehouse-confirm-check { display: flex; min-height: 44px; align-items: flex-start; gap: 8px; margin: 0; color: #344054; font-size: .83rem; cursor: pointer; }
+.warehouse-transfer-form .warehouse-confirm-check input { width: 18px; height: 18px; margin-top: 1px; flex: 0 0 18px; }
+@media (max-width: 767.98px) { .warehouse-history-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) {
+    .warehouse-transfer-location-grid, .warehouse-transfer-projection { grid-template-columns: 1fr; }
+    .warehouse-transfer-projection p { grid-column: span 1; }
+    .warehouse-transfer-form .card-footer .btn { flex: 1 1 140px; }
+}

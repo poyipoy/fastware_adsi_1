@@ -98,6 +98,21 @@ final class WarehouseDashboardService
             ->get();
     }
 
+    public function topUsageByMachineType(WarehouseDashboardFilter $filter, int $limit = 10): Collection
+    {
+        return $this->movementQuery($filter)
+            ->where('transaction_type', WarehouseTransactionType::OUT->value)
+            ->join('mst_wh_consumables as machine_items', 'machine_items.id', '=', 'trs_wh_stock_transactions.consumable_id')
+            ->whereNotNull('machine_items.machine_type')
+            ->where('machine_items.machine_type', '<>', '')
+            ->select('machine_items.machine_type')
+            ->selectRaw('SUM(trs_wh_stock_transactions.quantity) as quantity')
+            ->groupBy('machine_items.machine_type')
+            ->orderByDesc('quantity')
+            ->limit(max(1, min($limit, 100)))
+            ->get();
+    }
+
     public function lowStock(WarehouseDashboardFilter $filter): LengthAwarePaginator
     {
         $query = WarehouseConsumable::query()->with('category:id,name')->where('is_active', true);
@@ -112,15 +127,6 @@ final class WarehouseDashboardService
         })->orderByRaw('current_stock = 0 DESC')->orderBy('item_name');
 
         return $query->paginate(10, ['*'], 'low_page')->withQueryString();
-    }
-
-    public function recentTransactions(WarehouseDashboardFilter $filter): LengthAwarePaginator
-    {
-        return $this->movementQuery($filter)
-            ->with('consumable:id,item_name,unit')
-            ->orderByDesc('transaction_at')
-            ->paginate(10, ['trs_wh_stock_transactions.*'], 'transaction_page')
-            ->withQueryString();
     }
 
     private function movementQuery(WarehouseDashboardFilter $filter): Builder

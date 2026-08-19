@@ -13,7 +13,7 @@ class WarehouseTransactionIdempotencyTest extends WarehouseTestCase
         $verified = $this->createUser();
         $item = WarehouseConsumable::factory()->create(['barcode' => '000-IDEMP', 'current_stock' => '10.000']);
         $key = (string) Str::uuid();
-        $payload = ['type' => 'OUT', 'item_barcode' => '000-IDEMP', 'quantity' => '2', 'verified_code' => (string) $verified->npk, 'idempotency_key' => $key];
+        $payload = ['type' => 'OUT', 'item_barcode' => '000-IDEMP', 'quantity' => '2', 'source_location' => 'DS8', 'verified_code' => (string) $verified->npk, 'idempotency_key' => $key];
 
         $first = $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), $payload);
         $second = $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), $payload);

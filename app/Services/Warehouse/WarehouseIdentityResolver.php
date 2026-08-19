@@ -90,7 +90,7 @@ final class WarehouseIdentityResolver
     /**
      * Resolve the employee directly by users.npk and enforce Warehouse access.
      */
-    public function resolveUserForDirection(?string $code, string $direction): ?User
+    public function resolveUserForDirection(?string $code, string $direction, bool $restricted = false): ?User
     {
         $user = $this->resolveUser($code);
 
@@ -98,7 +98,7 @@ final class WarehouseIdentityResolver
             return null;
         }
 
-        $this->verifierPolicy->assertUserCanVerify($user, $direction);
+        $this->verifierPolicy->assertUserCanVerify($user, $direction, $restricted);
 
         return $user;
     }

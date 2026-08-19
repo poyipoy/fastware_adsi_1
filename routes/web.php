@@ -1082,6 +1082,11 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/transactions/create', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'create'])
             ->middleware('warehouse.permission:warehouse.stock-out.create')
             ->name('transactions.create');
+        Route::get('/transactions-bekas/create', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'createUsed'])
+            ->middleware('warehouse.permission:warehouse.stock-out.create')
+            ->name('transactions-used.create');
+        Route::get('/catalog', [\App\Http\Controllers\Warehouse\WarehouseCatalogController::class, 'index'])
+            ->name('catalog.index');
         Route::post('/scans/item', [\App\Http\Controllers\Warehouse\WarehouseScanController::class, 'scanItem'])
             ->middleware('throttle:warehouse-scan')
             ->name('scans.item');
@@ -1112,6 +1117,13 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/exports/transactions', [\App\Http\Controllers\Warehouse\WarehouseExportController::class, 'transactions'])
             ->middleware('warehouse.permission:warehouse.report.export')
             ->name('exports.transactions');
+        Route::get('/reports', [\App\Http\Controllers\Warehouse\WarehouseReportController::class, 'index'])
+            ->middleware('warehouse.permission:warehouse.report.view')
+            ->name('reports.index');
+        Route::middleware('warehouse.permission:warehouse.transfer.create')->group(function () {
+            Route::get('/transfers', [\App\Http\Controllers\Warehouse\WarehouseTransferController::class, 'create'])->name('transfers.create');
+            Route::post('/transfers', [\App\Http\Controllers\Warehouse\WarehouseTransferController::class, 'store'])->middleware('throttle:warehouse-mutation')->name('transfers.store');
+        });
 
         Route::middleware('warehouse.permission:warehouse.master.manage')->group(function () {
             Route::get('/consumables', [\App\Http\Controllers\Warehouse\WarehouseConsumableController::class, 'index'])->name('consumables.index');

@@ -81,3 +81,13 @@ The available SQL dumps contain generic `Consumable` planning records and improv
 - Final focused gate: `102` Warehouse tests and `685` assertions passed.
 - The refactor changed file placement and Composer autoload registration only; controller/service behavior, validation, routes, schema, migration, and application data were preserved.
 - The deployment package `warehouse-consumable/` was intentionally not regenerated. Its documentation is synchronized separately, while its source code remains the pre-refactor artifact until a manual redeploy is approved.
+
+## Revisi Tahap 2 snapshot — 2026-08-18
+
+- Confirmed design: two physical locations remain fixed (`DS8`, `Deltamas`); stock uses dedicated total and used-balance columns per location, while New is derived as total minus Used.
+- Existing stock backfill is fail-closed: every nonzero legacy row must have one approved location and is initialized as New at that location.
+- Foreman workspaces resolve NPK 5488 and 5472 at query time; missing/duplicate active matches return an empty workspace rather than broadening access.
+- Restricted verifier source is the isolated `mst_wh_restricted_verifiers` table, not legacy `mst_wh_user_cards`. Exact active identities are RAGIL/NPK 5639 and ARY RODJO/NPK 5439.
+- Reporting uses calendar year, all master items, month cutoff at the latest transaction in the selected year, and total/average ending balances.
+- Photos use Laravel public storage with JPG/JPEG/PNG/WebP and a 5 MB limit. The existing Bootstrap/Vite/Chart.js surface is reused; no new frontend framework or chart dependency was added.
+- Local read-only preflight found zero nonzero-stock rows with invalid legacy location and exactly one active match for each restricted verifier and Foreman NPK.

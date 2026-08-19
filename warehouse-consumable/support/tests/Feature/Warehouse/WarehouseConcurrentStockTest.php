@@ -24,6 +24,8 @@ class WarehouseConcurrentStockTest extends WarehouseTestCase
             'item_name' => 'Concurrent Item',
             'unit' => 'pcs',
             'current_stock' => '5.000',
+            'stock_ds8' => '5.000',
+            'storage_location' => 'DS8',
             'minimum_stock' => '0.000',
             'is_active' => true,
         ]);
@@ -38,6 +40,7 @@ class WarehouseConcurrentStockTest extends WarehouseTestCase
             purpose: 'first',
             createdBy: (int) $actor->getKey(),
             idempotencyKey: '55555555-5555-4555-8555-555555555555',
+            sourceLocation: 'DS8',
         ));
 
         try {
@@ -49,6 +52,7 @@ class WarehouseConcurrentStockTest extends WarehouseTestCase
                 purpose: 'second',
                 createdBy: (int) $actor->getKey(),
                 idempotencyKey: '66666666-6666-4666-8666-666666666666',
+                sourceLocation: 'DS8',
             ));
             $this->fail('The second OUT should have been rejected.');
         } catch (WarehouseDomainException $exception) {

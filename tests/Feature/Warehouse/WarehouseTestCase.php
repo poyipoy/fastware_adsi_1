@@ -69,6 +69,13 @@ abstract class WarehouseTestCase extends TestCase
 
         if ($withWarehouseAccess) {
             $this->createDepartmentPosition($user);
+            DB::table('mst_wh_restricted_verifiers')->insert([
+                'user_id' => $user->getKey(),
+                'scope' => 'ALL',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
         return $user;
@@ -94,8 +101,7 @@ abstract class WarehouseTestCase extends TestCase
         ?string $positionName = null,
         string $level = 'staff',
         array $assignmentAttributes = [],
-    ): void
-    {
+    ): void {
         $departmentId = DB::table('mst_departments')->where('name', $departmentName)->value('id');
 
         if ($departmentId === null) {
@@ -156,6 +162,9 @@ abstract class WarehouseTestCase extends TestCase
             '2026_08_07_000004_create_trs_wh_stock_transactions_table.php',
             '2026_08_07_000005_create_log_wh_verifications_table.php',
             '2026_08_11_000001_add_verification_permissions_to_mst_wh_user_cards_table.php',
+            '2026_08_18_000001_add_revision_two_inventory_fields_to_mst_wh_consumables_table.php',
+            '2026_08_18_000002_add_revision_two_audit_fields_to_trs_wh_stock_transactions_table.php',
+            '2026_08_18_000003_create_mst_wh_restricted_verifiers_table.php',
         ] as $migration) {
             (require database_path('migrations/'.$migration))->up();
         }
@@ -167,6 +176,7 @@ abstract class WarehouseTestCase extends TestCase
         foreach ([
             'log_wh_verifications',
             'trs_wh_stock_transactions',
+            'mst_wh_restricted_verifiers',
             'mst_wh_user_cards',
             'mst_wh_consumables',
             'mst_wh_consumable_categories',

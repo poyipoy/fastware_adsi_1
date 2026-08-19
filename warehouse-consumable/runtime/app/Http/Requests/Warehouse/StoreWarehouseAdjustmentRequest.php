@@ -18,7 +18,9 @@ class StoreWarehouseAdjustmentRequest extends FormRequest
         return [
             'consumable_id' => ['required', 'integer', 'exists:mst_wh_consumables,id'],
             'direction' => ['required', Rule::in(['IN', 'OUT'])],
-            'quantity' => ['required', 'integer', 'min:1'],
+            'item_condition' => ['required', Rule::in(['NEW', 'USED'])],
+            'storage_location' => ['required', Rule::in((array) config('warehouse.storage_locations', ['DS8', 'Deltamas']))],
+            'quantity' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
             'reason_category' => ['required', 'string', 'max:80'],
             'reason' => ['required', 'string', 'min:3', 'max:1000'],
             'verified_code' => ['required', 'string', 'max:150'],

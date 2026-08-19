@@ -2,6 +2,7 @@
 
 namespace App\Models\Warehouse;
 
+use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,10 +23,16 @@ class WarehouseConsumable extends Model
         'unit',
         'allow_fraction',
         'current_stock',
+        'stock_deltamas',
+        'stock_ds8',
+        'stock_used_deltamas',
+        'stock_used_ds8',
         'minimum_stock',
         'maximum_stock',
         'storage_location',
+        'machine_type',
         'description',
+        'photo_path',
         'is_active',
         'created_by',
         'updated_by',
@@ -35,6 +42,10 @@ class WarehouseConsumable extends Model
         'allow_fraction' => 'boolean',
         'is_active' => 'boolean',
         'current_stock' => 'decimal:3',
+        'stock_deltamas' => 'decimal:3',
+        'stock_ds8' => 'decimal:3',
+        'stock_used_deltamas' => 'decimal:3',
+        'stock_used_ds8' => 'decimal:3',
         'minimum_stock' => 'decimal:3',
         'maximum_stock' => 'decimal:3',
     ];
@@ -76,5 +87,41 @@ class WarehouseConsumable extends Model
         }
 
         return 'HEALTHY';
+    }
+
+    public function stockAt(string $location): string
+    {
+        return (string) $this->getAttribute($this->totalStockColumn($location));
+    }
+
+    public function usedStockAt(string $location): string
+    {
+        return (string) $this->getAttribute($this->usedStockColumn($location));
+    }
+
+    public function availableAt(string $location, WarehouseItemCondition $condition): string
+    {
+        $total = (float) $this->stockAt($location);
+        $used = (float) $this->usedStockAt($location);
+
+        return number_format($condition === WarehouseItemCondition::USED ? $used : $total - $used, 3, '.', '');
+    }
+
+    public function totalStockColumn(string $location): string
+    {
+        return match ($location) {
+            'DS8' => 'stock_ds8',
+            'Deltamas' => 'stock_deltamas',
+            default => throw new \InvalidArgumentException('Lokasi Warehouse tidak valid.'),
+        };
+    }
+
+    public function usedStockColumn(string $location): string
+    {
+        return match ($location) {
+            'DS8' => 'stock_used_ds8',
+            'Deltamas' => 'stock_used_deltamas',
+            default => throw new \InvalidArgumentException('Lokasi Warehouse tidak valid.'),
+        };
     }
 }

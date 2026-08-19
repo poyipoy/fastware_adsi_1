@@ -4,6 +4,7 @@ namespace App\Services\Warehouse;
 
 use App\Data\Warehouse\WarehouseStockCommand;
 use App\Data\Warehouse\WarehouseStockResult;
+use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Exceptions\WarehouseDomainException;
 use App\Models\User;
@@ -24,128 +25,52 @@ final class WarehouseStockService
 
     public function execute(WarehouseStockCommand $command): WarehouseStockResult
     {
-        $idempotencyKey = $command->idempotencyKey ?: (string) Str::uuid();
+        $idempotencyKey = $this->idempotencyKey($command->idempotencyKey);
 
-        if (! Str::isUuid($idempotencyKey)) {
-            throw new WarehouseDomainException('Idempotency key harus berupa UUID.');
+        return DB::transaction(
+            fn (): WarehouseStockResult => $this->executeLocked($command, $idempotencyKey),
+            3,
+        );
+    }
+
+    public function executeWithUsedReturn(
+        WarehouseStockCommand $primary,
+        WarehouseStockCommand $usedReturn,
+    ): WarehouseStockResult {
+        if ($primary->type !== WarehouseTransactionType::OUT
+            || ($primary->itemCondition ?? WarehouseItemCondition::NEW) !== WarehouseItemCondition::NEW
+            || $usedReturn->type !== WarehouseTransactionType::IN
+            || ($usedReturn->itemCondition ?? WarehouseItemCondition::NEW) !== WarehouseItemCondition::USED) {
+            throw new WarehouseDomainException('Pasangan pengembalian barang bekas tidak valid.');
         }
 
-        return DB::transaction(function () use ($command, $idempotencyKey): WarehouseStockResult {
-            $actorId = $command->createdBy ?? $command->verifiedUserId;
-            $actor = User::query()->lockForUpdate()->find($actorId);
+        $primaryKey = $this->idempotencyKey($primary->idempotencyKey);
+        $returnKey = $this->idempotencyKey($usedReturn->idempotencyKey);
 
-            if (! $this->access->isLoginEnabled($actor)) {
-                throw new WarehouseDomainException('Actor transaksi tidak aktif atau tidak ditemukan.', 403);
-            }
+        return DB::transaction(function () use ($primary, $usedReturn, $primaryKey, $returnKey): WarehouseStockResult {
+            $userIds = collect([
+                $primary->createdBy ?? $primary->verifiedUserId,
+                $primary->verifiedUserId,
+                $usedReturn->createdBy ?? $usedReturn->verifiedUserId,
+                $usedReturn->verifiedUserId,
+            ])->filter()->unique()->sort()->values();
+            User::query()->whereIn('id', $userIds)->orderBy('id')->lockForUpdate()->get();
 
-            $this->authorizeType($actor, $command->type);
-            $this->validateTransactionFields($command);
-
-            $existing = WarehouseStockTransaction::query()
-                ->where('idempotency_key', $idempotencyKey)
+            WarehouseConsumable::query()
+                ->whereIn('id', [$primary->consumableId, $usedReturn->consumableId])
+                ->orderBy('id')
                 ->lockForUpdate()
-                ->first();
+                ->get();
 
-            if ($existing !== null) {
-                if (! $this->matchesReplay($existing, $command)) {
-                    throw new WarehouseDomainException('Idempotency key sudah digunakan untuk payload berbeda.', 409);
-                }
+            $primaryResult = $this->executeLocked($primary, $primaryKey);
+            $returnResult = $this->executeLocked($usedReturn, $returnKey);
 
-                return new WarehouseStockResult($existing, true);
-            }
-
-            $verifiedUser = User::query()->lockForUpdate()->find($command->verifiedUserId);
-
-            if (! $this->access->isLoginEnabled($verifiedUser)) {
-                throw new WarehouseDomainException('User terverifikasi tidak aktif atau tidak ditemukan.', 422);
-            }
-
-            $original = null;
-            if ($command->type === WarehouseTransactionType::REVERSAL) {
-                if ($command->reversalOfId === null) {
-                    throw new WarehouseDomainException('Transaksi reversal harus memiliki transaksi asal.');
-                }
-
-                $original = WarehouseStockTransaction::query()
-                    ->lockForUpdate()
-                    ->find($command->reversalOfId);
-
-                if ($original === null) {
-                    throw new WarehouseDomainException('Transaksi asal tidak ditemukan.', 404);
-                }
-
-                if (WarehouseStockTransaction::query()->where('reversal_of_id', $original->getKey())->exists()) {
-                    throw new WarehouseDomainException('Transaksi tersebut sudah pernah direverse.', 409);
-                }
-            }
-
-            $verificationDirection = $this->verifierPolicy->directionForCommand($command, $original);
-            $this->verifierPolicy->assertUserCanVerify($verifiedUser, $verificationDirection);
-
-            $consumableId = $original?->consumable_id ?? $command->consumableId;
-            $item = WarehouseConsumable::query()->lockForUpdate()->find($consumableId);
-
-            if ($item === null || ! $item->is_active) {
-                throw new WarehouseDomainException('Consumable tidak aktif atau tidak ditemukan.', 422);
-            }
-
-            $requestedStorageLocation = $this->commandStorageLocation($command);
-            $storageLocation = $command->type === WarehouseTransactionType::IN
-                ? $this->normalizedStorageLocation($requestedStorageLocation)
-                : null;
-
-            $quantity = $original
-                ? WarehouseQuantity::normalize((string) $original->quantity, (bool) $item->allow_fraction)
-                : WarehouseQuantity::normalize($command->quantity, (bool) $item->allow_fraction);
-
-            $stockBefore = WarehouseQuantity::fromMilli(WarehouseQuantity::toMilli((string) $item->current_stock));
-            $delta = $this->deltaMilli($command, $quantity, $original);
-            $stockAfterMilli = WarehouseQuantity::toMilli($stockBefore) + $delta;
-
-            if ($stockAfterMilli < 0) {
-                throw new WarehouseDomainException('Stok tidak mencukupi.', 422);
-            }
-
-            $stockAfter = WarehouseQuantity::fromMilli($stockAfterMilli);
-            $transaction = WarehouseStockTransaction::query()->create([
-                'transaction_number' => $this->numberGenerator->generate(),
-                'idempotency_key' => $idempotencyKey,
-                'transaction_type' => $command->type->value,
-                'consumable_id' => $item->getKey(),
-                'quantity' => $quantity,
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockAfter,
-                'verified_user_id' => $verifiedUser->getKey(),
-                'verified_user_name' => mb_substr((string) $verifiedUser->name, 0, 180),
-                'verified_user_npk' => $verifiedUser->npk === null ? null : (string) $verifiedUser->npk,
-                'verified_user_section' => $verifiedUser->section === null ? null : mb_substr((string) $verifiedUser->section, 0, 120),
-                'reference_number' => $command->referenceNumber,
-                'purpose' => $command->purpose,
-                'usage_location' => $storageLocation,
-                'notes' => $this->notes($command, $original),
-                'reversal_of_id' => $original?->getKey(),
-                'transaction_at' => now(),
-                'created_by' => $actor->getKey(),
-            ]);
-
-            $itemUpdates = ['current_stock' => $stockAfter, 'updated_by' => $actor->getKey()];
-            if ($command->type === WarehouseTransactionType::IN) {
-                $itemUpdates['storage_location'] = $storageLocation;
-            }
-            $item->forceFill($itemUpdates)->save();
-
-            if ($command->verificationCodeHash !== null) {
-                WarehouseVerificationLog::query()->create([
-                    'scanned_code_hash' => $command->verificationCodeHash,
-                    'user_id' => $verifiedUser->getKey(),
-                    'transaction_id' => $transaction->getKey(),
-                    'status' => 'SUCCESS',
-                    'verified_at' => now(),
-                ]);
-            }
-
-            return new WarehouseStockResult($transaction->refresh());
-        });
+            return new WarehouseStockResult(
+                transaction: $primaryResult->transaction,
+                idempotentReplay: $primaryResult->idempotentReplay && $returnResult->idempotentReplay,
+                relatedTransactions: [$returnResult->transaction],
+            );
+        }, 3);
     }
 
     public function reverse(
@@ -154,11 +79,16 @@ final class WarehouseStockService
         int $verifiedUserId,
         string $reason,
         ?string $idempotencyKey = null,
+        ?string $legacyLocation = null,
     ): WarehouseStockResult {
         $reason = trim($reason);
 
         if ($reason === '') {
             throw new WarehouseDomainException('Alasan reversal wajib diisi.');
+        }
+
+        if ($original->transaction_type === WarehouseTransactionType::TRANSFER) {
+            throw new WarehouseDomainException('Transfer tidak dapat direversal. Buat transfer balik sebagai koreksi.', 422);
         }
 
         return $this->execute(new WarehouseStockCommand(
@@ -170,6 +100,7 @@ final class WarehouseStockService
             idempotencyKey: $idempotencyKey,
             createdBy: $actorId,
             reversalOfId: (int) $original->getKey(),
+            legacyLocation: $legacyLocation,
         ));
     }
 
@@ -182,6 +113,8 @@ final class WarehouseStockService
         string $reasonCategory,
         string $reason,
         ?string $idempotencyKey = null,
+        WarehouseItemCondition|string $itemCondition = WarehouseItemCondition::NEW,
+        ?string $storageLocation = null,
     ): WarehouseStockResult {
         $direction = strtoupper(trim($direction));
 
@@ -191,6 +124,13 @@ final class WarehouseStockService
 
         if (trim($reasonCategory) === '' || trim($reason) === '') {
             throw new WarehouseDomainException('Kategori dan alasan adjustment wajib diisi.');
+        }
+
+        $condition = is_string($itemCondition)
+            ? WarehouseItemCondition::tryFrom(strtoupper($itemCondition))
+            : $itemCondition;
+        if ($condition === null) {
+            throw new WarehouseDomainException('Kondisi barang adjustment tidak valid.');
         }
 
         return $this->execute(new WarehouseStockCommand(
@@ -204,7 +144,267 @@ final class WarehouseStockService
             adjustmentReasonCategory: $reasonCategory,
             adjustmentReason: $reason,
             adjustmentDirection: $direction,
+            storageLocation: $direction === 'IN' ? $storageLocation : null,
+            itemCondition: $condition,
+            sourceLocation: $direction === 'OUT' ? $storageLocation : null,
         ));
+    }
+
+    public function transfer(
+        int $actorId,
+        int $verifiedUserId,
+        int $consumableId,
+        string $quantity,
+        WarehouseItemCondition|string $itemCondition,
+        string $fromLocation,
+        string $toLocation,
+        ?string $notes = null,
+        ?string $idempotencyKey = null,
+    ): WarehouseStockResult {
+        $condition = is_string($itemCondition)
+            ? WarehouseItemCondition::tryFrom(strtoupper($itemCondition))
+            : $itemCondition;
+        if ($condition === null) {
+            throw new WarehouseDomainException('Kondisi barang transfer tidak valid.');
+        }
+
+        return $this->execute(new WarehouseStockCommand(
+            type: WarehouseTransactionType::TRANSFER,
+            consumableId: $consumableId,
+            quantity: $quantity,
+            verifiedUserId: $verifiedUserId,
+            notes: $notes,
+            idempotencyKey: $idempotencyKey,
+            createdBy: $actorId,
+            itemCondition: $condition,
+            sourceLocation: $fromLocation,
+            toLocation: $toLocation,
+        ));
+    }
+
+    private function executeLocked(WarehouseStockCommand $command, string $idempotencyKey): WarehouseStockResult
+    {
+        $actorId = $command->createdBy ?? $command->verifiedUserId;
+        $actor = User::query()->lockForUpdate()->find($actorId);
+
+        if (! $this->access->isLoginEnabled($actor)) {
+            throw new WarehouseDomainException('Actor transaksi tidak aktif atau tidak ditemukan.', 403);
+        }
+
+        $this->authorizeType($actor, $command->type);
+        $this->validateIdentifiers($command);
+
+        $existing = WarehouseStockTransaction::query()
+            ->where('idempotency_key', $idempotencyKey)
+            ->lockForUpdate()
+            ->first();
+
+        if ($existing !== null) {
+            if (! $this->matchesReplay($existing, $command)) {
+                throw new WarehouseDomainException('Idempotency key sudah digunakan untuk payload berbeda.', 409);
+            }
+
+            return new WarehouseStockResult($existing->loadMissing('consumable'), true);
+        }
+
+        $verifiedUser = User::query()->lockForUpdate()->find($command->verifiedUserId);
+        if (! $this->access->isLoginEnabled($verifiedUser)) {
+            throw new WarehouseDomainException('User terverifikasi tidak aktif atau tidak ditemukan.', 422);
+        }
+
+        $original = $this->lockOriginal($command);
+        $verificationDirection = $this->verifierPolicy->directionForCommand($command, $original);
+        $this->verifierPolicy->assertUserCanVerify(
+            $verifiedUser,
+            $verificationDirection,
+            $this->verifierPolicy->commandRequiresRestrictedVerifier($command, $original),
+        );
+
+        $consumableId = $original?->consumable_id ?? $command->consumableId;
+        $item = WarehouseConsumable::query()->lockForUpdate()->find($consumableId);
+        if ($item === null || ! $item->is_active) {
+            throw new WarehouseDomainException('Consumable tidak aktif atau tidak ditemukan.', 422);
+        }
+
+        $condition = $original?->item_condition ?? $command->itemCondition ?? WarehouseItemCondition::NEW;
+        $quantity = $original
+            ? WarehouseQuantity::normalize((string) $original->quantity, (bool) $item->allow_fraction)
+            : WarehouseQuantity::normalize($command->quantity, (bool) $item->allow_fraction);
+        [$fromLocation, $toLocation] = $this->locations($command, $item, $original);
+
+        $stockBefore = WarehouseQuantity::fromMilli(WarehouseQuantity::toMilli((string) $item->current_stock));
+        $globalDelta = $this->deltaMilli($command, $quantity, $original);
+
+        if ($command->type === WarehouseTransactionType::TRANSFER) {
+            $this->applyLocationDelta($item, (string) $fromLocation, $condition, -WarehouseQuantity::toMilli($quantity));
+            $this->applyLocationDelta($item, (string) $toLocation, $condition, WarehouseQuantity::toMilli($quantity));
+        } else {
+            $movementLocation = $globalDelta >= 0 ? $toLocation : $fromLocation;
+            $this->applyLocationDelta($item, (string) $movementLocation, $condition, $globalDelta);
+        }
+
+        $stockAfter = $this->syncCurrentStock($item);
+        $expectedAfter = WarehouseQuantity::toMilli($stockBefore) + $globalDelta;
+        if (WarehouseQuantity::toMilli($stockAfter) !== $expectedAfter) {
+            throw new WarehouseDomainException('Integritas saldo lokasi tidak sesuai dengan stok total.', 409);
+        }
+
+        $transaction = WarehouseStockTransaction::query()->create([
+            'transaction_number' => $this->numberGenerator->generate(),
+            'idempotency_key' => $idempotencyKey,
+            'operation_key' => $command->operationKey,
+            'transaction_type' => $command->type->value,
+            'item_condition' => $condition->value,
+            'from_location' => $fromLocation,
+            'to_location' => $toLocation,
+            'consumable_id' => $item->getKey(),
+            'quantity' => $quantity,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'verified_user_id' => $verifiedUser->getKey(),
+            'verified_user_name' => mb_substr((string) $verifiedUser->name, 0, 180),
+            'verified_user_npk' => $verifiedUser->npk === null ? null : (string) $verifiedUser->npk,
+            'verified_user_section' => $verifiedUser->section === null ? null : mb_substr((string) $verifiedUser->section, 0, 120),
+            'reference_number' => $command->referenceNumber,
+            'purpose' => $command->purpose,
+            'usage_location' => $toLocation ?? $fromLocation,
+            'notes' => $this->notes($command, $original),
+            'reversal_of_id' => $original?->getKey(),
+            'transaction_at' => now(),
+            'created_by' => $actor->getKey(),
+        ]);
+
+        $updates = [
+            'current_stock' => $stockAfter,
+            'stock_deltamas' => $item->stock_deltamas,
+            'stock_ds8' => $item->stock_ds8,
+            'stock_used_deltamas' => $item->stock_used_deltamas,
+            'stock_used_ds8' => $item->stock_used_ds8,
+            'updated_by' => $actor->getKey(),
+        ];
+        if ($toLocation !== null && in_array($command->type, [WarehouseTransactionType::IN, WarehouseTransactionType::TRANSFER], true)) {
+            $updates['storage_location'] = $toLocation;
+        }
+        $item->forceFill($updates)->save();
+
+        if ($command->verificationCodeHash !== null) {
+            WarehouseVerificationLog::query()->create([
+                'scanned_code_hash' => $command->verificationCodeHash,
+                'user_id' => $verifiedUser->getKey(),
+                'transaction_id' => $transaction->getKey(),
+                'status' => 'SUCCESS',
+                'verified_at' => now(),
+            ]);
+        }
+
+        return new WarehouseStockResult($transaction->load('consumable'));
+    }
+
+    private function lockOriginal(WarehouseStockCommand $command): ?WarehouseStockTransaction
+    {
+        if ($command->type !== WarehouseTransactionType::REVERSAL) {
+            return null;
+        }
+        if ($command->reversalOfId === null) {
+            throw new WarehouseDomainException('Transaksi reversal harus memiliki transaksi asal.');
+        }
+
+        $original = WarehouseStockTransaction::query()->lockForUpdate()->find($command->reversalOfId);
+        if ($original === null) {
+            throw new WarehouseDomainException('Transaksi asal tidak ditemukan.', 404);
+        }
+        if ($original->transaction_type === WarehouseTransactionType::TRANSFER) {
+            throw new WarehouseDomainException('Transfer tidak dapat direversal. Buat transfer balik sebagai koreksi.', 422);
+        }
+        if (WarehouseStockTransaction::query()->where('reversal_of_id', $original->getKey())->exists()) {
+            throw new WarehouseDomainException('Transaksi tersebut sudah pernah direverse.', 409);
+        }
+
+        return $original;
+    }
+
+    /** @return array{0: ?string, 1: ?string} */
+    private function locations(
+        WarehouseStockCommand $command,
+        WarehouseConsumable $item,
+        ?WarehouseStockTransaction $original,
+    ): array {
+        if ($original !== null) {
+            $originalDelta = WarehouseQuantity::toMilli((string) $original->stock_after)
+                - WarehouseQuantity::toMilli((string) $original->stock_before);
+            $location = $originalDelta > 0 ? $original->to_location : $original->from_location;
+            $location = $this->normalizedLocation($location ?? $command->legacyLocation);
+            if ($location === null) {
+                throw new WarehouseDomainException('Lokasi transaksi lama wajib dipilih sebelum reversal.', 422);
+            }
+
+            return $originalDelta > 0 ? [$location, null] : [null, $location];
+        }
+
+        if ($command->type === WarehouseTransactionType::IN) {
+            return [null, $this->requiredLocation($command->toLocation ?? $this->commandStorageLocation($command), 'Lokasi tujuan Stock In wajib diisi.')];
+        }
+        if ($command->type === WarehouseTransactionType::OUT) {
+            $fallback = in_array((string) $item->storage_location, (array) config('warehouse.storage_locations'), true)
+                ? (string) $item->storage_location
+                : null;
+
+            return [$this->requiredLocation($command->sourceLocation ?? $fallback, 'Lokasi asal Stock Out wajib diisi.'), null];
+        }
+        if ($command->type === WarehouseTransactionType::ADJUSTMENT) {
+            $direction = $this->verifierPolicy->normalizeDirection((string) $command->adjustmentDirection);
+            $location = $this->requiredLocation(
+                $direction === 'IN'
+                    ? ($command->toLocation ?? $this->commandStorageLocation($command))
+                    : ($command->sourceLocation ?? $this->commandStorageLocation($command)),
+                'Lokasi Adjustment wajib diisi.',
+            );
+
+            return $direction === 'IN' ? [null, $location] : [$location, null];
+        }
+        if ($command->type === WarehouseTransactionType::TRANSFER) {
+            $from = $this->requiredLocation($command->sourceLocation, 'Lokasi asal Transfer wajib diisi.');
+            $to = $this->requiredLocation($command->toLocation ?? $this->commandStorageLocation($command), 'Lokasi tujuan Transfer wajib diisi.');
+            if ($from === $to) {
+                throw new WarehouseDomainException('Lokasi asal dan tujuan Transfer harus berbeda.', 422);
+            }
+
+            return [$from, $to];
+        }
+
+        throw new WarehouseDomainException('Lokasi transaksi tidak dapat ditentukan.');
+    }
+
+    private function applyLocationDelta(
+        WarehouseConsumable $item,
+        string $location,
+        WarehouseItemCondition $condition,
+        int $deltaMilli,
+    ): void {
+        $totalColumn = $item->totalStockColumn($location);
+        $usedColumn = $item->usedStockColumn($location);
+        $totalAfter = WarehouseQuantity::toMilli((string) $item->getAttribute($totalColumn)) + $deltaMilli;
+        $usedAfter = WarehouseQuantity::toMilli((string) $item->getAttribute($usedColumn))
+            + ($condition === WarehouseItemCondition::USED ? $deltaMilli : 0);
+
+        if ($totalAfter < 0 || $usedAfter < 0 || $usedAfter > $totalAfter) {
+            $label = $condition === WarehouseItemCondition::USED ? 'bekas' : 'baru';
+            throw new WarehouseDomainException("Stok {$label} di lokasi {$location} tidak mencukupi.", 422);
+        }
+
+        $item->setAttribute($totalColumn, WarehouseQuantity::fromMilli($totalAfter));
+        $item->setAttribute($usedColumn, WarehouseQuantity::fromMilli($usedAfter));
+    }
+
+    private function syncCurrentStock(WarehouseConsumable $item): string
+    {
+        $totalMilli = WarehouseQuantity::toMilli((string) $item->stock_deltamas)
+            + WarehouseQuantity::toMilli((string) $item->stock_ds8);
+        if ($totalMilli < 0) {
+            throw new WarehouseDomainException('Stok tidak mencukupi.', 422);
+        }
+
+        return WarehouseQuantity::fromMilli($totalMilli);
     }
 
     private function authorizeType(User $actor, WarehouseTransactionType $type): void
@@ -212,6 +412,7 @@ final class WarehouseStockService
         $ability = match ($type) {
             WarehouseTransactionType::IN => 'warehouse.stock-in.create',
             WarehouseTransactionType::OUT => 'warehouse.stock-out.create',
+            WarehouseTransactionType::TRANSFER => 'warehouse.transfer.create',
             WarehouseTransactionType::ADJUSTMENT => null,
             WarehouseTransactionType::REVERSAL => 'warehouse.transaction.reverse',
         };
@@ -223,23 +424,15 @@ final class WarehouseStockService
 
             return;
         }
-
         if (! $this->access->can($actor, (string) $ability)) {
             throw new WarehouseDomainException('Actor tidak memiliki hak transaksi ini.', 403);
         }
     }
 
-    private function validateTransactionFields(WarehouseStockCommand $command): void
+    private function validateIdentifiers(WarehouseStockCommand $command): void
     {
-        if ($command->type === WarehouseTransactionType::IN
-            && config('warehouse.transaction.require_storage_location_for_in', true)
-            && trim((string) $this->commandStorageLocation($command)) === '') {
-            throw new WarehouseDomainException('Lokasi penyimpanan Stock In wajib diisi.');
-        }
-
-        if ($command->type !== WarehouseTransactionType::IN
-            && trim((string) $this->commandStorageLocation($command)) !== '') {
-            throw new WarehouseDomainException('Lokasi penyimpanan hanya boleh dikirim untuk Stock In.');
+        if ($command->operationKey !== null && ! Str::isUuid($command->operationKey)) {
+            throw new WarehouseDomainException('Operation key harus berupa UUID.');
         }
     }
 
@@ -248,20 +441,27 @@ final class WarehouseStockService
         return $command->storageLocation ?? $command->usageLocation;
     }
 
-    private function normalizedStorageLocation(?string $location): ?string
+    private function requiredLocation(?string $location, string $message): string
+    {
+        $location = $this->normalizedLocation($location);
+        if ($location === null) {
+            throw new WarehouseDomainException($message, 422);
+        }
+
+        return $location;
+    }
+
+    private function normalizedLocation(?string $location): ?string
     {
         $location = trim((string) $location);
-
         if ($location === '') {
             return null;
         }
-
-        $allowedLocations = (array) config('warehouse.storage_locations', ['DS8', 'Deltamas']);
-        if (! in_array($location, $allowedLocations, true)) {
-            throw new WarehouseDomainException('Lokasi penyimpanan hanya boleh DS8 atau Deltamas.');
+        if (! in_array($location, (array) config('warehouse.storage_locations', ['DS8', 'Deltamas']), true)) {
+            throw new WarehouseDomainException('Lokasi hanya boleh DS8 atau Deltamas.', 422);
         }
 
-        return mb_substr($location, 0, 120);
+        return $location;
     }
 
     private function deltaMilli(
@@ -272,18 +472,15 @@ final class WarehouseStockService
         $milli = WarehouseQuantity::toMilli($quantity);
 
         if ($original !== null) {
-            $originalDelta = WarehouseQuantity::toMilli((string) $original->stock_after)
-                - WarehouseQuantity::toMilli((string) $original->stock_before);
-
-            return -$originalDelta;
+            return -(WarehouseQuantity::toMilli((string) $original->stock_after)
+                - WarehouseQuantity::toMilli((string) $original->stock_before));
         }
 
         return match ($command->type) {
             WarehouseTransactionType::IN => $milli,
             WarehouseTransactionType::OUT => -$milli,
-            WarehouseTransactionType::ADJUSTMENT => strtoupper((string) $command->adjustmentDirection) === 'OUT'
-                ? -$milli
-                : $milli,
+            WarehouseTransactionType::ADJUSTMENT => strtoupper((string) $command->adjustmentDirection) === 'OUT' ? -$milli : $milli,
+            WarehouseTransactionType::TRANSFER => 0,
             WarehouseTransactionType::REVERSAL => throw new WarehouseDomainException('Reversal tidak lengkap.'),
         };
     }
@@ -293,7 +490,6 @@ final class WarehouseStockService
         if ($command->type === WarehouseTransactionType::ADJUSTMENT) {
             return mb_substr(sprintf('[%s] %s', $command->adjustmentReasonCategory, $command->adjustmentReason), 0, 65535);
         }
-
         if ($original !== null) {
             return mb_substr((string) $command->notes, 0, 65535);
         }
@@ -303,15 +499,30 @@ final class WarehouseStockService
 
     private function matchesReplay(WarehouseStockTransaction $existing, WarehouseStockCommand $command): bool
     {
-        return $existing->transaction_type?->value === $command->type->value
+        $condition = $command->itemCondition
+            ?? ($command->type === WarehouseTransactionType::REVERSAL ? null : WarehouseItemCondition::NEW);
+        $matches = $existing->transaction_type?->value === $command->type->value
             && (int) $existing->consumable_id === $command->consumableId
             && (int) $existing->verified_user_id === $command->verifiedUserId
             && WarehouseQuantity::compare((string) $existing->quantity, $command->quantity) === 0
             && (string) ($existing->reference_number ?? '') === (string) ($command->referenceNumber ?? '')
             && (string) ($existing->purpose ?? '') === (string) ($command->purpose ?? '')
-            && (string) ($existing->usage_location ?? '') === (string) ($this->commandStorageLocation($command) ?? '')
             && (string) ($existing->notes ?? '') === $this->replayNotes($command)
-            && (int) ($existing->reversal_of_id ?? 0) === (int) ($command->reversalOfId ?? 0);
+            && (int) ($existing->reversal_of_id ?? 0) === (int) ($command->reversalOfId ?? 0)
+            && ($condition === null || ($existing->item_condition ?? WarehouseItemCondition::NEW) === $condition);
+
+        if ($command->sourceLocation !== null) {
+            $matches = $matches && (string) $existing->from_location === $command->sourceLocation;
+        }
+        $toLocation = $command->toLocation ?? $this->commandStorageLocation($command);
+        if ($toLocation !== null) {
+            $matches = $matches && (string) $existing->to_location === $toLocation;
+        }
+        if ($command->operationKey !== null) {
+            $matches = $matches && (string) $existing->operation_key === $command->operationKey;
+        }
+
+        return $matches;
     }
 
     private function replayNotes(WarehouseStockCommand $command): string
@@ -321,6 +532,16 @@ final class WarehouseStockService
         }
 
         return (string) ($command->notes ?? '');
+    }
+
+    private function idempotencyKey(?string $key): string
+    {
+        $key = $key ?: (string) Str::uuid();
+        if (! Str::isUuid($key)) {
+            throw new WarehouseDomainException('Idempotency key harus berupa UUID.');
+        }
+
+        return $key;
     }
 }
 

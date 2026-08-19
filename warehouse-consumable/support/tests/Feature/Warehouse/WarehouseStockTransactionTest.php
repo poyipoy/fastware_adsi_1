@@ -26,7 +26,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
         $this->assertDatabaseHas('log_wh_verifications', ['status' => 'SUCCESS', 'user_id' => $employee->id]);
     }
 
-    public function test_employee_can_stock_out_with_quantity_only_and_keeps_location(): void
+    public function test_employee_can_stock_out_from_selected_location(): void
     {
         $employee = $this->createUser();
         $verified = $this->createUser();
@@ -38,12 +38,13 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
 
         $response = $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), [
             'type' => 'OUT', 'item_barcode' => '000-OUT', 'quantity' => '2',
+            'source_location' => 'Deltamas',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
         $response->assertCreated()->assertJsonPath('data.storage_location', 'Deltamas');
         $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '3.000', 'storage_location' => 'Deltamas']);
-        $this->assertDatabaseHas('trs_wh_stock_transactions', ['consumable_id' => $item->id, 'usage_location' => null]);
+        $this->assertDatabaseHas('trs_wh_stock_transactions', ['consumable_id' => $item->id, 'from_location' => 'Deltamas']);
     }
 
     public function test_stock_in_requires_storage_location_and_does_not_mutate_stock(): void
@@ -76,6 +77,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
         $this->actingAs($pic)->postJson(route('warehouse.transactions.store'), [
             'type' => 'IN', 'item_barcode' => $item->barcode, 'quantity' => '3',
             'storage_location' => 'Rack C-99',
+            'source_location' => 'Deltamas',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable()->assertJsonValidationErrors('storage_location');
 
@@ -111,6 +113,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
 
         $response = $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), [
             'type' => 'OUT', 'item_barcode' => '000-LOW', 'quantity' => '2',
+            'source_location' => 'DS8',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
@@ -127,6 +130,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
 
         $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), [
             'type' => 'OUT', 'item_barcode' => '000-FRAC', 'quantity' => '1.5',
+            'source_location' => 'DS8',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable();
     }

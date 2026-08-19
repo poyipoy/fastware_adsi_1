@@ -35,6 +35,8 @@ class AuthServiceProvider extends ServiceProvider
             'warehouse.master.manage',
             'warehouse.transaction.view',
             'warehouse.transaction.reverse',
+            'warehouse.transfer.create',
+            'warehouse.report.view',
             'warehouse.report.export',
         ] as $ability) {
             Gate::define($ability, fn ($user) => app(WarehouseAccessService::class)->can($user, $ability));

@@ -26,6 +26,14 @@ class StoreWarehouseConsumableRequest extends FormRequest
                 Rule::unique('mst_wh_consumables', 'barcode'),
             ],
             'item_name' => ['required', 'string', 'max:180'],
+            'machine_type' => ['nullable', 'string', 'max:120'],
+            'photo' => [
+                'nullable',
+                'file',
+                'image',
+                'mimes:'.implode(',', (array) config('warehouse.photos.mimes', ['jpg', 'jpeg', 'png', 'webp'])),
+                'max:'.(int) config('warehouse.photos.max_kilobytes', 5120),
+            ],
             'minimum_stock' => ['required', 'integer', 'min:0'],
             'maximum_stock' => ['nullable', 'integer', 'min:0', 'gte:minimum_stock'],
             'storage_location' => [
@@ -43,6 +51,7 @@ class StoreWarehouseConsumableRequest extends FormRequest
         $this->merge([
             'item_code' => is_string($this->item_code) ? trim($this->item_code) : $this->item_code,
             'item_name' => is_string($this->item_name) ? trim($this->item_name) : $this->item_name,
+            'machine_type' => is_string($this->machine_type) ? trim($this->machine_type) : $this->machine_type,
             'storage_location' => is_string($this->storage_location) ? trim($this->storage_location) : $this->storage_location,
             'maximum_stock' => $this->input('maximum_stock') === '' ? null : $this->input('maximum_stock'),
         ]);
@@ -82,6 +91,7 @@ class StoreWarehouseOpeningBalanceRequest extends FormRequest
             'quantity' => ['required', 'integer', 'min:1'],
             'verified_code' => ['required', 'string', 'max:150'],
             'reason' => ['required', 'string', 'max:1000'],
+            'storage_location' => ['required', Rule::in((array) config('warehouse.storage_locations', ['DS8', 'Deltamas']))],
             'idempotency_key' => ['nullable', 'uuid'],
         ];
     }

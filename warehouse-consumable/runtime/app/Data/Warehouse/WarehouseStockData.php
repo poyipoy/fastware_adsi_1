@@ -2,6 +2,7 @@
 
 namespace App\Data\Warehouse;
 
+use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Models\Warehouse\WarehouseStockTransaction;
 
@@ -25,6 +26,11 @@ final readonly class WarehouseStockCommand
         public ?int $reversalOfId = null,
         public ?string $verificationCodeHash = null,
         public ?string $storageLocation = null,
+        public ?WarehouseItemCondition $itemCondition = null,
+        public ?string $sourceLocation = null,
+        public ?string $toLocation = null,
+        public ?string $operationKey = null,
+        public ?string $legacyLocation = null,
     ) {
     }
 }
@@ -34,6 +40,8 @@ final readonly class WarehouseStockResult
     public function __construct(
         public WarehouseStockTransaction $transaction,
         public bool $idempotentReplay = false,
+        /** @var array<int, WarehouseStockTransaction> */
+        public array $relatedTransactions = [],
     ) {
     }
 }

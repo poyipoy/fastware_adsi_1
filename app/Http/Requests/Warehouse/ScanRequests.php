@@ -12,7 +12,9 @@ class ScanWarehouseItemRequest extends FormRequest
     {
         $access = app(WarehouseAccessService::class);
 
-        return $access->can($this->user(), 'warehouse.stock-out.create') || $access->can($this->user(), 'warehouse.stock-in.create');
+        return $access->can($this->user(), 'warehouse.stock-out.create')
+            || $access->can($this->user(), 'warehouse.stock-in.create')
+            || $access->can($this->user(), 'warehouse.transfer.create');
     }
 
     public function rules(): array
@@ -31,6 +33,8 @@ class ScanWarehouseUserRequest extends FormRequest
         return match ($type) {
             'IN' => $access->can($this->user(), 'warehouse.stock-in.create'),
             'OUT' => $access->can($this->user(), 'warehouse.stock-out.create'),
+            'ADJUSTMENT' => $access->canAdjust($this->user()),
+            'TRANSFER' => $access->can($this->user(), 'warehouse.transfer.create'),
             default => false,
         };
     }
@@ -39,7 +43,7 @@ class ScanWarehouseUserRequest extends FormRequest
     {
         return [
             'code' => ['required', 'string', 'max:150'],
-            'type' => ['required', Rule::in(['IN', 'OUT'])],
+            'type' => ['required', Rule::in(['IN', 'OUT', 'ADJUSTMENT', 'TRANSFER'])],
         ];
     }
 
