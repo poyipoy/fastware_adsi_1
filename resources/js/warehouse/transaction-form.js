@@ -69,7 +69,7 @@
         target.replaceChildren();
         const wrapper = document.createElement('div');
         wrapper.className = 'warehouse-preview-content';
-        wrapper.innerHTML = `<strong class="warehouse-preview-title">${escapeHtml(item.item_name)}</strong><dl class="warehouse-preview-facts"><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Item Code</dt><dd class="warehouse-preview-fact-value">${escapeHtml(item.item_code)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Stok saat ini</dt><dd class="warehouse-preview-fact-value">${displayQuantity(item.current_stock)} ${escapeHtml(item.unit)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Status stok</dt><dd class="warehouse-preview-fact-value" data-status></dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Lokasi</dt><dd class="warehouse-preview-fact-value">DS8 ${displayQuantity(item.stock_ds8 ?? item.locations?.DS8?.total)} · Deltamas ${displayQuantity(item.stock_deltamas ?? item.locations?.Deltamas?.total)}</dd></div></dl>`;
+        wrapper.innerHTML = `<strong class="warehouse-preview-title">${escapeHtml(item.item_name)}</strong><dl class="warehouse-preview-facts"><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Item Code</dt><dd class="warehouse-preview-fact-value">${escapeHtml(item.item_code)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Stok tersedia</dt><dd class="warehouse-preview-fact-value">${displayQuantity(item.available_stock ?? item.current_stock)} ${escapeHtml(item.unit)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Status stok</dt><dd class="warehouse-preview-fact-value" data-status></dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Lokasi</dt><dd class="warehouse-preview-fact-value">DS8 ${displayQuantity(item.locations?.DS8?.new_available_stock ?? item.locations?.DS8?.new ?? item.stock_ds8)} · Deltamas ${displayQuantity(item.locations?.Deltamas?.new_available_stock ?? item.locations?.Deltamas?.new ?? item.stock_deltamas)}</dd></div></dl>`;
         wrapper.querySelector('[data-status]').append(renderStockStatusBadge(item.stock_status));
         target.append(wrapper);
         target.classList.add('is-valid');
@@ -204,6 +204,7 @@
     };
 
     const setType = (type) => {
+        const inbound = type === 'IN';
         typeInput.value = type;
         form.querySelectorAll('[data-warehouse-type]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.warehouseType === type)));
         form.querySelector('[data-warehouse-type-caption]').textContent = type === 'IN' ? 'Penambahan stok' : 'Pengeluaran stok';

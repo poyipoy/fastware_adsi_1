@@ -392,12 +392,10 @@
                             $warehouseMenuVisible = auth()->check() && (
                                 Gate::allows('warehouse.dashboard.view')
                                 || Gate::allows('warehouse.stock-in.create')
+                                || Gate::allows('warehouse.stock-in.validate')
                                 || Gate::allows('warehouse.stock-out.create')
                                 || Gate::allows('warehouse.master.manage')
                                 || Gate::allows('warehouse.transaction.view')
-                                || Gate::allows('warehouse.location-shipment.view')
-                                || Gate::allows('warehouse.location-shipment.create')
-                                || Gate::allows('warehouse.location-shipment.validate')
                                 || Gate::allows('warehouse.report.view')
                                 || Gate::allows('warehouse.report.export')
                             );
@@ -414,15 +412,16 @@
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.dashboard') ? 'active' : '' }}"
                                                 href="{{ route('warehouse.dashboard') }}">Dashboard Consumable</a></li>
                                     @endcan
-                                    @if (Gate::allows('warehouse.stock-in.create') || Gate::allows('warehouse.stock-out.create'))
+                                    @if (Gate::allows('warehouse.stock-in.create') || Gate::allows('warehouse.stock-in.validate') || Gate::allows('warehouse.stock-out.create'))
+                                        @can('warehouse.stock-in.create')
+                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.stock-in.*') ? 'active' : '' }}"
+                                                    href="{{ route('warehouse.stock-in.index') }}">Stock In</a></li>
+                                        @endcan
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.create') ? 'active' : '' }}"
                                                 href="{{ route('warehouse.transactions.create') }}">Transaksi Barang Baru</a></li>
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions-used.create') ? 'active' : '' }}"
                                                 href="{{ route('warehouse.transactions-used.create') }}">Transaksi Barang Bekas</a></li>
                                     @endif
-                                    @canany(['warehouse.location-shipment.view', 'warehouse.location-shipment.create'])
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.location-shipments.*') ? 'active' : '' }}" href="{{ route('warehouse.location-shipments.index') }}">Pengiriman Antar Lokasi</a></li>
-                                    @endcanany
                                     @can('warehouse.transaction.view')
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.index') || request()->routeIs('warehouse.transactions.show') ? 'active' : '' }}" href="{{ route('warehouse.transactions.index') }}">Riwayat Transaksi</a></li>
                                     @endcan

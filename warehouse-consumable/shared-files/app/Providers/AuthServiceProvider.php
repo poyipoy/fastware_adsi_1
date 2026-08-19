@@ -31,6 +31,7 @@ class AuthServiceProvider extends ServiceProvider
         foreach ([
             'warehouse.dashboard.view',
             'warehouse.stock-in.create',
+            'warehouse.stock-in.validate',
             'warehouse.stock-out.create',
             'warehouse.master.manage',
             'warehouse.transaction.view',

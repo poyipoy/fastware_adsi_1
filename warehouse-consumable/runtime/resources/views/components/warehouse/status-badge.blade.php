@@ -30,6 +30,12 @@
                 'CANCELLED' => 'Dibatalkan',
                 default => $status,
             },
+            'stock-in' => match ($value) {
+                'WAITING_VALIDATION' => 'Menunggu Validasi',
+                'VALIDATED' => 'Tervalidasi',
+                'CANCELLED' => 'Dibatalkan',
+                default => $status,
+            },
             default => $status,
         };
     }

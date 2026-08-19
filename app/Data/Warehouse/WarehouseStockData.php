@@ -32,6 +32,8 @@ final readonly class WarehouseStockCommand
         public ?string $operationKey = null,
         public ?string $legacyLocation = null,
         public ?int $locationShipmentId = null,
+        /** The pending Stock In that authorizes a validation mutation. */
+        public ?int $stockInId = null,
     ) {
     }
 }

@@ -38,6 +38,7 @@ class WarehouseStockTransaction extends Model
         'notes',
         'reversal_of_id',
         'location_shipment_id',
+        'stock_in_id',
         'transaction_at',
         'created_by',
     ];
@@ -79,5 +80,10 @@ class WarehouseStockTransaction extends Model
     public function locationShipment(): BelongsTo
     {
         return $this->belongsTo(WarehouseLocationShipment::class, 'location_shipment_id');
+    }
+
+    public function stockIn(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseStockIn::class, 'stock_in_id');
     }
 }

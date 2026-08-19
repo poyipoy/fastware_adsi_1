@@ -83,3 +83,74 @@ class ReverseWarehouseTransactionRequest extends FormRequest
         ];
     }
 }
+
+class StoreWarehouseStockInRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return app(WarehouseAccessService::class)->can($this->user(), 'warehouse.stock-in.create');
+    }
+
+    public function rules(): array
+    {
+        $locations = (array) config('warehouse.storage_locations', ['DS8', 'Deltamas']);
+        $location = ['string', 'max:120', 'regex:/^[^\x00-\x1F\x7F]*$/u', Rule::in($locations)];
+
+        return [
+            'consumable_id' => [Rule::requiredIf(fn (): bool => ! $this->filled('item_barcode')), 'nullable', 'integer', Rule::exists('mst_wh_consumables', 'id')->where(fn ($query) => $query->where('is_active', true))],
+            'item_barcode' => [Rule::requiredIf(fn (): bool => ! $this->filled('consumable_id')), 'nullable', 'string', 'max:120'],
+            'item_condition' => ['required', Rule::in(['NEW', 'USED'])],
+            'quantity_expected' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
+            'destination_location' => array_merge(['required'], $location),
+            'source_location' => array_merge(['sometimes', 'nullable'], $location),
+            'notes' => ['sometimes', 'nullable', 'string', 'max:65535'],
+            'idempotency_key' => ['required', 'uuid'],
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'item_condition' => strtoupper(trim((string) $this->input('item_condition', 'NEW'))),
+            'quantity_expected' => $this->input('quantity_expected', $this->input('quantity')),
+            'destination_location' => $this->input('destination_location', $this->input('location')),
+        ]);
+    }
+}
+
+class ValidateWarehouseStockInRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return app(WarehouseAccessService::class)->can($this->user(), 'warehouse.stock-in.validate');
+    }
+
+    public function rules(): array
+    {
+        return [
+            'validator_code' => ['required', 'string', 'max:150'],
+            'quantity_received' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
+            'validation_result' => ['sometimes', 'nullable', Rule::in(['MATCH', 'MANUAL_ADJUSTMENT'])],
+            'received_condition' => ['sometimes', 'nullable', Rule::in(['NEW', 'USED'])],
+            'received_item_barcode' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'validation_notes' => ['sometimes', 'nullable', 'string', 'max:65535'],
+            'idempotency_key' => ['required', 'uuid'],
+        ];
+    }
+}
+
+class CancelWarehouseStockInRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return app(WarehouseAccessService::class)->can($this->user(), 'warehouse.stock-in.create');
+    }
+
+    public function rules(): array
+    {
+        return [
+            'reason' => ['required', 'string', 'min:3', 'max:2000'],
+            'idempotency_key' => ['required', 'uuid'],
+        ];
+    }
+}

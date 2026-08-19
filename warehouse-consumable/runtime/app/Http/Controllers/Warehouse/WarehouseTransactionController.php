@@ -10,7 +10,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\ReverseWarehouseTransactionRequest;
 use App\Http\Requests\Warehouse\StoreWarehouseTransactionRequest;
 use App\Models\Warehouse\WarehouseStockTransaction;
-use App\Models\Warehouse\WarehouseLocationShipment;
 use App\Services\Warehouse\WarehouseAccessService;
 use App\Services\Warehouse\WarehouseIdentityResolver;
 use App\Services\Warehouse\WarehouseStockService;
@@ -200,13 +199,6 @@ class WarehouseTransactionController extends Controller
                 'sourceLocationForOut' => true,
                 'usedReturnAvailable' => $condition === WarehouseItemCondition::NEW,
             ],
-            'pendingShipments' => WarehouseLocationShipment::query()
-                ->with(['consumable', 'sender'])
-                ->waitingValidation()
-                ->latest('sent_at')
-                ->limit(5)
-                ->get(),
-            'pendingShipmentCount' => WarehouseLocationShipment::query()->waitingValidation()->count(),
         ]);
     }
 

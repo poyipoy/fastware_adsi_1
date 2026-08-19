@@ -84,17 +84,12 @@
             <aside class="warehouse-panel warehouse-transaction-summary" data-warehouse-summary aria-labelledby="warehouse-summary-title"><div class="warehouse-panel-header"><div><h2 id="warehouse-summary-title">Ringkasan</h2><p>Diperbarui otomatis</p></div></div><div class="warehouse-panel-body"><div class="warehouse-summary-row"><span>Barang</span><div class="warehouse-summary-value warehouse-summary-item-value"><strong data-warehouse-summary-item>—</strong><small data-warehouse-summary-item-code>—</small><small data-warehouse-summary-item-barcode>—</small><span data-warehouse-summary-item-barcode-visual hidden><svg data-warehouse-summary-item-barcode-svg></svg></span></div></div><div class="warehouse-summary-row"><span>Kondisi</span><strong>{{ $itemCondition->label() }}</strong></div><div class="warehouse-summary-row"><span>Stok total</span><strong data-warehouse-summary-current-stock>—</strong></div><div class="warehouse-summary-row"><span>Status stok</span><span class="warehouse-summary-stock-status" data-warehouse-summary-stock-status>—</span></div><div class="warehouse-summary-row"><span>Tipe</span><strong data-warehouse-summary-type>—</strong></div><div class="warehouse-summary-row"><span>Lokasi</span><strong data-warehouse-summary-location>—</strong></div><div class="warehouse-summary-row"><span>Jumlah</span><strong data-warehouse-summary-quantity>—</strong></div><div class="warehouse-summary-row"><span>Verifikator</span><div class="warehouse-summary-value"><strong data-warehouse-summary-user>—</strong><small data-warehouse-summary-user-meta>—</small></div></div></div></aside>
         </div>
 
-        <section class="warehouse-panel warehouse-shipment-context" aria-labelledby="warehouse-shipment-context-title">
-            <div class="warehouse-panel-header"><div><h2 id="warehouse-shipment-context-title">Pengiriman Antar Lokasi</h2><p>Pengiriman dibuat di sini dan baru memindahkan saldo setelah serah terima Validasi sesuai.</p></div><a class="btn btn-sm btn-outline-primary" href="{{ route('warehouse.location-shipments.create') }}">Buat Pengiriman</a></div>
-            <div class="warehouse-panel-body">
-                <div class="warehouse-shipment-context-summary"><strong>{{ $pendingShipmentCount }}</strong><span>Menunggu Validasi</span><a class="btn btn-sm btn-outline-secondary" href="{{ route('warehouse.location-shipments.index', ['status' => 'WAITING_VALIDATION']) }}">Lihat semua</a></div>
-                @if($pendingShipments->isNotEmpty())
-                    <div class="warehouse-shipment-mini-list">@foreach($pendingShipments as $shipment)<a class="warehouse-shipment-mini-card" href="{{ route('warehouse.location-shipments.show', $shipment) }}"><strong>{{ $shipment->shipment_number }}</strong><span>{{ $shipment->consumable?->item_name }} &middot; {{ \App\Services\Warehouse\WarehouseQuantity::display($shipment->quantity_sent) }} {{ $shipment->consumable?->unit }} {{ $shipment->item_condition?->label() }}</span><small>{{ $shipment->from_location }} &rarr; {{ $shipment->to_location }} &middot; {{ $shipment->sender_name_snapshot }}</small></a>@endforeach</div>
-                @else
-                    <p class="warehouse-muted mb-0">Tidak ada Pengiriman Antar Lokasi yang menunggu Validasi.</p>
-                @endif
-            </div>
-        </section>
+        @if($canStockIn)
+            <section class="warehouse-panel warehouse-receiving-context" aria-labelledby="warehouse-receiving-context-title">
+                <div class="warehouse-panel-header"><div><h2 id="warehouse-receiving-context-title">Stock In</h2><p>Stock In baru menunggu validasi fisik dan tidak mengubah saldo sampai tervalidasi.</p></div><a class="btn btn-sm btn-outline-primary" href="{{ route('warehouse.stock-in.create') }}">Buat Stock In</a></div>
+                <div class="warehouse-panel-body"><a class="btn btn-sm btn-outline-secondary" href="{{ route('warehouse.stock-in.index', ['status' => 'WAITING_VALIDATION']) }}">Lihat Stock In Menunggu Validasi</a></div>
+            </section>
+        @endif
     </div>
 @endsection
 

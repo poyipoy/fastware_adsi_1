@@ -12,6 +12,7 @@ class WarehouseAccessService
     private const ABILITIES = [
         'warehouse.dashboard.view',
         'warehouse.stock-in.create',
+        'warehouse.stock-in.validate',
         'warehouse.stock-out.create',
         'warehouse.master.manage',
         'warehouse.transaction.view',

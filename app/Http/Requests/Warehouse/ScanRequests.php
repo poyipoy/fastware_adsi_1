@@ -14,6 +14,7 @@ class ScanWarehouseItemRequest extends FormRequest
 
         return $access->can($this->user(), 'warehouse.stock-out.create')
             || $access->can($this->user(), 'warehouse.stock-in.create')
+            || $access->can($this->user(), 'warehouse.stock-in.validate')
             || $access->can($this->user(), 'warehouse.location-shipment.create')
             || $access->can($this->user(), 'warehouse.location-shipment.validate');
     }
@@ -33,6 +34,7 @@ class ScanWarehouseUserRequest extends FormRequest
 
         return match ($type) {
             'IN' => $access->can($this->user(), 'warehouse.stock-in.create'),
+            'STOCK_IN_VALIDATE' => $access->can($this->user(), 'warehouse.stock-in.validate'),
             'OUT' => $access->can($this->user(), 'warehouse.stock-out.create'),
             'ADJUSTMENT' => $access->canAdjust($this->user()),
             default => false,
@@ -43,7 +45,7 @@ class ScanWarehouseUserRequest extends FormRequest
     {
         return [
             'code' => ['required', 'string', 'max:150'],
-            'type' => ['required', Rule::in(['IN', 'OUT', 'ADJUSTMENT'])],
+            'type' => ['required', Rule::in(['IN', 'STOCK_IN_VALIDATE', 'OUT', 'ADJUSTMENT'])],
         ];
     }
 

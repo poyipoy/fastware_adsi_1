@@ -168,6 +168,7 @@ abstract class WarehouseTestCase extends TestCase
             '2026_08_19_000001_create_trs_wh_location_shipments_table.php',
             '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table.php',
             '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table.php',
+            '2026_08_20_000001_create_trs_wh_stock_ins_table.php',
         ] as $migration) {
             (require database_path('migrations/'.$migration))->up();
         }
@@ -178,6 +179,7 @@ abstract class WarehouseTestCase extends TestCase
         Schema::disableForeignKeyConstraints();
         foreach ([
             'log_wh_verifications',
+            'trs_wh_stock_ins',
             'trs_wh_location_shipments',
             'trs_wh_stock_transactions',
             'mst_wh_restricted_verifiers',

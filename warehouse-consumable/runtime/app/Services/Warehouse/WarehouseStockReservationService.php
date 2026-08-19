@@ -6,6 +6,8 @@ use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Exceptions\WarehouseDomainException;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseLocationShipment;
+use App\Models\Warehouse\WarehouseStockIn;
+use Illuminate\Support\Facades\Schema;
 
 final class WarehouseStockReservationService
 {
@@ -14,21 +16,43 @@ final class WarehouseStockReservationService
         string $location,
         WarehouseItemCondition $condition,
         ?int $excludeShipmentId = null,
+        ?int $excludeStockInId = null,
     ): string {
-        $query = WarehouseLocationShipment::query()
-            ->reserving()
-            ->where('consumable_id', $consumableId)
-            ->where('from_location', $location)
-            ->where('item_condition', $condition->value)
-            ->select('quantity_sent');
+        $reservedMilli = 0;
+        if (Schema::hasTable('trs_wh_stock_ins')) {
+            $stockInQuery = WarehouseStockIn::query()
+                ->reserving()
+                ->where('consumable_id', $consumableId)
+                ->where('source_location', $location)
+                ->where('item_condition', $condition->value)
+                ->select('quantity_expected');
 
-        if ($excludeShipmentId !== null) {
-            $query->where('id', '<>', $excludeShipmentId);
+            if ($excludeStockInId !== null) {
+                $stockInQuery->where('id', '<>', $excludeStockInId);
+            }
+
+            foreach ($stockInQuery->pluck('quantity_expected') as $quantity) {
+                $reservedMilli += WarehouseQuantity::toMilli((string) $quantity);
+            }
         }
 
-        $reservedMilli = 0;
-        foreach ($query->pluck('quantity_sent') as $quantity) {
-            $reservedMilli += WarehouseQuantity::toMilli((string) $quantity);
+        // Keep reservations from legacy rows while the old table is still
+        // present. New Stock In records never depend on this domain object.
+        if (Schema::hasTable('trs_wh_location_shipments')) {
+            $shipmentQuery = WarehouseLocationShipment::query()
+                ->reserving()
+                ->where('consumable_id', $consumableId)
+                ->where('from_location', $location)
+                ->where('item_condition', $condition->value)
+                ->select('quantity_sent');
+
+            if ($excludeShipmentId !== null) {
+                $shipmentQuery->where('id', '<>', $excludeShipmentId);
+            }
+
+            foreach ($shipmentQuery->pluck('quantity_sent') as $quantity) {
+                $reservedMilli += WarehouseQuantity::toMilli((string) $quantity);
+            }
         }
 
         return WarehouseQuantity::fromMilli($reservedMilli);
@@ -39,6 +63,7 @@ final class WarehouseStockReservationService
         string $location,
         WarehouseItemCondition $condition,
         ?int $excludeShipmentId = null,
+        ?int $excludeStockInId = null,
     ): string {
         $physical = WarehouseQuantity::toMilli($item->availableAt($location, $condition));
         $reserved = WarehouseQuantity::toMilli($this->reserved(
@@ -46,6 +71,7 @@ final class WarehouseStockReservationService
             $location,
             $condition,
             $excludeShipmentId,
+            $excludeStockInId,
         ));
 
         if ($physical < $reserved) {
@@ -61,8 +87,9 @@ final class WarehouseStockReservationService
         WarehouseItemCondition $condition,
         string $quantity,
         ?int $excludeShipmentId = null,
+        ?int $excludeStockInId = null,
     ): void {
-        $available = $this->available($item, $location, $condition, $excludeShipmentId);
+        $available = $this->available($item, $location, $condition, $excludeShipmentId, $excludeStockInId);
         if (WarehouseQuantity::compare($available, $quantity) < 0) {
             throw new WarehouseDomainException(sprintf(
                 'Stok %s di lokasi %s tidak mencukupi setelah memperhitungkan reservation aktif. Tersedia %s.',

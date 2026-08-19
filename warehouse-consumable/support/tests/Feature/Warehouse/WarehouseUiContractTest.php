@@ -8,6 +8,34 @@ use App\Models\Warehouse\WarehouseStockTransaction;
 
 class WarehouseUiContractTest extends WarehouseTestCase
 {
+    public function test_stock_in_is_a_pending_validation_workflow_with_mobile_cards(): void
+    {
+        $user = $this->createUser();
+        $this->actingAs($user)->get(route('warehouse.stock-in.create'))
+            ->assertOk()
+            ->assertSee('Buat Stock In')
+            ->assertSee('Menunggu Validasi')
+            ->assertSee('name="quantity_expected"', false)
+            ->assertSee('name="destination_location"', false)
+            ->assertSee('Stok tidak berubah', false);
+
+        $this->actingAs($user)->get(route('warehouse.stock-in.index'))
+            ->assertOk()
+            ->assertSee('Menunggu Validasi')
+            ->assertSee('Tervalidasi')
+            ->assertSee('Dibatalkan')
+            ->assertDontSee('Pengiriman Antar Lokasi');
+
+        self::assertStringContainsString('warehouse-mobile-record', file_get_contents(base_path('resources/views/warehouse/stock-in/index.blade.php')));
+
+        $script = file_get_contents(base_path('resources/js/warehouse/transaction-form.js'));
+        self::assertStringContainsString("const inbound = type === 'IN';", $script);
+        $stockInScript = file_get_contents(base_path('resources/js/warehouse/stock-in.js'));
+        self::assertStringContainsString("STOCK_IN_VALIDATE", $stockInScript);
+        $stockInCss = file_get_contents(base_path('resources/css/warehouse/stock-in.css'));
+        self::assertStringContainsString('prefers-reduced-motion', $stockInCss);
+    }
+
     public function test_new_and_used_transaction_forms_expose_catalog_and_three_step_accessible_flow(): void
     {
         $user = $this->createUser();

@@ -1120,6 +1120,38 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/reports', [\App\Http\Controllers\Warehouse\WarehouseReportController::class, 'index'])
             ->middleware('warehouse.permission:warehouse.report.view')
             ->name('reports.index');
+
+        // Stock In is the single receiving workflow. A pending record is
+        // created first and only the restricted validation action mutates the
+        // stock ledger.
+        Route::prefix('stock-in')->name('stock-in.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'index'])
+                ->middleware('warehouse.permission:warehouse.stock-in.create')
+                ->name('index');
+            Route::get('/create', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'create'])
+                ->middleware('warehouse.permission:warehouse.stock-in.create')
+                ->name('create');
+            Route::post('/', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'store'])
+                ->middleware(['warehouse.permission:warehouse.stock-in.create', 'throttle:warehouse-mutation'])
+                ->name('store');
+            Route::get('/{stockIn}/validate', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'validateForm'])
+                ->whereNumber('stockIn')
+                ->middleware('warehouse.permission:warehouse.stock-in.validate')
+                ->name('validate-form');
+            Route::post('/{stockIn}/validate', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'validateStockIn'])
+                ->whereNumber('stockIn')
+                ->middleware(['warehouse.permission:warehouse.stock-in.validate', 'throttle:warehouse-mutation'])
+                ->name('validate');
+            Route::post('/{stockIn}/cancel', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'cancel'])
+                ->whereNumber('stockIn')
+                ->middleware(['warehouse.permission:warehouse.stock-in.create', 'throttle:warehouse-mutation'])
+                ->name('cancel');
+            Route::get('/{stockIn}', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'show'])
+                ->whereNumber('stockIn')
+                ->middleware('warehouse.permission:warehouse.stock-in.create')
+                ->name('show');
+        });
+
         Route::prefix('stock-in/shipments')->name('location-shipments.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'index'])
                 ->middleware('warehouse.permission:warehouse.location-shipment.view')

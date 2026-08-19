@@ -1,7 +1,8 @@
 -- Warehouse Consumable Revisi Tahap 2 — complete bootstrap for a NEW installation.
 -- Target: MySQL 8.0+ / Laravel application database.
 -- IMPORTANT: do not run this file to upgrade an existing Warehouse installation.
--- Existing installations must run only the reviewed 2026_08_18 and 2026_08_19 migration files.
+-- Existing installations must run only the reviewed Warehouse migrations, including
+-- 2026_08_20_000001_create_trs_wh_stock_ins_table.php for the final Stock In flow.
 
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -111,6 +112,7 @@ CREATE TABLE IF NOT EXISTS `trs_wh_stock_transactions` (
     `notes` TEXT NULL,
     `reversal_of_id` BIGINT UNSIGNED NULL,
     `location_shipment_id` BIGINT UNSIGNED NULL,
+    `stock_in_id` BIGINT UNSIGNED NULL,
     `transaction_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `created_by` BIGINT UNSIGNED NULL,
     `created_at` TIMESTAMP NULL DEFAULT NULL,
@@ -126,6 +128,7 @@ CREATE TABLE IF NOT EXISTS `trs_wh_stock_transactions` (
     KEY `wh_trs_operation_idx` (`operation_key`),
     KEY `wh_trs_condition_type_at_idx` (`item_condition`, `transaction_type`, `transaction_at`),
     KEY `wh_trs_location_shipment_idx` (`location_shipment_id`),
+    KEY `wh_trs_stock_in_idx` (`stock_in_id`),
     CONSTRAINT `trs_wh_stock_transactions_consumable_id_foreign` FOREIGN KEY (`consumable_id`) REFERENCES `mst_wh_consumables` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `trs_wh_stock_transactions_verified_user_id_foreign` FOREIGN KEY (`verified_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `trs_wh_stock_transactions_reversal_of_id_foreign` FOREIGN KEY (`reversal_of_id`) REFERENCES `trs_wh_stock_transactions` (`id`) ON DELETE RESTRICT,
@@ -188,6 +191,63 @@ ALTER TABLE `trs_wh_stock_transactions`
 ALTER TABLE `trs_wh_location_shipments`
     ADD CONSTRAINT `wh_ship_transaction_fk` FOREIGN KEY (`stock_transaction_id`) REFERENCES `trs_wh_stock_transactions` (`id`) ON DELETE SET NULL,
     ADD UNIQUE KEY `wh_ship_transaction_unique` (`stock_transaction_id`);
+
+-- Final Stock In lifecycle. Creation is pending-only; the stock transaction link
+-- is populated only after restricted validation succeeds.
+CREATE TABLE IF NOT EXISTS `trs_wh_stock_ins` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `stock_in_number` VARCHAR(50) NOT NULL,
+    `creation_idempotency_key` CHAR(36) NOT NULL,
+    `validation_idempotency_key` CHAR(36) NULL,
+    `cancellation_idempotency_key` CHAR(36) NULL,
+    `status` VARCHAR(32) NOT NULL,
+    `validation_result` VARCHAR(32) NULL,
+    `consumable_id` BIGINT UNSIGNED NOT NULL,
+    `item_condition` VARCHAR(16) NOT NULL,
+    `quantity_expected` DECIMAL(15,3) NOT NULL,
+    `quantity_received` DECIMAL(15,3) NULL,
+    `received_consumable_id` BIGINT UNSIGNED NULL,
+    `received_condition` VARCHAR(16) NULL,
+    `destination_location` VARCHAR(120) NOT NULL,
+    `source_location` VARCHAR(120) NULL,
+    `notes` TEXT NULL,
+    `validation_notes` TEXT NULL,
+    `cancellation_reason` TEXT NULL,
+    `created_by` BIGINT UNSIGNED NOT NULL,
+    `creator_npk_snapshot` VARCHAR(100) NULL,
+    `creator_name_snapshot` VARCHAR(180) NULL,
+    `validated_at` TIMESTAMP NULL,
+    `validator_user_id` BIGINT UNSIGNED NULL,
+    `validator_npk_snapshot` VARCHAR(100) NULL,
+    `validator_name_snapshot` VARCHAR(180) NULL,
+    `cancelled_by_user_id` BIGINT UNSIGNED NULL,
+    `cancelled_at` TIMESTAMP NULL,
+    `stock_transaction_id` BIGINT UNSIGNED NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `trs_wh_stock_ins_stock_in_number_unique` (`stock_in_number`),
+    UNIQUE KEY `trs_wh_stock_ins_creation_idempotency_key_unique` (`creation_idempotency_key`),
+    UNIQUE KEY `trs_wh_stock_ins_validation_idempotency_key_unique` (`validation_idempotency_key`),
+    UNIQUE KEY `trs_wh_stock_ins_cancellation_idempotency_key_unique` (`cancellation_idempotency_key`),
+    UNIQUE KEY `wh_stock_in_transaction_unique` (`stock_transaction_id`),
+    KEY `wh_stock_in_status_idx` (`status`),
+    KEY `wh_stock_in_item_status_idx` (`consumable_id`, `status`),
+    KEY `wh_stock_in_source_status_idx` (`source_location`, `status`),
+    KEY `wh_stock_in_destination_idx` (`destination_location`),
+    KEY `wh_stock_in_creator_idx` (`created_by`),
+    KEY `wh_stock_in_validator_idx` (`validator_user_id`),
+    KEY `wh_stock_in_transaction_idx` (`stock_transaction_id`),
+    CONSTRAINT `trs_wh_stock_ins_consumable_id_foreign` FOREIGN KEY (`consumable_id`) REFERENCES `mst_wh_consumables` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `trs_wh_stock_ins_received_consumable_id_foreign` FOREIGN KEY (`received_consumable_id`) REFERENCES `mst_wh_consumables` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `trs_wh_stock_ins_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `trs_wh_stock_ins_validator_user_id_foreign` FOREIGN KEY (`validator_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `trs_wh_stock_ins_cancelled_by_user_id_foreign` FOREIGN KEY (`cancelled_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `wh_stock_in_transaction_fk` FOREIGN KEY (`stock_transaction_id`) REFERENCES `trs_wh_stock_transactions` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `trs_wh_stock_transactions`
+    ADD CONSTRAINT `wh_trs_stock_in_fk` FOREIGN KEY (`stock_in_id`) REFERENCES `trs_wh_stock_ins` (`id`) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS `log_wh_verifications` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -260,6 +320,7 @@ INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_18_000004_seed_m
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000001_create_trs_wh_location_shipments_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000001_create_trs_wh_location_shipments_table');
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table');
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table');
+INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_20_000001_create_trs_wh_stock_ins_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_20_000001_create_trs_wh_stock_ins_table');
 
 -- Read-only post-bootstrap verification. Every mismatch count must be zero.
 SELECT 'mst_wh_consumable_categories' AS `table_name`, COUNT(*) AS `row_count` FROM `mst_wh_consumable_categories`
@@ -267,6 +328,7 @@ UNION ALL SELECT 'mst_wh_consumables', COUNT(*) FROM `mst_wh_consumables`
 UNION ALL SELECT 'mst_wh_user_cards (legacy)', COUNT(*) FROM `mst_wh_user_cards`
 UNION ALL SELECT 'trs_wh_stock_transactions', COUNT(*) FROM `trs_wh_stock_transactions`
 UNION ALL SELECT 'trs_wh_location_shipments', COUNT(*) FROM `trs_wh_location_shipments`
+UNION ALL SELECT 'trs_wh_stock_ins', COUNT(*) FROM `trs_wh_stock_ins`
 UNION ALL SELECT 'log_wh_verifications', COUNT(*) FROM `log_wh_verifications`
 UNION ALL SELECT 'mst_wh_restricted_verifiers', COUNT(*) FROM `mst_wh_restricted_verifiers`;
 SELECT COUNT(*) AS `total_stock_mismatch` FROM `mst_wh_consumables` WHERE `current_stock` <> (`stock_deltamas` + `stock_ds8`);

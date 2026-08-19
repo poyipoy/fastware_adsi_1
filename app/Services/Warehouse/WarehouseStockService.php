@@ -12,6 +12,7 @@ use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockTransaction;
 use App\Models\Warehouse\WarehouseVerificationLog;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 final class WarehouseStockService
@@ -193,7 +194,7 @@ final class WarehouseStockService
             throw new WarehouseDomainException('Actor transaksi tidak aktif atau tidak ditemukan.', 403);
         }
 
-        $this->authorizeType($actor, $command->type);
+        $this->authorizeType($actor, $command);
         $this->validateIdentifiers($command);
 
         $existing = WarehouseStockTransaction::query()
@@ -244,6 +245,7 @@ final class WarehouseStockService
                 $condition,
                 -WarehouseQuantity::toMilli($quantity),
                 $command->locationShipmentId,
+                $command->stockInId,
             );
             $this->applyLocationDelta($item, (string) $toLocation, $condition, WarehouseQuantity::toMilli($quantity));
         } else {
@@ -257,7 +259,7 @@ final class WarehouseStockService
             throw new WarehouseDomainException('Integritas saldo lokasi tidak sesuai dengan stok total.', 409);
         }
 
-        $transaction = WarehouseStockTransaction::query()->create([
+        $transactionAttributes = [
             'transaction_number' => $this->numberGenerator->generate(),
             'idempotency_key' => $idempotencyKey,
             'operation_key' => $command->operationKey,
@@ -281,7 +283,11 @@ final class WarehouseStockService
             'location_shipment_id' => $command->locationShipmentId,
             'transaction_at' => now(),
             'created_by' => $actor->getKey(),
-        ]);
+        ];
+        if (Schema::hasColumn('trs_wh_stock_transactions', 'stock_in_id')) {
+            $transactionAttributes['stock_in_id'] = $command->stockInId;
+        }
+        $transaction = WarehouseStockTransaction::query()->create($transactionAttributes);
 
         $updates = [
             'current_stock' => $stockAfter,
@@ -383,6 +389,7 @@ final class WarehouseStockService
         WarehouseItemCondition $condition,
         int $deltaMilli,
         ?int $excludeShipmentId = null,
+        ?int $excludeStockInId = null,
     ): void {
         if ($deltaMilli < 0) {
             app(WarehouseStockReservationService::class)->assertAvailable(
@@ -391,6 +398,7 @@ final class WarehouseStockService
                 $condition,
                 WarehouseQuantity::fromMilli(abs($deltaMilli)),
                 $excludeShipmentId,
+                $excludeStockInId,
             );
         }
 
@@ -420,12 +428,17 @@ final class WarehouseStockService
         return WarehouseQuantity::fromMilli($totalMilli);
     }
 
-    private function authorizeType(User $actor, WarehouseTransactionType $type): void
+    private function authorizeType(User $actor, WarehouseStockCommand $command): void
     {
+        $type = $command->type;
         $ability = match ($type) {
-            WarehouseTransactionType::IN => 'warehouse.stock-in.create',
+            WarehouseTransactionType::IN => $command->stockInId !== null
+                ? 'warehouse.stock-in.validate'
+                : 'warehouse.stock-in.create',
             WarehouseTransactionType::OUT => 'warehouse.stock-out.create',
-            WarehouseTransactionType::TRANSFER => 'warehouse.location-shipment.validate',
+            WarehouseTransactionType::TRANSFER => $command->stockInId !== null
+                ? 'warehouse.stock-in.validate'
+                : 'warehouse.location-shipment.validate',
             WarehouseTransactionType::ADJUSTMENT => null,
             WarehouseTransactionType::REVERSAL => 'warehouse.transaction.reverse',
         };
@@ -523,6 +536,7 @@ final class WarehouseStockService
             && (string) ($existing->notes ?? '') === $this->replayNotes($command)
             && (int) ($existing->reversal_of_id ?? 0) === (int) ($command->reversalOfId ?? 0)
             && (int) ($existing->location_shipment_id ?? 0) === (int) ($command->locationShipmentId ?? 0)
+            && (int) ($existing->stock_in_id ?? 0) === (int) ($command->stockInId ?? 0)
             && ($condition === null || ($existing->item_condition ?? WarehouseItemCondition::NEW) === $condition);
 
         if ($command->sourceLocation !== null) {

@@ -18,6 +18,7 @@ class WarehouseSchemaTest extends WarehouseTestCase
             'log_wh_verifications',
             'mst_wh_restricted_verifiers',
             'trs_wh_location_shipments',
+            'trs_wh_stock_ins',
         ] as $table) {
             $this->assertTrue(Schema::hasTable($table), $table.' must exist');
         }
@@ -33,6 +34,13 @@ class WarehouseSchemaTest extends WarehouseTestCase
             'idempotency_key', 'operation_key', 'item_condition', 'from_location', 'to_location',
             'stock_before', 'stock_after', 'reversal_of_id', 'verified_user_section',
             'location_shipment_id',
+            'stock_in_id',
+        ]));
+        $this->assertTrue(Schema::hasColumns('trs_wh_stock_ins', [
+            'stock_in_number', 'creation_idempotency_key', 'validation_idempotency_key', 'status',
+            'validation_result', 'consumable_id', 'item_condition', 'quantity_expected', 'quantity_received',
+            'destination_location', 'source_location', 'validation_notes', 'validator_user_id',
+            'validator_npk_snapshot', 'validator_name_snapshot', 'validated_at', 'stock_transaction_id',
         ]));
         $this->assertFalse(Schema::hasColumn('mst_wh_consumables', 'storage_location'));
         $this->assertTrue(Schema::hasColumns('trs_wh_location_shipments', [
@@ -62,13 +70,14 @@ class WarehouseSchemaTest extends WarehouseTestCase
             '2026_08_19_000001_create_trs_wh_location_shipments_table.php',
             '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table.php',
             '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table.php',
+            '2026_08_20_000001_create_trs_wh_stock_ins_table.php',
         ];
 
         foreach (array_reverse($migrationFiles) as $migrationFile) {
             (require database_path('migrations/'.$migrationFile))->down();
         }
 
-        foreach (['mst_wh_consumable_categories', 'mst_wh_consumables', 'mst_wh_user_cards', 'trs_wh_stock_transactions', 'log_wh_verifications', 'mst_wh_restricted_verifiers', 'trs_wh_location_shipments'] as $table) {
+        foreach (['mst_wh_consumable_categories', 'mst_wh_consumables', 'mst_wh_user_cards', 'trs_wh_stock_transactions', 'log_wh_verifications', 'mst_wh_restricted_verifiers', 'trs_wh_location_shipments', 'trs_wh_stock_ins'] as $table) {
             $this->assertFalse(Schema::hasTable($table));
         }
 
