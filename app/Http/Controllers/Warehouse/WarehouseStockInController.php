@@ -10,6 +10,7 @@ use App\Http\Requests\Warehouse\ValidateWarehouseStockInRequest;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockIn;
 use App\Services\Warehouse\WarehouseIdentityResolver;
+use App\Services\Warehouse\WarehouseQuantity;
 use App\Services\Warehouse\WarehouseStockInService;
 use Illuminate\Http\Request;
 
@@ -184,7 +185,10 @@ class WarehouseStockInController extends Controller
             'quantity_received' => $stockIn->quantity_received === null ? null : (string) $stockIn->quantity_received,
             'difference' => $stockIn->quantity_received === null
                 ? null
-                : ((float) $stockIn->quantity_received - (float) $stockIn->quantity_expected),
+                : $this->signedQuantityDifference(
+                    WarehouseQuantity::toMilli((string) $stockIn->quantity_received)
+                    - WarehouseQuantity::toMilli((string) $stockIn->quantity_expected),
+                ),
             'destination_location' => $stockIn->destination_location,
             'source_location' => $stockIn->source_location,
             'created_by' => $stockIn->creator_name_snapshot,
@@ -205,5 +209,16 @@ class WarehouseStockInController extends Controller
         }
 
         return back()->withInput()->withErrors([$key => $exception->getMessage()]);
+    }
+
+    private function signedQuantityDifference(int $differenceMilli): string
+    {
+        if ($differenceMilli === 0) {
+            return '0';
+        }
+
+        $absolute = WarehouseQuantity::display(WarehouseQuantity::fromMilli(abs($differenceMilli)));
+
+        return $differenceMilli < 0 ? '-'.$absolute : $absolute;
     }
 }
