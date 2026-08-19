@@ -46,7 +46,7 @@ final class WarehouseVerifierPolicy
             ->where('is_active', true)
             ->exists()) {
             throw new WarehouseDomainException(
-                'NPK karyawan tidak terdaftar sebagai verifikator Transfer/Adjustment.',
+                'NPK karyawan tidak terdaftar sebagai verifikator Adjustment.',
                 422,
             );
         }
@@ -71,8 +71,7 @@ final class WarehouseVerifierPolicy
         WarehouseStockCommand $command,
         ?WarehouseStockTransaction $original = null,
     ): bool {
-        return $command->type === WarehouseTransactionType::TRANSFER
-            || $command->type === WarehouseTransactionType::ADJUSTMENT
+        return $command->type === WarehouseTransactionType::ADJUSTMENT
             || ($command->type === WarehouseTransactionType::REVERSAL
                 && $original?->transaction_type === WarehouseTransactionType::ADJUSTMENT);
     }

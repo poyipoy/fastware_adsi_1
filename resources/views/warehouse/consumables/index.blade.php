@@ -6,7 +6,7 @@
 
 @section('warehouse-content')
     <div class="warehouse-management-page" aria-labelledby="warehouse-consumables-title">
-        <x-warehouse.page-header title="Master Consumable" subtitle="Kelola identitas, foto, tipe mesin, batas, dan lokasi default barang."><a class="btn btn-primary" href="{{ route('warehouse.consumables.create') }}">Tambah Barang</a></x-warehouse.page-header>
+        <x-warehouse.page-header title="Master Consumable" subtitle="Kelola identitas, foto, tipe mesin, batas, dan saldo per lokasi."><a class="btn btn-primary" href="{{ route('warehouse.consumables.create') }}">Tambah Barang</a></x-warehouse.page-header>
         @if (session('status'))<div class="alert alert-success" role="status">{{ session('status') }}</div>@endif
 
         @php($masterFilterActive = request()->filled('search') || request()->filled('status'))

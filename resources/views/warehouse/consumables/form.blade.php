@@ -58,8 +58,8 @@
 
                 <section class="warehouse-form-section" aria-labelledby="warehouse-stock-rule-heading">
                     <div class="warehouse-form-section-heading">
-                        <h2 id="warehouse-stock-rule-heading">Aturan stok dan lokasi</h2>
-                        <p>Jumlah menggunakan satuan pcs tanpa desimal. Stok saat ini tidak dapat diedit dari master.</p>
+                        <h2 id="warehouse-stock-rule-heading">Aturan stok</h2>
+                        <p>Jumlah menggunakan satuan pcs tanpa desimal. Lokasi dipilih saat transaksi, bukan pada master. Stok saat ini tidak dapat diedit dari master.</p>
                     </div>
                     <div class="warehouse-detail-grid">
                         <div class="warehouse-form-field">
@@ -70,17 +70,6 @@
                             <label class="form-label" for="maximum_stock">Stok maksimum</label>
                             <input class="form-control" id="maximum_stock" type="number" min="0" step="1" inputmode="numeric" name="maximum_stock" value="{{ old('maximum_stock', $consumable->maximum_stock !== null ? \App\Services\Warehouse\WarehouseQuantity::display($consumable->maximum_stock) : '') }}" aria-describedby="maximum-stock-help" @error('maximum_stock') aria-invalid="true" @enderror>
                             <div class="warehouse-help" id="maximum-stock-help">Opsional. Jika diisi, nilainya tidak boleh di bawah stok minimum.</div>
-                        </div>
-                        <div class="warehouse-form-field warehouse-detail-full">
-                            <label class="form-label" for="storage_location">Lokasi penyimpanan</label>
-                            @php($selectedStorageLocation = old('storage_location', $consumable->storage_location))
-                            <select class="form-select" id="storage_location" name="storage_location" aria-describedby="storage-location-help" @error('storage_location') aria-invalid="true" @enderror>
-                                <option value="">Pilih lokasi penyimpanan</option>
-                                @foreach ((array) config('warehouse.storage_locations', ['DS8', 'Deltamas']) as $storageLocation)
-                                    <option value="{{ $storageLocation }}" @selected((string) $selectedStorageLocation === (string) $storageLocation)>{{ $storageLocation }}</option>
-                                @endforeach
-                            </select>
-                            <div class="warehouse-help" id="storage-location-help">Lokasi default untuk prefill. Saldo aktual tetap dipisahkan antara DS8 dan Deltamas.</div>
                         </div>
                     </div>
                 </section>

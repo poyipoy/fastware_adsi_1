@@ -7,8 +7,7 @@
     const conditionInput = form.querySelector('[data-warehouse-condition]');
     const itemInput = form.querySelector('[data-warehouse-item-input]');
     const quantityInput = form.querySelector('[data-warehouse-quantity]');
-    const destinationInput = form.querySelector('[data-warehouse-storage-location]');
-    const sourceInput = form.querySelector('[data-warehouse-source-location]');
+    const locationInput = form.querySelector('[data-warehouse-location]');
     const userInput = form.querySelector('[data-warehouse-user-input]');
     const confirmInput = form.querySelector('[data-warehouse-confirm-check]');
     const submitButton = form.querySelector('[data-warehouse-submit]');
@@ -171,7 +170,7 @@
 
     const available = () => {
         if (!state.item) return 0;
-        const location = typeInput.value === 'IN' ? destinationInput.value : sourceInput.value;
+        const location = locationInput.value;
         const condition = conditionInput.value.toLowerCase();
         return Number(state.item.locations?.[location]?.[condition] ?? state.item[`stock_${condition}_${location.toLowerCase()}`] ?? 0);
     };
@@ -197,7 +196,7 @@
         stockStatus.replaceChildren();
         if (state.item) stockStatus.append(renderStockStatusBadge(state.item.stock_status)); else stockStatus.textContent = '—';
         summaryPanel.querySelector('[data-warehouse-summary-type]').textContent = transactionTypeLabels[typeInput.value] || '—';
-        summaryPanel.querySelector('[data-warehouse-summary-location]').textContent = typeInput.value === 'IN' ? destinationInput.value : sourceInput.value;
+        summaryPanel.querySelector('[data-warehouse-summary-location]').textContent = locationInput.value;
         summaryPanel.querySelector('[data-warehouse-summary-quantity]').textContent = displayQuantity(quantityInput.value);
         summaryPanel.querySelector('[data-warehouse-summary-user]').textContent = state.verifier?.name || '—';
         summaryPanel.querySelector('[data-warehouse-summary-user-meta]').textContent = state.verifier ? `NPK ${state.verifier.npk} · ${state.verifier.section || '—'}` : '—';
@@ -208,11 +207,6 @@
         typeInput.value = type;
         form.querySelectorAll('[data-warehouse-type]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.warehouseType === type)));
         form.querySelector('[data-warehouse-type-caption]').textContent = type === 'IN' ? 'Penambahan stok' : 'Pengeluaran stok';
-        const inbound = type === 'IN';
-        form.querySelector('[data-warehouse-in-location]').hidden = !inbound;
-        form.querySelector('[data-warehouse-out-location]').hidden = inbound;
-        destinationInput.disabled = !inbound;
-        sourceInput.disabled = inbound;
         if (returnToggle) {
             returnToggle.disabled = inbound;
             if (inbound) { returnToggle.checked = false; toggleReturn(); }
@@ -309,7 +303,7 @@
     form.querySelectorAll('[data-warehouse-type]').forEach((button) => button.addEventListener('click', () => setType(button.dataset.warehouseType)));
     form.querySelector('[data-warehouse-quantity-down]').addEventListener('click', () => { quantityInput.stepDown(); quantityInput.dispatchEvent(new Event('input')); });
     form.querySelector('[data-warehouse-quantity-up]').addEventListener('click', () => { quantityInput.stepUp(); quantityInput.dispatchEvent(new Event('input')); });
-    [quantityInput, destinationInput, sourceInput, returnQuantity, returnLocation].filter(Boolean).forEach((field) => field.addEventListener('input', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); }));
+    [quantityInput, locationInput, returnQuantity, returnLocation].filter(Boolean).forEach((field) => field.addEventListener('input', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); }));
     returnToggle?.addEventListener('change', () => { invalidateApproval(true); toggleReturn(); });
     userInput.addEventListener('input', () => {
         if (!state.verifier) return;

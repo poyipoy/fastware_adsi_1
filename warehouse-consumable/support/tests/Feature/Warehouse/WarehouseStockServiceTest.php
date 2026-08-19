@@ -127,7 +127,6 @@ class WarehouseStockServiceTest extends WarehouseTestCase
         $this->assertTrue($second->idempotentReplay);
         $this->assertSame($first->transaction->getKey(), $second->transaction->getKey());
         $this->assertSame('5.000', (string) $item->refresh()->current_stock);
-        $this->assertSame('DS8', (string) $item->storage_location);
         $this->assertSame('DS8', (string) $first->transaction->usage_location);
         $this->assertSame(1, WarehouseStockTransaction::query()->count());
     }

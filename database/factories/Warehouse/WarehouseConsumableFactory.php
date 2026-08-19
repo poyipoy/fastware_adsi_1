@@ -24,7 +24,6 @@ class WarehouseConsumableFactory extends Factory
             'stock_used_ds8' => '0.000',
             'minimum_stock' => '0.000',
             'maximum_stock' => null,
-            'storage_location' => 'DS8',
             'is_active' => true,
         ];
     }
@@ -32,12 +31,12 @@ class WarehouseConsumableFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (WarehouseConsumable $item): void {
-            $current = (string) $item->current_stock;
-            $location = $item->storage_location === 'Deltamas' ? 'stock_deltamas' : 'stock_ds8';
-            $other = $location === 'stock_deltamas' ? 'stock_ds8' : 'stock_deltamas';
+            $current = \App\Services\Warehouse\WarehouseQuantity::toMilli((string) $item->current_stock);
+            $ds8 = \App\Services\Warehouse\WarehouseQuantity::toMilli((string) $item->stock_ds8);
+            $deltamas = \App\Services\Warehouse\WarehouseQuantity::toMilli((string) $item->stock_deltamas);
 
-            if ((float) $item->{$location} + (float) $item->{$other} !== (float) $current) {
-                $item->forceFill([$location => $current, $other => '0.000'])->saveQuietly();
+            if ($ds8 + $deltamas !== $current) {
+                $item->forceFill(['stock_ds8' => \App\Services\Warehouse\WarehouseQuantity::fromMilli($current), 'stock_deltamas' => '0.000'])->saveQuietly();
             }
         });
     }

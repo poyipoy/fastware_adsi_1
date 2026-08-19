@@ -26,16 +26,13 @@
 .warehouse-usage-copy small { color: var(--warehouse-muted); white-space: nowrap; }
 .warehouse-usage-bar { height: 7px; overflow: hidden; border-radius: 999px; background: #e9eef5; }
 .warehouse-usage-bar span { display: block; height: 100%; border-radius: inherit; background: var(--warehouse-navy); }
-.warehouse-analytics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding: 18px; }
+.warehouse-analytics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 18px; }
+.warehouse-analytics-grid-trend { grid-template-columns: minmax(0, 1fr); }
 .warehouse-analytics-block { min-width: 0; padding: 16px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #fbfcfe; }
-.warehouse-analytics-block-top-stock-out { grid-column: span 2; }
 .warehouse-analytics-block h3 { margin: 0 0 14px; color: #2d4f86; font-size: .92rem; font-weight: 700; }
-.warehouse-chart-frame { position: relative; min-height: 260px; }
-.warehouse-chart-frame-combined { min-height: max(280px, calc(var(--warehouse-chart-rows, 1) * 34px + 80px)); }
+.warehouse-chart-frame { position: relative; min-height: max(260px, calc(var(--warehouse-chart-rows, 1) * 34px + 80px)); }
 .warehouse-chart-data { margin-top: 12px; color: var(--warehouse-muted); font-size: .78rem; }
 .warehouse-chart-data summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
-.warehouse-chart-data .warehouse-table-combined { width: 100%; min-width: 0; table-layout: fixed; }
-.warehouse-chart-data .warehouse-table-combined th, .warehouse-chart-data .warehouse-table-combined td { white-space: normal; overflow-wrap: anywhere; }
 .warehouse-data-grid-single { grid-template-columns: minmax(0, 1fr); margin-top: 20px; }
 
 @media (max-width: 1279.98px) {
@@ -45,7 +42,6 @@
 @media (max-width: 991.98px) {
     .warehouse-insights-grid, .warehouse-data-grid { grid-template-columns: 1fr; }
     .warehouse-analytics-grid { grid-template-columns: 1fr; }
-    .warehouse-analytics-block-top-stock-out { grid-column: auto; }
 }
 
 @media (max-width: 767.98px) {

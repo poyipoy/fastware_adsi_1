@@ -285,7 +285,6 @@ final class WarehouseDummyDataSeeder extends Seeder
                 'current_stock' => '0.000',
                 'minimum_stock' => $definition['minimum_stock'],
                 'maximum_stock' => $definition['maximum_stock'],
-                'storage_location' => $definition['storage_location'],
                 'description' => self::MARKER.' Consumable',
                 'is_active' => true,
                 'created_by' => $actor->getKey(),
@@ -300,11 +299,11 @@ final class WarehouseDummyDataSeeder extends Seeder
     private function itemDefinitions(): array
     {
         return [
-            ['item_code' => 'WH-DUMMY-001', 'barcode' => '000WH-DUMMY-001', 'item_name' => 'Demo Consumable 01', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000', 'storage_location' => 'DS8'],
-            ['item_code' => 'WH-DUMMY-002', 'barcode' => '000WH-DUMMY-002', 'item_name' => 'Demo Consumable 02', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000', 'storage_location' => 'Deltamas'],
-            ['item_code' => 'WH-DUMMY-003', 'barcode' => '000WH-DUMMY-003', 'item_name' => 'Demo Consumable 03', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000', 'storage_location' => 'DS8'],
-            ['item_code' => 'WH-DUMMY-004', 'barcode' => '000WH-DUMMY-004', 'item_name' => 'Demo Consumable 04', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000', 'storage_location' => 'Deltamas'],
-            ['item_code' => 'WH-DUMMY-005', 'barcode' => '000WH-DUMMY-005', 'item_name' => 'Demo Consumable 05', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000', 'storage_location' => 'DS8'],
+            ['item_code' => 'WH-DUMMY-001', 'barcode' => '000WH-DUMMY-001', 'item_name' => 'Demo Consumable 01', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000'],
+            ['item_code' => 'WH-DUMMY-002', 'barcode' => '000WH-DUMMY-002', 'item_name' => 'Demo Consumable 02', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000'],
+            ['item_code' => 'WH-DUMMY-003', 'barcode' => '000WH-DUMMY-003', 'item_name' => 'Demo Consumable 03', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000'],
+            ['item_code' => 'WH-DUMMY-004', 'barcode' => '000WH-DUMMY-004', 'item_name' => 'Demo Consumable 04', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000'],
+            ['item_code' => 'WH-DUMMY-005', 'barcode' => '000WH-DUMMY-005', 'item_name' => 'Demo Consumable 05', 'minimum_stock' => '5.000', 'maximum_stock' => '100.000'],
         ];
     }
 
@@ -334,7 +333,8 @@ final class WarehouseDummyDataSeeder extends Seeder
                     notes: self::MARKER.' Transaction',
                     idempotencyKey: $this->idempotencyKey($month, $type, $index),
                     createdBy: (int) $actor->getKey(),
-                    storageLocation: $type === WarehouseTransactionType::IN ? (string) $item->storage_location : null,
+                    storageLocation: $type === WarehouseTransactionType::IN ? $this->seedLocation($item) : null,
+                    sourceLocation: $type === WarehouseTransactionType::OUT ? $this->seedLocation($item) : null,
                 ));
 
                 if ($result->idempotentReplay) {
@@ -359,6 +359,13 @@ final class WarehouseDummyDataSeeder extends Seeder
             Uuid::NAMESPACE_URL,
             sprintf('warehouse-dummy:%s:%s:%d', $month, $type->value, $index),
         )->toString();
+    }
+
+    private function seedLocation(WarehouseConsumable $item): string
+    {
+        return in_array((string) $item->item_code, ['WH-DUMMY-002', 'WH-DUMMY-004'], true)
+            ? 'Deltamas'
+            : 'DS8';
     }
 
     private function assertMarker(?string $description, string $subject): void

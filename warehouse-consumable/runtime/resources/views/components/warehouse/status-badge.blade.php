@@ -9,7 +9,7 @@
                 'OUT' => 'Keluar',
                 'ADJUSTMENT' => 'Penyesuaian',
                 'REVERSAL' => 'Pembatalan',
-                'TRANSFER' => 'Transfer',
+                'TRANSFER' => 'Pengiriman Antar Lokasi',
                 default => $status,
             },
             'stock' => match ($value) {
@@ -23,14 +23,22 @@
                 'INACTIVE' => 'Tidak aktif',
                 default => $status,
             },
+            'shipment' => match ($value) {
+                'WAITING_VALIDATION' => 'Menunggu Validasi',
+                'VALIDATED' => 'Sesuai / Selesai',
+                'DISCREPANCY' => 'Tidak Sesuai',
+                'CANCELLED' => 'Dibatalkan',
+                default => $status,
+            },
             default => $status,
         };
     }
     $tone = $context === 'stock' && $value === 'OUT'
         ? 'danger'
         : match ($value) {
-            'IN', 'HEALTHY', 'ACTIVE', 'SUCCESS' => 'success',
-            'OUT', 'LOW', 'WARNING', 'PENDING' => 'warning',
+            'IN', 'HEALTHY', 'ACTIVE', 'SUCCESS', 'VALIDATED' => 'success',
+            'OUT', 'LOW', 'WARNING', 'PENDING', 'WAITING_VALIDATION' => 'warning',
+            'DISCREPANCY' => 'danger',
             'DANGER', 'ERROR', 'INACTIVE', 'REVERSED' => 'danger',
             'TRANSFER' => 'neutral',
             default => 'neutral',

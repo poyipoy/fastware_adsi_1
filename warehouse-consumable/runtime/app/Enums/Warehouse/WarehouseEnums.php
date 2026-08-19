@@ -42,3 +42,21 @@ enum WarehouseVerificationStatus: string
     case SUCCESS = 'SUCCESS';
     case FAILED = 'FAILED';
 }
+
+enum WarehouseLocationShipmentStatus: string
+{
+    case WAITING_VALIDATION = 'WAITING_VALIDATION';
+    case VALIDATED = 'VALIDATED';
+    case DISCREPANCY = 'DISCREPANCY';
+    case CANCELLED = 'CANCELLED';
+
+    public function isTerminal(): bool
+    {
+        return in_array($this, [self::VALIDATED, self::CANCELLED], true);
+    }
+
+    public function reservesStock(): bool
+    {
+        return in_array($this, [self::WAITING_VALIDATION, self::DISCREPANCY], true);
+    }
+}

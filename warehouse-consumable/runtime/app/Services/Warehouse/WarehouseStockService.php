@@ -88,7 +88,7 @@ final class WarehouseStockService
         }
 
         if ($original->transaction_type === WarehouseTransactionType::TRANSFER) {
-            throw new WarehouseDomainException('Transfer tidak dapat direversal. Buat transfer balik sebagai koreksi.', 422);
+            throw new WarehouseDomainException('Pengiriman Antar Lokasi tidak dapat dibatalkan. Buat pengiriman balik sebagai koreksi.', 422);
         }
 
         return $this->execute(new WarehouseStockCommand(
@@ -160,12 +160,13 @@ final class WarehouseStockService
         string $toLocation,
         ?string $notes = null,
         ?string $idempotencyKey = null,
+        ?int $locationShipmentId = null,
     ): WarehouseStockResult {
         $condition = is_string($itemCondition)
             ? WarehouseItemCondition::tryFrom(strtoupper($itemCondition))
             : $itemCondition;
         if ($condition === null) {
-            throw new WarehouseDomainException('Kondisi barang transfer tidak valid.');
+            throw new WarehouseDomainException('Kondisi barang Pengiriman Antar Lokasi tidak valid.');
         }
 
         return $this->execute(new WarehouseStockCommand(
@@ -179,6 +180,7 @@ final class WarehouseStockService
             itemCondition: $condition,
             sourceLocation: $fromLocation,
             toLocation: $toLocation,
+            locationShipmentId: $locationShipmentId,
         ));
     }
 
@@ -236,7 +238,13 @@ final class WarehouseStockService
         $globalDelta = $this->deltaMilli($command, $quantity, $original);
 
         if ($command->type === WarehouseTransactionType::TRANSFER) {
-            $this->applyLocationDelta($item, (string) $fromLocation, $condition, -WarehouseQuantity::toMilli($quantity));
+            $this->applyLocationDelta(
+                $item,
+                (string) $fromLocation,
+                $condition,
+                -WarehouseQuantity::toMilli($quantity),
+                $command->locationShipmentId,
+            );
             $this->applyLocationDelta($item, (string) $toLocation, $condition, WarehouseQuantity::toMilli($quantity));
         } else {
             $movementLocation = $globalDelta >= 0 ? $toLocation : $fromLocation;
@@ -270,6 +278,7 @@ final class WarehouseStockService
             'usage_location' => $toLocation ?? $fromLocation,
             'notes' => $this->notes($command, $original),
             'reversal_of_id' => $original?->getKey(),
+            'location_shipment_id' => $command->locationShipmentId,
             'transaction_at' => now(),
             'created_by' => $actor->getKey(),
         ]);
@@ -282,9 +291,6 @@ final class WarehouseStockService
             'stock_used_ds8' => $item->stock_used_ds8,
             'updated_by' => $actor->getKey(),
         ];
-        if ($toLocation !== null && in_array($command->type, [WarehouseTransactionType::IN, WarehouseTransactionType::TRANSFER], true)) {
-            $updates['storage_location'] = $toLocation;
-        }
         $item->forceFill($updates)->save();
 
         if ($command->verificationCodeHash !== null) {
@@ -314,7 +320,7 @@ final class WarehouseStockService
             throw new WarehouseDomainException('Transaksi asal tidak ditemukan.', 404);
         }
         if ($original->transaction_type === WarehouseTransactionType::TRANSFER) {
-            throw new WarehouseDomainException('Transfer tidak dapat direversal. Buat transfer balik sebagai koreksi.', 422);
+            throw new WarehouseDomainException('Pengiriman Antar Lokasi tidak dapat dibatalkan. Buat pengiriman balik sebagai koreksi.', 422);
         }
         if (WarehouseStockTransaction::query()->where('reversal_of_id', $original->getKey())->exists()) {
             throw new WarehouseDomainException('Transaksi tersebut sudah pernah direverse.', 409);
@@ -345,11 +351,7 @@ final class WarehouseStockService
             return [null, $this->requiredLocation($command->toLocation ?? $this->commandStorageLocation($command), 'Lokasi tujuan Stock In wajib diisi.')];
         }
         if ($command->type === WarehouseTransactionType::OUT) {
-            $fallback = in_array((string) $item->storage_location, (array) config('warehouse.storage_locations'), true)
-                ? (string) $item->storage_location
-                : null;
-
-            return [$this->requiredLocation($command->sourceLocation ?? $fallback, 'Lokasi asal Stock Out wajib diisi.'), null];
+            return [$this->requiredLocation($command->sourceLocation, 'Lokasi asal Stock Out wajib diisi.'), null];
         }
         if ($command->type === WarehouseTransactionType::ADJUSTMENT) {
             $direction = $this->verifierPolicy->normalizeDirection((string) $command->adjustmentDirection);
@@ -363,10 +365,10 @@ final class WarehouseStockService
             return $direction === 'IN' ? [null, $location] : [$location, null];
         }
         if ($command->type === WarehouseTransactionType::TRANSFER) {
-            $from = $this->requiredLocation($command->sourceLocation, 'Lokasi asal Transfer wajib diisi.');
-            $to = $this->requiredLocation($command->toLocation ?? $this->commandStorageLocation($command), 'Lokasi tujuan Transfer wajib diisi.');
+            $from = $this->requiredLocation($command->sourceLocation, 'Lokasi asal Pengiriman Antar Lokasi wajib diisi.');
+            $to = $this->requiredLocation($command->toLocation ?? $this->commandStorageLocation($command), 'Lokasi tujuan Pengiriman Antar Lokasi wajib diisi.');
             if ($from === $to) {
-                throw new WarehouseDomainException('Lokasi asal dan tujuan Transfer harus berbeda.', 422);
+                throw new WarehouseDomainException('Lokasi asal dan tujuan Pengiriman Antar Lokasi harus berbeda.', 422);
             }
 
             return [$from, $to];
@@ -380,7 +382,18 @@ final class WarehouseStockService
         string $location,
         WarehouseItemCondition $condition,
         int $deltaMilli,
+        ?int $excludeShipmentId = null,
     ): void {
+        if ($deltaMilli < 0) {
+            app(WarehouseStockReservationService::class)->assertAvailable(
+                $item,
+                $location,
+                $condition,
+                WarehouseQuantity::fromMilli(abs($deltaMilli)),
+                $excludeShipmentId,
+            );
+        }
+
         $totalColumn = $item->totalStockColumn($location);
         $usedColumn = $item->usedStockColumn($location);
         $totalAfter = WarehouseQuantity::toMilli((string) $item->getAttribute($totalColumn)) + $deltaMilli;
@@ -412,7 +425,7 @@ final class WarehouseStockService
         $ability = match ($type) {
             WarehouseTransactionType::IN => 'warehouse.stock-in.create',
             WarehouseTransactionType::OUT => 'warehouse.stock-out.create',
-            WarehouseTransactionType::TRANSFER => 'warehouse.transfer.create',
+            WarehouseTransactionType::TRANSFER => 'warehouse.location-shipment.validate',
             WarehouseTransactionType::ADJUSTMENT => null,
             WarehouseTransactionType::REVERSAL => 'warehouse.transaction.reverse',
         };
@@ -509,6 +522,7 @@ final class WarehouseStockService
             && (string) ($existing->purpose ?? '') === (string) ($command->purpose ?? '')
             && (string) ($existing->notes ?? '') === $this->replayNotes($command)
             && (int) ($existing->reversal_of_id ?? 0) === (int) ($command->reversalOfId ?? 0)
+            && (int) ($existing->location_shipment_id ?? 0) === (int) ($command->locationShipmentId ?? 0)
             && ($condition === null || ($existing->item_condition ?? WarehouseItemCondition::NEW) === $condition);
 
         if ($command->sourceLocation !== null) {

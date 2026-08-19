@@ -16,12 +16,12 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
 
         $response = $this->actingAs($pic)->postJson(route('warehouse.transactions.store'), [
             'type' => 'IN', 'item_barcode' => '000-IN', 'quantity' => '3',
-            'storage_location' => 'DS8',
+            'location' => 'DS8',
             'verified_code' => (string) $employee->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
         $response->assertCreated()->assertJsonPath('data.stock_before', '2.000')->assertJsonPath('data.stock_after', '5.000');
-        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '5.000', 'storage_location' => 'DS8']);
+        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '5.000', 'stock_ds8' => '5.000']);
         $this->assertDatabaseHas('trs_wh_stock_transactions', ['consumable_id' => $item->id, 'usage_location' => 'DS8']);
         $this->assertDatabaseHas('log_wh_verifications', ['status' => 'SUCCESS', 'user_id' => $employee->id]);
     }
@@ -33,21 +33,21 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
         $item = WarehouseConsumable::factory()->create([
             'barcode' => '000-OUT',
             'current_stock' => '5.000',
-            'storage_location' => 'Deltamas',
+            'stock_deltamas' => '5.000',
         ]);
 
         $response = $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), [
             'type' => 'OUT', 'item_barcode' => '000-OUT', 'quantity' => '2',
-            'source_location' => 'Deltamas',
+            'location' => 'Deltamas',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
-        $response->assertCreated()->assertJsonPath('data.storage_location', 'Deltamas');
-        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '3.000', 'storage_location' => 'Deltamas']);
+        $response->assertCreated()->assertJsonPath('data.from_location', 'Deltamas');
+        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '3.000', 'stock_deltamas' => '3.000']);
         $this->assertDatabaseHas('trs_wh_stock_transactions', ['consumable_id' => $item->id, 'from_location' => 'Deltamas']);
     }
 
-    public function test_stock_in_requires_storage_location_and_does_not_mutate_stock(): void
+    public function test_stock_in_requires_selected_location_and_does_not_mutate_stock(): void
     {
         $pic = $this->createUser();
         $this->createPicPosition($pic);
@@ -55,19 +55,19 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
         $item = WarehouseConsumable::factory()->create([
             'barcode' => '000-IN-MISSING-LOCATION',
             'current_stock' => '2.000',
-            'storage_location' => 'DS8',
+            'stock_ds8' => '2.000',
         ]);
 
         $this->actingAs($pic)->postJson(route('warehouse.transactions.store'), [
             'type' => 'IN', 'item_barcode' => $item->barcode, 'quantity' => '3',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
-        ])->assertUnprocessable()->assertJsonValidationErrors('storage_location');
+        ])->assertUnprocessable()->assertJsonValidationErrors('location');
 
-        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '2.000', 'storage_location' => 'DS8']);
+        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '2.000', 'stock_ds8' => '2.000']);
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
     }
 
-    public function test_stock_in_rejects_storage_location_outside_the_approved_options(): void
+    public function test_stock_in_rejects_location_outside_the_approved_options(): void
     {
         $pic = $this->createUser();
         $this->createPicPosition($pic);
@@ -76,32 +76,31 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
 
         $this->actingAs($pic)->postJson(route('warehouse.transactions.store'), [
             'type' => 'IN', 'item_barcode' => $item->barcode, 'quantity' => '3',
-            'storage_location' => 'Rack C-99',
-            'source_location' => 'Deltamas',
+            'location' => 'Rack C-99',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
-        ])->assertUnprocessable()->assertJsonValidationErrors('storage_location');
+        ])->assertUnprocessable()->assertJsonValidationErrors('location');
 
-        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '2.000', 'storage_location' => 'DS8']);
+        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '2.000', 'stock_ds8' => '2.000']);
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
     }
 
-    public function test_stock_out_rejects_manual_storage_location(): void
+    public function test_stock_out_requires_selected_location(): void
     {
         $employee = $this->createUser();
         $verified = $this->createUser();
         $item = WarehouseConsumable::factory()->create([
             'barcode' => '000-OUT-LOCATION',
             'current_stock' => '5.000',
-            'storage_location' => 'Deltamas',
+            'stock_deltamas' => '5.000',
         ]);
 
         $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), [
             'type' => 'OUT', 'item_barcode' => $item->barcode, 'quantity' => '2',
-            'storage_location' => 'Rack C-99',
+            'location' => 'Rack C-99',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
-        ])->assertUnprocessable()->assertJsonValidationErrors('storage_location');
+        ])->assertUnprocessable()->assertJsonValidationErrors('location');
 
-        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '5.000', 'storage_location' => 'Deltamas']);
+        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '5.000', 'stock_deltamas' => '5.000']);
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
     }
 
@@ -113,7 +112,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
 
         $response = $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), [
             'type' => 'OUT', 'item_barcode' => '000-LOW', 'quantity' => '2',
-            'source_location' => 'DS8',
+            'location' => 'DS8',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
@@ -130,7 +129,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
 
         $this->actingAs($employee)->postJson(route('warehouse.transactions.store'), [
             'type' => 'OUT', 'item_barcode' => '000-FRAC', 'quantity' => '1.5',
-            'source_location' => 'DS8',
+            'location' => 'DS8',
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable();
     }
@@ -151,7 +150,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
             'type' => 'IN',
             'item_barcode' => 'DIRECT-IN',
             'quantity' => '3',
-            'storage_location' => 'DS8',
+            'location' => 'DS8',
             'verified_code' => (string) $verified->npk,
             'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable()

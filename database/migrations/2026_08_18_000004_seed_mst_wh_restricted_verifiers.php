@@ -18,15 +18,13 @@ return new class extends Migration
 
         foreach (self::VERIFIERS as $definition) {
             $users = DB::table('users')
-                ->where('name', $definition['name'])
                 ->where('npk', $definition['npk'])
                 ->where('is_active', $activeValue)
                 ->get(['id']);
 
             if ($users->count() !== 1) {
                 throw new \RuntimeException(sprintf(
-                    'Restricted verifier %s (NPK %d) harus cocok dengan tepat satu user aktif.',
-                    $definition['name'],
+                    'Restricted verifier NPK %d harus cocok dengan tepat satu user aktif.',
                     $definition['npk'],
                 ));
             }

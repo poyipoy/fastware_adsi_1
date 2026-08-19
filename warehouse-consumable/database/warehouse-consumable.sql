@@ -1,22 +1,22 @@
 -- Warehouse Consumable Revisi Tahap 2 — complete bootstrap for a NEW installation.
 -- Target: MySQL 8.0+ / Laravel application database.
 -- IMPORTANT: do not run this file to upgrade an existing Warehouse installation.
--- Existing installations must run only the four reviewed 2026_08_18 migration files.
+-- Existing installations must run only the reviewed 2026_08_18 and 2026_08_19 migration files.
 
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- Fail before persistent DDL unless each restricted verifier resolves exactly once.
+-- Fail before persistent DDL unless each restricted verifier NPK resolves exactly once.
 CREATE TEMPORARY TABLE `_wh_revision2_verifier_preflight` (
     `identity_name` VARCHAR(80) NOT NULL,
     `match_count` INT NOT NULL,
     CONSTRAINT `wh_revision2_verifier_exactly_one` CHECK (`match_count` = 1)
 );
 INSERT INTO `_wh_revision2_verifier_preflight`
-SELECT 'RAGIL ISHA RAHMANTO / 5639', COUNT(*) FROM `users`
-WHERE `name` = 'RAGIL ISHA RAHMANTO' AND `npk` = 5639 AND `is_active` = 0;
+SELECT 'NPK 5639', COUNT(*) FROM `users`
+WHERE `npk` = 5639 AND `is_active` = 0;
 INSERT INTO `_wh_revision2_verifier_preflight`
-SELECT 'ARY RODJO PRASETYO / 5439', COUNT(*) FROM `users`
-WHERE `name` = 'ARY RODJO PRASETYO' AND `npk` = 5439 AND `is_active` = 0;
+SELECT 'NPK 5439', COUNT(*) FROM `users`
+WHERE `npk` = 5439 AND `is_active` = 0;
 DROP TEMPORARY TABLE `_wh_revision2_verifier_preflight`;
 
 CREATE TABLE IF NOT EXISTS `mst_wh_consumable_categories` (
@@ -51,7 +51,6 @@ CREATE TABLE IF NOT EXISTS `mst_wh_consumables` (
     `stock_used_ds8` DECIMAL(15,3) NOT NULL DEFAULT 0.000,
     `minimum_stock` DECIMAL(15,3) NOT NULL DEFAULT 0.000,
     `maximum_stock` DECIMAL(15,3) NULL,
-    `storage_location` VARCHAR(120) NULL,
     `machine_type` VARCHAR(120) NULL,
     `description` TEXT NULL,
     `photo_path` VARCHAR(255) NULL,
@@ -111,6 +110,7 @@ CREATE TABLE IF NOT EXISTS `trs_wh_stock_transactions` (
     `to_location` VARCHAR(120) NULL,
     `notes` TEXT NULL,
     `reversal_of_id` BIGINT UNSIGNED NULL,
+    `location_shipment_id` BIGINT UNSIGNED NULL,
     `transaction_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `created_by` BIGINT UNSIGNED NULL,
     `created_at` TIMESTAMP NULL DEFAULT NULL,
@@ -125,11 +125,69 @@ CREATE TABLE IF NOT EXISTS `trs_wh_stock_transactions` (
     KEY `wh_trs_section_at_idx` (`verified_user_section`, `transaction_at`),
     KEY `wh_trs_operation_idx` (`operation_key`),
     KEY `wh_trs_condition_type_at_idx` (`item_condition`, `transaction_type`, `transaction_at`),
+    KEY `wh_trs_location_shipment_idx` (`location_shipment_id`),
     CONSTRAINT `trs_wh_stock_transactions_consumable_id_foreign` FOREIGN KEY (`consumable_id`) REFERENCES `mst_wh_consumables` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `trs_wh_stock_transactions_verified_user_id_foreign` FOREIGN KEY (`verified_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `trs_wh_stock_transactions_reversal_of_id_foreign` FOREIGN KEY (`reversal_of_id`) REFERENCES `trs_wh_stock_transactions` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `trs_wh_stock_transactions_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `trs_wh_location_shipments` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `shipment_number` VARCHAR(50) NOT NULL,
+    `consumable_id` BIGINT UNSIGNED NOT NULL,
+    `item_condition` VARCHAR(16) NOT NULL,
+    `quantity_sent` DECIMAL(15,3) NOT NULL,
+    `from_location` VARCHAR(120) NOT NULL,
+    `to_location` VARCHAR(120) NOT NULL,
+    `status` VARCHAR(32) NOT NULL,
+    `sent_by_user_id` BIGINT UNSIGNED NOT NULL,
+    `sender_npk_snapshot` VARCHAR(100) NULL,
+    `sender_name_snapshot` VARCHAR(180) NULL,
+    `sender_notes` TEXT NULL,
+    `sent_at` TIMESTAMP NOT NULL,
+    `validation_actor_user_id` BIGINT UNSIGNED NULL,
+    `validator_user_id` BIGINT UNSIGNED NULL,
+    `validator_npk_snapshot` VARCHAR(100) NULL,
+    `validator_name_snapshot` VARCHAR(180) NULL,
+    `received_quantity` DECIMAL(15,3) NULL,
+    `received_condition` VARCHAR(16) NULL,
+    `validation_notes` TEXT NULL,
+    `validated_at` TIMESTAMP NULL,
+    `stock_transaction_id` BIGINT UNSIGNED NULL,
+    `cancelled_by_user_id` BIGINT UNSIGNED NULL,
+    `cancelled_at` TIMESTAMP NULL,
+    `cancellation_reason` TEXT NULL,
+    `creation_idempotency_key` CHAR(36) NOT NULL,
+    `validation_idempotency_key` CHAR(36) NULL,
+    `cancellation_idempotency_key` CHAR(36) NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `trs_wh_location_shipments_shipment_number_unique` (`shipment_number`),
+    UNIQUE KEY `trs_wh_location_shipments_creation_idempotency_key_unique` (`creation_idempotency_key`),
+    UNIQUE KEY `trs_wh_location_shipments_validation_idempotency_key_unique` (`validation_idempotency_key`),
+    UNIQUE KEY `trs_wh_location_shipments_cancellation_idempotency_key_unique` (`cancellation_idempotency_key`),
+    KEY `wh_ship_status_idx` (`status`),
+    KEY `wh_ship_item_status_idx` (`consumable_id`, `status`),
+    KEY `wh_ship_from_status_idx` (`from_location`, `status`),
+    KEY `wh_ship_to_status_idx` (`to_location`, `status`),
+    KEY `wh_ship_sender_status_idx` (`sent_by_user_id`, `status`),
+    KEY `wh_ship_validator_idx` (`validator_user_id`),
+    KEY `wh_ship_sent_at_idx` (`sent_at`),
+    KEY `wh_ship_transaction_idx` (`stock_transaction_id`),
+    CONSTRAINT `trs_wh_location_shipments_consumable_id_foreign` FOREIGN KEY (`consumable_id`) REFERENCES `mst_wh_consumables` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `trs_wh_location_shipments_sent_by_user_id_foreign` FOREIGN KEY (`sent_by_user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `trs_wh_location_shipments_validation_actor_user_id_foreign` FOREIGN KEY (`validation_actor_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `trs_wh_location_shipments_validator_user_id_foreign` FOREIGN KEY (`validator_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `trs_wh_location_shipments_cancelled_by_user_id_foreign` FOREIGN KEY (`cancelled_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `trs_wh_stock_transactions`
+    ADD CONSTRAINT `wh_trs_location_shipment_fk` FOREIGN KEY (`location_shipment_id`) REFERENCES `trs_wh_location_shipments` (`id`) ON DELETE SET NULL;
+ALTER TABLE `trs_wh_location_shipments`
+    ADD CONSTRAINT `wh_ship_transaction_fk` FOREIGN KEY (`stock_transaction_id`) REFERENCES `trs_wh_stock_transactions` (`id`) ON DELETE SET NULL,
+    ADD UNIQUE KEY `wh_ship_transaction_unique` (`stock_transaction_id`);
 
 CREATE TABLE IF NOT EXISTS `log_wh_verifications` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -165,26 +223,26 @@ CREATE TABLE IF NOT EXISTS `mst_wh_restricted_verifiers` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Approved master identities are insert-only and start at zero stock.
-INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `storage_location`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
-SELECT NULL, 'TFHINSR-000000008', 'TFHINSR-000000008', 'Insert Widia HNPJ0704ANSNGD WS40PM', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
+INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
+SELECT NULL, 'TFHINSR-000000008', 'TFHINSR-000000008', 'Insert Widia HNPJ0704ANSNGD WS40PM', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM `mst_wh_consumables` WHERE `item_code` = 'TFHINSR-000000008' OR `barcode` = 'TFHINSR-000000008');
-INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `storage_location`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
-SELECT NULL, 'TFHINSR-000000005', 'TFHINSR-000000005', 'Insert Pramet HNGX 0906ANSN-M M9315', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
+INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
+SELECT NULL, 'TFHINSR-000000005', 'TFHINSR-000000005', 'Insert Pramet HNGX 0906ANSN-M M9315', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM `mst_wh_consumables` WHERE `item_code` = 'TFHINSR-000000005' OR `barcode` = 'TFHINSR-000000005');
-INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `storage_location`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
-SELECT NULL, 'TFHINSR-000000066', 'TFHINSR-000000066', 'Insert Moldino SEK53TN-C9 GX2140', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
+INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
+SELECT NULL, 'TFHINSR-000000066', 'TFHINSR-000000066', 'Insert Moldino SEK53TN-C9 GX2140', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM `mst_wh_consumables` WHERE `item_code` = 'TFHINSR-000000066' OR `barcode` = 'TFHINSR-000000066');
-INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `storage_location`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
-SELECT NULL, 'TFHINSR-000000004', 'TFHINSR-000000004', 'Insert Sumitomo SDEN1203AESN', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
+INSERT INTO `mst_wh_consumables` (`category_id`, `item_code`, `barcode`, `item_name`, `unit`, `allow_fraction`, `current_stock`, `stock_deltamas`, `stock_ds8`, `stock_used_deltamas`, `stock_used_ds8`, `minimum_stock`, `maximum_stock`, `machine_type`, `description`, `photo_path`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`)
+SELECT NULL, 'TFHINSR-000000004', 'TFHINSR-000000004', 'Insert Sumitomo SDEN1203AESN', 'pcs', 0, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, NULL, NULL, NULL, 1, NULL, NULL, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM `mst_wh_consumables` WHERE `item_code` = 'TFHINSR-000000004' OR `barcode` = 'TFHINSR-000000004');
 
 INSERT INTO `mst_wh_restricted_verifiers` (`user_id`, `scope`, `is_active`, `created_at`, `updated_at`)
 SELECT `id`, 'ALL', 1, NOW(), NOW() FROM `users`
-WHERE `name` = 'RAGIL ISHA RAHMANTO' AND `npk` = 5639 AND `is_active` = 0
+WHERE `npk` = 5639 AND `is_active` = 0
   AND NOT EXISTS (SELECT 1 FROM `mst_wh_restricted_verifiers` WHERE `user_id` = `users`.`id` AND `scope` = 'ALL');
 INSERT INTO `mst_wh_restricted_verifiers` (`user_id`, `scope`, `is_active`, `created_at`, `updated_at`)
 SELECT `id`, 'ALL', 1, NOW(), NOW() FROM `users`
-WHERE `name` = 'ARY RODJO PRASETYO' AND `npk` = 5439 AND `is_active` = 0
+WHERE `npk` = 5439 AND `is_active` = 0
   AND NOT EXISTS (SELECT 1 FROM `mst_wh_restricted_verifiers` WHERE `user_id` = `users`.`id` AND `scope` = 'ALL');
 
 -- Register the complete Warehouse bootstrap so a later blanket migrate does not recreate it.
@@ -199,12 +257,16 @@ INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_18_000001_add_re
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_18_000002_add_revision_two_audit_fields_to_trs_wh_stock_transactions_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_18_000002_add_revision_two_audit_fields_to_trs_wh_stock_transactions_table');
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_18_000003_create_mst_wh_restricted_verifiers_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_18_000003_create_mst_wh_restricted_verifiers_table');
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_18_000004_seed_mst_wh_restricted_verifiers', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_18_000004_seed_mst_wh_restricted_verifiers');
+INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000001_create_trs_wh_location_shipments_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000001_create_trs_wh_location_shipments_table');
+INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table');
+INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table');
 
 -- Read-only post-bootstrap verification. Every mismatch count must be zero.
 SELECT 'mst_wh_consumable_categories' AS `table_name`, COUNT(*) AS `row_count` FROM `mst_wh_consumable_categories`
 UNION ALL SELECT 'mst_wh_consumables', COUNT(*) FROM `mst_wh_consumables`
 UNION ALL SELECT 'mst_wh_user_cards (legacy)', COUNT(*) FROM `mst_wh_user_cards`
 UNION ALL SELECT 'trs_wh_stock_transactions', COUNT(*) FROM `trs_wh_stock_transactions`
+UNION ALL SELECT 'trs_wh_location_shipments', COUNT(*) FROM `trs_wh_location_shipments`
 UNION ALL SELECT 'log_wh_verifications', COUNT(*) FROM `log_wh_verifications`
 UNION ALL SELECT 'mst_wh_restricted_verifiers', COUNT(*) FROM `mst_wh_restricted_verifiers`;
 SELECT COUNT(*) AS `total_stock_mismatch` FROM `mst_wh_consumables` WHERE `current_stock` <> (`stock_deltamas` + `stock_ds8`);

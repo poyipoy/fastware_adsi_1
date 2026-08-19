@@ -37,6 +37,7 @@ class WarehouseStockTransaction extends Model
         'usage_location',
         'notes',
         'reversal_of_id',
+        'location_shipment_id',
         'transaction_at',
         'created_by',
     ];
@@ -73,5 +74,10 @@ class WarehouseStockTransaction extends Model
     public function reversal(): HasOne
     {
         return $this->hasOne(self::class, 'reversal_of_id');
+    }
+
+    public function locationShipment(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseLocationShipment::class, 'location_shipment_id');
     }
 }

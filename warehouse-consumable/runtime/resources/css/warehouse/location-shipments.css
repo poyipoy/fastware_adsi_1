@@ -1,0 +1,30 @@
+.warehouse-shipment-page { width: 100%; }
+.warehouse-shipment-list-card, .warehouse-shipment-detail-card, .warehouse-shipment-form { overflow: hidden; }
+.warehouse-shipment-table { min-width: 920px; margin: 0; }
+.warehouse-shipment-table th, .warehouse-shipment-table td { vertical-align: middle; }
+.warehouse-shipment-table small { font-size: .75rem; }
+.warehouse-shipment-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.warehouse-shipment-form-grid > .warehouse-detail-full { grid-column: 1 / -1; }
+.warehouse-shipment-detail-grid, .warehouse-shipment-readonly { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; overflow: hidden; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); }
+.warehouse-shipment-detail-grid > div, .warehouse-shipment-readonly > div { min-width: 0; padding: 13px 15px; border-bottom: 1px solid #edf1f6; }
+.warehouse-shipment-detail-grid > div:nth-child(odd), .warehouse-shipment-readonly > div:nth-child(odd) { background: #f8fafc; }
+.warehouse-shipment-detail-grid dt, .warehouse-shipment-readonly dt { margin: 0 0 4px; color: var(--warehouse-muted); font-size: .74rem; font-weight: 700; }
+.warehouse-shipment-detail-grid dd, .warehouse-shipment-readonly dd { margin: 0; color: var(--warehouse-ink); font-size: .86rem; overflow-wrap: anywhere; }
+.warehouse-shipment-validation-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 18px; align-items: start; }
+.warehouse-validation-form { min-width: 0; }
+.warehouse-inline-cancel { position: relative; }
+.warehouse-inline-cancel > summary { min-height: 44px; list-style: none; cursor: pointer; }
+.warehouse-inline-cancel > summary::-webkit-details-marker { display: none; }
+.warehouse-inline-cancel-form { min-width: min(360px, 90vw); margin-top: 10px; padding: 14px; border: 1px solid #f1b7b1; border-radius: var(--warehouse-radius); background: var(--warehouse-danger-soft); }
+
+@media (max-width: 991.98px) {
+    .warehouse-shipment-validation-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 767.98px) {
+    .warehouse-shipment-form-grid, .warehouse-shipment-detail-grid, .warehouse-shipment-readonly { grid-template-columns: 1fr; }
+    .warehouse-shipment-form-grid > .warehouse-detail-full { grid-column: auto; }
+    .warehouse-shipment-detail-grid > div:nth-child(odd), .warehouse-shipment-readonly > div:nth-child(odd) { background: #f8fafc; }
+    .warehouse-shipment-detail-grid > div, .warehouse-shipment-readonly > div { padding: 12px 13px; }
+    .warehouse-inline-cancel-form { min-width: 0; }
+}

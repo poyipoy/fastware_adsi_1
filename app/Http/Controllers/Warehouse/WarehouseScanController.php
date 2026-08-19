@@ -38,11 +38,23 @@ class WarehouseScanController extends Controller
             'item_name' => $item->item_name, 'category' => $item->category?->name, 'unit' => $item->unit,
             'machine_type' => $item->machine_type, 'photo_url' => $photoUrl,
             'allow_fraction' => (bool) $item->allow_fraction, 'current_stock' => (string) $item->current_stock,
-            'minimum_stock' => (string) $item->minimum_stock, 'storage_location' => $item->storage_location,
+            'minimum_stock' => (string) $item->minimum_stock,
             'stock_ds8' => (string) $item->stock_ds8, 'stock_deltamas' => (string) $item->stock_deltamas,
             'stock_new_ds8' => $item->availableAt('DS8', \App\Enums\Warehouse\WarehouseItemCondition::NEW),
             'stock_new_deltamas' => $item->availableAt('Deltamas', \App\Enums\Warehouse\WarehouseItemCondition::NEW),
             'stock_used_ds8' => (string) $item->stock_used_ds8, 'stock_used_deltamas' => (string) $item->stock_used_deltamas,
+            'stock' => [
+                'DS8' => [
+                    'new' => $item->availableAt('DS8', \App\Enums\Warehouse\WarehouseItemCondition::NEW),
+                    'used' => (string) $item->stock_used_ds8,
+                    'total' => (string) $item->stock_ds8,
+                ],
+                'Deltamas' => [
+                    'new' => $item->availableAt('Deltamas', \App\Enums\Warehouse\WarehouseItemCondition::NEW),
+                    'used' => (string) $item->stock_used_deltamas,
+                    'total' => (string) $item->stock_deltamas,
+                ],
+            ],
             'stock_status' => $item->stock_status,
         ]]);
     }
@@ -54,8 +66,8 @@ class WarehouseScanController extends Controller
             $type = (string) $request->input('type');
             $user = $resolver->resolveUserForDirection(
                 $code,
-                in_array($type, ['ADJUSTMENT', 'TRANSFER'], true) ? 'OUT' : $type,
-                in_array($type, ['ADJUSTMENT', 'TRANSFER'], true),
+                $type === 'ADJUSTMENT' ? 'OUT' : $type,
+                $type === 'ADJUSTMENT',
             );
         } catch (\InvalidArgumentException $exception) {
             $resolver->logFailure($code, 'Invalid employee scan', $request->ip(), $request->userAgent());

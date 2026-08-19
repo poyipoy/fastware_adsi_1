@@ -22,8 +22,9 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee('data-warehouse-catalog="primary"', false)
             ->assertSee('data-warehouse-catalog="return"', false)
             ->assertSee('data-warehouse-return-used', false)
-            ->assertSee('name="source_location"', false)
-            ->assertSee('name="storage_location"', false)
+            ->assertSee('name="location"', false)
+            ->assertDontSee('name="source_location"', false)
+            ->assertDontSee('name="storage_location"', false)
             ->assertSee('name="item_condition" value="NEW"', false)
             ->assertSee('aria-live="polite"', false)
             ->assertSee('aria-atomic="true"', false)
@@ -68,21 +69,22 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertDontSee('Starter Query Item');
     }
 
-    public function test_dashboard_uses_one_combined_stock_out_chart_and_removes_recent_panel(): void
+    public function test_dashboard_uses_separate_item_and_machine_stock_out_charts_and_removes_recent_panel(): void
     {
         $user = $this->createUser();
 
         $response = $this->actingAs($user)->get(route('warehouse.dashboard'))
             ->assertOk()
             ->assertSee('Analitik Pergerakan')
-            ->assertSee('Top Item Stock Out &amp; Top Tipe Mesin Stock Out', false)
+            ->assertSee('Top Item Stock Out')
+            ->assertSee('Top Tipe Mesin Stock Out')
             ->assertSee('data-warehouse-bar-chart', false)
-            ->assertSee('warehouse-top-stock-out-data', false)
-            ->assertDontSee('warehouse-top-item-data', false)
-            ->assertDontSee('warehouse-top-machine-data', false)
+            ->assertSee('warehouse-top-item-data', false)
+            ->assertSee('warehouse-top-machine-data', false)
+            ->assertDontSee('warehouse-top-stock-out-data', false)
             ->assertSee('Lihat data tabel')
-            ->assertSee('Kategori')
-            ->assertSee('Nama')
+            ->assertSee('Nama Item')
+            ->assertSee('Tipe Mesin')
             ->assertSee('Jumlah')
             ->assertSee('name="trend_date_from"', false)
             ->assertSee('name="trend_date_to"', false)
@@ -90,19 +92,19 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertDontSee('Pergerakan bulan berjalan.');
 
         $view = file_get_contents(base_path('resources/views/warehouse/dashboard/index.blade.php'));
-        self::assertStringContainsString('warehouse-top-stock-out-data', $view);
-        self::assertStringNotContainsString('warehouse-top-item-data', $view);
-        self::assertStringNotContainsString('warehouse-top-machine-data', $view);
+        self::assertStringContainsString('warehouse-top-item-data', $view);
+        self::assertStringContainsString('warehouse-top-machine-data', $view);
+        self::assertStringNotContainsString('warehouse-top-stock-out-data', $view);
         self::assertStringNotContainsString('recentTransactions', $view);
         $script = file_get_contents(base_path('resources/js/warehouse/dashboard.js'));
         self::assertStringContainsString("indexAxis: 'y'", $script);
         self::assertStringContainsString('prefers-reduced-motion: reduce', $script);
         self::assertStringContainsString('Collapse.getOrCreateInstance', $script);
 
-        self::assertSame(1, substr_count($response->getContent(), 'data-warehouse-bar-chart'));
+        self::assertSame(2, substr_count($response->getContent(), 'data-warehouse-bar-chart'));
     }
 
-    public function test_master_transfer_reporting_and_history_pages_expose_revision_two_fields(): void
+    public function test_master_shipment_reporting_and_history_pages_expose_revision_two_fields(): void
     {
         $user = $this->createUser();
         $item = WarehouseConsumable::factory()->create(['item_name' => 'UI Contract Item']);
@@ -120,15 +122,13 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee('name="machine_type"', false)
             ->assertSee('name="photo"', false)
             ->assertSee('Maksimal 5 MB');
-        $this->actingAs($user)->get(route('warehouse.transfers.create'))
+        $this->actingAs($user)->get(route('warehouse.location-shipments.create'))
             ->assertOk()
             ->assertSee('name="item_condition"', false)
             ->assertSee('name="from_location"', false)
             ->assertSee('name="to_location"', false)
-            ->assertSee('data-transfer-balance', false)
-            ->assertSee('data-transfer-verify', false)
-            ->assertSee('Saldo per lokasi')
-            ->assertSee('RAGIL ISHA RAHMANTO');
+            ->assertSee('Pengiriman Antar Lokasi')
+            ->assertSee('di-reserve');
         $this->actingAs($user)->get(route('warehouse.reports.index', ['year' => 2026]))
             ->assertOk()
             ->assertSee('Reporting Stok Tahunan')
@@ -143,8 +143,9 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee('Average')
             ->assertSee('colspan="4"', false)
             ->assertSee('rowspan="2"', false)
-            ->assertDontSee('warehouse-report-month-cards', false)
-            ->assertDontSee('mobile-card-source', false)
+            ->assertSee('warehouse-report-mobile-cards', false)
+            ->assertSee('Minimum')
+            ->assertSee('Maksimum')
             ->assertSee('UI Contract Item')
             ->assertSee('UI Contract Item Two');
         $this->actingAs($user)->get(route('warehouse.reports.index', ['year' => 2025]))
@@ -157,6 +158,11 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee('Average')
             ->assertDontSee('colspan="4"', false)
             ->assertDontSee('Stok Awal');
+
+        $reportingCss = file_get_contents(base_path('resources/css/warehouse/reporting.css'));
+        self::assertStringContainsString('overflow-x: auto', $reportingCss);
+        self::assertStringContainsString('position: sticky', $reportingCss);
+        self::assertStringContainsString('warehouse-report-mobile-card', $reportingCss);
         $this->actingAs($user)->get(route('warehouse.transactions.index'))
             ->assertOk()
             ->assertSee('Foreman 1')
@@ -166,11 +172,7 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee('warehouse-history-totals-footer', false)
             ->assertSee('warehouse-history-totals-mobile', false);
 
-        $transferScript = file_get_contents(base_path('resources/js/warehouse/transfer-form.js'));
-        self::assertIsString($transferScript);
-        self::assertStringContainsString("type: 'TRANSFER'", $transferScript);
-        self::assertStringContainsString('detailsAreValid', $transferScript);
-        self::assertStringContainsString("event.key === 'Enter'", $transferScript);
+        self::assertFileExists(base_path('resources/css/warehouse/location-shipments.css'));
     }
 
     public function test_major_pages_share_shell_and_transaction_detail_shows_location_condition_and_operation(): void
@@ -189,7 +191,7 @@ class WarehouseUiContractTest extends WarehouseTestCase
             $this->actingAs($user)->get(route('warehouse.consumables.index')),
             $this->actingAs($user)->get(route('warehouse.adjustments.create')),
             $this->actingAs($user)->get(route('warehouse.transactions.show', $transaction)),
-            $this->actingAs($user)->get(route('warehouse.transfers.create')),
+            $this->actingAs($user)->get(route('warehouse.location-shipments.index')),
             $this->actingAs($user)->get(route('warehouse.reports.index')),
         ] as $response) {
             $response->assertOk()->assertSee('warehouse-shell', false)->assertSee('warehouse-page', false);
@@ -216,7 +218,7 @@ class WarehouseUiContractTest extends WarehouseTestCase
         }
 
         $badge = file_get_contents(base_path('resources/views/components/warehouse/status-badge.blade.php'));
-        self::assertStringContainsString("'TRANSFER' => 'Transfer'", $badge);
+        self::assertStringContainsString("'TRANSFER' => 'Pengiriman Antar Lokasi'", $badge);
         self::assertStringContainsString("'OUT' => 'Habis'", $badge);
     }
 }

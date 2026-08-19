@@ -34,14 +34,11 @@ class StoreWarehouseTransactionRequest extends FormRequest
             'item_barcode' => ['required', 'string', 'max:120'],
             'quantity' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
             'verified_code' => ['required', 'string', 'max:150'],
-            'storage_location' => array_merge([
-                Rule::requiredIf($type === 'IN'),
-                Rule::prohibitedIf($type !== 'IN'),
-            ], $locationRules),
-            'source_location' => array_merge([
-                Rule::requiredIf($type === 'OUT'),
-                Rule::prohibitedIf($type !== 'OUT'),
-            ], $locationRules),
+            'location' => array_merge(['required'], $locationRules),
+            // Temporary aliases keep existing JSON clients compatible while
+            // all new forms submit the single user-facing `location` field.
+            'storage_location' => array_merge(['sometimes', 'nullable'], $locationRules),
+            'source_location' => array_merge(['sometimes', 'nullable'], $locationRules),
             'return_used' => ['sometimes', 'boolean', Rule::prohibitedIf(! $usedReturnAllowed)],
             'used_return_item_barcode' => [Rule::requiredIf($withUsedReturn), Rule::prohibitedIf(! $withUsedReturn), 'string', 'max:120'],
             'used_return_quantity' => [Rule::requiredIf($withUsedReturn), Rule::prohibitedIf(! $withUsedReturn), 'numeric', 'gt:0', 'decimal:0,3'],
@@ -58,6 +55,8 @@ class StoreWarehouseTransactionRequest extends FormRequest
         $this->merge([
             'type' => strtoupper(trim((string) $this->input('type'))),
             'item_condition' => strtoupper(trim((string) $this->input('item_condition', 'NEW'))),
+            'location' => $this->input('location')
+                ?: ($this->input('type') === 'IN' ? $this->input('storage_location') : $this->input('source_location')),
         ]);
     }
 }

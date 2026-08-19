@@ -36,13 +36,6 @@ class StoreWarehouseConsumableRequest extends FormRequest
             ],
             'minimum_stock' => ['required', 'integer', 'min:0'],
             'maximum_stock' => ['nullable', 'integer', 'min:0', 'gte:minimum_stock'],
-            'storage_location' => [
-                'nullable',
-                'string',
-                'max:120',
-                'regex:/^[^\x00-\x1F\x7F]*$/u',
-                Rule::in((array) config('warehouse.storage_locations', ['DS8', 'Deltamas'])),
-            ],
         ];
     }
 
@@ -52,7 +45,6 @@ class StoreWarehouseConsumableRequest extends FormRequest
             'item_code' => is_string($this->item_code) ? trim($this->item_code) : $this->item_code,
             'item_name' => is_string($this->item_name) ? trim($this->item_name) : $this->item_name,
             'machine_type' => is_string($this->machine_type) ? trim($this->machine_type) : $this->machine_type,
-            'storage_location' => is_string($this->storage_location) ? trim($this->storage_location) : $this->storage_location,
             'maximum_stock' => $this->input('maximum_stock') === '' ? null : $this->input('maximum_stock'),
         ]);
     }

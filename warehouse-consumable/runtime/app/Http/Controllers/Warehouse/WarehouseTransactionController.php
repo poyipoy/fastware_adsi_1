@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\ReverseWarehouseTransactionRequest;
 use App\Http\Requests\Warehouse\StoreWarehouseTransactionRequest;
 use App\Models\Warehouse\WarehouseStockTransaction;
+use App\Models\Warehouse\WarehouseLocationShipment;
 use App\Services\Warehouse\WarehouseAccessService;
 use App\Services\Warehouse\WarehouseIdentityResolver;
 use App\Services\Warehouse\WarehouseStockService;
@@ -53,12 +54,12 @@ class WarehouseTransactionController extends Controller
                 consumableId: (int) $item->getKey(),
                 quantity: (string) $request->input('quantity'),
                 verifiedUserId: (int) $verifiedUser->getKey(),
-                storageLocation: $request->input('storage_location'),
+                storageLocation: $type === WarehouseTransactionType::IN ? $request->input('location') : null,
                 idempotencyKey: (string) $request->input('idempotency_key'),
                 createdBy: (int) $request->user()->getKey(),
                 verificationCodeHash: $identity->hash((string) $request->input('verified_code')),
                 itemCondition: $condition,
-                sourceLocation: $request->input('source_location'),
+                sourceLocation: $type === WarehouseTransactionType::OUT ? $request->input('location') : null,
                 operationKey: $operationKey,
             );
 
@@ -114,7 +115,7 @@ class WarehouseTransactionController extends Controller
         $alreadyReversed = WarehouseStockTransaction::query()->where('reversal_of_id', $transaction->getKey())->exists();
 
         return view('warehouse.transactions.show', [
-            'transaction' => $transaction->load(['consumable', 'verifiedUser', 'creator', 'reversalOf', 'reversal']),
+            'transaction' => $transaction->load(['consumable', 'verifiedUser', 'creator', 'reversalOf', 'reversal', 'locationShipment']),
             'canReverse' => $transaction->transaction_type !== WarehouseTransactionType::TRANSFER
                 && $access->can($request->user(), 'warehouse.transaction.reverse')
                 && ! $alreadyReversed,
@@ -124,7 +125,7 @@ class WarehouseTransactionController extends Controller
     public function reverseForm(Request $request, WarehouseStockTransaction $transaction, WarehouseAccessService $access)
     {
         abort_unless($access->can($request->user(), 'warehouse.transaction.reverse'), 403);
-        abort_if($transaction->transaction_type === WarehouseTransactionType::TRANSFER, 422, 'Transfer dikoreksi dengan transfer balik.');
+        abort_if($transaction->transaction_type === WarehouseTransactionType::TRANSFER, 422, 'Pengiriman Antar Lokasi dikoreksi dengan pengiriman balik.');
 
         return view('warehouse.transactions.reverse', [
             'transaction' => $transaction,
@@ -199,6 +200,13 @@ class WarehouseTransactionController extends Controller
                 'sourceLocationForOut' => true,
                 'usedReturnAvailable' => $condition === WarehouseItemCondition::NEW,
             ],
+            'pendingShipments' => WarehouseLocationShipment::query()
+                ->with(['consumable', 'sender'])
+                ->waitingValidation()
+                ->latest('sent_at')
+                ->limit(5)
+                ->get(),
+            'pendingShipmentCount' => WarehouseLocationShipment::query()->waitingValidation()->count(),
         ]);
     }
 
@@ -218,6 +226,7 @@ class WarehouseTransactionController extends Controller
             'from_location' => $transaction->from_location,
             'to_location' => $transaction->to_location,
             'operation_key' => $transaction->operation_key,
+            'location_shipment_id' => $transaction->location_shipment_id,
             'storage_location' => $transaction->to_location ?? $transaction->from_location,
             'verified_user_name' => $transaction->verified_user_name,
             'verified_user_section' => $transaction->verified_user_section,

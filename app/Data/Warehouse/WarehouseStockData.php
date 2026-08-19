@@ -31,6 +31,7 @@ final readonly class WarehouseStockCommand
         public ?string $toLocation = null,
         public ?string $operationKey = null,
         public ?string $legacyLocation = null,
+        public ?int $locationShipmentId = null,
     ) {
     }
 }

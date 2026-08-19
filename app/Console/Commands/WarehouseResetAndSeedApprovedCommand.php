@@ -209,7 +209,6 @@ class WarehouseResetAndSeedApprovedCommand extends Command
                 || (string) $item->stock_used_ds8 !== '0.000'
                 || (string) $item->minimum_stock !== '0.000'
                 || $item->maximum_stock !== null
-                || $item->storage_location !== null
                 || $item->machine_type !== null
                 || $item->category_id !== null
                 || $item->description !== null

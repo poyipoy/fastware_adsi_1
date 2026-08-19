@@ -128,7 +128,6 @@ class WarehouseApprovedBarcodeDataSeeder extends Seeder
                 'stock_used_ds8' => '0.000',
                 'minimum_stock' => '0.000',
                 'maximum_stock' => null,
-                'storage_location' => null,
                 'machine_type' => null,
                 'description' => null,
                 'photo_path' => null,

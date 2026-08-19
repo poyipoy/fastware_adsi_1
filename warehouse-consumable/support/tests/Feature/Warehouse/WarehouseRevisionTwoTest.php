@@ -28,13 +28,12 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
             'item_code' => 'NEW-ISSUE',
             'barcode' => 'NEW-ISSUE',
             'current_stock' => '10.000',
-            'storage_location' => 'DS8',
         ]);
         $returnItem = WarehouseConsumable::factory()->create([
             'item_code' => 'USED-RETURN',
             'barcode' => 'USED-RETURN',
             'current_stock' => '1.000',
-            'storage_location' => 'Deltamas',
+            'stock_deltamas' => '1.000',
         ]);
         $key = (string) Str::uuid();
         $payload = [
@@ -87,11 +86,9 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
         $verified = $this->createUser();
         $newItem = WarehouseConsumable::factory()->create([
             'current_stock' => '5.000',
-            'storage_location' => 'DS8',
         ]);
         $inactiveReturnItem = WarehouseConsumable::factory()->create([
             'current_stock' => '0.000',
-            'storage_location' => 'Deltamas',
             'is_active' => false,
         ]);
         $operationKey = (string) Str::uuid();
@@ -132,25 +129,56 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
     }
 
-    public function test_transfer_moves_selected_condition_without_changing_total_and_requires_restricted_verifier(): void
+    public function test_shipment_reserves_selected_condition_and_validates_without_restricted_verifier(): void
     {
         $actor = $this->createUser();
         $verified = $this->createUser();
         $item = WarehouseConsumable::factory()->create([
             'current_stock' => '7.000',
-            'storage_location' => 'DS8',
+            'stock_ds8' => '7.000',
         ]);
 
-        $this->actingAs($actor)->post(route('warehouse.transfers.store'), [
+        $this->actingAs($actor)->postJson(route('warehouse.location-shipments.store'), [
             'consumable_id' => $item->id,
             'item_condition' => 'NEW',
             'quantity' => '3',
             'from_location' => 'DS8',
             'to_location' => 'Deltamas',
-            'verified_code' => (string) $verified->npk,
             'idempotency_key' => (string) Str::uuid(),
-        ])->assertRedirect();
+        ])->assertCreated()->assertJsonPath('data.status', 'WAITING_VALIDATION');
 
+        $this->assertDatabaseHas('mst_wh_consumables', [
+            'id' => $item->id,
+            'current_stock' => '7.000',
+            'stock_ds8' => '7.000',
+            'stock_deltamas' => '0.000',
+        ]);
+        $shipment = \App\Models\Warehouse\WarehouseLocationShipment::query()->firstOrFail();
+
+        try {
+            app(WarehouseStockService::class)->execute(new WarehouseStockCommand(
+                type: WarehouseTransactionType::OUT,
+                consumableId: $item->id,
+                quantity: '5',
+                verifiedUserId: $verified->id,
+                createdBy: $actor->id,
+                idempotencyKey: (string) Str::uuid(),
+                itemCondition: WarehouseItemCondition::NEW,
+                sourceLocation: 'DS8',
+            ));
+            self::fail('Stock Out must respect the shipment reservation.');
+        } catch (WarehouseDomainException $exception) {
+            self::assertSame(422, $exception->status);
+        }
+
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $verified->id)->delete();
+        $this->actingAs($verified)->postJson(route('warehouse.location-shipments.validate', $shipment), [
+            'received_quantity' => '3',
+            'received_condition' => 'NEW',
+            'validator_code' => (string) $verified->npk,
+            'validation_notes' => 'Diserahkan sesuai.',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated()->assertJsonPath('data.status', 'VALIDATED');
         $this->assertDatabaseHas('mst_wh_consumables', [
             'id' => $item->id,
             'current_stock' => '7.000',
@@ -160,40 +188,13 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
         $this->assertDatabaseHas('trs_wh_stock_transactions', [
             'consumable_id' => $item->id,
             'transaction_type' => 'TRANSFER',
+            'location_shipment_id' => $shipment->id,
             'item_condition' => 'NEW',
             'from_location' => 'DS8',
             'to_location' => 'Deltamas',
             'stock_before' => '7.000',
             'stock_after' => '7.000',
         ]);
-
-        $this->actingAs($actor)->post(route('warehouse.transfers.store'), [
-            'consumable_id' => $item->id,
-            'item_condition' => 'NEW',
-            'quantity' => '5',
-            'from_location' => 'DS8',
-            'to_location' => 'Deltamas',
-            'verified_code' => (string) $verified->npk,
-            'idempotency_key' => (string) Str::uuid(),
-        ])->assertSessionHasErrors('transfer');
-        $this->assertDatabaseHas('mst_wh_consumables', [
-            'id' => $item->id,
-            'current_stock' => '7.000',
-            'stock_ds8' => '4.000',
-            'stock_deltamas' => '3.000',
-        ]);
-        $this->assertDatabaseCount('trs_wh_stock_transactions', 1);
-
-        DB::table('mst_wh_restricted_verifiers')->where('user_id', $verified->id)->delete();
-        $this->actingAs($actor)->post(route('warehouse.transfers.store'), [
-            'consumable_id' => $item->id,
-            'item_condition' => 'NEW',
-            'quantity' => '1',
-            'from_location' => 'DS8',
-            'to_location' => 'Deltamas',
-            'verified_code' => (string) $verified->npk,
-            'idempotency_key' => (string) Str::uuid(),
-        ])->assertSessionHasErrors('transfer');
         $this->assertDatabaseCount('trs_wh_stock_transactions', 1);
     }
 
@@ -203,12 +204,10 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
         $moving = WarehouseConsumable::factory()->create([
             'item_code' => 'REPORT-MOVING',
             'current_stock' => '15.000',
-            'storage_location' => 'DS8',
         ]);
         $stationary = WarehouseConsumable::factory()->create([
             'item_code' => 'REPORT-STATIONARY',
             'current_stock' => '2.000',
-            'storage_location' => 'Deltamas',
             'is_active' => false,
         ]);
         WarehouseStockTransaction::factory()->create([
@@ -228,6 +227,18 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
             'stock_before' => '10.000',
             'stock_after' => '15.000',
             'transaction_at' => CarbonImmutable::parse('2026-03-05 08:00:00', 'Asia/Jakarta'),
+        ]);
+        WarehouseStockTransaction::factory()->create([
+            'consumable_id' => $moving->id,
+            'verified_user_id' => $user->id,
+            'created_by' => $user->id,
+            'transaction_type' => 'TRANSFER',
+            'quantity' => '3.000',
+            'stock_before' => '15.000',
+            'stock_after' => '15.000',
+            'from_location' => 'DS8',
+            'to_location' => 'Deltamas',
+            'transaction_at' => CarbonImmutable::parse('2026-12-20 08:00:00', 'Asia/Jakarta'),
         ]);
 
         $report = app(WarehouseReportService::class)->build(2026);
@@ -252,18 +263,24 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
             'stock_used_ds8' => '2.000',
             'stock_deltamas' => '1.000',
             'stock_used_deltamas' => '1.000',
-            'storage_location' => 'DS8',
         ]);
 
-        $this->actingAs($actor)->post(route('warehouse.transfers.store'), [
+        $this->actingAs($actor)->postJson(route('warehouse.location-shipments.store'), [
             'consumable_id' => $item->id,
             'item_condition' => 'USED',
             'quantity' => '1',
             'from_location' => 'DS8',
             'to_location' => 'Deltamas',
-            'verified_code' => (string) $verified->npk,
             'idempotency_key' => (string) Str::uuid(),
-        ])->assertRedirect();
+        ])->assertCreated();
+        $shipment = \App\Models\Warehouse\WarehouseLocationShipment::query()->firstOrFail();
+        $this->actingAs($verified)->postJson(route('warehouse.location-shipments.validate', $shipment), [
+            'received_quantity' => '1',
+            'received_condition' => 'USED',
+            'validator_code' => (string) $verified->npk,
+            'validation_notes' => 'Bekas sesuai.',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated();
 
         $item->refresh();
         self::assertSame('4.000', (string) $item->current_stock);
@@ -284,7 +301,6 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
             'current_stock' => '5.000',
             'stock_ds8' => '5.000',
             'stock_used_ds8' => '3.000',
-            'storage_location' => 'DS8',
         ]);
 
         $this->actingAs($actor)->post(route('warehouse.transactions.store'), [
@@ -355,7 +371,6 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
             'machine_type' => 'Press',
             'minimum_stock' => '1',
             'maximum_stock' => '10',
-            'storage_location' => 'DS8',
             'photo' => UploadedFile::fake()->image('item.png', 320, 220),
         ])->assertRedirect(route('warehouse.consumables.index'));
 
@@ -371,7 +386,6 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
             'machine_type' => 'Press 2',
             'minimum_stock' => '1',
             'maximum_stock' => '10',
-            'storage_location' => 'DS8',
         ])->assertRedirect(route('warehouse.consumables.index'));
 
         self::assertSame($originalPath, $item->refresh()->photo_path);

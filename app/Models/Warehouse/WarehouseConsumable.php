@@ -4,6 +4,7 @@ namespace App\Models\Warehouse;
 
 use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Models\User;
+use App\Services\Warehouse\WarehouseQuantity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,7 +30,6 @@ class WarehouseConsumable extends Model
         'stock_used_ds8',
         'minimum_stock',
         'maximum_stock',
-        'storage_location',
         'machine_type',
         'description',
         'photo_path',
@@ -74,15 +74,13 @@ class WarehouseConsumable extends Model
 
     public function getStockStatusAttribute(): string
     {
-        $stock = (float) $this->current_stock;
-
-        if ($stock <= 0) {
+        if (WarehouseQuantity::compare((string) $this->current_stock, '0') <= 0) {
             return 'OUT';
         }
 
         if (config('warehouse.dashboard.low_stock_inclusive', true)
-            ? $stock <= (float) $this->minimum_stock
-            : $stock < (float) $this->minimum_stock) {
+            ? WarehouseQuantity::compare((string) $this->current_stock, (string) $this->minimum_stock) <= 0
+            : WarehouseQuantity::compare((string) $this->current_stock, (string) $this->minimum_stock) < 0) {
             return 'LOW';
         }
 
@@ -101,10 +99,12 @@ class WarehouseConsumable extends Model
 
     public function availableAt(string $location, WarehouseItemCondition $condition): string
     {
-        $total = (float) $this->stockAt($location);
-        $used = (float) $this->usedStockAt($location);
+        $totalMilli = WarehouseQuantity::toMilli($this->stockAt($location));
+        $usedMilli = WarehouseQuantity::toMilli($this->usedStockAt($location));
 
-        return number_format($condition === WarehouseItemCondition::USED ? $used : $total - $used, 3, '.', '');
+        return WarehouseQuantity::fromMilli($condition === WarehouseItemCondition::USED
+            ? $usedMilli
+            : $totalMilli - $usedMilli);
     }
 
     public function totalStockColumn(string $location): string

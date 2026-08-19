@@ -16,7 +16,10 @@ class WarehouseAccessService
         'warehouse.master.manage',
         'warehouse.transaction.view',
         'warehouse.transaction.reverse',
-        'warehouse.transfer.create',
+        'warehouse.location-shipment.view',
+        'warehouse.location-shipment.create',
+        'warehouse.location-shipment.validate',
+        'warehouse.location-shipment.cancel',
         'warehouse.report.view',
         'warehouse.report.export',
     ];

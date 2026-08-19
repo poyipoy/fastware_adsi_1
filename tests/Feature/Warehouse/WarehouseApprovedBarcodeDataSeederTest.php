@@ -45,7 +45,6 @@ class WarehouseApprovedBarcodeDataSeederTest extends WarehouseTestCase
                 'current_stock' => '0.000',
                 'minimum_stock' => '0.000',
                 'maximum_stock' => null,
-                'storage_location' => null,
                 'is_active' => true,
             ]);
         }

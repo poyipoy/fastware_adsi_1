@@ -10,9 +10,12 @@ use App\Http\Requests\Warehouse\UpdateWarehouseConsumableRequest;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Services\Warehouse\WarehouseIdentityResolver;
 use App\Services\Warehouse\WarehouseStockService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class WarehouseConsumableController extends Controller
 {
@@ -57,14 +60,13 @@ class WarehouseConsumableController extends Controller
             'machine_type',
             'minimum_stock',
             'maximum_stock',
-            'storage_location',
         ]);
 
         $diskName = (string) config('warehouse.photos.disk', 'public');
         $photoPath = null;
         try {
             if ($request->hasFile('photo')) {
-                $photoPath = $request->file('photo')->store((string) config('warehouse.photos.directory', 'warehouse/consumables'), $diskName);
+                $photoPath = $this->storePhoto($request->file('photo'), $diskName);
             }
 
             WarehouseConsumable::query()->create($data + [
@@ -114,7 +116,6 @@ class WarehouseConsumableController extends Controller
             'machine_type',
             'minimum_stock',
             'maximum_stock',
-            'storage_location',
         ]);
         if ((string) $consumable->barcode === (string) $consumable->item_code) {
             $data['barcode'] = $data['item_code'];
@@ -125,7 +126,7 @@ class WarehouseConsumableController extends Controller
         $newPhotoPath = null;
         try {
             if ($request->hasFile('photo')) {
-                $newPhotoPath = $request->file('photo')->store((string) config('warehouse.photos.directory', 'warehouse/consumables'), $diskName);
+                $newPhotoPath = $this->storePhoto($request->file('photo'), $diskName);
                 $data['photo_path'] = $newPhotoPath;
             }
             DB::transaction(function () use ($consumable, $data): void {
@@ -143,6 +144,53 @@ class WarehouseConsumableController extends Controller
         }
 
         return redirect()->route('warehouse.consumables.index')->with('status', 'Master consumable diperbarui. Stok berjalan tidak diubah.');
+    }
+
+    private function storePhoto(UploadedFile $photo, string $diskName): string
+    {
+        if (! $photo->isValid()) {
+            throw ValidationException::withMessages([
+                'photo' => 'File foto tidak dapat dibaca. Silakan pilih ulang file foto.',
+            ]);
+        }
+
+        $sourcePath = $photo->getRealPath();
+        if (! is_string($sourcePath) || $sourcePath === '' || ! is_file($sourcePath) || ! is_readable($sourcePath)) {
+            $sourcePath = $photo->getPathname();
+        }
+
+        if (! is_string($sourcePath) || $sourcePath === '' || ! is_file($sourcePath) || ! is_readable($sourcePath)) {
+            throw ValidationException::withMessages([
+                'photo' => 'File foto tidak tersedia untuk disimpan. Silakan pilih ulang file foto.',
+            ]);
+        }
+
+        $directory = trim((string) config('warehouse.photos.directory', 'warehouse/consumables'), '/');
+        if ($directory === '') {
+            throw new \RuntimeException('Direktori foto Warehouse belum dikonfigurasi.');
+        }
+
+        $storedPath = $directory.'/'.Str::random(40);
+        if ($extension = $photo->guessExtension()) {
+            $storedPath .= '.'.$extension;
+        }
+
+        $stream = fopen($sourcePath, 'rb');
+        if ($stream === false) {
+            throw ValidationException::withMessages([
+                'photo' => 'File foto tidak dapat dibuka. Silakan pilih ulang file foto.',
+            ]);
+        }
+
+        try {
+            if (! Storage::disk($diskName)->put($storedPath, $stream)) {
+                throw new \RuntimeException('Foto Warehouse gagal disimpan.');
+            }
+        } finally {
+            fclose($stream);
+        }
+
+        return $storedPath;
     }
 
     public function toggleStatus(Request $request, WarehouseConsumable $consumable)

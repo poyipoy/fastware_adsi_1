@@ -26,7 +26,6 @@ class WarehouseDashboardController extends Controller
             'canStockIn' => $access->can($request->user(), 'warehouse.stock-in.create'),
             'canStockOut' => $access->can($request->user(), 'warehouse.stock-out.create'),
             'canAdjust' => $access->canAdjust($request->user()),
-            'canTransfer' => $access->can($request->user(), 'warehouse.transfer.create'),
             'canViewReport' => $access->can($request->user(), 'warehouse.report.view'),
             'trendFilter' => $trendFilter,
             'summary' => $dashboard->summary($dashboardFilter),

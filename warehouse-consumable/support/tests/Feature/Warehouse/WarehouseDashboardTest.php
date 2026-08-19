@@ -102,14 +102,15 @@ class WarehouseDashboardTest extends WarehouseTestCase
 
         $this->actingAs($employee)->get(route('warehouse.dashboard'))
             ->assertOk()
-            ->assertSee('Belum ada pergerakan')
-            ->assertSee('Belum ada data Stock Out pada periode ini.')
-            ->assertSee('Tren Stock In/Out')
-            ->assertSee('Filter periode')
-            ->assertDontSee('Filter Dashboard');
+                ->assertSee('Belum ada pergerakan')
+            ->assertSee('Belum ada data Stock Out item pada periode ini.')
+            ->assertSee('Belum ada data Stock Out tipe mesin pada periode ini.')
+                ->assertSee('Tren Stock In/Out')
+                ->assertSee('Filter periode')
+                ->assertDontSee('Filter Dashboard');
     }
 
-    public function test_dashboard_combines_item_and_machine_stock_out_labels_in_one_chart(): void
+    public function test_dashboard_splits_item_and_machine_stock_out_charts(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta'));
 
@@ -124,11 +125,9 @@ class WarehouseDashboardTest extends WarehouseTestCase
             $response = $this->actingAs($employee)->get(route('warehouse.dashboard'));
 
             $response->assertOk()
-                ->assertSee('warehouse-top-stock-out-data', false)
-                ->assertDontSee('warehouse-top-item-data', false)
-                ->assertDontSee('warehouse-top-machine-data', false)
-                ->assertSee('Item · Dashboard Item', false)
-                ->assertSee('Tipe Mesin · Press', false)
+                ->assertSee('warehouse-top-item-data', false)
+                ->assertSee('warehouse-top-machine-data', false)
+                ->assertDontSee('warehouse-top-stock-out-data', false)
                 ->assertSee('Dashboard Item')
                 ->assertSee('Press');
         } finally {

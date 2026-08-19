@@ -16,10 +16,11 @@ class WarehouseItemScanTest extends WarehouseTestCase
         $response->assertOk()
             ->assertJsonStructure(['data' => [
                 'id', 'item_code', 'barcode', 'item_name', 'category', 'unit',
-                'current_stock', 'minimum_stock', 'storage_location', 'stock_status',
+                'current_stock', 'minimum_stock', 'stock_ds8', 'stock_deltamas', 'stock', 'stock_status',
             ]])
             ->assertJsonPath('data.barcode', '000089123456')
-            ->assertJsonPath('data.id', $item->id);
+            ->assertJsonPath('data.id', $item->id)
+            ->assertJsonPath('data.stock.DS8.total', (string) $item->stock_ds8);
     }
 
     public function test_unknown_or_inactive_item_is_rejected_and_failure_is_logged(): void

@@ -96,7 +96,6 @@ class WarehouseResetAndSeedApprovedCommandTest extends WarehouseTestCase
                 'current_stock' => '0.000',
                 'minimum_stock' => '0.000',
                 'maximum_stock' => null,
-                'storage_location' => null,
                 'category_id' => null,
                 'description' => null,
                 'is_active' => true,

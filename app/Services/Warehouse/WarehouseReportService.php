@@ -2,6 +2,7 @@
 
 namespace App\Services\Warehouse;
 
+use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockTransaction;
 use Carbon\CarbonImmutable;
@@ -16,6 +17,7 @@ final class WarehouseReportService
         $yearEnd = $yearStart->endOfYear();
         $latest = WarehouseStockTransaction::query()
             ->whereBetween('transaction_at', [$yearStart, $yearEnd])
+            ->whereIn('transaction_type', $this->reportableTypes())
             ->max('transaction_at');
 
         $cutoff = $latest ? CarbonImmutable::parse($latest, $timezone)->endOfMonth() : null;
@@ -38,6 +40,7 @@ final class WarehouseReportService
 
         $monthly = WarehouseStockTransaction::query()
             ->whereBetween('transaction_at', [$yearStart, $cutoff])
+            ->whereIn('transaction_type', $this->reportableTypes())
             ->selectRaw("consumable_id, DATE_FORMAT(transaction_at, '%Y-%m') as month_key")
             ->selectRaw('SUM(GREATEST(stock_after - stock_before, 0)) as incoming')
             ->selectRaw('SUM(GREATEST(stock_before - stock_after, 0)) as outgoing')
@@ -48,6 +51,7 @@ final class WarehouseReportService
 
         $futureDeltas = WarehouseStockTransaction::query()
             ->where('transaction_at', '>', $cutoff)
+            ->whereIn('transaction_type', $this->reportableTypes())
             ->selectRaw('consumable_id, SUM(stock_after - stock_before) as net_delta')
             ->groupBy('consumable_id')
             ->pluck('net_delta', 'consumable_id');
@@ -110,5 +114,16 @@ final class WarehouseReportService
     private function decimal(float $value): string
     {
         return number_format(abs($value) < 0.0005 ? 0 : $value, 3, '.', '');
+    }
+
+    /** @return array<int, string> */
+    private function reportableTypes(): array
+    {
+        return [
+            WarehouseTransactionType::IN->value,
+            WarehouseTransactionType::OUT->value,
+            WarehouseTransactionType::ADJUSTMENT->value,
+            WarehouseTransactionType::REVERSAL->value,
+        ];
     }
 }

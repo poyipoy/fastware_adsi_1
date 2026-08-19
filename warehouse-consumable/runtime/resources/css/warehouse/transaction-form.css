@@ -1,4 +1,14 @@
 .warehouse-transaction-page { width: 100%; }
+.warehouse-shipment-context { margin-top: 18px; }
+.warehouse-shipment-context-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
+.warehouse-shipment-context-summary strong { color: var(--warehouse-navy); font-size: 1.45rem; }
+.warehouse-shipment-context-summary span { color: var(--warehouse-muted); font-size: .84rem; }
+.warehouse-shipment-context-summary .btn { margin-left: auto; min-height: 44px; }
+.warehouse-shipment-mini-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.warehouse-shipment-mini-card { display: grid; min-width: 0; gap: 4px; padding: 12px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); color: var(--warehouse-ink); background: #fff; text-decoration: none; }
+.warehouse-shipment-mini-card:hover, .warehouse-shipment-mini-card:focus-visible { border-color: var(--warehouse-navy); background: #f8fafc; }
+.warehouse-shipment-mini-card strong, .warehouse-shipment-mini-card span, .warehouse-shipment-mini-card small { overflow-wrap: anywhere; }
+.warehouse-shipment-mini-card span, .warehouse-shipment-mini-card small { color: var(--warehouse-muted); font-size: .75rem; }
 .warehouse-transaction-page .warehouse-page-header { margin-bottom: 20px; }
 .warehouse-form-alert { margin-bottom: 18px; }
 .warehouse-transaction-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 340px); gap: 18px; align-items: start; }
@@ -122,6 +132,7 @@
     .warehouse-transaction-summary { position: static; order: -1; }
     .warehouse-transaction-summary .warehouse-panel-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
     .warehouse-catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .warehouse-shipment-mini-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 767.98px) {
@@ -146,6 +157,8 @@
     .warehouse-catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .warehouse-catalog-copy { padding: 8px; }
     .warehouse-used-return-panel { padding: 12px; }
+    .warehouse-shipment-context-summary .btn { width: 100%; margin-left: 0; }
+    .warehouse-shipment-mini-list { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

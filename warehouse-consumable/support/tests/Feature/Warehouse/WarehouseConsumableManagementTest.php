@@ -15,7 +15,6 @@ class WarehouseConsumableManagementTest extends WarehouseTestCase
             'item_name' => 'Isolasi Listrik',
             'minimum_stock' => '8',
             'maximum_stock' => '30',
-            'storage_location' => 'DS8',
             'barcode' => 'MALICIOUS-OVERRIDE',
             'unit' => 'liter',
             'allow_fraction' => true,
@@ -30,11 +29,10 @@ class WarehouseConsumableManagementTest extends WarehouseTestCase
             'allow_fraction' => false,
             'category_id' => null,
             'current_stock' => '0.000',
-            'storage_location' => 'DS8',
         ]);
     }
 
-    public function test_master_rejects_storage_location_outside_the_approved_options(): void
+    public function test_master_does_not_persist_a_default_location(): void
     {
         $pic = $this->createUser();
         $this->createPicPosition($pic);
@@ -44,9 +42,9 @@ class WarehouseConsumableManagementTest extends WarehouseTestCase
             'item_name' => 'Lokasi Tidak Valid',
             'minimum_stock' => '0',
             'storage_location' => 'Rack C-02',
-        ])->assertSessionHasErrors('storage_location');
+        ])->assertRedirect(route('warehouse.consumables.index'))->assertSessionHasNoErrors();
 
-        $this->assertDatabaseMissing('mst_wh_consumables', ['item_code' => 'CNS-BAD-LOCATION']);
+        $this->assertDatabaseHas('mst_wh_consumables', ['item_code' => 'CNS-BAD-LOCATION']);
     }
 
     public function test_duplicate_code_and_barcode_are_rejected(): void

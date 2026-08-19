@@ -15,7 +15,7 @@
         </form>
 
         @if ($report['cutoff'])
-            <p class="warehouse-report-context" role="status">Periode laporan: Januari–{{ $report['cutoff']->locale('id')->translatedFormat('F Y') }}. Total dan rata-rata dihitung dari saldo akhir bulanan.</p>
+            <p class="warehouse-report-context" role="status">Periode laporan: Januari-{{ $report['cutoff']->locale('id')->translatedFormat('F Y') }}. Total dan rata-rata dihitung dari saldo akhir bulanan.</p>
         @else
             <div class="alert alert-info" role="status">Belum ada transaksi Warehouse pada tahun {{ $year }}. Semua item tetap ditampilkan dengan Total dan Average nol.</div>
         @endif
@@ -29,12 +29,15 @@
             </header>
 
             @if ($report['items']->isNotEmpty())
+                <p class="warehouse-report-matrix-hint" id="warehouse-report-matrix-hint">Geser tabel secara horizontal untuk melihat semua bulan.</p>
                 <div class="warehouse-table-wrap warehouse-report-matrix-wrap">
-                    <table class="table warehouse-table warehouse-report-matrix" aria-label="Matrix saldo Warehouse tahun {{ $year }}">
+                    <table class="table warehouse-table warehouse-report-matrix" aria-describedby="warehouse-report-matrix-hint" aria-label="Matrix saldo Warehouse tahun {{ $year }}">
                         <caption class="visually-hidden">Saldo awal, mutasi masuk, mutasi keluar, saldo akhir, total, dan average setiap barang per bulan.</caption>
                         <thead>
                             <tr>
                                 <th class="warehouse-report-item-column" scope="col" rowspan="{{ $report['months']->isNotEmpty() ? 2 : 1 }}">Nama Barang</th>
+                                <th class="warehouse-report-summary-column warehouse-report-minmax-column" scope="col" rowspan="{{ $report['months']->isNotEmpty() ? 2 : 1 }}">Minimum</th>
+                                <th class="warehouse-report-summary-column warehouse-report-minmax-column" scope="col" rowspan="{{ $report['months']->isNotEmpty() ? 2 : 1 }}">Maksimum</th>
                                 @foreach ($report['months'] as $month)
                                     <th class="warehouse-report-month-heading" scope="colgroup" colspan="4">{{ $month['label'] }}</th>
                                 @endforeach
@@ -57,6 +60,8 @@
                                 @php($itemMonths = $item['months']->keyBy('key'))
                                 <tr>
                                     <th class="warehouse-report-item-column" scope="row">{{ $item['item_name'] }}</th>
+                                    <td class="warehouse-report-summary-column warehouse-report-minmax-column">{{ \App\Services\Warehouse\WarehouseQuantity::display($item['minimum_stock']) }}</td>
+                                    <td class="warehouse-report-summary-column warehouse-report-minmax-column">{{ $item['maximum_stock'] === null ? '—' : \App\Services\Warehouse\WarehouseQuantity::display($item['maximum_stock']) }}</td>
                                     @foreach ($report['months'] as $month)
                                         @php($monthData = $itemMonths->get($month['key']))
                                         <td class="warehouse-report-month-start">{{ \App\Services\Warehouse\WarehouseQuantity::display($monthData['opening'] ?? '0.000') }}</td>
@@ -75,5 +80,23 @@
                 <div class="warehouse-report-matrix-empty"><x-warehouse.empty-state title="Master consumable belum tersedia" /></div>
             @endif
         </section>
+
+        @if ($report['items']->isNotEmpty())
+            <section class="warehouse-card-list warehouse-report-mobile-cards" aria-label="Ringkasan reporting mobile">
+                @foreach ($report['items'] as $item)
+                    <article class="warehouse-report-mobile-card">
+                        <header><div><span class="warehouse-eyebrow">Barang</span><h2>{{ $item['item_name'] }}</h2></div><div class="warehouse-report-mobile-summary"><span>Minimum <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['minimum_stock']) }}</strong></span><span>Maksimum <strong>{{ $item['maximum_stock'] === null ? '—' : \App\Services\Warehouse\WarehouseQuantity::display($item['maximum_stock']) }}</strong></span></div></header>
+                        <div class="warehouse-report-mobile-months">
+                            @forelse ($item['months'] as $month)
+                                <div class="warehouse-report-mobile-month"><h3>{{ $month['label'] }}</h3><dl><div><dt>Stok Awal</dt><dd>{{ \App\Services\Warehouse\WarehouseQuantity::display($month['opening']) }}</dd></div><div><dt>Mutasi (+)</dt><dd>{{ \App\Services\Warehouse\WarehouseQuantity::display($month['incoming']) }}</dd></div><div><dt>Mutasi (-)</dt><dd>{{ \App\Services\Warehouse\WarehouseQuantity::display($month['outgoing']) }}</dd></div><div class="warehouse-report-mobile-ending"><dt>Stok Akhir</dt><dd>{{ \App\Services\Warehouse\WarehouseQuantity::display($month['ending']) }}</dd></div></dl></div>
+                            @empty
+                                <p class="warehouse-muted mb-0">Belum ada transaksi pada tahun {{ $year }}.</p>
+                            @endforelse
+                        </div>
+                        <footer><span>Total <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['total']) }}</strong></span><span>Average <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['average']) }}</strong></span></footer>
+                    </article>
+                @endforeach
+            </section>
+        @endif
     </div>
 @endsection
