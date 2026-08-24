@@ -179,7 +179,7 @@ class WarehouseStockServiceTest extends WarehouseTestCase
             ));
             $this->fail('Stock Out must be rejected for a verifier without Warehouse access.');
         } catch (WarehouseDomainException $exception) {
-            $this->assertSame('NPK karyawan tidak memiliki akses Warehouse untuk memverifikasi Stock Out.', $exception->getMessage());
+            $this->assertSame('Akun karyawan tidak memiliki akses Warehouse untuk memverifikasi Stock Out.', $exception->getMessage());
         }
 
         $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '5.000']);

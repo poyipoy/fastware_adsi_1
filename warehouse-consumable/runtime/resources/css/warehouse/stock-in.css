@@ -21,6 +21,17 @@
 .warehouse-stock-in-difference strong { color: var(--warehouse-navy); }
 .warehouse-stock-in-cancel { display: inline-block; }
 .warehouse-stock-in-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.warehouse-stock-in-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.warehouse-stock-in-tab-count { display: inline-flex; min-width: 24px; min-height: 24px; align-items: center; justify-content: center; margin-left: 4px; padding: 0 6px; border-radius: 999px; color: var(--warehouse-navy); background: #eef3ff; font-size: .74rem; font-variant-numeric: tabular-nums; }
+.warehouse-stock-in-workspace-section { padding-top: 18px; border-top: 1px solid var(--warehouse-border); }
+.warehouse-stock-in-workspace-section + .warehouse-stock-in-workspace-section { margin-top: 22px; }
+.warehouse-stock-in-workspace-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.warehouse-stock-in-workspace-heading h3 { margin: 0; color: var(--warehouse-navy); font-size: 1rem; }
+.warehouse-stock-in-workspace-heading p { margin: 4px 0 0; }
+.warehouse-stock-in-workspace-empty { padding: 14px 16px; border: 1px dashed var(--warehouse-border); border-radius: var(--warehouse-radius); color: var(--warehouse-muted); background: #fbfcfe; }
+.warehouse-stock-in-workspace-records { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.warehouse-stock-in-workspace-record { min-width: 0; }
+.warehouse-stock-in-workspace-record .warehouse-mobile-record-facts dd { overflow-wrap: anywhere; }
 
 @media (max-width: 991.98px) {
     .warehouse-stock-in-validation-grid { grid-template-columns: 1fr; }
@@ -33,6 +44,9 @@
     .warehouse-stock-in-readonly > div { padding: 12px 13px; }
     .warehouse-stock-in-result-options { grid-template-columns: 1fr; }
     .warehouse-stock-in-table { min-width: 920px; }
+    .warehouse-stock-in-workspace-records { grid-template-columns: 1fr; }
+    .warehouse-stock-in-tabs { margin-bottom: 16px; }
+    .warehouse-stock-in-tabs .btn { flex: 1 1 100%; justify-content: space-between; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -37,12 +37,6 @@
             input.setAttribute('aria-invalid', 'true');
         }
     };
-    validationForm.querySelector('[name="validator_code"]')?.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            verifyScan(event.currentTarget, validationForm.dataset.scanUserUrl, { code: event.currentTarget.value.trim(), type: 'STOCK_IN_VALIDATE' });
-        }
-    });
     validationForm.querySelector('[name="received_item_barcode"]')?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -50,7 +44,7 @@
         }
     });
 
-    const display = (value) => Number(value || 0).toLocaleString('id-ID', { maximumFractionDigits: 3 });
+    const display = (value) => Number(value || 0).toLocaleString('id-ID', { maximumFractionDigits: 0 });
     const sync = () => {
         const actual = Number(quantity?.value || 0);
         const delta = actual - expected;

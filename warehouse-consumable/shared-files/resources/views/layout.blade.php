@@ -410,26 +410,25 @@
                                 <ul class="dropdown-menu" aria-labelledby="warehouseNavbarDropdown">
                                     @can('warehouse.dashboard.view')
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.dashboard') ? 'active' : '' }}"
-                                                href="{{ route('warehouse.dashboard') }}">Dashboard Consumable</a></li>
+                                                href="{{ route('warehouse.dashboard') }}">Dashboard</a></li>
                                     @endcan
-                                    @if (Gate::allows('warehouse.stock-in.create') || Gate::allows('warehouse.stock-in.validate') || Gate::allows('warehouse.stock-out.create'))
-                                        @can('warehouse.stock-in.create')
-                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.stock-in.*') ? 'active' : '' }}"
-                                                    href="{{ route('warehouse.stock-in.index') }}">Stock In</a></li>
-                                        @endcan
+                                    @if (Gate::allows('warehouse.stock-in.create') || Gate::allows('warehouse.stock-out.create'))
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.create') ? 'active' : '' }}"
-                                                href="{{ route('warehouse.transactions.create') }}">Transaksi Barang Baru</a></li>
+                                                href="{{ route('warehouse.transactions.create') }}">Stock In/Out Baru</a></li>
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions-used.create') ? 'active' : '' }}"
-                                                href="{{ route('warehouse.transactions-used.create') }}">Transaksi Barang Bekas</a></li>
+                                                href="{{ route('warehouse.transactions-used.create') }}">Stock In/Out Bekas</a></li>
                                     @endif
+                                    @can('warehouse.master.manage')
+                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.consumables.*') ? 'active' : '' }}" href="{{ route('warehouse.consumables.index') }}">Master Consumable</a></li>
+                                    @endcan
                                     @can('warehouse.transaction.view')
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.index') || request()->routeIs('warehouse.transactions.show') ? 'active' : '' }}" href="{{ route('warehouse.transactions.index') }}">Riwayat Transaksi</a></li>
                                     @endcan
-                                    @can('warehouse.report.view')
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.reports.*') ? 'active' : '' }}" href="{{ route('warehouse.reports.index') }}">Reporting Tahunan</a></li>
+                                    @can('warehouse.stock-in.create')
+                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.adjustments.*') ? 'active' : '' }}" href="{{ route('warehouse.adjustments.create') }}">Penyesuaian Stock</a></li>
                                     @endcan
-                                    @can('warehouse.master.manage')
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.consumables.*') ? 'active' : '' }}" href="{{ route('warehouse.consumables.index') }}">Master Consumable</a></li>
+                                    @can('warehouse.report.view')
+                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.reports.*') ? 'active' : '' }}" href="{{ route('warehouse.reports.index') }}">Reporting</a></li>
                                     @endcan
                                 </ul>
                             </li>

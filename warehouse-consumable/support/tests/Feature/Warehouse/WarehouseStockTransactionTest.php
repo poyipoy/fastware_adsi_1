@@ -3,27 +3,33 @@
 namespace Tests\Feature\Warehouse;
 
 use App\Models\Warehouse\WarehouseConsumable;
+use App\Models\Warehouse\WarehouseStockIn;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class WarehouseStockTransactionTest extends WarehouseTestCase
 {
-    public function test_pic_can_stock_in_and_snapshot_is_accurate(): void
+    public function test_pic_can_create_pending_stock_in_without_mutation(): void
     {
         $pic = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $pic->id)->delete();
         $this->createPicPosition($pic);
-        $employee = $this->createUser();
         $item = WarehouseConsumable::factory()->create(['barcode' => '000-IN', 'current_stock' => '2.000']);
 
         $response = $this->actingAs($pic)->postJson(route('warehouse.transactions.store'), [
             'type' => 'IN', 'item_barcode' => '000-IN', 'quantity' => '3',
-            'location' => 'DS8',
-            'verified_code' => (string) $employee->npk, 'idempotency_key' => (string) Str::uuid(),
+            'item_condition' => 'NEW', 'location' => 'DS8',
+            'idempotency_key' => (string) Str::uuid(),
         ]);
 
-        $response->assertCreated()->assertJsonPath('data.stock_before', '2.000')->assertJsonPath('data.stock_after', '5.000');
-        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '5.000', 'stock_ds8' => '5.000']);
-        $this->assertDatabaseHas('trs_wh_stock_transactions', ['consumable_id' => $item->id, 'usage_location' => 'DS8']);
-        $this->assertDatabaseHas('log_wh_verifications', ['status' => 'SUCCESS', 'user_id' => $employee->id]);
+        $response->assertCreated()
+            ->assertJsonPath('pending_stock_in', true)
+            ->assertJsonPath('data.status', 'WAITING_VALIDATION')
+            ->assertJsonPath('data.quantity_expected', '3.000');
+        $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '2.000', 'stock_ds8' => '2.000']);
+        $this->assertDatabaseHas('trs_wh_stock_ins', ['consumable_id' => $item->id, 'status' => 'WAITING_VALIDATION']);
+        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+        self::assertSame(1, WarehouseStockIn::query()->count());
     }
 
     public function test_employee_can_stock_out_from_selected_location(): void
@@ -50,6 +56,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
     public function test_stock_in_requires_selected_location_and_does_not_mutate_stock(): void
     {
         $pic = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $pic->id)->delete();
         $this->createPicPosition($pic);
         $verified = $this->createUser();
         $item = WarehouseConsumable::factory()->create([
@@ -134,12 +141,11 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
         ])->assertUnprocessable();
     }
 
-    public function test_direct_transaction_request_cannot_bypass_verifier_access(): void
+    public function test_stock_in_creation_does_not_require_a_verifier(): void
     {
         $pic = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $pic->id)->delete();
         $this->createPicPosition($pic);
-        $verified = $this->createUser([], false);
-        $this->createDepartmentPosition($verified, 'Human Resource', 'Direct Request Outsider '.uniqid());
         $item = WarehouseConsumable::factory()->create([
             'item_code' => 'DIRECT-IN',
             'barcode' => 'DIRECT-IN',
@@ -150,13 +156,65 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
             'type' => 'IN',
             'item_barcode' => 'DIRECT-IN',
             'quantity' => '3',
+            'item_condition' => 'NEW',
             'location' => 'DS8',
-            'verified_code' => (string) $verified->npk,
             'idempotency_key' => (string) Str::uuid(),
-        ])->assertUnprocessable()
-            ->assertJsonPath('message', 'NPK karyawan tidak memiliki akses Warehouse untuk memverifikasi Stock In.');
+        ])->assertCreated()
+            ->assertJsonPath('pending_stock_in', true)
+            ->assertJsonPath('data.status', 'WAITING_VALIDATION');
 
         $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '2.000']);
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+    }
+
+    public function test_restricted_validator_can_create_used_stock_in_and_stock_out(): void
+    {
+        $actor = $this->createUser(['name' => 'Warehouse Restricted Validator']);
+        $verified = $this->createUser();
+        $item = WarehouseConsumable::factory()->create([
+            'barcode' => '000-USED-IN',
+            'current_stock' => '1.000',
+            'stock_ds8' => '1.000',
+            'stock_used_ds8' => '0.000',
+        ]);
+
+        $this->actingAs($actor)->postJson(route('warehouse.transactions.store'), [
+            'type' => 'IN',
+            'item_barcode' => $item->barcode,
+            'quantity' => '2',
+            'item_condition' => 'USED',
+            'location' => 'DS8',
+            'verified_code' => (string) $verified->npk,
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated()->assertJsonPath('data.transaction_type', 'IN');
+
+        $item->refresh();
+        self::assertSame('3.000', (string) $item->current_stock);
+        self::assertSame('2.000', (string) $item->stock_used_ds8);
+        $this->assertDatabaseCount('trs_wh_stock_ins', 0);
+        $this->assertDatabaseHas('trs_wh_stock_transactions', [
+            'consumable_id' => $item->id,
+            'transaction_type' => 'IN',
+            'item_condition' => 'USED',
+        ]);
+
+        $this->actingAs($actor)->postJson(route('warehouse.transactions.store'), [
+            'type' => 'OUT',
+            'item_barcode' => $item->barcode,
+            'quantity' => '1',
+            'item_condition' => 'USED',
+            'location' => 'DS8',
+            'verified_code' => (string) $verified->npk,
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated()->assertJsonPath('data.transaction_type', 'OUT');
+
+        $item->refresh();
+        self::assertSame('2.000', (string) $item->current_stock);
+        self::assertSame('1.000', (string) $item->stock_used_ds8);
+        $this->assertDatabaseHas('trs_wh_stock_transactions', [
+            'consumable_id' => $item->id,
+            'transaction_type' => 'OUT',
+            'item_condition' => 'USED',
+        ]);
     }
 }

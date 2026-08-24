@@ -35,7 +35,7 @@ final class WarehouseVerifierPolicy
         $direction = $this->normalizeDirection($direction);
         if (! $this->access->hasModuleAccess($user)) {
             throw new WarehouseDomainException(
-                'NPK karyawan tidak memiliki akses Warehouse untuk memverifikasi '.$this->label($direction).'.',
+                'Akun karyawan tidak memiliki akses Warehouse untuk memverifikasi '.$this->label($direction).'.',
                 422,
             );
         }
@@ -46,12 +46,31 @@ final class WarehouseVerifierPolicy
             ->where('is_active', true)
             ->exists()) {
             throw new WarehouseDomainException(
-                'NPK karyawan tidak terdaftar sebagai verifikator Warehouse restricted.',
+                'Akun karyawan tidak terdaftar sebagai verifikator Warehouse restricted.',
                 422,
             );
         }
 
         return $user;
+    }
+
+    public function canUserVerify(?User $user, string $direction, bool $restricted = false): bool
+    {
+        $this->normalizeDirection($direction);
+
+        if ($user === null || ! $this->access->hasModuleAccess($user)) {
+            return false;
+        }
+
+        if (! $restricted) {
+            return true;
+        }
+
+        return WarehouseRestrictedVerifier::query()
+            ->where('user_id', $user->getKey())
+            ->where('scope', 'ALL')
+            ->where('is_active', true)
+            ->exists();
     }
 
     public function directionForCommand(

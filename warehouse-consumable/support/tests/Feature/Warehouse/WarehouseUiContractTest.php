@@ -4,41 +4,94 @@ namespace Tests\Feature\Warehouse;
 
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Models\Warehouse\WarehouseConsumable;
+use App\Models\Warehouse\WarehouseStockIn;
 use App\Models\Warehouse\WarehouseStockTransaction;
 
 class WarehouseUiContractTest extends WarehouseTestCase
 {
-    public function test_stock_in_is_a_pending_validation_workflow_with_mobile_cards(): void
+    public function test_stock_in_pending_validation_is_integrated_into_new_transaction_workspace(): void
     {
-        $user = $this->createUser();
-        $this->actingAs($user)->get(route('warehouse.stock-in.create'))
+        $user = $this->createUser([], false);
+        $this->createPicPosition($user);
+        $workspace = $this->actingAs($user)->get(route('warehouse.transactions.create'));
+        $workspace
             ->assertOk()
-            ->assertSee('Buat Stock In')
-            ->assertSee('Menunggu Validasi')
-            ->assertSee('name="quantity_expected"', false)
-            ->assertSee('name="destination_location"', false)
-            ->assertSee('Stok tidak berubah', false);
-
-        $this->actingAs($user)->get(route('warehouse.stock-in.index'))
-            ->assertOk()
+            ->assertSee('Stock In/Out Baru')
+            ->assertSee('warehouse-stock-in-workspace', false)
+            ->assertDontSee('Buat Baru')
             ->assertSee('Menunggu Validasi')
             ->assertSee('Tervalidasi')
-            ->assertSee('Dibatalkan')
-            ->assertDontSee('Pengiriman Antar Lokasi');
+            ->assertSee('name="source_location"', false)
+            ->assertSee('name="notes"', false)
+            ->assertDontSee('/warehouse/stock-in/create');
 
-        self::assertStringContainsString('warehouse-mobile-record', file_get_contents(base_path('resources/views/warehouse/stock-in/index.blade.php')));
+        $validationView = file_get_contents(base_path('resources/views/warehouse/stock-in/validate.blade.php'));
+        self::assertStringNotContainsString('name="validator_code"', $validationView);
+        self::assertStringNotContainsString('name="received_condition"', $validationView);
+        self::assertStringNotContainsString('Scan NPK Validator', $validationView);
+        self::assertStringContainsString('step="1"', $validationView);
+
+        $item = WarehouseConsumable::factory()->create(['item_name' => 'Integer Validation Item']);
+        $stockIn = WarehouseStockIn::factory()->create([
+            'consumable_id' => $item->id,
+            'quantity_expected' => '15.000',
+            'created_by' => $user->id,
+        ]);
+
+        $layout = $workspace->getContent();
+        self::assertStringContainsString('Stock In/Out Baru', $layout);
+        self::assertStringNotContainsString('>Stock In</a>', $layout);
+        self::assertStringNotContainsString('Menunggu Validasi</a>', $layout);
+        self::assertStringNotContainsString('Pengiriman Antar Lokasi</a>', $layout);
+
+        $this->actingAs($user)->get(route('warehouse.stock-in.index'))
+            ->assertRedirect(route('warehouse.transactions.create'));
+        $this->actingAs($user)->get(route('warehouse.stock-in.create'))
+            ->assertRedirect(route('warehouse.transactions.create'));
+
+        $validator = $this->createUser();
+        $validatorWorkspace = $this->actingAs($validator)->get(route('warehouse.transactions.create'));
+        $validatorWorkspace
+            ->assertOk()
+            ->assertSee('Menunggu Validasi')
+            ->assertSee('Validasi')
+            ->assertSee('data-warehouse-transaction-form', false)
+            ->assertSee('data-warehouse-type="IN"', false)
+            ->assertSee('data-warehouse-type="OUT"', false)
+            ->assertDontSee('warehouse-stock-in-validator-notice', false);
+        $validatorUsedWorkspace = $this->actingAs($validator)->get(route('warehouse.transactions-used.create'));
+        $validatorUsedWorkspace
+            ->assertOk()
+            ->assertSee('data-warehouse-transaction-form', false)
+            ->assertSee('data-warehouse-type="IN"', false)
+            ->assertSee('data-warehouse-type="OUT"', false)
+            ->assertDontSee('warehouse-stock-in-validator-notice', false);
+        $this->actingAs($validator)->get(route('warehouse.stock-in.show', $stockIn))
+            ->assertOk()
+            ->assertSee('Batalkan Stock In');
+        $this->actingAs($validator)->get(route('warehouse.stock-in.validate-form', $stockIn))
+            ->assertOk()
+            ->assertSee('value="15"', false)
+            ->assertDontSee('value="15.000"', false)
+            ->assertSee('step="1"', false);
+        $this->actingAs($validator)->get(route('warehouse.stock-in.index'))
+            ->assertRedirect(route('warehouse.transactions.create'));
+        self::assertFileDoesNotExist(base_path('resources/views/warehouse/stock-in/index.blade.php'));
+        self::assertFileDoesNotExist(base_path('resources/views/warehouse/stock-in/create.blade.php'));
 
         $script = file_get_contents(base_path('resources/js/warehouse/transaction-form.js'));
         self::assertStringContainsString("const inbound = type === 'IN';", $script);
         $stockInScript = file_get_contents(base_path('resources/js/warehouse/stock-in.js'));
-        self::assertStringContainsString("STOCK_IN_VALIDATE", $stockInScript);
+        self::assertStringNotContainsString("STOCK_IN_VALIDATE", $stockInScript);
+        self::assertStringContainsString('received_item_barcode', $stockInScript);
         $stockInCss = file_get_contents(base_path('resources/css/warehouse/stock-in.css'));
         self::assertStringContainsString('prefers-reduced-motion', $stockInCss);
     }
 
     public function test_new_and_used_transaction_forms_expose_catalog_and_three_step_accessible_flow(): void
     {
-        $user = $this->createUser();
+        $user = $this->createUser([], false);
+        $this->createPicPosition($user);
         $new = $this->actingAs($user)->get(route('warehouse.transactions.create'));
         $used = $this->actingAs($user)->get(route('warehouse.transactions-used.create'));
 
@@ -51,7 +104,8 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee('data-warehouse-catalog="return"', false)
             ->assertSee('data-warehouse-return-used', false)
             ->assertSee('name="location"', false)
-            ->assertDontSee('name="source_location"', false)
+            ->assertSee('name="source_location"', false)
+            ->assertSee('name="notes"', false)
             ->assertDontSee('name="storage_location"', false)
             ->assertSee('name="item_condition" value="NEW"', false)
             ->assertSee('aria-live="polite"', false)
@@ -60,7 +114,7 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee('Barang baru keluar disertai pengembalian barang bekas');
 
         $used->assertOk()
-            ->assertSee('Transaksi Barang Bekas')
+            ->assertSee('Stock In/Out Bekas')
             ->assertSee('name="item_condition" value="USED"', false)
             ->assertDontSee('data-warehouse-return-used', false);
 
@@ -71,6 +125,8 @@ class WarehouseUiContractTest extends WarehouseTestCase
         self::assertStringContainsString("event.key === 'Enter'", $script);
         self::assertStringContainsString('loading="lazy"', $script);
         self::assertStringContainsString('const syncVerifierAvailability', $script);
+        self::assertStringContainsString('const inbound = type === \'IN\';', $script);
+        self::assertStringContainsString('Status: Menunggu Validasi', $script);
         self::assertStringContainsString('const appendPreview', $script);
         self::assertStringContainsString('const invalidateApproval', $script);
         self::assertStringContainsString('Verifikasi ulang setelah NPK diubah.', $script);
@@ -87,7 +143,8 @@ class WarehouseUiContractTest extends WarehouseTestCase
 
     public function test_scanner_prefill_only_resolves_in_browser_and_unknown_type_is_rejected(): void
     {
-        $user = $this->createUser();
+        $user = $this->createUser([], false);
+        $this->createPicPosition($user);
         $item = WarehouseConsumable::factory()->create(['item_name' => 'Starter Query Item', 'barcode' => '000-STARTER-01']);
 
         $this->actingAs($user)->get(route('warehouse.transactions.create', ['type' => 'DELETE', 'barcode' => $item->barcode]))

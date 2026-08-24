@@ -15,6 +15,7 @@ class WarehouseStockInTest extends WarehouseTestCase
     public function test_creation_is_waiting_and_does_not_mutate_stock_or_ledger(): void
     {
         $creator = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $creator->id)->delete();
         $item = WarehouseConsumable::factory()->create([
             'item_code' => 'IN-PENDING-001',
             'barcode' => 'IN-PENDING-001',
@@ -44,6 +45,7 @@ class WarehouseStockInTest extends WarehouseTestCase
     public function test_creation_and_validation_are_idempotent_and_manual_quantity_uses_actual(): void
     {
         $creator = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $creator->id)->delete();
         $validator = $this->restrictedFixture('RAGIL ISHA RAHMANTO', 5639);
         $item = WarehouseConsumable::factory()->create([
             'item_code' => 'IN-MANUAL-001',
@@ -66,21 +68,19 @@ class WarehouseStockInTest extends WarehouseTestCase
         $stockIn = WarehouseStockIn::query()->firstOrFail();
         $validationKey = (string) Str::uuid();
         $validationPayload = [
-            'validator_code' => (string) $validator->npk,
             'received_item_barcode' => $item->barcode,
-            'received_condition' => 'NEW',
             'quantity_received' => '8',
             'validation_result' => 'MANUAL_ADJUSTMENT',
             'validation_notes' => 'Barang fisik diterima hanya 8 pcs dari 10 pcs yang dicatat.',
             'idempotency_key' => $validationKey,
         ];
 
-        $this->actingAs($creator)->postJson(route('warehouse.stock-in.validate', $stockIn), $validationPayload)
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), $validationPayload)
             ->assertCreated()
             ->assertJsonPath('data.status', 'VALIDATED')
             ->assertJsonPath('data.validation_result', 'MANUAL_ADJUSTMENT');
 
-        $this->actingAs($creator)->postJson(route('warehouse.stock-in.validate', $stockIn), $validationPayload)
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), $validationPayload)
             ->assertOk()
             ->assertJsonPath('idempotent_replay', true);
 
@@ -95,6 +95,7 @@ class WarehouseStockInTest extends WarehouseTestCase
     public function test_internal_source_reserves_without_mutating_until_validation_and_preserves_global_total(): void
     {
         $creator = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $creator->id)->delete();
         $validator = $this->restrictedFixture('ARY RODJO PRASETYO', 5439);
         $item = WarehouseConsumable::factory()->create([
             'item_code' => 'IN-INTERNAL-001',
@@ -119,10 +120,8 @@ class WarehouseStockInTest extends WarehouseTestCase
         self::assertSame('5.000', (string) $item->stock_ds8);
 
         $stockIn = WarehouseStockIn::query()->firstOrFail();
-        $this->actingAs($creator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
-            'validator_code' => (string) $validator->npk,
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
             'received_item_barcode' => $item->barcode,
-            'received_condition' => 'NEW',
             'quantity_received' => '7',
             'validation_result' => 'MANUAL_ADJUSTMENT',
             'validation_notes' => 'Tujuh unit diterima secara fisik.',
@@ -140,7 +139,9 @@ class WarehouseStockInTest extends WarehouseTestCase
     public function test_non_restricted_validator_is_rejected_and_manual_notes_are_required(): void
     {
         $creator = $this->createUser();
-        $outsider = $this->createUser([], false);
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $creator->id)->delete();
+        $outsider = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $outsider->id)->delete();
         $item = WarehouseConsumable::factory()->create(['item_code' => 'IN-SECURITY-001', 'barcode' => 'IN-SECURITY-001']);
         $this->actingAs($creator)->postJson(route('warehouse.stock-in.store'), [
             'consumable_id' => $item->id,
@@ -151,20 +152,127 @@ class WarehouseStockInTest extends WarehouseTestCase
         ])->assertCreated();
         $stockIn = WarehouseStockIn::query()->firstOrFail();
 
-        $this->actingAs($creator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
-            'validator_code' => (string) $outsider->npk,
+        $this->actingAs($outsider)->postJson(route('warehouse.stock-in.validate', $stockIn), [
             'quantity_received' => '3',
             'validation_result' => 'MATCH',
             'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable();
 
         $validator = $this->restrictedFixture('RAGIL ISHA RAHMANTO', 5639);
-        $this->actingAs($creator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
-            'validator_code' => (string) $validator->npk,
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
             'quantity_received' => '2',
             'validation_result' => 'MANUAL_ADJUSTMENT',
             'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable();
+        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+    }
+
+    public function test_stock_in_validation_accepts_only_integer_quantity(): void
+    {
+        $creator = $this->createUser();
+        DB::table('mst_wh_restricted_verifiers')->where('user_id', $creator->id)->delete();
+        $validator = $this->restrictedFixture('RAGIL ISHA RAHMANTO', 5639);
+        $item = WarehouseConsumable::factory()->create(['item_code' => 'IN-INTEGER-001', 'barcode' => 'IN-INTEGER-001']);
+
+        $this->actingAs($creator)->postJson(route('warehouse.stock-in.store'), [
+            'consumable_id' => $item->id,
+            'item_condition' => 'NEW',
+            'quantity_expected' => '3.5',
+            'destination_location' => 'DS8',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertUnprocessable();
+
+        $this->actingAs($creator)->postJson(route('warehouse.stock-in.store'), [
+            'consumable_id' => $item->id,
+            'item_condition' => 'NEW',
+            'quantity_expected' => '3',
+            'destination_location' => 'DS8',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated();
+        $stockIn = WarehouseStockIn::query()->firstOrFail();
+
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
+            'quantity_received' => '2.5',
+            'validation_result' => 'MANUAL_ADJUSTMENT',
+            'validation_notes' => 'Quantity fisik diuji dengan nilai desimal.',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+    }
+
+    public function test_validation_rejects_used_stock_in_records(): void
+    {
+        $validator = $this->restrictedFixture('ARY RODJO PRASETYO', 5439);
+        $creator = $this->createUser();
+        $item = WarehouseConsumable::factory()->create(['item_code' => 'IN-USED-001', 'barcode' => 'IN-USED-001']);
+        $stockIn = WarehouseStockIn::factory()->create([
+            'consumable_id' => $item->id,
+            'item_condition' => 'USED',
+            'quantity_expected' => '2.000',
+            'created_by' => $creator->id,
+        ]);
+
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
+            'quantity_received' => '2',
+            'validation_result' => 'MATCH',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+    }
+
+    public function test_restricted_validator_can_create_stock_in_pending_validation(): void
+    {
+        $validator = $this->restrictedFixture('RAGIL ISHA RAHMANTO', 5639);
+        $item = WarehouseConsumable::factory()->create(['item_code' => 'IN-VALIDATOR-001', 'barcode' => 'IN-VALIDATOR-001']);
+
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.store'), [
+            'consumable_id' => $item->id,
+            'item_condition' => 'NEW',
+            'quantity_expected' => '2',
+            'destination_location' => 'DS8',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated()->assertJsonPath('data.status', 'WAITING_VALIDATION');
+
+        $this->assertDatabaseHas('trs_wh_stock_ins', [
+            'consumable_id' => $item->id,
+            'created_by' => $validator->id,
+            'status' => 'WAITING_VALIDATION',
+            'quantity_expected' => '2.000',
+        ]);
+        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+        $this->assertDatabaseHas('mst_wh_consumables', [
+            'id' => $item->id,
+            'current_stock' => '0.000',
+            'stock_ds8' => '0.000',
+        ]);
+    }
+
+    public function test_restricted_validator_can_cancel_pending_stock_in(): void
+    {
+        $validator = $this->restrictedFixture('ARY RODJO PRASETYO', 5439);
+        $item = WarehouseConsumable::factory()->create(['item_code' => 'IN-CANCEL-001', 'barcode' => 'IN-CANCEL-001']);
+
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.store'), [
+            'consumable_id' => $item->id,
+            'item_condition' => 'NEW',
+            'quantity_expected' => '2',
+            'destination_location' => 'DS8',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated();
+
+        $stockIn = WarehouseStockIn::query()->where('consumable_id', $item->id)->firstOrFail();
+
+        $this->actingAs($validator)->postJson(route('warehouse.stock-in.cancel', $stockIn), [
+            'reason' => 'Penerimaan dibatalkan sebelum barang datang.',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertOk()->assertJsonPath('data.status', 'CANCELLED');
+
+        $this->assertDatabaseHas('trs_wh_stock_ins', [
+            'id' => $stockIn->id,
+            'status' => 'CANCELLED',
+        ]);
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
     }
 

@@ -75,7 +75,7 @@ class WarehouseReversalTest extends WarehouseTestCase
             'verified_code' => (string) $verified->npk,
             'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable()
-            ->assertJsonPath('message', 'NPK karyawan tidak memiliki akses Warehouse untuk memverifikasi Stock Out.');
+            ->assertJsonPath('message', 'Akun karyawan tidak memiliki akses Warehouse untuk memverifikasi Stock Out.');
 
         $this->assertDatabaseCount('trs_wh_stock_transactions', 1);
         $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '8.000']);

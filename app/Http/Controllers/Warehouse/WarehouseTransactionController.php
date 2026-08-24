@@ -10,39 +10,78 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\ReverseWarehouseTransactionRequest;
 use App\Http\Requests\Warehouse\StoreWarehouseTransactionRequest;
 use App\Models\Warehouse\WarehouseStockTransaction;
+use App\Models\Warehouse\WarehouseStockIn;
+use App\Enums\Warehouse\WarehouseStockInStatus;
 use App\Services\Warehouse\WarehouseAccessService;
 use App\Services\Warehouse\WarehouseIdentityResolver;
+use App\Services\Warehouse\WarehouseStockInService;
 use App\Services\Warehouse\WarehouseStockService;
 use App\Services\Warehouse\WarehouseVerifierPolicy;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Ramsey\Uuid\Uuid;
 
 class WarehouseTransactionController extends Controller
 {
-    public function create(Request $request, WarehouseAccessService $access)
+    public function create(Request $request, WarehouseAccessService $access, WarehouseVerifierPolicy $verifierPolicy)
     {
-        return $this->renderCreate($request, $access, WarehouseItemCondition::NEW);
+        return $this->renderCreate($request, $access, $verifierPolicy, WarehouseItemCondition::NEW);
     }
 
-    public function createUsed(Request $request, WarehouseAccessService $access)
+    public function createUsed(Request $request, WarehouseAccessService $access, WarehouseVerifierPolicy $verifierPolicy)
     {
-        return $this->renderCreate($request, $access, WarehouseItemCondition::USED);
+        return $this->renderCreate($request, $access, $verifierPolicy, WarehouseItemCondition::USED);
     }
 
     public function store(
         StoreWarehouseTransactionRequest $request,
         WarehouseIdentityResolver $identity,
+        WarehouseStockInService $stockInService,
         WarehouseStockService $stockService,
     ) {
         try {
             $type = WarehouseTransactionType::from((string) $request->input('type'));
             $condition = WarehouseItemCondition::from((string) $request->input('item_condition'));
             $item = $identity->resolveItem((string) $request->input('item_barcode'));
-            $verifiedUser = $identity->resolveUserForDirection((string) $request->input('verified_code'), $type->value);
 
             if ($item === null) {
                 throw new WarehouseDomainException('Barcode item tidak ditemukan atau tidak aktif.', 422);
             }
+
+            // Only new-item receipts enter the pending validation workflow.
+            // Used-item receipts remain direct ledger transactions.
+            if ($type === WarehouseTransactionType::IN && $condition === WarehouseItemCondition::NEW) {
+                $stockIn = $stockInService->create(
+                    actorId: (int) $request->user()->getKey(),
+                    consumableId: (int) $item->getKey(),
+                    itemCondition: $condition,
+                    quantityExpected: (string) $request->input('quantity'),
+                    destinationLocation: (string) $request->input('location'),
+                    sourceLocation: $request->input('source_location'),
+                    notes: $request->input('notes'),
+                    idempotencyKey: (string) $request->input('idempotency_key'),
+                );
+                $replay = (bool) $stockIn->getAttribute('_idempotent_replay');
+                $payload = $this->stockInPayload($stockIn);
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'data' => $payload,
+                        'pending_stock_in' => true,
+                        'idempotent_replay' => $replay,
+                    ], $replay ? 200 : 201);
+                }
+
+                return redirect()->to(route('warehouse.transactions.create').'#warehouse-stock-in-pending')->with(
+                    'status',
+                    $replay
+                        ? 'Stock In sebelumnya sudah dicatat dan masih menunggu validasi.'
+                        : 'Stock In berhasil dicatat. Status Menunggu Validasi; stok belum berubah.',
+                );
+            }
+
+            $verifiedUser = $identity->resolveUserForDirection((string) $request->input('verified_code'), $type->value);
+
             if ($verifiedUser === null) {
                 throw new WarehouseDomainException('NPK karyawan tidak ditemukan atau tidak aktif.', 422);
             }
@@ -175,8 +214,9 @@ class WarehouseTransactionController extends Controller
         }
     }
 
-    private function renderCreate(Request $request, WarehouseAccessService $access, WarehouseItemCondition $condition)
+    private function renderCreate(Request $request, WarehouseAccessService $access, WarehouseVerifierPolicy $verifierPolicy, WarehouseItemCondition $condition)
     {
+        $canValidateStockIn = $verifierPolicy->canUserVerify($request->user(), WarehouseVerifierPolicy::DIRECTION_IN, true);
         $canStockIn = $access->can($request->user(), 'warehouse.stock-in.create');
         $canStockOut = $access->can($request->user(), 'warehouse.stock-out.create');
         $availableTypes = array_values(array_filter([
@@ -186,6 +226,34 @@ class WarehouseTransactionController extends Controller
         $requestedType = strtoupper(trim((string) $request->query('type', '')));
         $initialType = in_array($requestedType, $availableTypes, true) ? $requestedType : ($availableTypes[0] ?? 'OUT');
         $initialBarcode = substr(trim(preg_replace('/[\x00-\x1F\x7F]/', '', (string) $request->query('barcode', ''))), 0, 120);
+        $stockInWorkspaceVisible = $condition === WarehouseItemCondition::NEW
+            && ($canStockIn || $canValidateStockIn);
+        $pendingStockIns = collect();
+        $validatedStockIns = collect();
+        $pendingStockInCount = 0;
+        $validatedStockInCount = 0;
+
+        if ($stockInWorkspaceVisible && Schema::hasTable('trs_wh_stock_ins')) {
+            $baseQuery = WarehouseStockIn::query()
+                ->with(['consumable', 'creator', 'validator'])
+                ->where('item_condition', WarehouseItemCondition::NEW->value);
+            $pendingStockInCount = (clone $baseQuery)
+                ->where('status', WarehouseStockInStatus::WAITING_VALIDATION->value)
+                ->count();
+            $validatedStockInCount = (clone $baseQuery)
+                ->where('status', WarehouseStockInStatus::VALIDATED->value)
+                ->count();
+            $pendingStockIns = (clone $baseQuery)
+                ->where('status', WarehouseStockInStatus::WAITING_VALIDATION->value)
+                ->latest()
+                ->limit(20)
+                ->get();
+            $validatedStockIns = (clone $baseQuery)
+                ->where('status', WarehouseStockInStatus::VALIDATED->value)
+                ->latest()
+                ->limit(20)
+                ->get();
+        }
 
         return view('warehouse.transactions.create', [
             'canStockIn' => $canStockIn,
@@ -194,12 +262,43 @@ class WarehouseTransactionController extends Controller
             'initialType' => $initialType,
             'initialBarcode' => $initialBarcode,
             'itemCondition' => $condition,
+            'stockInWorkspaceVisible' => $stockInWorkspaceVisible,
+            'canValidateStockIn' => $canValidateStockIn,
+            'pendingStockIns' => $pendingStockIns,
+            'validatedStockIns' => $validatedStockIns,
+            'pendingStockInCount' => $pendingStockInCount,
+            'validatedStockInCount' => $validatedStockInCount,
             'transactionRequirements' => [
                 'storageLocationForIn' => true,
                 'sourceLocationForOut' => true,
                 'usedReturnAvailable' => $condition === WarehouseItemCondition::NEW,
             ],
         ]);
+    }
+
+    private function stockInPayload(WarehouseStockIn $stockIn): array
+    {
+        $stockIn->loadMissing(['consumable', 'creator']);
+
+        return [
+            'id' => $stockIn->getKey(),
+            'stock_in_number' => $stockIn->stock_in_number,
+            'status' => $stockIn->status?->value,
+            'validation_result' => $stockIn->validation_result?->value,
+            'item' => $stockIn->consumable?->item_name,
+            'item_code' => $stockIn->consumable?->item_code,
+            'item_condition' => $stockIn->item_condition?->value,
+            'quantity_expected' => (string) $stockIn->quantity_expected,
+            'quantity_received' => $stockIn->quantity_received === null ? null : (string) $stockIn->quantity_received,
+            'destination_location' => $stockIn->destination_location,
+            'source_location' => $stockIn->source_location,
+            'created_by' => $stockIn->creator_name_snapshot,
+            'created_at' => optional($stockIn->created_at)->toIso8601String(),
+            'detail_url' => route('warehouse.stock-in.show', $stockIn),
+            'validation_url' => $stockIn->canValidate()
+                ? route('warehouse.stock-in.validate-form', $stockIn)
+                : null,
+        ];
     }
 
     private function transactionPayload(WarehouseStockTransaction $transaction): array

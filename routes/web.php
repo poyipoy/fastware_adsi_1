@@ -1121,9 +1121,9 @@ Route::middleware(['web', 'auth'])->group(function () {
             ->middleware('warehouse.permission:warehouse.report.view')
             ->name('reports.index');
 
-        // Stock In is the single receiving workflow. A pending record is
-        // created first and only the restricted validation action mutates the
-        // stock ledger.
+        // Stock In is the single receiving workflow. The old standalone
+        // entry/list URLs are compatibility redirects; the user-facing
+        // workspace is Stock In/Out Baru.
         Route::prefix('stock-in')->name('stock-in.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'index'])
                 ->middleware('warehouse.permission:warehouse.stock-in.create')

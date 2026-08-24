@@ -8,8 +8,13 @@
     const itemInput = form.querySelector('[data-warehouse-item-input]');
     const quantityInput = form.querySelector('[data-warehouse-quantity]');
     const locationInput = form.querySelector('[data-warehouse-location]');
+    const sourceLocationWrap = form.querySelector('[data-warehouse-source-location-wrap]');
+    const sourceLocationInput = form.querySelector('[data-warehouse-source-location]');
     const userInput = form.querySelector('[data-warehouse-user-input]');
+    const verifierPanel = form.querySelector('[data-warehouse-verifier-panel]');
+    const verifierCopy = form.querySelector('[data-warehouse-verifier-copy]');
     const confirmInput = form.querySelector('[data-warehouse-confirm-check]');
+    const confirmCopy = form.querySelector('[data-warehouse-confirm-copy]');
     const submitButton = form.querySelector('[data-warehouse-submit]');
     const returnToggle = form.querySelector('[data-warehouse-return-used]');
     const returnPanel = form.querySelector('[data-warehouse-used-return-panel]');
@@ -208,6 +213,18 @@
         typeInput.value = type;
         form.querySelectorAll('[data-warehouse-type]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.warehouseType === type)));
         form.querySelector('[data-warehouse-type-caption]').textContent = type === 'IN' ? 'Penambahan stok' : 'Pengeluaran stok';
+        if (sourceLocationWrap && sourceLocationInput) {
+            sourceLocationWrap.hidden = !inbound;
+            sourceLocationInput.disabled = !inbound;
+            if (!inbound) sourceLocationInput.value = '';
+        }
+        if (verifierPanel) verifierPanel.hidden = inbound;
+        if (verifierCopy) verifierCopy.textContent = inbound
+            ? 'Stock In dibuat Menunggu Validasi. Validator Ragil/Rodjo memeriksa setelah barang datang.'
+            : 'Pindai barcode NPK karyawan yang bertanggung jawab.';
+        if (confirmCopy) confirmCopy.textContent = inbound
+            ? 'Saya telah memeriksa item, jumlah, lokasi, dan catatan Stock In.'
+            : 'Saya telah memeriksa barang, kondisi, lokasi, jumlah, dan verifikator.';
         if (returnToggle) {
             returnToggle.disabled = inbound;
             if (inbound) { returnToggle.checked = false; toggleReturn(); }
@@ -232,10 +249,12 @@
     const syncVerifierAvailability = () => {
         const returnComplete = !returnToggle?.checked || (state.returnItem && Number(returnQuantity.value) > 0 && returnLocation.value);
         const valid = state.item && Number(quantityInput.value) > 0 && available() + (typeInput.value === 'IN' ? Number(quantityInput.value) : -Number(quantityInput.value)) >= 0 && returnComplete;
-        userInput.disabled = !valid;
-        form.querySelector('[data-warehouse-scan-user]').disabled = !valid;
-        form.querySelector('[data-warehouse-verifier-panel]').classList.toggle('is-locked', !valid);
-        submitButton.disabled = !(valid && state.verifier && confirmInput.checked);
+        const requiresVerifier = typeInput.value !== 'IN';
+        userInput.disabled = !valid || !requiresVerifier;
+        form.querySelector('[data-warehouse-scan-user]').disabled = !valid || !requiresVerifier;
+        userInput.required = requiresVerifier;
+        verifierPanel.classList.toggle('is-locked', !valid || !requiresVerifier);
+        submitButton.disabled = !(valid && confirmInput.checked && (!requiresVerifier || state.verifier));
     };
 
     const scanUser = async () => {
@@ -304,7 +323,8 @@
     form.querySelectorAll('[data-warehouse-type]').forEach((button) => button.addEventListener('click', () => setType(button.dataset.warehouseType)));
     form.querySelector('[data-warehouse-quantity-down]').addEventListener('click', () => { quantityInput.stepDown(); quantityInput.dispatchEvent(new Event('input')); });
     form.querySelector('[data-warehouse-quantity-up]').addEventListener('click', () => { quantityInput.stepUp(); quantityInput.dispatchEvent(new Event('input')); });
-    [quantityInput, locationInput, returnQuantity, returnLocation].filter(Boolean).forEach((field) => field.addEventListener('input', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); }));
+    [quantityInput, locationInput, sourceLocationInput, form.querySelector('[data-warehouse-stock-in-notes]'), returnQuantity, returnLocation].filter(Boolean).forEach((field) => field.addEventListener('input', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); }));
+    sourceLocationInput?.addEventListener('change', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); });
     returnToggle?.addEventListener('change', () => { invalidateApproval(true); toggleReturn(); });
     userInput.addEventListener('input', () => {
         if (!state.verifier) return;
@@ -331,6 +351,28 @@
             if (!returnToggle?.checked) delete payload.return_used;
             const response = await requestJson(form.action, payload);
             const receipt = form.querySelector('[data-warehouse-receipt-details]');
+            if (response.pending_stock_in) {
+                const receiptStep = form.querySelector('[data-warehouse-step="3"]');
+                const receiptTitle = receiptStep.querySelector('h2');
+                const receiptMessage = receiptStep.querySelector('p');
+                receiptTitle.textContent = 'Stock In berhasil dicatat';
+                receiptMessage.textContent = 'Status: Menunggu Validasi. Stok belum berubah sampai divalidasi.';
+                let detailLink = receiptStep.querySelector('[data-warehouse-receipt-detail-link]');
+                if (!detailLink) {
+                    detailLink = document.createElement('a');
+                    detailLink.className = 'btn btn-outline-primary';
+                    detailLink.dataset.warehouseReceiptDetailLink = '';
+                    detailLink.textContent = 'Lihat detail Stock In';
+                    receiptStep.querySelector('.warehouse-step-actions')?.append(detailLink);
+                }
+                detailLink.href = response.data.detail_url || '#';
+                detailLink.hidden = !response.data.detail_url;
+                const facts = [['Nomor Stock In', response.data.stock_in_number], ['Status', 'Menunggu Validasi'], ['Barang', response.data.item], ['Jumlah Input', displayQuantity(response.data.quantity_expected)], ['Lokasi', response.data.destination_location], ['Sumber', response.data.source_location || 'Supplier / eksternal'], ['Stok', 'Belum berubah']];
+                receipt.replaceChildren();
+                facts.forEach(([label, value]) => { const dt = document.createElement('dt'); const dd = document.createElement('dd'); dt.textContent = label; dd.textContent = value ?? '—'; receipt.append(dt, dd); });
+                updateStep(3);
+                return;
+            }
             const related = response.related_transactions?.length ? `${response.related_transactions.length} transaksi pengembalian terkait` : 'Tidak ada';
             const facts = [['Nomor transaksi', response.data.transaction_number], ['Tipe', transactionTypeLabels[response.data.transaction_type] || response.data.transaction_type], ['Kondisi', response.data.item_condition === 'USED' ? 'Bekas' : 'Baru'], ['Barang', response.data.item], ['Jumlah', displayQuantity(response.data.quantity)], ['Lokasi', response.data.to_location || response.data.from_location || '—'], ['Stok total', `${displayQuantity(response.data.stock_before)} → ${displayQuantity(response.data.stock_after)}`], ['Karyawan verifikator', response.data.verified_user_name], ['Transaksi terkait', related]];
             receipt.replaceChildren();

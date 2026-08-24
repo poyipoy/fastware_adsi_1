@@ -94,7 +94,7 @@ class WarehouseUserVerificationTest extends WarehouseTestCase
             'code' => (string) $outsider->npk,
             'type' => 'OUT',
         ])->assertUnprocessable()
-            ->assertJsonPath('message', 'NPK karyawan tidak memiliki akses Warehouse untuk memverifikasi Stock Out.');
+            ->assertJsonPath('message', 'Akun karyawan tidak memiliki akses Warehouse untuk memverifikasi Stock Out.');
     }
 
     public function test_duplicate_npk_selects_the_only_active_administrator(): void

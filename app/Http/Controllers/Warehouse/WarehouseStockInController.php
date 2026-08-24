@@ -12,35 +12,19 @@ use App\Models\Warehouse\WarehouseStockIn;
 use App\Services\Warehouse\WarehouseIdentityResolver;
 use App\Services\Warehouse\WarehouseQuantity;
 use App\Services\Warehouse\WarehouseStockInService;
+use App\Services\Warehouse\WarehouseVerifierPolicy;
 use Illuminate\Http\Request;
 
 class WarehouseStockInController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $status = strtoupper(trim((string) $request->query('status', '')));
-        $stockIns = WarehouseStockIn::query()
-            ->with(['consumable', 'creator', 'validator'])
-            ->when(in_array($status, ['WAITING_VALIDATION', 'VALIDATED', 'CANCELLED'], true), fn ($query) => $query->where('status', $status))
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
-
-        return view('warehouse.stock-in.index', [
-            'stockIns' => $stockIns,
-            'activeStatus' => $status,
-        ]);
+        return redirect()->route('warehouse.transactions.create');
     }
 
     public function create()
     {
-        return view('warehouse.stock-in.create', [
-            'initialBarcode' => substr(trim((string) request()->query('barcode', '')), 0, 120),
-            'consumables' => WarehouseConsumable::query()
-                ->where('is_active', true)
-                ->orderBy('item_name')
-                ->get(['id', 'item_code', 'barcode', 'item_name', 'unit', 'allow_fraction']),
-        ]);
+        return redirect()->route('warehouse.transactions.create', request()->query());
     }
 
     public function store(
@@ -82,16 +66,23 @@ class WarehouseStockInController extends Controller
         }
     }
 
-    public function show(WarehouseStockIn $stockIn)
+    public function show(Request $request, WarehouseStockIn $stockIn, WarehouseVerifierPolicy $verifierPolicy)
     {
         return view('warehouse.stock-in.show', [
             'stockIn' => $stockIn->load(['consumable', 'creator', 'validator', 'stockTransaction']),
+            'canValidateStockIn' => $verifierPolicy->canUserVerify($request->user(), WarehouseVerifierPolicy::DIRECTION_IN, true),
         ]);
     }
 
-    public function validateForm(WarehouseStockIn $stockIn)
+    public function validateForm(Request $request, WarehouseStockIn $stockIn, WarehouseVerifierPolicy $verifierPolicy)
     {
+        abort_unless(
+            $verifierPolicy->canUserVerify($request->user(), WarehouseVerifierPolicy::DIRECTION_IN, true),
+            403,
+            'Akun ini tidak terdaftar sebagai validator Stock In.',
+        );
         abort_unless($stockIn->canValidate(), 409, 'Stock In sudah tidak menunggu Validasi.');
+        abort_unless($stockIn->item_condition?->value === 'NEW', 409, 'Validasi Stock In hanya berlaku untuk barang NEW.');
 
         return view('warehouse.stock-in.validate', [
             'stockIn' => $stockIn->load(['consumable', 'creator']),
@@ -105,11 +96,6 @@ class WarehouseStockInController extends Controller
         WarehouseStockInService $service,
     ) {
         try {
-            $validator = $identity->resolveUserForDirection((string) $request->input('validator_code'), 'IN', true);
-            if ($validator === null) {
-                throw new WarehouseDomainException('NPK Validator Stock In tidak ditemukan atau tidak aktif.', 422);
-            }
-
             $receivedConsumableId = null;
             if ($request->filled('received_item_barcode')) {
                 $received = $identity->resolveItem((string) $request->input('received_item_barcode'));
@@ -122,14 +108,11 @@ class WarehouseStockInController extends Controller
             $result = $service->validate(
                 actorId: (int) $request->user()->getKey(),
                 stockIn: $stockIn,
-                validator: $validator,
                 quantityReceived: (string) $request->input('quantity_received'),
                 validationResult: $request->input('validation_result'),
                 validationNotes: $request->input('validation_notes'),
-                receivedCondition: $request->input('received_condition'),
                 receivedConsumableId: $receivedConsumableId,
                 idempotencyKey: (string) $request->input('idempotency_key'),
-                verificationCodeHash: $identity->hash((string) $request->input('validator_code')),
             );
             $replay = (bool) $result->getAttribute('_idempotent_replay');
 

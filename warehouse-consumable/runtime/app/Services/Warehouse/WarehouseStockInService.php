@@ -42,6 +42,9 @@ final class WarehouseStockInService
     ): WarehouseStockIn {
         $this->assertAccess($actorId, 'warehouse.stock-in.create');
         $condition = $this->condition($itemCondition);
+        if ($condition !== WarehouseItemCondition::NEW) {
+            throw new WarehouseDomainException('Validasi Stock In hanya berlaku untuk barang kondisi NEW.', 422);
+        }
         $creationKey = $this->uuid($idempotencyKey);
         $destination = $this->location($destinationLocation, 'Lokasi tujuan Stock In wajib diisi.');
         $source = $sourceLocation === null || trim($sourceLocation) === ''
@@ -79,7 +82,7 @@ final class WarehouseStockInService
                 throw new WarehouseDomainException('Consumable tidak aktif atau tidak ditemukan.', 422);
             }
 
-            $quantity = WarehouseQuantity::normalize($quantityExpected, (bool) $item->allow_fraction);
+            $quantity = WarehouseQuantity::normalize($quantityExpected, false);
             if ($source !== null) {
                 if ($source === $destination) {
                     throw new WarehouseDomainException('Lokasi sumber dan tujuan Stock In harus berbeda.', 422);
@@ -114,14 +117,11 @@ final class WarehouseStockInService
     public function validate(
         int $actorId,
         WarehouseStockIn|int $stockIn,
-        User|int $validator,
         string $quantityReceived,
         WarehouseStockInValidationResult|string|null $validationResult = null,
         ?string $validationNotes = null,
-        WarehouseItemCondition|string|null $receivedCondition = null,
         ?int $receivedConsumableId = null,
         ?string $idempotencyKey = null,
-        ?string $verificationCodeHash = null,
     ): WarehouseStockIn {
         $this->assertAccess($actorId, 'warehouse.stock-in.validate');
         $validationKey = $this->uuid($idempotencyKey);
@@ -129,14 +129,11 @@ final class WarehouseStockInService
         return DB::transaction(function () use (
             $actorId,
             $stockIn,
-            $validator,
             $quantityReceived,
             $validationResult,
             $validationNotes,
-            $receivedCondition,
             $receivedConsumableId,
             $validationKey,
-            $verificationCodeHash,
         ): WarehouseStockIn {
             $existingByKey = WarehouseStockIn::query()
                 ->where('validation_idempotency_key', $validationKey)
@@ -146,11 +143,10 @@ final class WarehouseStockInService
                 $this->assertValidationReplay(
                     $existingByKey,
                     $stockIn instanceof WarehouseStockIn ? (int) $stockIn->getKey() : (int) $stockIn,
-                    $validator,
+                    $actorId,
                     $quantityReceived,
                     $validationResult,
                     $validationNotes,
-                    $receivedCondition,
                     $receivedConsumableId,
                 );
                 $existingByKey->setAttribute('_idempotent_replay', true);
@@ -169,24 +165,27 @@ final class WarehouseStockInService
             }
 
             $actor = User::query()->lockForUpdate()->find($actorId);
-            $validatorUser = $validator instanceof User
-                ? User::query()->lockForUpdate()->find($validator->getKey())
-                : User::query()->lockForUpdate()->find($validator);
             if (! $this->access->isLoginEnabled($actor)) {
                 throw new WarehouseDomainException('Actor Validasi Stock In tidak aktif atau tidak ditemukan.', 403);
             }
-            if (! $this->access->isLoginEnabled($validatorUser)) {
-                throw new WarehouseDomainException('Validator Stock In tidak aktif atau tidak ditemukan.', 422);
-            }
-
-            // This is deliberately checked inside the transaction as well as
-            // at the HTTP boundary so service callers cannot bypass the NPK
-            // restricted-verifier policy.
-            $this->verifierPolicy->assertUserCanVerify($validatorUser, WarehouseVerifierPolicy::DIRECTION_IN, true);
+            // The signed-in account is the validator. There is no second
+            // identity supplied by an NPK scan.
+            $validatorUser = $this->verifierPolicy->assertUserCanVerify(
+                $actor,
+                WarehouseVerifierPolicy::DIRECTION_IN,
+                true,
+            );
 
             $item = WarehouseConsumable::query()->lockForUpdate()->find($record->consumable_id);
             if ($item === null || ! $item->is_active) {
                 throw new WarehouseDomainException('Consumable Stock In tidak aktif atau tidak ditemukan.', 422);
+            }
+
+            $expectedCondition = $record->item_condition instanceof WarehouseItemCondition
+                ? $record->item_condition
+                : WarehouseItemCondition::from((string) $record->item_condition);
+            if ($expectedCondition !== WarehouseItemCondition::NEW) {
+                throw new WarehouseDomainException('Validasi Stock In hanya berlaku untuk barang kondisi NEW.', 422);
             }
 
             $receivedId = $receivedConsumableId ?? (int) $record->consumable_id;
@@ -194,18 +193,8 @@ final class WarehouseStockInService
                 throw new WarehouseDomainException('Item fisik berbeda dari item Stock In. Validasi ditolak tanpa mutasi stok.', 422);
             }
 
-            $expectedCondition = $record->item_condition instanceof WarehouseItemCondition
-                ? $record->item_condition
-                : WarehouseItemCondition::from((string) $record->item_condition);
-            $actualCondition = $receivedCondition === null || trim((string) $receivedCondition) === ''
-                ? $expectedCondition
-                : $this->condition($receivedCondition);
-            if ($actualCondition !== $expectedCondition) {
-                throw new WarehouseDomainException('Condition fisik berbeda dari condition Stock In. Validasi ditolak tanpa mutasi stok.', 422);
-            }
-
-            $actual = WarehouseQuantity::normalize($quantityReceived, (bool) $item->allow_fraction);
-            $expected = WarehouseQuantity::normalize((string) $record->quantity_expected, (bool) $item->allow_fraction);
+            $actual = WarehouseQuantity::normalize($quantityReceived, false);
+            $expected = WarehouseQuantity::normalize((string) $record->quantity_expected, false);
             $difference = WarehouseQuantity::toMilli($actual) - WarehouseQuantity::toMilli($expected);
             $result = $validationResult === null || trim((string) $validationResult) === ''
                 ? ($difference === 0 ? WarehouseStockInValidationResult::MATCH : WarehouseStockInValidationResult::MANUAL_ADJUSTMENT)
@@ -230,7 +219,6 @@ final class WarehouseStockInService
                 notes: $this->validationLedgerNotes($record, $notes),
                 idempotencyKey: $validationKey,
                 createdBy: (int) $actor->getKey(),
-                verificationCodeHash: $verificationCodeHash,
                 itemCondition: $expectedCondition,
                 sourceLocation: $record->source_location,
                 toLocation: $record->destination_location,
@@ -246,12 +234,12 @@ final class WarehouseStockInService
                 'validation_result' => $result->value,
                 'quantity_received' => $actual,
                 'received_consumable_id' => $receivedId,
-                'received_condition' => $actualCondition->value,
                 'validation_notes' => $notes,
                 'validated_at' => now(),
                 'validator_user_id' => $validatorUser->getKey(),
                 'validator_npk_snapshot' => $validatorUser->npk === null ? null : (string) $validatorUser->npk,
                 'validator_name_snapshot' => mb_substr((string) $validatorUser->name, 0, 180),
+                'received_condition' => WarehouseItemCondition::NEW->value,
                 'validation_idempotency_key' => $validationKey,
                 'stock_transaction_id' => $ledger->getKey(),
             ])->save();
@@ -275,6 +263,10 @@ final class WarehouseStockInService
         }
 
         return DB::transaction(function () use ($actorId, $stockIn, $reason, $key): WarehouseStockIn {
+            $actor = User::query()->lockForUpdate()->find($actorId);
+            if (! $this->access->isLoginEnabled($actor)) {
+                throw new WarehouseDomainException('Actor pembatalan Stock In tidak aktif atau tidak ditemukan.', 403);
+            }
             $record = WarehouseStockIn::query()
                 ->lockForUpdate()
                 ->find($stockIn instanceof WarehouseStockIn ? $stockIn->getKey() : $stockIn);
@@ -321,7 +313,7 @@ final class WarehouseStockInService
         ?string $source,
         ?string $notes,
     ): void {
-        $normalized = WarehouseQuantity::normalize($quantity, true);
+        $normalized = WarehouseQuantity::normalize($quantity, false);
         $matches = (int) $existing->consumable_id === $consumableId
             && ($existing->item_condition instanceof WarehouseItemCondition
                 ? $existing->item_condition
@@ -339,26 +331,20 @@ final class WarehouseStockInService
     private function assertValidationReplay(
         WarehouseStockIn $existing,
         int $stockInId,
-        User|int $validator,
+        int $validatorId,
         string $quantity,
         WarehouseStockInValidationResult|string|null $result,
         ?string $notes,
-        WarehouseItemCondition|string|null $condition,
         ?int $receivedConsumableId,
     ): void {
-        $validatorId = $validator instanceof User ? (int) $validator->getKey() : (int) $validator;
         $resolvedResult = $result === null || trim((string) $result) === ''
             ? null
             : $this->validationResult($result);
-        $resolvedCondition = $condition === null || trim((string) $condition) === ''
-            ? null
-            : $this->condition($condition);
         $matches = (int) $existing->getKey() === $stockInId
             && (int) $existing->validator_user_id === $validatorId
-            && WarehouseQuantity::compare((string) ($existing->quantity_received ?? '0'), WarehouseQuantity::normalize($quantity, true)) === 0
+            && WarehouseQuantity::compare((string) ($existing->quantity_received ?? '0'), WarehouseQuantity::normalize($quantity, false)) === 0
             && (string) ($existing->validation_notes ?? '') === (string) ($notes ?? '')
             && ($resolvedResult === null || $existing->validation_result === $resolvedResult)
-            && ($resolvedCondition === null || $existing->received_condition === $resolvedCondition)
             && ($receivedConsumableId === null || (int) $existing->received_consumable_id === $receivedConsumableId);
 
         if (! $matches) {

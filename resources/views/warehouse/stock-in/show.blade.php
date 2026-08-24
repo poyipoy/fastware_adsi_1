@@ -7,8 +7,8 @@
 @section('warehouse-content')
     <div class="warehouse-stock-in-page" aria-labelledby="warehouse-stock-in-detail-title">
         <x-warehouse.page-header title="Detail Stock In" subtitle="Audit penerimaan, validasi fisik, dan tautan mutasi ledger.">
-            <a class="btn btn-outline-secondary" href="{{ route('warehouse.stock-in.index') }}">Kembali ke Daftar</a>
-            @if($stockIn->canValidate()) @can('warehouse.stock-in.validate')<a class="btn btn-primary" href="{{ route('warehouse.stock-in.validate-form', $stockIn) }}">Validasi</a>@endcan @endif
+            <a class="btn btn-outline-secondary" href="{{ route('warehouse.transactions.create') }}">Kembali ke Stock In/Out Baru</a>
+            @if($stockIn->canValidate() && $canValidateStockIn)<a class="btn btn-primary" href="{{ route('warehouse.stock-in.validate-form', $stockIn) }}">Validasi</a>@endif
         </x-warehouse.page-header>
 
         @if (session('status'))<div class="alert alert-success" role="status">{{ session('status') }}</div>@endif
