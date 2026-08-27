@@ -22,7 +22,10 @@ class MigrateAdasiCommand extends Command
     {
         $dryRun = $this->option('dry-run');
         
-        $jsonPath = base_path('parse_result.json');
+        $jsonPath = base_path('database/data/parse_result.json');
+        if (!File::exists($jsonPath)) {
+            $jsonPath = base_path('parse_result.json');
+        }
         if (!File::exists($jsonPath)) {
             $this->error('File parse_result.json not found!');
             return 1;

@@ -23,7 +23,10 @@ yarn-error.log
 !/km-docs/*.md
 !/warehouse-docs/
 !/warehouse-docs/WAREHOUSE-*.md
+!/docs/
+!/docs/**
 /pindah-android/storage/app/*.json
+/packages/pindah-android/storage/app/*.json
 
 /storage/framework/cache/*
 /storage/framework/sessions/*

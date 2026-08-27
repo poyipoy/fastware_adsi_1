@@ -23,7 +23,10 @@ class KaryawanHRSeeder extends Seeder
         $this->command->info('Updated user RUSLAN M.ALI -> RUSLAN');
 
         // 2. Baca file JSON
-        $jsonPath = base_path('karyawan_job_position_seed (1).json');
+        $jsonPath = base_path('database/data/karyawan_job_position_seed (1).json');
+        if (!file_exists($jsonPath)) {
+            $jsonPath = base_path('karyawan_job_position_seed (1).json');
+        }
         if (!file_exists($jsonPath)) {
             $this->command->error("File JSON tidak ditemukan di: {$jsonPath}");
             return;

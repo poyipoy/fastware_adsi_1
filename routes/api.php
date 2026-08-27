@@ -72,7 +72,10 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('/check-seed-data', function() {
-        $jsonPath = 'C:\\laragon\\www\\fastware_adsi_1\\karyawan_job_position_seed (1).json';
+        $jsonPath = base_path('database/data/karyawan_job_position_seed (1).json');
+        if (!file_exists($jsonPath)) {
+            $jsonPath = base_path('karyawan_job_position_seed (1).json');
+        }
         if (!file_exists($jsonPath)) return response()->json(['error' => 'JSON not found']);
         $jsonData = json_decode(file_get_contents($jsonPath), true);
         $karyawanList = $jsonData['karyawan'];

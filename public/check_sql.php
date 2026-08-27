@@ -1,5 +1,8 @@
 <?php
 $files = [
+    __DIR__.'/../database/dumps/dms_adasi.sql',
+    __DIR__.'/../database/dumps/dms_adasi_rev1 (2).sql',
+    __DIR__.'/../database/dumps/dms_adasi_rev1 local.sql',
     __DIR__.'/../dms_adasi.sql',
     __DIR__.'/../dms_adasi_rev1 (2).sql',
     __DIR__.'/../dms_adasi_rev1 local.sql'

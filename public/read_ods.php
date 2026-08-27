@@ -7,7 +7,9 @@ $response = $kernel->handle(
     $request = Illuminate\Http\Request::capture()
 );
 
-$filePath = 'c:\laragon\www\fastware_adsi_1\Employee All Dept.ods';
+$filePath = file_exists(__DIR__.'/../database/data/Employee All Dept.ods')
+    ? __DIR__.'/../database/data/Employee All Dept.ods'
+    : 'c:\laragon\www\fastware_adsi_1\Employee All Dept.ods';
 
 if (!file_exists($filePath)) {
     die("File not found at: $filePath");

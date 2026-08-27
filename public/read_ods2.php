@@ -1,7 +1,9 @@
 <?php
 require __DIR__.'/../vendor/autoload.php';
 
-$filePath = 'c:\laragon\www\fastware_adsi_1\Employee All Dept.ods';
+$filePath = file_exists(__DIR__.'/../database/data/Employee All Dept.ods')
+    ? __DIR__.'/../database/data/Employee All Dept.ods'
+    : 'c:\laragon\www\fastware_adsi_1\Employee All Dept.ods';
 
 try {
     $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);

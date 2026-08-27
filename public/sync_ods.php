@@ -12,7 +12,9 @@ use App\Models\TcJobPosition;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Log;
 
-$filePath = 'c:\laragon\www\fastware_adsi_1\Employee All Dept.ods';
+$filePath = file_exists(__DIR__.'/../database/data/Employee All Dept.ods')
+    ? __DIR__.'/../database/data/Employee All Dept.ods'
+    : 'c:\laragon\www\fastware_adsi_1\Employee All Dept.ods';
 
 if (!file_exists($filePath)) {
     die("File not found at: $filePath");

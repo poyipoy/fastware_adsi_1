@@ -10,7 +10,9 @@ $kernel->bootstrap();
 
 use Illuminate\Support\Facades\DB;
 
-$sqlFile = __DIR__.'/../dms_adasi_rev1 (2).sql';
+$sqlFile = file_exists(__DIR__.'/../database/dumps/dms_adasi_rev1 (2).sql')
+    ? __DIR__.'/../database/dumps/dms_adasi_rev1 (2).sql'
+    : __DIR__.'/../dms_adasi_rev1 (2).sql';
 $content = file_get_contents($sqlFile);
 
 // Find insert statements for the three tables

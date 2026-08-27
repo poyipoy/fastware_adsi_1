@@ -413,6 +413,10 @@ class SyncJobPositionHeadsFromEmployeeList extends Command
             return $path;
         }
 
+        if (file_exists(base_path('database/data/' . $path))) {
+            return base_path('database/data/' . $path);
+        }
+
         return base_path($path);
     }
 }

@@ -35,7 +35,11 @@ class ImportCompetencyTrainingDataCommand extends Command
 
         $source = (string) $this->option('source');
         if (! $this->isAbsolutePath($source)) {
-            $source = base_path($source);
+            if (file_exists(base_path('database/dumps/' . $source))) {
+                $source = base_path('database/dumps/' . $source);
+            } else {
+                $source = base_path($source);
+            }
         }
 
         try {
