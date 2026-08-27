@@ -42,6 +42,7 @@ class WarehouseConcurrentStockTest extends WarehouseTestCase
             idempotencyKey: '55555555-5555-4555-8555-555555555555',
             sourceLocation: 'DS8',
         ));
+        $this->assertMatchesRegularExpression('/^WH-\d{8}$/', (string) WarehouseStockTransaction::query()->value('transaction_number'));
 
         try {
             $service->execute(new WarehouseStockCommand(

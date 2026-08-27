@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Warehouse;
 use App\Data\Warehouse\WarehouseDashboardFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\WarehouseDashboardFilterRequest;
+use App\Http\Requests\Warehouse\UpdateWarehouseStockAttentionRequest;
+use App\Models\Warehouse\WarehouseConsumable;
 use App\Services\Warehouse\WarehouseAccessService;
 use App\Services\Warehouse\WarehouseDashboardService;
 
@@ -27,6 +29,8 @@ class WarehouseDashboardController extends Controller
             'canStockOut' => $access->can($request->user(), 'warehouse.stock-out.create'),
             'canAdjust' => $access->canAdjust($request->user()),
             'canViewReport' => $access->can($request->user(), 'warehouse.report.view'),
+            'canValidateStock' => $access->can($request->user(), 'warehouse.stock-validation.view'),
+            'canUpdateStockAttention' => $access->can($request->user(), 'warehouse.stock-attention.update'),
             'trendFilter' => $trendFilter,
             'summary' => $dashboard->summary($dashboardFilter),
             'currentMonthLabel' => $currentMonth->from->copy()->locale('id')->translatedFormat('F Y'),
@@ -35,6 +39,20 @@ class WarehouseDashboardController extends Controller
             'topMachineUsage' => $dashboard->topUsageByMachineType($trendFilter),
             'lowStock' => $dashboard->lowStock($dashboardFilter),
         ]);
+    }
+
+    public function updateStockAttentionNote(
+        UpdateWarehouseStockAttentionRequest $request,
+        WarehouseConsumable $consumable,
+    ) {
+        $consumable->forceFill([
+            'stock_attention_note' => $request->validated('stock_attention_note'),
+            'updated_by' => $request->user()->getKey(),
+        ])->save();
+
+        return redirect()
+            ->route('warehouse.dashboard')
+            ->with('status', 'Catatan perhatian stok untuk '.$consumable->item_name.' berhasil disimpan.');
     }
 
     public function data(

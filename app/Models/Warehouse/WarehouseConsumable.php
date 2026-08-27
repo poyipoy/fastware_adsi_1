@@ -30,6 +30,7 @@ class WarehouseConsumable extends Model
         'stock_used_ds8',
         'minimum_stock',
         'maximum_stock',
+        'stock_attention_note',
         'machine_type',
         'description',
         'photo_path',
@@ -105,6 +106,15 @@ class WarehouseConsumable extends Model
         return WarehouseQuantity::fromMilli($condition === WarehouseItemCondition::USED
             ? $usedMilli
             : $totalMilli - $usedMilli);
+    }
+
+    public function newStock(): string
+    {
+        $newMilli = WarehouseQuantity::toMilli((string) $this->current_stock)
+            - WarehouseQuantity::toMilli((string) $this->stock_used_ds8)
+            - WarehouseQuantity::toMilli((string) $this->stock_used_deltamas);
+
+        return WarehouseQuantity::fromMilli($newMilli);
     }
 
     public function totalStockColumn(string $location): string

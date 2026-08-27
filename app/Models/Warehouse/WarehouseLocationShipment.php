@@ -44,6 +44,8 @@ class WarehouseLocationShipment extends Model
         'creation_idempotency_key',
         'validation_idempotency_key',
         'cancellation_idempotency_key',
+        'migrated_stock_in_id',
+        'migration_original_status',
     ];
 
     protected $casts = [
@@ -85,6 +87,11 @@ class WarehouseLocationShipment extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
+    }
+
+    public function migratedStockIn(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseStockIn::class, 'migrated_stock_in_id');
     }
 
     public function scopeWaitingValidation(Builder $query): Builder

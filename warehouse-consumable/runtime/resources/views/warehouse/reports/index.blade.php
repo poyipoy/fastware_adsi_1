@@ -5,22 +5,32 @@
 @endpush
 
 @section('warehouse-content')
+    @php
+        $reportConditions = ['ALL' => 'ALL', 'NEW' => 'BARU', 'USED' => 'BEKAS'];
+        $activeConditionLabel = $reportConditions[$condition] ?? 'BARU';
+    @endphp
     <div class="warehouse-report-page" aria-labelledby="warehouse-report-title">
-        <x-warehouse.page-header title="Reporting Stok Tahunan" subtitle="Saldo akhir bulanan seluruh item sampai bulan terakhir yang memiliki transaksi.">
+        <x-warehouse.page-header title="Reporting Stok Tahunan" subtitle="Saldo akhir bulanan kondisi {{ $activeConditionLabel }} sampai bulan terakhir yang memiliki transaksi.">
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Dashboard</a>
         </x-warehouse.page-header>
 
+        <nav class="warehouse-report-tabs" aria-label="Kondisi reporting" role="tablist">
+            @foreach ($reportConditions as $value => $label)
+                <a class="warehouse-report-tab {{ $condition === $value ? 'is-active' : '' }}" href="{{ route('warehouse.reports.index', ['year' => $year, 'condition' => $value]) }}" role="tab" aria-selected="{{ $condition === $value ? 'true' : 'false' }}" aria-controls="warehouse-report-matrix">{{ $label }}</a>
+            @endforeach
+        </nav>
+
         <form class="warehouse-panel warehouse-report-filter" method="GET" action="{{ route('warehouse.reports.index') }}">
-            <div class="warehouse-panel-body"><label class="form-label" for="report-year">Tahun kalender</label><div class="warehouse-report-filter-row"><input class="form-control" id="report-year" name="year" type="number" min="2000" max="{{ now()->year + 1 }}" value="{{ $year }}"><button class="btn btn-primary" type="submit">Tampilkan</button></div></div>
+            <div class="warehouse-panel-body"><input type="hidden" name="condition" value="{{ $condition }}"><div class="warehouse-report-filter-heading"><span class="warehouse-eyebrow">Periode</span><label class="form-label" for="report-year">Tahun kalender</label></div><div class="warehouse-report-filter-row"><input class="form-control" id="report-year" name="year" type="number" min="2000" max="{{ now()->year + 1 }}" value="{{ $year }}"><button class="btn btn-primary" type="submit">Tampilkan</button></div></div>
         </form>
 
         @if ($report['cutoff'])
-            <p class="warehouse-report-context" role="status">Periode laporan: Januari-{{ $report['cutoff']->locale('id')->translatedFormat('F Y') }}. Total dan rata-rata dihitung dari saldo akhir bulanan.</p>
+            <p class="warehouse-report-context" role="status">Kondisi: {{ $activeConditionLabel }}. Periode laporan: Januari-{{ $report['cutoff']->locale('id')->translatedFormat('F Y') }}. Total dan rata-rata dihitung dari saldo akhir bulanan.</p>
         @else
-            <div class="alert alert-info" role="status">Belum ada transaksi Warehouse pada tahun {{ $year }}. Semua item tetap ditampilkan dengan Total dan Average nol.</div>
+            <div class="alert alert-info" role="status">Belum ada transaksi Warehouse kondisi {{ $activeConditionLabel }} pada tahun {{ $year }}. Semua item tetap ditampilkan dengan Total dan Average nol.</div>
         @endif
 
-        <section class="warehouse-report-matrix-card" aria-labelledby="warehouse-report-matrix-title">
+        <section class="warehouse-report-matrix-card" id="warehouse-report-matrix" aria-labelledby="warehouse-report-matrix-title">
             <header class="warehouse-report-matrix-header">
                 <div>
                     <span class="warehouse-eyebrow">Warehouse</span>
@@ -29,7 +39,7 @@
             </header>
 
             @if ($report['items']->isNotEmpty())
-                <p class="warehouse-report-matrix-hint" id="warehouse-report-matrix-hint">Geser tabel secara horizontal untuk melihat semua bulan.</p>
+                <p class="warehouse-report-matrix-hint" id="warehouse-report-matrix-hint"><span aria-hidden="true">↔</span> Geser tabel secara horizontal untuk melihat semua bulan.</p>
                 <div class="warehouse-table-wrap warehouse-report-matrix-wrap">
                     <table class="table warehouse-table warehouse-report-matrix" aria-describedby="warehouse-report-matrix-hint" aria-label="Matrix saldo Warehouse tahun {{ $year }}">
                         <caption class="visually-hidden">Saldo awal, mutasi masuk, mutasi keluar, saldo akhir, total, dan average setiap barang per bulan.</caption>
@@ -70,7 +80,7 @@
                                         <td class="warehouse-report-ending-column"><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($monthData['ending'] ?? '0.000') }}</strong></td>
                                     @endforeach
                                     <td class="warehouse-report-summary-column"><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['total']) }}</strong></td>
-                                    <td class="warehouse-report-summary-column"><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['average']) }}</strong></td>
+                                    <td class="warehouse-report-summary-column"><strong>{{ $item['average'] }}</strong></td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -93,7 +103,7 @@
                                 <p class="warehouse-muted mb-0">Belum ada transaksi pada tahun {{ $year }}.</p>
                             @endforelse
                         </div>
-                        <footer><span>Total <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['total']) }}</strong></span><span>Average <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['average']) }}</strong></span></footer>
+                        <footer><span>Total <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($item['total']) }}</strong></span><span>Average <strong>{{ $item['average'] }}</strong></span></footer>
                     </article>
                 @endforeach
             </section>

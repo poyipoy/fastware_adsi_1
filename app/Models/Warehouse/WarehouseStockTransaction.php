@@ -5,6 +5,7 @@ namespace App\Models\Warehouse;
 use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Models\User;
+use App\Services\Warehouse\WarehouseQuantity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -85,5 +86,34 @@ class WarehouseStockTransaction extends Model
     public function stockIn(): BelongsTo
     {
         return $this->belongsTo(WarehouseStockIn::class, 'stock_in_id');
+    }
+
+    public function getDisplayLocationAttribute(): ?string
+    {
+        $usage = trim((string) $this->usage_location);
+        $usage = $usage === '' ? null : $usage;
+        $from = $this->from_location ?: null;
+        $to = $this->to_location ?: null;
+
+        $type = $this->transaction_type instanceof WarehouseTransactionType
+            ? $this->transaction_type
+            : WarehouseTransactionType::tryFrom((string) $this->transaction_type);
+
+        return match ($type) {
+            WarehouseTransactionType::IN,
+            WarehouseTransactionType::TRANSFER => $to ?: $usage ?: $from,
+            WarehouseTransactionType::OUT => $from ?: $usage ?: $to,
+            WarehouseTransactionType::ADJUSTMENT,
+            WarehouseTransactionType::REVERSAL => $this->movementDelta() >= 0
+                ? ($to ?: $usage ?: $from)
+                : ($from ?: $usage ?: $to),
+            default => $usage ?: $to ?: $from,
+        };
+    }
+
+    private function movementDelta(): int
+    {
+        return WarehouseQuantity::toMilli((string) $this->stock_after)
+            - WarehouseQuantity::toMilli((string) $this->stock_before);
     }
 }

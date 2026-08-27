@@ -15,10 +15,6 @@ class WarehouseNavigationAccessTest extends WarehouseTestCase
         'warehouse.master.manage',
         'warehouse.transaction.view',
         'warehouse.transaction.reverse',
-        'warehouse.location-shipment.view',
-        'warehouse.location-shipment.create',
-        'warehouse.location-shipment.validate',
-        'warehouse.location-shipment.cancel',
         'warehouse.report.view',
         'warehouse.report.export',
     ];
@@ -51,9 +47,8 @@ class WarehouseNavigationAccessTest extends WarehouseTestCase
                 ->assertOk()
                 ->assertSee('data-warehouse-type="IN"', false)
                 ->assertSee('data-warehouse-type="OUT"', false);
-            $this->actingAs($user)->get(route('warehouse.location-shipments.index'))->assertOk();
-            $this->actingAs($user)->get(route('warehouse.location-shipments.create'))->assertOk();
             $this->actingAs($user)->get(route('warehouse.reports.index'))->assertOk();
+            $this->actingAs($user)->get('/warehouse/stock-in/shipments')->assertNotFound();
         }
     }
 
@@ -67,6 +62,44 @@ class WarehouseNavigationAccessTest extends WarehouseTestCase
 
         self::assertTrue(app(WarehouseAccessService::class)->canAdjust($administrator));
         $this->actingAs($administrator)->get(route('warehouse.consumables.index'))->assertOk();
+    }
+
+    public function test_jessica_paune_receives_full_warehouse_menu_access_without_assignment(): void
+    {
+        $jessica = $this->createUser(['name' => 'Jessica Paune'], false);
+        $access = app(WarehouseAccessService::class);
+
+        foreach ([
+            ...self::ABILITIES,
+            'warehouse.stock-in.validate',
+            'warehouse.stock-validation.view',
+            'warehouse.stock-attention.update',
+        ] as $ability) {
+            self::assertTrue($access->can($jessica, $ability), $ability);
+        }
+
+        self::assertTrue($access->hasModuleAccess($jessica));
+        self::assertTrue($access->canAdjust($jessica));
+
+        $this->actingAs($jessica)->get(route('warehouse.dashboard'))
+            ->assertOk()
+            ->assertSee('Master Consumable')
+            ->assertSee('Validasi Stok');
+        $this->actingAs($jessica)->get(route('warehouse.validations.index'))->assertOk();
+    }
+
+    public function test_only_restricted_verifiers_receive_validation_workspace_access(): void
+    {
+        $departmentUser = $this->createUser([], false);
+        $this->createDepartmentPosition($departmentUser);
+        self::assertFalse(app(WarehouseAccessService::class)->can($departmentUser, 'warehouse.stock-validation.view'));
+        self::assertTrue(Gate::forUser($departmentUser)->denies('warehouse.stock-validation.view'));
+        $this->actingAs($departmentUser)->get(route('warehouse.validations.index'))->assertForbidden();
+
+        $restrictedUser = $this->createUser();
+        self::assertTrue(app(WarehouseAccessService::class)->can($restrictedUser, 'warehouse.stock-validation.view'));
+        self::assertTrue(Gate::forUser($restrictedUser)->allows('warehouse.stock-validation.view'));
+        $this->actingAs($restrictedUser)->get(route('warehouse.validations.index'))->assertOk();
     }
 
     public function test_user_outside_approved_departments_is_hidden_and_denied_direct_access(): void

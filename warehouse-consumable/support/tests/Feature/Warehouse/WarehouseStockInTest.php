@@ -156,7 +156,7 @@ class WarehouseStockInTest extends WarehouseTestCase
             'quantity_received' => '3',
             'validation_result' => 'MATCH',
             'idempotency_key' => (string) Str::uuid(),
-        ])->assertUnprocessable();
+        ])->assertForbidden();
 
         $validator = $this->restrictedFixture('RAGIL ISHA RAHMANTO', 5639);
         $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
@@ -167,25 +167,30 @@ class WarehouseStockInTest extends WarehouseTestCase
         $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
     }
 
-    public function test_stock_in_validation_accepts_only_integer_quantity(): void
+    public function test_stock_in_fraction_quantity_is_allowed_only_for_fractional_consumables(): void
     {
         $creator = $this->createUser();
         DB::table('mst_wh_restricted_verifiers')->where('user_id', $creator->id)->delete();
         $validator = $this->restrictedFixture('RAGIL ISHA RAHMANTO', 5639);
-        $item = WarehouseConsumable::factory()->create(['item_code' => 'IN-INTEGER-001', 'barcode' => 'IN-INTEGER-001']);
+        $integerItem = WarehouseConsumable::factory()->create(['item_code' => 'IN-INTEGER-001', 'barcode' => 'IN-INTEGER-001']);
 
         $this->actingAs($creator)->postJson(route('warehouse.stock-in.store'), [
-            'consumable_id' => $item->id,
+            'consumable_id' => $integerItem->id,
             'item_condition' => 'NEW',
             'quantity_expected' => '3.5',
             'destination_location' => 'DS8',
             'idempotency_key' => (string) Str::uuid(),
         ])->assertUnprocessable();
 
+        $item = WarehouseConsumable::factory()->create([
+            'item_code' => 'IN-FRACTION-001',
+            'barcode' => 'IN-FRACTION-001',
+            'allow_fraction' => true,
+        ]);
         $this->actingAs($creator)->postJson(route('warehouse.stock-in.store'), [
             'consumable_id' => $item->id,
             'item_condition' => 'NEW',
-            'quantity_expected' => '3',
+            'quantity_expected' => '3.5',
             'destination_location' => 'DS8',
             'idempotency_key' => (string) Str::uuid(),
         ])->assertCreated();
@@ -196,30 +201,66 @@ class WarehouseStockInTest extends WarehouseTestCase
             'validation_result' => 'MANUAL_ADJUSTMENT',
             'validation_notes' => 'Quantity fisik diuji dengan nilai desimal.',
             'idempotency_key' => (string) Str::uuid(),
-        ])->assertUnprocessable();
+        ])->assertCreated();
 
-        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+        $item->refresh();
+        self::assertSame('2.500', (string) $item->stock_ds8);
+        $this->assertDatabaseHas('trs_wh_stock_ins', [
+            'id' => $stockIn->id,
+            'quantity_expected' => '3.500',
+            'quantity_received' => '2.500',
+            'status' => 'VALIDATED',
+        ]);
     }
 
-    public function test_validation_rejects_used_stock_in_records(): void
+    public function test_used_internal_stock_in_waits_for_validation_then_moves_used_balance_atomically(): void
     {
         $validator = $this->restrictedFixture('ARY RODJO PRASETYO', 5439);
-        $creator = $this->createUser();
-        $item = WarehouseConsumable::factory()->create(['item_code' => 'IN-USED-001', 'barcode' => 'IN-USED-001']);
-        $stockIn = WarehouseStockIn::factory()->create([
-            'consumable_id' => $item->id,
-            'item_condition' => 'USED',
-            'quantity_expected' => '2.000',
-            'created_by' => $creator->id,
+        $creator = $this->createUser([], false);
+        $this->createPicPosition($creator);
+        $item = WarehouseConsumable::factory()->create([
+            'item_code' => 'IN-USED-001',
+            'barcode' => 'IN-USED-001',
+            'current_stock' => '4.000',
+            'stock_ds8' => '3.000',
+            'stock_used_ds8' => '2.000',
+            'stock_deltamas' => '1.000',
+            'stock_used_deltamas' => '1.000',
         ]);
 
+        $this->actingAs($creator)->postJson(route('warehouse.transactions.store'), [
+            'type' => 'IN',
+            'item_condition' => 'USED',
+            'item_barcode' => $item->barcode,
+            'quantity' => '1',
+            'location' => 'Deltamas',
+            'source_location' => 'DS8',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated()->assertJsonPath('pending_stock_in', true);
+
+        $item->refresh();
+        self::assertSame('4.000', (string) $item->current_stock);
+        self::assertSame('3.000', (string) $item->stock_ds8);
+        self::assertSame('2.000', (string) $item->stock_used_ds8);
+        $stockIn = WarehouseStockIn::query()->where('consumable_id', $item->id)->firstOrFail();
+
         $this->actingAs($validator)->postJson(route('warehouse.stock-in.validate', $stockIn), [
-            'quantity_received' => '2',
+            'quantity_received' => '1',
             'validation_result' => 'MATCH',
             'idempotency_key' => (string) Str::uuid(),
-        ])->assertUnprocessable();
+        ])->assertCreated()->assertJsonPath('data.status', 'VALIDATED');
 
-        $this->assertDatabaseCount('trs_wh_stock_transactions', 0);
+        $item->refresh();
+        self::assertSame('4.000', (string) $item->current_stock);
+        self::assertSame('2.000', (string) $item->stock_ds8);
+        self::assertSame('1.000', (string) $item->stock_used_ds8);
+        self::assertSame('2.000', (string) $item->stock_deltamas);
+        self::assertSame('2.000', (string) $item->stock_used_deltamas);
+        $this->assertDatabaseHas('trs_wh_stock_transactions', [
+            'transaction_type' => 'TRANSFER',
+            'stock_in_id' => $stockIn->id,
+            'item_condition' => 'USED',
+        ]);
     }
 
     public function test_restricted_validator_can_create_stock_in_pending_validation(): void

@@ -6,7 +6,7 @@
 
 @section('warehouse-content')
     <div class="warehouse-management-page" aria-labelledby="warehouse-consumable-form-title">
-        <x-warehouse.page-header title="{{ $consumable->exists ? 'Ubah Barang Habis Pakai' : 'Tambah Barang Habis Pakai' }}" subtitle="Isi identitas barang, batas stok, dan lokasi penyimpanan.">
+        <x-warehouse.page-header title="{{ $consumable->exists ? 'Ubah Barang Habis Pakai' : 'Tambah Barang Habis Pakai' }}" subtitle="Isi identitas barang dan batas stok. Lokasi dipilih saat transaksi.">
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.consumables.index') }}">Kembali ke Master Consumable</a>
         </x-warehouse.page-header>
 
@@ -51,7 +51,7 @@
                             <label class="form-label" for="photo">Foto barang</label>
                             <input class="form-control" id="photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" aria-describedby="photo-help">
                             <div class="warehouse-help" id="photo-help">JPG, JPEG, PNG, atau WebP. Maksimal 5 MB. Kosongkan untuk mempertahankan foto saat ini.</div>
-                            @if($consumable->photo_path)<img class="warehouse-master-photo-preview mt-2" src="{{ \Illuminate\Support\Facades\Storage::disk(config('warehouse.photos.disk', 'public'))->url($consumable->photo_path) }}" alt="Foto {{ $consumable->item_name }}" width="240" height="165">@endif
+                            <div class="warehouse-photo-field-preview mt-2"><span>Preview foto</span>@if($consumable->photo_path)<img class="warehouse-master-photo-preview" src="{{ \Illuminate\Support\Facades\Storage::disk(config('warehouse.photos.disk', 'public'))->url($consumable->photo_path) }}" alt="Foto {{ $consumable->item_name }}" width="240" height="165">@else<div class="warehouse-master-photo-empty" aria-label="Belum ada foto barang">Belum ada foto</div>@endif</div>
                         </div>
                     </div>
                 </section>

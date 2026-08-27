@@ -24,11 +24,40 @@
     const summaryPanel = document.querySelector('[data-warehouse-summary]');
     const state = { item: null, returnItem: null, verifier: null, step: 1 };
 
+    const catalogItemKey = (item) => String(item?.id ?? item?.barcode ?? item?.item_code ?? '');
+    const syncCatalogSelection = (target) => {
+        const selected = target === 'return' ? state.returnItem : state.item;
+        const selectedKey = catalogItemKey(selected);
+        form.querySelectorAll(`[data-warehouse-catalog="${target}"] [data-warehouse-catalog-item-key]`).forEach((card) => {
+            const selectedCard = selectedKey !== '' && card.dataset.warehouseCatalogItemKey === selectedKey;
+            card.classList.toggle('is-selected', selectedCard);
+            card.setAttribute('aria-pressed', String(selectedCard));
+        });
+    };
+
+    const isPendingStockIn = () => typeInput.value === 'IN'
+        && (conditionInput.value === 'NEW' || Boolean(sourceLocationInput?.value));
+
+    const syncWorkflowPresentation = () => {
+        const pendingStockIn = isPendingStockIn();
+        if (verifierPanel) verifierPanel.hidden = pendingStockIn;
+        if (verifierCopy) verifierCopy.textContent = pendingStockIn
+            ? 'Stock In dibuat Menunggu Validasi dan diperiksa melalui menu Validasi Stok.'
+            : (typeInput.value === 'IN'
+                ? 'Pindai barcode NPK karyawan yang menerima barang bekas dari sumber eksternal.'
+                : 'Pindai barcode NPK karyawan yang mengambil barang.');
+        if (confirmCopy) confirmCopy.textContent = pendingStockIn
+            ? 'Saya telah memeriksa item, jumlah, lokasi, dan catatan Stock In.'
+            : (typeInput.value === 'IN'
+                ? 'Saya telah memeriksa barang bekas, lokasi, jumlah, dan karyawan penerima.'
+                : 'Saya telah memeriksa barang, kondisi, lokasi, jumlah, dan karyawan pengambil.');
+    };
+
     const clearVerifier = () => {
         state.verifier = null;
         userInput.value = '';
         const result = form.querySelector('[data-warehouse-user-result]');
-        result.innerHTML = '<span class="warehouse-muted">Belum diverifikasi.</span>';
+        result.innerHTML = '<span class="warehouse-muted">Belum ada karyawan dipilih.</span>';
         result.classList.remove('is-valid');
     };
 
@@ -73,8 +102,11 @@
     const appendPreview = (target, item) => {
         target.replaceChildren();
         const wrapper = document.createElement('div');
-        wrapper.className = 'warehouse-preview-content';
-        wrapper.innerHTML = `<strong class="warehouse-preview-title">${escapeHtml(item.item_name)}</strong><dl class="warehouse-preview-facts"><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Item Code</dt><dd class="warehouse-preview-fact-value">${escapeHtml(item.item_code)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Stok tersedia</dt><dd class="warehouse-preview-fact-value">${displayQuantity(item.available_stock ?? item.current_stock)} ${escapeHtml(item.unit)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Status stok</dt><dd class="warehouse-preview-fact-value" data-status></dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Lokasi</dt><dd class="warehouse-preview-fact-value">DS8 ${displayQuantity(item.locations?.DS8?.new_available_stock ?? item.locations?.DS8?.new ?? item.stock_ds8)} · Deltamas ${displayQuantity(item.locations?.Deltamas?.new_available_stock ?? item.locations?.Deltamas?.new ?? item.stock_deltamas)}</dd></div></dl>`;
+        wrapper.className = 'warehouse-preview-content warehouse-selected-item-content';
+        const stockCondition = target.matches('[data-warehouse-return-item-result]') ? 'used' : conditionInput.value.toLowerCase();
+        const ds8Stock = item.locations?.DS8?.[stockCondition] ?? 0;
+        const deltamasStock = item.locations?.Deltamas?.[stockCondition] ?? 0;
+        wrapper.innerHTML = `<span class="warehouse-selected-item-image">${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="" width="128" height="88">` : '<span aria-hidden="true">WH</span>'}</span><div class="warehouse-selected-item-copy"><strong class="warehouse-preview-title">${escapeHtml(item.item_name)}</strong><span class="warehouse-selected-item-code">${escapeHtml(item.item_code)}</span>${item.machine_type ? `<span class="warehouse-selected-item-machine">${escapeHtml(item.machine_type)}</span>` : ''}<dl class="warehouse-preview-facts"><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">DS8</dt><dd class="warehouse-preview-fact-value">${displayQuantity(ds8Stock)} ${escapeHtml(item.unit)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Deltamas</dt><dd class="warehouse-preview-fact-value">${displayQuantity(deltamasStock)} ${escapeHtml(item.unit)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Status stok</dt><dd class="warehouse-preview-fact-value" data-status></dd></div></dl></div>`;
         wrapper.querySelector('[data-status]').append(renderStockStatusBadge(item.stock_status));
         target.append(wrapper);
         target.classList.add('is-valid');
@@ -96,6 +128,7 @@
             appendPreview(form.querySelector('[data-warehouse-item-result]'), item);
             form.querySelector('[data-warehouse-next-detail]').disabled = false;
         }
+        syncCatalogSelection(target);
         updateSummary();
         syncVerifierAvailability();
     };
@@ -116,6 +149,7 @@
                 state.item = null;
                 form.querySelector('[data-warehouse-next-detail]').disabled = true;
             }
+            syncCatalogSelection(target);
             invalidateApproval(true);
             result.innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
             result.classList.remove('is-valid');
@@ -150,11 +184,14 @@
                     const card = document.createElement('button');
                     card.type = 'button';
                     card.className = 'warehouse-catalog-card';
-                    card.innerHTML = `<span class="warehouse-catalog-image">${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="" loading="lazy" width="320" height="220">` : '<span aria-hidden="true">WH</span>'}</span><span class="warehouse-catalog-copy"><strong>${escapeHtml(item.item_name)}</strong><small>${escapeHtml(item.item_code)}${item.machine_type ? ` · ${escapeHtml(item.machine_type)}` : ''}</small><span>DS8 ${displayQuantity(item.locations.DS8[catalogCondition])} · Deltamas ${displayQuantity(item.locations.Deltamas[catalogCondition])}</span></span>`;
+                    card.dataset.warehouseCatalogItemKey = catalogItemKey(item);
+                    card.setAttribute('aria-pressed', 'false');
+                    card.innerHTML = `<span class="warehouse-catalog-image">${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="" loading="lazy" width="320" height="220">` : '<span aria-hidden="true">WH</span>'}</span><span class="warehouse-catalog-copy"><strong>${escapeHtml(item.item_name)}</strong><small class="warehouse-catalog-code">${escapeHtml(item.item_code)}</small>${item.machine_type ? `<span class="warehouse-catalog-machine">${escapeHtml(item.machine_type)}</span>` : ''}<span class="warehouse-catalog-stock"><span><small>DS8</small><strong>${displayQuantity(item.locations.DS8[catalogCondition])} ${escapeHtml(item.unit)}</strong></span><span><small>Deltamas</small><strong>${displayQuantity(item.locations.Deltamas[catalogCondition])} ${escapeHtml(item.unit)}</strong></span></span></span>`;
                     card.setAttribute('aria-label', `Pilih ${item.item_name}`);
                     card.addEventListener('click', () => selectItem(item, target));
                     grid.append(card);
                 });
+                syncCatalogSelection(target);
                 status.textContent = response.meta.total ? `${response.meta.total} barang ditemukan.` : 'Barang tidak ditemukan.';
                 more.hidden = !response.meta.has_more;
             } catch (error) {
@@ -188,6 +225,8 @@
         form.querySelector('[data-warehouse-projection-before]').textContent = displayQuantity(before);
         form.querySelector('[data-warehouse-projection-change]').textContent = `${change >= 0 ? '+' : '−'}${displayQuantity(Math.abs(change))}`;
         form.querySelector('[data-warehouse-projection-after]').textContent = displayQuantity(after);
+        const projectionLocation = form.querySelector('[data-warehouse-projection-location]');
+        if (projectionLocation) projectionLocation.textContent = locationInput.value || '—';
         form.querySelector('[data-warehouse-projection]').classList.toggle('is-invalid', after < 0);
     };
 
@@ -218,13 +257,7 @@
             sourceLocationInput.disabled = !inbound;
             if (!inbound) sourceLocationInput.value = '';
         }
-        if (verifierPanel) verifierPanel.hidden = inbound;
-        if (verifierCopy) verifierCopy.textContent = inbound
-            ? 'Stock In dibuat Menunggu Validasi. Validator Ragil/Rodjo memeriksa setelah barang datang.'
-            : 'Pindai barcode NPK karyawan yang bertanggung jawab.';
-        if (confirmCopy) confirmCopy.textContent = inbound
-            ? 'Saya telah memeriksa item, jumlah, lokasi, dan catatan Stock In.'
-            : 'Saya telah memeriksa barang, kondisi, lokasi, jumlah, dan verifikator.';
+        syncWorkflowPresentation();
         if (returnToggle) {
             returnToggle.disabled = inbound;
             if (inbound) { returnToggle.checked = false; toggleReturn(); }
@@ -247,9 +280,10 @@
     };
 
     const syncVerifierAvailability = () => {
+        syncWorkflowPresentation();
         const returnComplete = !returnToggle?.checked || (state.returnItem && Number(returnQuantity.value) > 0 && returnLocation.value);
         const valid = state.item && Number(quantityInput.value) > 0 && available() + (typeInput.value === 'IN' ? Number(quantityInput.value) : -Number(quantityInput.value)) >= 0 && returnComplete;
-        const requiresVerifier = typeInput.value !== 'IN';
+        const requiresVerifier = !isPendingStockIn();
         userInput.disabled = !valid || !requiresVerifier;
         form.querySelector('[data-warehouse-scan-user]').disabled = !valid || !requiresVerifier;
         userInput.required = requiresVerifier;
@@ -297,6 +331,7 @@
     itemInput.addEventListener('input', () => {
         if (!state.item) return;
         state.item = null;
+        syncCatalogSelection('primary');
         invalidateApproval(true);
         const result = form.querySelector('[data-warehouse-item-result]');
         result.innerHTML = '<span class="warehouse-muted">Pindai atau pilih ulang barang setelah Item Code diubah.</span>';
@@ -310,6 +345,7 @@
     returnItemInput?.addEventListener('input', () => {
         if (!state.returnItem) return;
         state.returnItem = null;
+        syncCatalogSelection('return');
         invalidateApproval(true);
         const result = form.querySelector('[data-warehouse-return-item-result]');
         result.innerHTML = '<span class="warehouse-muted">Pindai atau pilih ulang barang bekas setelah Item Code diubah.</span>';
@@ -367,6 +403,15 @@
                 }
                 detailLink.href = response.data.detail_url || '#';
                 detailLink.hidden = !response.data.detail_url;
+                let validationLink = receiptStep.querySelector('[data-warehouse-validation-workspace-link]');
+                if (!validationLink) {
+                    validationLink = document.createElement('a');
+                    validationLink.className = 'btn btn-outline-secondary';
+                    validationLink.dataset.warehouseValidationWorkspaceLink = '';
+                    validationLink.textContent = 'Buka Validasi Stok';
+                    receiptStep.querySelector('.warehouse-step-actions')?.append(validationLink);
+                }
+                validationLink.href = form.dataset.validationWorkspaceUrl || '#';
                 const facts = [['Nomor Stock In', response.data.stock_in_number], ['Status', 'Menunggu Validasi'], ['Barang', response.data.item], ['Jumlah Input', displayQuantity(response.data.quantity_expected)], ['Lokasi', response.data.destination_location], ['Sumber', response.data.source_location || 'Supplier / eksternal'], ['Stok', 'Belum berubah']];
                 receipt.replaceChildren();
                 facts.forEach(([label, value]) => { const dt = document.createElement('dt'); const dd = document.createElement('dd'); dt.textContent = label; dd.textContent = value ?? '—'; receipt.append(dt, dd); });
@@ -374,7 +419,7 @@
                 return;
             }
             const related = response.related_transactions?.length ? `${response.related_transactions.length} transaksi pengembalian terkait` : 'Tidak ada';
-            const facts = [['Nomor transaksi', response.data.transaction_number], ['Tipe', transactionTypeLabels[response.data.transaction_type] || response.data.transaction_type], ['Kondisi', response.data.item_condition === 'USED' ? 'Bekas' : 'Baru'], ['Barang', response.data.item], ['Jumlah', displayQuantity(response.data.quantity)], ['Lokasi', response.data.to_location || response.data.from_location || '—'], ['Stok total', `${displayQuantity(response.data.stock_before)} → ${displayQuantity(response.data.stock_after)}`], ['Karyawan verifikator', response.data.verified_user_name], ['Transaksi terkait', related]];
+            const facts = [['Nomor transaksi', response.data.transaction_number], ['Tipe', transactionTypeLabels[response.data.transaction_type] || response.data.transaction_type], ['Kondisi', response.data.item_condition === 'USED' ? 'Bekas' : 'Baru'], ['Barang', response.data.item], ['Jumlah', displayQuantity(response.data.quantity)], ['Lokasi', response.data.display_location || '—'], ['Stok awal', displayQuantity(response.data.stock_before)], ['Stok akhir', displayQuantity(response.data.stock_after)], ['Karyawan', response.data.employee || response.data.verified_user_name], ['Transaksi terkait', related]];
             receipt.replaceChildren();
             facts.forEach(([label, value]) => { const dt = document.createElement('dt'); const dd = document.createElement('dd'); dt.textContent = label; dd.textContent = value ?? '—'; receipt.append(dt, dd); });
             updateStep(3);

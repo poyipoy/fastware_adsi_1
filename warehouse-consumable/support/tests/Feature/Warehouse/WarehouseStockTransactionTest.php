@@ -48,7 +48,7 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
             'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
-        $response->assertCreated()->assertJsonPath('data.from_location', 'Deltamas');
+        $response->assertCreated()->assertJsonPath('data.display_location', 'Deltamas');
         $this->assertDatabaseHas('mst_wh_consumables', ['id' => $item->id, 'current_stock' => '3.000', 'stock_deltamas' => '3.000']);
         $this->assertDatabaseHas('trs_wh_stock_transactions', ['consumable_id' => $item->id, 'from_location' => 'Deltamas']);
     }

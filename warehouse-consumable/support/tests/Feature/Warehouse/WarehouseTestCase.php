@@ -169,6 +169,9 @@ abstract class WarehouseTestCase extends TestCase
             '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table.php',
             '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table.php',
             '2026_08_20_000001_create_trs_wh_stock_ins_table.php',
+            '2026_08_26_000001_add_stock_attention_note_to_mst_wh_consumables_table.php',
+            '2026_08_26_000002_create_wh_transaction_sequences_table.php',
+            '2026_08_26_000003_convert_legacy_location_shipments_to_stock_ins.php',
         ] as $migration) {
             (require database_path('migrations/'.$migration))->up();
         }
@@ -186,6 +189,7 @@ abstract class WarehouseTestCase extends TestCase
             'mst_wh_user_cards',
             'mst_wh_consumables',
             'mst_wh_consumable_categories',
+            'wh_transaction_sequences',
         ] as $table) {
             Schema::dropIfExists($table);
         }

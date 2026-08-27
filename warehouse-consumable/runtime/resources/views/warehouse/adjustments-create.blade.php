@@ -8,14 +8,36 @@
     <div class="warehouse-management-page warehouse-critical-operation" aria-labelledby="warehouse-adjustment-title">
         <x-warehouse.page-header title="Penyesuaian Stok" subtitle="Koreksi saldo kondisi dan lokasi secara terdokumentasi."><a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Batal</a></x-warehouse.page-header>
         @if ($errors->any())<div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-        <div class="alert warehouse-critical-warning" role="alert"><strong>Operasi kritis.</strong> Hanya RAGIL ISHA RAHMANTO atau ARY RODJO PRASETYO yang dapat memverifikasi.</div>
-        <form class="warehouse-panel" method="POST" action="{{ route('warehouse.adjustments.store') }}">@csrf<input type="hidden" name="idempotency_key" value="{{ (string) str()->uuid() }}"><div class="warehouse-panel-body"><div class="warehouse-detail-grid">
-            <div class="warehouse-form-field warehouse-detail-full"><label class="form-label warehouse-required" for="adjust-item">Barang</label><select class="form-select" id="adjust-item" name="consumable_id" required><option value="">Pilih barang aktif</option>@foreach ($consumables as $item)<option value="{{ $item->id }}" @selected((string) old('consumable_id') === (string) $item->id)>{{ $item->item_code }} — {{ $item->item_name }} ({{ \App\Services\Warehouse\WarehouseQuantity::display($item->current_stock) }} {{ $item->unit }})</option>@endforeach</select></div>
-            <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-direction">Arah</label><select class="form-select" id="adjust-direction" name="direction" required><option value="IN" @selected(old('direction', 'IN') === 'IN')>Stock In</option><option value="OUT" @selected(old('direction') === 'OUT')>Stock Out</option></select></div>
-            <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-condition">Kondisi</label><select class="form-select" id="adjust-condition" name="item_condition" required><option value="NEW" @selected(old('item_condition', 'NEW') === 'NEW')>Baru</option><option value="USED" @selected(old('item_condition') === 'USED')>Bekas</option></select></div>
-            <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-location">Lokasi</label><select class="form-select" id="adjust-location" name="storage_location" required>@foreach(config('warehouse.storage_locations') as $location)<option value="{{ $location }}" @selected(old('storage_location', 'DS8') === $location)>{{ $location }}</option>@endforeach</select></div>
-            <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-quantity">Jumlah</label><input class="form-control" id="adjust-quantity" name="quantity" type="number" min="0.001" step="0.001" inputmode="decimal" value="{{ old('quantity') }}" required></div>
-            <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-category">Kategori alasan</label><input class="form-control" id="adjust-category" name="reason_category" value="{{ old('reason_category') }}" required></div><div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-code">Pindai barcode NPK verifikator</label><input class="form-control font-monospace" id="adjust-code" name="verified_code" inputmode="numeric" autocomplete="off" required></div><div class="warehouse-form-field warehouse-detail-full"><label class="form-label warehouse-required" for="adjust-reason">Alasan terperinci</label><textarea class="form-control" id="adjust-reason" name="reason" rows="3" required>{{ old('reason') }}</textarea></div>
-        </div></div><div class="card-footer d-flex flex-wrap gap-2"><button class="btn btn-primary" type="submit">Simpan Penyesuaian</button><a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Batal</a></div></form>
+        <div class="alert warehouse-critical-warning" role="alert"><strong>Operasi kritis.</strong> Hanya verifikator restricted yang dapat mengonfirmasi penyesuaian saldo.</div>
+        <form class="warehouse-panel" method="POST" action="{{ route('warehouse.adjustments.store') }}">
+            @csrf
+            <input type="hidden" name="idempotency_key" value="{{ (string) str()->uuid() }}">
+            <div class="warehouse-panel-body">
+                <section class="warehouse-critical-section">
+                    <div class="warehouse-form-section-heading"><h2>Target stok</h2><p>Pilih barang, kondisi, dan lokasi yang akan dikoreksi.</p></div>
+                    <div class="warehouse-detail-grid">
+                        <div class="warehouse-form-field warehouse-detail-full"><label class="form-label warehouse-required" for="adjust-item">Barang</label><select class="form-select" id="adjust-item" name="consumable_id" required><option value="">Pilih barang aktif</option>@foreach ($consumables as $item)<option value="{{ $item->id }}" @selected((string) old('consumable_id') === (string) $item->id)>{{ $item->item_code }} — {{ $item->item_name }} ({{ \App\Services\Warehouse\WarehouseQuantity::display($item->current_stock) }} {{ $item->unit }})</option>@endforeach</select></div>
+                        <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-condition">Kondisi</label><select class="form-select" id="adjust-condition" name="item_condition" required><option value="NEW" @selected(old('item_condition', 'NEW') === 'NEW')>Baru</option><option value="USED" @selected(old('item_condition') === 'USED')>Bekas</option></select></div>
+                        <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-location">Lokasi</label><select class="form-select" id="adjust-location" name="storage_location" required>@foreach(config('warehouse.storage_locations') as $location)<option value="{{ $location }}" @selected(old('storage_location', 'DS8') === $location)>{{ $location }}</option>@endforeach</select></div>
+                    </div>
+                </section>
+                <section class="warehouse-critical-section">
+                    <div class="warehouse-form-section-heading"><h2>Penyesuaian</h2><p>Ringkasan input di bawah akan diproses oleh layanan stok yang sama.</p></div>
+                    <div class="warehouse-detail-grid">
+                        <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-direction">Arah</label><select class="form-select" id="adjust-direction" name="direction" required><option value="IN" @selected(old('direction', 'IN') === 'IN')>Stock In</option><option value="OUT" @selected(old('direction') === 'OUT')>Stock Out</option></select></div>
+                        <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-quantity">Jumlah</label><input class="form-control" id="adjust-quantity" name="quantity" type="number" min="0.001" step="0.001" inputmode="decimal" value="{{ old('quantity') }}" required></div>
+                    </div>
+                </section>
+                <section class="warehouse-critical-section">
+                    <div class="warehouse-form-section-heading"><h2>Audit dan verifikasi</h2><p>Alasan dan verifikator menjadi bagian dari jejak audit penyesuaian.</p></div>
+                    <div class="warehouse-detail-grid">
+                        <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-category">Kategori alasan</label><input class="form-control" id="adjust-category" name="reason_category" value="{{ old('reason_category') }}" required></div>
+                        <div class="warehouse-form-field"><label class="form-label warehouse-required" for="adjust-code">Pindai barcode NPK verifikator</label><input class="form-control font-monospace" id="adjust-code" name="verified_code" inputmode="numeric" autocomplete="off" required></div>
+                        <div class="warehouse-form-field warehouse-detail-full"><label class="form-label warehouse-required" for="adjust-reason">Alasan terperinci</label><textarea class="form-control" id="adjust-reason" name="reason" rows="3" required>{{ old('reason') }}</textarea></div>
+                    </div>
+                </section>
+            </div>
+            <div class="card-footer"><button class="btn btn-primary" type="submit">Konfirmasi Penyesuaian</button><a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Batal</a></div>
+        </form>
     </div>
 @endsection

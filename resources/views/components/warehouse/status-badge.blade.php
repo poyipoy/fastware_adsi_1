@@ -9,7 +9,7 @@
                 'OUT' => 'Keluar',
                 'ADJUSTMENT' => 'Penyesuaian',
                 'REVERSAL' => 'Pembatalan',
-                'TRANSFER' => 'Pengiriman Antar Lokasi',
+                'TRANSFER' => 'Transfer Antar Lokasi',
                 default => $status,
             },
             'stock' => match ($value) {

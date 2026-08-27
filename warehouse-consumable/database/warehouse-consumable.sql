@@ -1,8 +1,12 @@
--- Warehouse Consumable Revisi Tahap 2 — complete bootstrap for a NEW installation.
+-- Warehouse Consumable Revisi Tahap 3 — complete bootstrap for a NEW installation.
 -- Target: MySQL 8.0+ / Laravel application database.
 -- IMPORTANT: do not run this file to upgrade an existing Warehouse installation.
 -- Existing installations must run only the reviewed Warehouse migrations, including
--- 2026_08_20_000001_create_trs_wh_stock_ins_table.php for the final Stock In flow.
+-- 2026_08_20_000001_create_trs_wh_stock_ins_table.php,
+-- 2026_08_26_000001_add_stock_attention_note_to_mst_wh_consumables_table.php,
+-- 2026_08_26_000002_create_wh_transaction_sequences_table.php, and
+-- 2026_08_26_000003_convert_legacy_location_shipments_to_stock_ins.php for
+-- the final Stock In, dashboard-note, transaction-number, and legacy-audit flows.
 
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -52,6 +56,7 @@ CREATE TABLE IF NOT EXISTS `mst_wh_consumables` (
     `stock_used_ds8` DECIMAL(15,3) NOT NULL DEFAULT 0.000,
     `minimum_stock` DECIMAL(15,3) NOT NULL DEFAULT 0.000,
     `maximum_stock` DECIMAL(15,3) NULL,
+    `stock_attention_note` VARCHAR(255) NULL,
     `machine_type` VARCHAR(120) NULL,
     `description` TEXT NULL,
     `photo_path` VARCHAR(255) NULL,
@@ -135,6 +140,16 @@ CREATE TABLE IF NOT EXISTS `trs_wh_stock_transactions` (
     CONSTRAINT `trs_wh_stock_transactions_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Global, database-backed yearly transaction sequence. The row is locked while
+-- a number is allocated, so concurrent Warehouse types share one sequence.
+CREATE TABLE IF NOT EXISTS `wh_transaction_sequences` (
+    `year` SMALLINT UNSIGNED NOT NULL,
+    `last_number` INT UNSIGNED NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`year`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `trs_wh_location_shipments` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `shipment_number` VARCHAR(50) NOT NULL,
@@ -158,6 +173,8 @@ CREATE TABLE IF NOT EXISTS `trs_wh_location_shipments` (
     `validation_notes` TEXT NULL,
     `validated_at` TIMESTAMP NULL,
     `stock_transaction_id` BIGINT UNSIGNED NULL,
+    `migrated_stock_in_id` BIGINT UNSIGNED NULL,
+    `migration_original_status` VARCHAR(32) NULL,
     `cancelled_by_user_id` BIGINT UNSIGNED NULL,
     `cancelled_at` TIMESTAMP NULL,
     `cancellation_reason` TEXT NULL,
@@ -171,6 +188,7 @@ CREATE TABLE IF NOT EXISTS `trs_wh_location_shipments` (
     UNIQUE KEY `trs_wh_location_shipments_creation_idempotency_key_unique` (`creation_idempotency_key`),
     UNIQUE KEY `trs_wh_location_shipments_validation_idempotency_key_unique` (`validation_idempotency_key`),
     UNIQUE KEY `trs_wh_location_shipments_cancellation_idempotency_key_unique` (`cancellation_idempotency_key`),
+    UNIQUE KEY `wh_ship_migrated_stock_in_unique` (`migrated_stock_in_id`),
     KEY `wh_ship_status_idx` (`status`),
     KEY `wh_ship_item_status_idx` (`consumable_id`, `status`),
     KEY `wh_ship_from_status_idx` (`from_location`, `status`),
@@ -248,6 +266,8 @@ CREATE TABLE IF NOT EXISTS `trs_wh_stock_ins` (
 
 ALTER TABLE `trs_wh_stock_transactions`
     ADD CONSTRAINT `wh_trs_stock_in_fk` FOREIGN KEY (`stock_in_id`) REFERENCES `trs_wh_stock_ins` (`id`) ON DELETE SET NULL;
+ALTER TABLE `trs_wh_location_shipments`
+    ADD CONSTRAINT `wh_ship_migrated_stock_in_fk` FOREIGN KEY (`migrated_stock_in_id`) REFERENCES `trs_wh_stock_ins` (`id`) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS `log_wh_verifications` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -321,6 +341,9 @@ INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000001_create
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000002_add_location_shipment_id_to_trs_wh_stock_transactions_table');
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_19_000003_drop_storage_location_from_mst_wh_consumables_table');
 INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_20_000001_create_trs_wh_stock_ins_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_20_000001_create_trs_wh_stock_ins_table');
+INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_26_000001_add_stock_attention_note_to_mst_wh_consumables_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_26_000001_add_stock_attention_note_to_mst_wh_consumables_table');
+INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_26_000002_create_wh_transaction_sequences_table', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_26_000002_create_wh_transaction_sequences_table');
+INSERT INTO `migrations` (`migration`, `batch`) SELECT '2026_08_26_000003_convert_legacy_location_shipments_to_stock_ins', @warehouse_migration_batch WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_08_26_000003_convert_legacy_location_shipments_to_stock_ins');
 
 -- Read-only post-bootstrap verification. Every mismatch count must be zero.
 SELECT 'mst_wh_consumable_categories' AS `table_name`, COUNT(*) AS `row_count` FROM `mst_wh_consumable_categories`
@@ -329,6 +352,7 @@ UNION ALL SELECT 'mst_wh_user_cards (legacy)', COUNT(*) FROM `mst_wh_user_cards`
 UNION ALL SELECT 'trs_wh_stock_transactions', COUNT(*) FROM `trs_wh_stock_transactions`
 UNION ALL SELECT 'trs_wh_location_shipments', COUNT(*) FROM `trs_wh_location_shipments`
 UNION ALL SELECT 'trs_wh_stock_ins', COUNT(*) FROM `trs_wh_stock_ins`
+UNION ALL SELECT 'wh_transaction_sequences', COUNT(*) FROM `wh_transaction_sequences`
 UNION ALL SELECT 'log_wh_verifications', COUNT(*) FROM `log_wh_verifications`
 UNION ALL SELECT 'mst_wh_restricted_verifiers', COUNT(*) FROM `mst_wh_restricted_verifiers`;
 SELECT COUNT(*) AS `total_stock_mismatch` FROM `mst_wh_consumables` WHERE `current_stock` <> (`stock_deltamas` + `stock_ds8`);

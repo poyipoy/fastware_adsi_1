@@ -393,6 +393,7 @@
                                 Gate::allows('warehouse.dashboard.view')
                                 || Gate::allows('warehouse.stock-in.create')
                                 || Gate::allows('warehouse.stock-in.validate')
+                                || Gate::allows('warehouse.stock-validation.view')
                                 || Gate::allows('warehouse.stock-out.create')
                                 || Gate::allows('warehouse.master.manage')
                                 || Gate::allows('warehouse.transaction.view')
@@ -401,35 +402,49 @@
                             );
                         @endphp
                         @if ($warehouseMenuVisible)
+                            @php
+                                $warehouseCanViewOverview = Gate::allows('warehouse.dashboard.view');
+                                $warehouseCanTransact = Gate::allows('warehouse.stock-in.create') || Gate::allows('warehouse.stock-out.create');
+                                $warehouseCanManageInventory = Gate::allows('warehouse.master.manage') || Gate::allows('warehouse.stock-in.create');
+                                $warehouseCanMonitor = Gate::allows('warehouse.transaction.view') || Gate::allows('warehouse.report.view');
+                            @endphp
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle font-si {{ request()->routeIs('warehouse.*') ? 'active' : '' }}"
                                     href="#" id="warehouseNavbarDropdown" role="button" data-bs-toggle="dropdown"
-                                    aria-expanded="{{ request()->routeIs('warehouse.*') ? 'true' : 'false' }}">
+                                    aria-expanded="false">
                                     Warehouse
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="warehouseNavbarDropdown">
-                                    @can('warehouse.dashboard.view')
+                                    @if ($warehouseCanViewOverview)
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.dashboard') ? 'active' : '' }}"
                                                 href="{{ route('warehouse.dashboard') }}">Dashboard</a></li>
-                                    @endcan
-                                    @if (Gate::allows('warehouse.stock-in.create') || Gate::allows('warehouse.stock-out.create'))
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.create') ? 'active' : '' }}"
+                                    @endif
+                                    @if ($warehouseCanTransact)
+                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.create', 'warehouse.stock-in.*') ? 'active' : '' }}"
                                                 href="{{ route('warehouse.transactions.create') }}">Stock In/Out Baru</a></li>
                                         <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions-used.create') ? 'active' : '' }}"
                                                 href="{{ route('warehouse.transactions-used.create') }}">Stock In/Out Bekas</a></li>
                                     @endif
-                                    @can('warehouse.master.manage')
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.consumables.*') ? 'active' : '' }}" href="{{ route('warehouse.consumables.index') }}">Master Consumable</a></li>
+                                    @can('warehouse.stock-validation.view')
+                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.validations.*') ? 'active' : '' }}"
+                                                href="{{ route('warehouse.validations.index') }}">Validasi Stok</a></li>
                                     @endcan
-                                    @can('warehouse.transaction.view')
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.index') || request()->routeIs('warehouse.transactions.show') ? 'active' : '' }}" href="{{ route('warehouse.transactions.index') }}">Riwayat Transaksi</a></li>
-                                    @endcan
-                                    @can('warehouse.stock-in.create')
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.adjustments.*') ? 'active' : '' }}" href="{{ route('warehouse.adjustments.create') }}">Penyesuaian Stock</a></li>
-                                    @endcan
-                                    @can('warehouse.report.view')
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.reports.*') ? 'active' : '' }}" href="{{ route('warehouse.reports.index') }}">Reporting</a></li>
-                                    @endcan
+                                    @if ($warehouseCanManageInventory)
+                                        @can('warehouse.master.manage')
+                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.consumables.*') ? 'active' : '' }}" href="{{ route('warehouse.consumables.index') }}">Master Consumable</a></li>
+                                        @endcan
+                                        @can('warehouse.stock-in.create')
+                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.adjustments.*') ? 'active' : '' }}" href="{{ route('warehouse.adjustments.create') }}">Penyesuaian Stock</a></li>
+                                        @endcan
+                                    @endif
+                                    @if ($warehouseCanMonitor)
+                                        @can('warehouse.transaction.view')
+                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.index') || request()->routeIs('warehouse.transactions.show') ? 'active' : '' }}" href="{{ route('warehouse.transactions.index') }}">Riwayat Transaksi</a></li>
+                                        @endcan
+                                        @can('warehouse.report.view')
+                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.reports.*') ? 'active' : '' }}" href="{{ route('warehouse.reports.index') }}">Reporting</a></li>
+                                        @endcan
+                                    @endif
                                 </ul>
                             </li>
                         @endif

@@ -1,11 +1,20 @@
 .warehouse-report-page { width: 100%; }
-.warehouse-report-filter { max-width: 460px; margin-bottom: 18px; }
+.warehouse-report-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; padding: 0 0 10px; border-bottom: 1px solid var(--warehouse-border); }
+.warehouse-report-tab { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 8px 16px; border: 1px solid #cbd7e5; border-radius: 999px; color: #41516a; background: #fff; font-size: .8rem; font-weight: 700; letter-spacing: .02em; text-decoration: none; }
+.warehouse-report-tab:hover { border-color: #7895c5; color: var(--warehouse-navy); background: #f7f9fd; }
+.warehouse-report-tab.is-active { border-color: var(--warehouse-navy); color: #fff; background: var(--warehouse-navy); box-shadow: 0 2px 6px rgba(0, 0, 114, .16); }
+.warehouse-report-tab:focus-visible { outline: 3px solid var(--warehouse-focus); outline-offset: 2px; }
+.warehouse-report-filter { max-width: 500px; margin-bottom: 18px; }
+.warehouse-report-filter-heading { display: grid; gap: 3px; margin-bottom: 10px; }
+.warehouse-report-filter-heading .warehouse-eyebrow { margin: 0; }
+.warehouse-report-filter-heading .form-label { margin: 0; color: var(--warehouse-ink); font-size: .86rem; font-weight: 700; }
 .warehouse-report-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-.warehouse-report-context { margin: 0 0 18px; color: var(--warehouse-muted); font-size: .86rem; }
+.warehouse-report-context { margin: 0 0 18px; padding: 11px 13px; border: 1px solid #dce5f2; border-left: 3px solid var(--warehouse-navy); border-radius: var(--warehouse-radius); color: #4c5c73; background: #f8fafc; font-size: .84rem; }
 .warehouse-report-matrix-card { overflow: hidden; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #fff; box-shadow: 0 3px 12px rgba(23, 34, 56, .04); }
 .warehouse-report-matrix-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--warehouse-border); }
 .warehouse-report-matrix-header h2 { margin: 0; color: var(--warehouse-ink); font-size: 1rem; font-weight: 700; }
-.warehouse-report-matrix-hint { margin: 0; padding: 10px 18px; color: var(--warehouse-muted); font-size: .78rem; }
+.warehouse-report-matrix-hint { margin: 0; padding: 10px 18px; border-bottom: 1px solid #edf1f6; color: var(--warehouse-muted); background: #fbfcfe; font-size: .78rem; }
+.warehouse-report-matrix-hint span { margin-right: 4px; color: var(--warehouse-navy); font-weight: 700; }
 .warehouse-report-matrix-wrap { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
 .warehouse-report-matrix { width: max-content; min-width: max(860px, 100%); margin: 0; border-collapse: separate; border-spacing: 0; color: #334258; font-size: .82rem; font-variant-numeric: tabular-nums; }
 .warehouse-report-matrix th, .warehouse-report-matrix td { min-width: 104px; padding: 11px 10px; border-right: 1px solid #edf1f6; border-bottom: 1px solid var(--warehouse-border); vertical-align: middle; text-align: right; white-space: nowrap; }
@@ -13,18 +22,21 @@
 .warehouse-report-matrix thead tr:first-child th { padding-top: 13px; padding-bottom: 13px; background: #eef3fa; text-align: center; }
 .warehouse-report-matrix thead tr:nth-child(2) th { background: #f8fafc; }
 .warehouse-report-matrix tbody tr:last-child th, .warehouse-report-matrix tbody tr:last-child td { border-bottom: 0; }
+.warehouse-report-matrix tbody tr:hover td { background: #fbfcfe; }
 .warehouse-report-matrix tbody tr:hover .warehouse-report-item-column { background: #f8fafc; }
 .warehouse-report-item-column { position: sticky; left: 0; z-index: 3; width: 220px; min-width: 220px !important; max-width: 280px; background: #fff; text-align: left !important; white-space: normal !important; overflow-wrap: anywhere; }
 .warehouse-report-matrix thead .warehouse-report-item-column { z-index: 5; background: #eef3fa; }
 .warehouse-report-month-heading { min-width: 416px !important; border-left: 2px solid var(--warehouse-border) !important; }
 .warehouse-report-month-start { border-left: 2px solid var(--warehouse-border) !important; }
-.warehouse-report-ending-column { background: #f8fafc; color: var(--warehouse-ink); }
+.warehouse-report-ending-column { background: #f4f7fb; color: var(--warehouse-ink); }
 .warehouse-report-summary-column { min-width: 112px !important; background: #eef3fa !important; color: var(--warehouse-ink); }
 .warehouse-report-matrix-empty { padding: 22px; }
 .warehouse-report-mobile-cards { display: none; }
 .warehouse-report-minmax-column { min-width: 96px !important; }
 
 @media (max-width: 767.98px) {
+    .warehouse-report-tabs { gap: 7px; }
+    .warehouse-report-tab { flex: 1 1 0; padding-right: 10px; padding-left: 10px; }
     .warehouse-report-filter-row { grid-template-columns: 1fr; }
     .warehouse-report-matrix-header { padding: 14px; }
     .warehouse-report-matrix-hint { padding: 10px 14px; }
@@ -46,6 +58,11 @@
     .warehouse-report-mobile-ending { padding-left: 8px; border-left: 2px solid var(--warehouse-navy); }
     .warehouse-report-mobile-card > footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 11px; border-top: 1px solid var(--warehouse-border); color: var(--warehouse-muted); font-size: .76rem; }
     .warehouse-report-mobile-card > footer strong { display: block; margin-top: 2px; color: var(--warehouse-ink); font-size: .92rem; }
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    .warehouse-report-matrix-hint { padding-right: 16px; padding-left: 16px; }
+    .warehouse-report-matrix th, .warehouse-report-matrix td { padding-right: 9px; padding-left: 9px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

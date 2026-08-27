@@ -4,7 +4,7 @@ namespace Tests\Unit\Warehouse;
 
 use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Models\Warehouse\WarehouseConsumable;
-use App\Models\Warehouse\WarehouseLocationShipment;
+use App\Models\Warehouse\WarehouseStockIn;
 use App\Services\Warehouse\WarehouseStockReservationService;
 use Tests\Feature\Warehouse\WarehouseTestCase;
 
@@ -21,27 +21,26 @@ class WarehouseStockReservationServiceTest extends WarehouseTestCase
             'stock_used_ds8' => '1.000',
         ]);
         $base = [
-            'shipment_number' => 'SHP-RESERVE-1',
+            'stock_in_number' => 'WH-IN-RESERVE-1',
             'consumable_id' => $item->id,
             'item_condition' => 'NEW',
-            'quantity_sent' => '3.000',
-            'from_location' => 'Deltamas',
-            'to_location' => 'DS8',
+            'quantity_expected' => '3.000',
+            'source_location' => 'Deltamas',
+            'destination_location' => 'DS8',
             'status' => 'WAITING_VALIDATION',
-            'sent_by_user_id' => $sender->id,
-            'sent_at' => now(),
+            'created_by' => $sender->id,
             'creation_idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
         ];
-        WarehouseLocationShipment::query()->create($base);
-        WarehouseLocationShipment::query()->create(array_merge($base, [
-            'shipment_number' => 'SHP-RESERVE-2',
+        WarehouseStockIn::query()->create($base);
+        WarehouseStockIn::query()->create(array_merge($base, [
+            'stock_in_number' => 'WH-IN-RESERVE-2',
             'item_condition' => 'USED',
-            'quantity_sent' => '2.000',
+            'quantity_expected' => '2.000',
             'creation_idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
         ]));
-        WarehouseLocationShipment::query()->create(array_merge($base, [
-            'shipment_number' => 'SHP-RESERVE-3',
-            'status' => 'VALIDATED',
+        WarehouseStockIn::query()->create(array_merge($base, [
+            'stock_in_number' => 'WH-IN-RESERVE-3',
+            'status' => 'CANCELLED',
             'creation_idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
         ]));
 

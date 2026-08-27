@@ -40,7 +40,9 @@ final class WarehouseVerifierPolicy
             );
         }
 
-        if ($restricted && ! WarehouseRestrictedVerifier::query()
+        if ($restricted
+            && ! $this->access->hasFullModuleAccess($user)
+            && ! WarehouseRestrictedVerifier::query()
             ->where('user_id', $user->getKey())
             ->where('scope', 'ALL')
             ->where('is_active', true)
@@ -66,11 +68,17 @@ final class WarehouseVerifierPolicy
             return true;
         }
 
-        return WarehouseRestrictedVerifier::query()
-            ->where('user_id', $user->getKey())
-            ->where('scope', 'ALL')
-            ->where('is_active', true)
-            ->exists();
+        return $this->access->hasFullModuleAccess($user)
+            || WarehouseRestrictedVerifier::query()
+                ->where('user_id', $user->getKey())
+                ->where('scope', 'ALL')
+                ->where('is_active', true)
+                ->exists();
+    }
+
+    public function canAccessValidationWorkspace(?User $user): bool
+    {
+        return $this->canUserVerify($user, self::DIRECTION_IN, true);
     }
 
     public function directionForCommand(

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Warehouse;
 
 use App\Models\Warehouse\WarehouseStockTransaction;
 use App\Services\Warehouse\WarehouseAccessService;
+use App\Services\Warehouse\WarehouseVerifierPolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,20 +24,21 @@ class StoreWarehouseTransactionRequest extends FormRequest
     {
         $type = strtoupper((string) $this->input('type'));
         $condition = strtoupper((string) $this->input('item_condition', 'NEW'));
+        $isInternalUsedStockIn = $type === 'IN'
+            && $condition === 'USED'
+            && trim((string) $this->input('source_location')) !== '';
         $withUsedReturn = $this->boolean('return_used');
         $usedReturnAllowed = $type === 'OUT' && $condition === 'NEW';
         $locations = (array) config('warehouse.storage_locations', ['DS8', 'Deltamas']);
         $locationRules = ['string', 'max:120', 'regex:/^[^\x00-\x1F\x7F]*$/u', Rule::in($locations)];
-        $quantityRules = $type === 'IN'
-            ? ['required', 'integer', 'min:1']
-            : ['required', 'numeric', 'gt:0', 'decimal:0,3'];
+        $quantityRules = ['required', 'numeric', 'gt:0', 'decimal:0,3'];
 
         return [
             'type' => ['required', Rule::in(['IN', 'OUT'])],
             'item_condition' => ['required', Rule::in(['NEW', 'USED'])],
             'item_barcode' => ['required', 'string', 'max:120'],
             'quantity' => $quantityRules,
-            'verified_code' => [Rule::requiredIf($type === 'OUT' || ($type === 'IN' && $condition === 'USED')), 'nullable', 'string', 'max:150'],
+            'verified_code' => [Rule::requiredIf($type === 'OUT' || ($type === 'IN' && $condition === 'USED' && ! $isInternalUsedStockIn)), 'nullable', 'string', 'max:150'],
             'location' => array_merge(['required'], $locationRules),
             // Temporary aliases keep existing JSON clients compatible while
             // all new forms submit the single user-facing `location` field.
@@ -103,11 +105,8 @@ class StoreWarehouseStockInRequest extends FormRequest
         return [
             'consumable_id' => [Rule::requiredIf(fn (): bool => ! $this->filled('item_barcode')), 'nullable', 'integer', Rule::exists('mst_wh_consumables', 'id')->where(fn ($query) => $query->where('is_active', true))],
             'item_barcode' => [Rule::requiredIf(fn (): bool => ! $this->filled('consumable_id')), 'nullable', 'string', 'max:120'],
-            // Pending Stock In is only the physical receiving workflow for
-            // new items. Used-item Stock In continues through the direct
-            // ledger path and is never put in the validation queue.
-            'item_condition' => ['required', Rule::in(['NEW'])],
-            'quantity_expected' => ['required', 'integer', 'min:1'],
+            'item_condition' => ['required', Rule::in(['NEW', 'USED'])],
+            'quantity_expected' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
             'destination_location' => array_merge(['required'], $location),
             'source_location' => array_merge(['sometimes', 'nullable'], $location),
             'notes' => ['sometimes', 'nullable', 'string', 'max:65535'],
@@ -129,13 +128,13 @@ class ValidateWarehouseStockInRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return app(WarehouseAccessService::class)->can($this->user(), 'warehouse.stock-in.validate');
+        return app(WarehouseVerifierPolicy::class)->canAccessValidationWorkspace($this->user());
     }
 
     public function rules(): array
     {
         return [
-            'quantity_received' => ['required', 'integer', 'min:1'],
+            'quantity_received' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
             'validation_result' => ['sometimes', 'nullable', Rule::in(['MATCH', 'MANUAL_ADJUSTMENT'])],
             'received_item_barcode' => ['sometimes', 'nullable', 'string', 'max:120'],
             'validation_notes' => ['sometimes', 'nullable', 'string', 'max:65535'],

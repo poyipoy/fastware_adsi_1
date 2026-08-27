@@ -70,19 +70,18 @@ class WarehouseStockInController extends Controller
     {
         return view('warehouse.stock-in.show', [
             'stockIn' => $stockIn->load(['consumable', 'creator', 'validator', 'stockTransaction']),
-            'canValidateStockIn' => $verifierPolicy->canUserVerify($request->user(), WarehouseVerifierPolicy::DIRECTION_IN, true),
+            'canValidateStockIn' => $verifierPolicy->canAccessValidationWorkspace($request->user()),
         ]);
     }
 
     public function validateForm(Request $request, WarehouseStockIn $stockIn, WarehouseVerifierPolicy $verifierPolicy)
     {
         abort_unless(
-            $verifierPolicy->canUserVerify($request->user(), WarehouseVerifierPolicy::DIRECTION_IN, true),
+            $verifierPolicy->canAccessValidationWorkspace($request->user()),
             403,
             'Akun ini tidak terdaftar sebagai validator Stock In.',
         );
         abort_unless($stockIn->canValidate(), 409, 'Stock In sudah tidak menunggu Validasi.');
-        abort_unless($stockIn->item_condition?->value === 'NEW', 409, 'Validasi Stock In hanya berlaku untuk barang NEW.');
 
         return view('warehouse.stock-in.validate', [
             'stockIn' => $stockIn->load(['consumable', 'creator']),

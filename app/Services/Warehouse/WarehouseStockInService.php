@@ -42,9 +42,6 @@ final class WarehouseStockInService
     ): WarehouseStockIn {
         $this->assertAccess($actorId, 'warehouse.stock-in.create');
         $condition = $this->condition($itemCondition);
-        if ($condition !== WarehouseItemCondition::NEW) {
-            throw new WarehouseDomainException('Validasi Stock In hanya berlaku untuk barang kondisi NEW.', 422);
-        }
         $creationKey = $this->uuid($idempotencyKey);
         $destination = $this->location($destinationLocation, 'Lokasi tujuan Stock In wajib diisi.');
         $source = $sourceLocation === null || trim($sourceLocation) === ''
@@ -66,7 +63,19 @@ final class WarehouseStockInService
                 ->lockForUpdate()
                 ->first();
             if ($existing !== null) {
-                $this->assertCreationReplay($existing, $consumableId, $condition, $quantityExpected, $destination, $source, $notes);
+                $existingItem = WarehouseConsumable::query()
+                    ->lockForUpdate()
+                    ->find($existing->consumable_id);
+                $this->assertCreationReplay(
+                    $existing,
+                    $consumableId,
+                    $condition,
+                    $quantityExpected,
+                    $destination,
+                    $source,
+                    $notes,
+                    (bool) $existingItem?->allow_fraction,
+                );
                 $existing->setAttribute('_idempotent_replay', true);
 
                 return $existing->load(['consumable', 'creator']);
@@ -82,7 +91,7 @@ final class WarehouseStockInService
                 throw new WarehouseDomainException('Consumable tidak aktif atau tidak ditemukan.', 422);
             }
 
-            $quantity = WarehouseQuantity::normalize($quantityExpected, false);
+            $quantity = WarehouseQuantity::normalize($quantityExpected, (bool) $item->allow_fraction);
             if ($source !== null) {
                 if ($source === $destination) {
                     throw new WarehouseDomainException('Lokasi sumber dan tujuan Stock In harus berbeda.', 422);
@@ -184,17 +193,14 @@ final class WarehouseStockInService
             $expectedCondition = $record->item_condition instanceof WarehouseItemCondition
                 ? $record->item_condition
                 : WarehouseItemCondition::from((string) $record->item_condition);
-            if ($expectedCondition !== WarehouseItemCondition::NEW) {
-                throw new WarehouseDomainException('Validasi Stock In hanya berlaku untuk barang kondisi NEW.', 422);
-            }
 
             $receivedId = $receivedConsumableId ?? (int) $record->consumable_id;
             if ($receivedId !== (int) $record->consumable_id) {
                 throw new WarehouseDomainException('Item fisik berbeda dari item Stock In. Validasi ditolak tanpa mutasi stok.', 422);
             }
 
-            $actual = WarehouseQuantity::normalize($quantityReceived, false);
-            $expected = WarehouseQuantity::normalize((string) $record->quantity_expected, false);
+            $actual = WarehouseQuantity::normalize($quantityReceived, (bool) $item->allow_fraction);
+            $expected = WarehouseQuantity::normalize((string) $record->quantity_expected, (bool) $item->allow_fraction);
             $difference = WarehouseQuantity::toMilli($actual) - WarehouseQuantity::toMilli($expected);
             $result = $validationResult === null || trim((string) $validationResult) === ''
                 ? ($difference === 0 ? WarehouseStockInValidationResult::MATCH : WarehouseStockInValidationResult::MANUAL_ADJUSTMENT)
@@ -239,7 +245,7 @@ final class WarehouseStockInService
                 'validator_user_id' => $validatorUser->getKey(),
                 'validator_npk_snapshot' => $validatorUser->npk === null ? null : (string) $validatorUser->npk,
                 'validator_name_snapshot' => mb_substr((string) $validatorUser->name, 0, 180),
-                'received_condition' => WarehouseItemCondition::NEW->value,
+                'received_condition' => $expectedCondition->value,
                 'validation_idempotency_key' => $validationKey,
                 'stock_transaction_id' => $ledger->getKey(),
             ])->save();
@@ -312,8 +318,9 @@ final class WarehouseStockInService
         string $destination,
         ?string $source,
         ?string $notes,
+        bool $allowFraction,
     ): void {
-        $normalized = WarehouseQuantity::normalize($quantity, false);
+        $normalized = WarehouseQuantity::normalize($quantity, $allowFraction);
         $matches = (int) $existing->consumable_id === $consumableId
             && ($existing->item_condition instanceof WarehouseItemCondition
                 ? $existing->item_condition
@@ -342,7 +349,7 @@ final class WarehouseStockInService
             : $this->validationResult($result);
         $matches = (int) $existing->getKey() === $stockInId
             && (int) $existing->validator_user_id === $validatorId
-            && WarehouseQuantity::compare((string) ($existing->quantity_received ?? '0'), WarehouseQuantity::normalize($quantity, false)) === 0
+            && WarehouseQuantity::compare((string) ($existing->quantity_received ?? '0'), WarehouseQuantity::normalize($quantity, $this->allowFraction($existing))) === 0
             && (string) ($existing->validation_notes ?? '') === (string) ($notes ?? '')
             && ($resolvedResult === null || $existing->validation_result === $resolvedResult)
             && ($receivedConsumableId === null || (int) $existing->received_consumable_id === $receivedConsumableId);
@@ -364,6 +371,13 @@ final class WarehouseStockInService
         }
 
         return $parsed;
+    }
+
+    private function allowFraction(WarehouseStockIn $stockIn): bool
+    {
+        return (bool) WarehouseConsumable::query()
+            ->whereKey($stockIn->consumable_id)
+            ->value('allow_fraction');
     }
 
     private function validationResult(WarehouseStockInValidationResult|string $result): WarehouseStockInValidationResult

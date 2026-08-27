@@ -89,7 +89,7 @@ final class WarehouseStockService
         }
 
         if ($original->transaction_type === WarehouseTransactionType::TRANSFER) {
-            throw new WarehouseDomainException('Pengiriman Antar Lokasi tidak dapat dibatalkan. Buat pengiriman balik sebagai koreksi.', 422);
+            throw new WarehouseDomainException('Transfer antar lokasi tidak dapat dibatalkan. Buat transfer balik sebagai koreksi.', 422);
         }
 
         return $this->execute(new WarehouseStockCommand(
@@ -167,7 +167,7 @@ final class WarehouseStockService
             ? WarehouseItemCondition::tryFrom(strtoupper($itemCondition))
             : $itemCondition;
         if ($condition === null) {
-            throw new WarehouseDomainException('Kondisi barang Pengiriman Antar Lokasi tidak valid.');
+            throw new WarehouseDomainException('Kondisi barang transfer antar lokasi tidak valid.');
         }
 
         return $this->execute(new WarehouseStockCommand(
@@ -244,7 +244,6 @@ final class WarehouseStockService
                 (string) $fromLocation,
                 $condition,
                 -WarehouseQuantity::toMilli($quantity),
-                $command->locationShipmentId,
                 $command->stockInId,
             );
             $this->applyLocationDelta($item, (string) $toLocation, $condition, WarehouseQuantity::toMilli($quantity));
@@ -326,7 +325,7 @@ final class WarehouseStockService
             throw new WarehouseDomainException('Transaksi asal tidak ditemukan.', 404);
         }
         if ($original->transaction_type === WarehouseTransactionType::TRANSFER) {
-            throw new WarehouseDomainException('Pengiriman Antar Lokasi tidak dapat dibatalkan. Buat pengiriman balik sebagai koreksi.', 422);
+            throw new WarehouseDomainException('Transfer antar lokasi tidak dapat dibatalkan. Buat transfer balik sebagai koreksi.', 422);
         }
         if (WarehouseStockTransaction::query()->where('reversal_of_id', $original->getKey())->exists()) {
             throw new WarehouseDomainException('Transaksi tersebut sudah pernah direverse.', 409);
@@ -371,10 +370,10 @@ final class WarehouseStockService
             return $direction === 'IN' ? [null, $location] : [$location, null];
         }
         if ($command->type === WarehouseTransactionType::TRANSFER) {
-            $from = $this->requiredLocation($command->sourceLocation, 'Lokasi asal Pengiriman Antar Lokasi wajib diisi.');
-            $to = $this->requiredLocation($command->toLocation ?? $this->commandStorageLocation($command), 'Lokasi tujuan Pengiriman Antar Lokasi wajib diisi.');
+            $from = $this->requiredLocation($command->sourceLocation, 'Lokasi asal transfer antar lokasi wajib diisi.');
+            $to = $this->requiredLocation($command->toLocation ?? $this->commandStorageLocation($command), 'Lokasi tujuan transfer antar lokasi wajib diisi.');
             if ($from === $to) {
-                throw new WarehouseDomainException('Lokasi asal dan tujuan Pengiriman Antar Lokasi harus berbeda.', 422);
+                throw new WarehouseDomainException('Lokasi asal dan tujuan transfer antar lokasi harus berbeda.', 422);
             }
 
             return [$from, $to];
@@ -388,7 +387,6 @@ final class WarehouseStockService
         string $location,
         WarehouseItemCondition $condition,
         int $deltaMilli,
-        ?int $excludeShipmentId = null,
         ?int $excludeStockInId = null,
     ): void {
         if ($deltaMilli < 0) {
@@ -397,7 +395,6 @@ final class WarehouseStockService
                 $location,
                 $condition,
                 WarehouseQuantity::fromMilli(abs($deltaMilli)),
-                $excludeShipmentId,
                 $excludeStockInId,
             );
         }
@@ -436,9 +433,7 @@ final class WarehouseStockService
                 ? 'warehouse.stock-in.validate'
                 : 'warehouse.stock-in.create',
             WarehouseTransactionType::OUT => 'warehouse.stock-out.create',
-            WarehouseTransactionType::TRANSFER => $command->stockInId !== null
-                ? 'warehouse.stock-in.validate'
-                : 'warehouse.location-shipment.validate',
+            WarehouseTransactionType::TRANSFER => 'warehouse.stock-in.validate',
             WarehouseTransactionType::ADJUSTMENT => null,
             WarehouseTransactionType::REVERSAL => 'warehouse.transaction.reverse',
         };
@@ -577,6 +572,38 @@ final class WarehouseTransactionNumberGenerator
 {
     public function generate(): string
     {
-        return 'WH-'.now(config('app.timezone', 'Asia/Jakarta'))->format('Ymd-His').'-'.strtoupper(Str::random(8));
+        $year = (int) now(config('app.timezone', 'Asia/Jakarta'))->format('Y');
+
+        return DB::transaction(function () use ($year): string {
+            DB::table('wh_transaction_sequences')->insertOrIgnore([
+                'year' => $year,
+                'last_number' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $sequence = DB::table('wh_transaction_sequences')
+                ->where('year', $year)
+                ->lockForUpdate()
+                ->first();
+
+            if ($sequence === null) {
+                throw new WarehouseDomainException('Sequence nomor transaksi Warehouse tidak tersedia.', 500);
+            }
+
+            $number = (int) $sequence->last_number + 1;
+            if ($number > 9999) {
+                throw new WarehouseDomainException('Sequence nomor transaksi Warehouse untuk tahun ini sudah penuh.', 409);
+            }
+
+            DB::table('wh_transaction_sequences')
+                ->where('year', $year)
+                ->update([
+                    'last_number' => $number,
+                    'updated_at' => now(),
+                ]);
+
+            return sprintf('WH-%04d%04d', $year, $number);
+        }, 3);
     }
 }

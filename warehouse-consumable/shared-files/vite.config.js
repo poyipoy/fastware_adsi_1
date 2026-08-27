@@ -22,7 +22,6 @@ export default defineConfig({
                 'resources/css/warehouse/foundation.css',
                 'resources/css/warehouse/management.css',
                 'resources/css/warehouse/reporting.css',
-                'resources/css/warehouse/location-shipments.css',
                 'resources/css/warehouse/stock-in.css',
             ],
             refresh: true,

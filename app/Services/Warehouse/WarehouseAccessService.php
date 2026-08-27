@@ -4,25 +4,26 @@ namespace App\Services\Warehouse;
 
 use App\Models\User;
 use App\Models\UserJobPosition;
+use App\Models\Warehouse\WarehouseRestrictedVerifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
 
 class WarehouseAccessService
 {
+    private const FULL_ACCESS_USER_NAME = 'JESSICA PAUNE';
+
     private const ABILITIES = [
         'warehouse.dashboard.view',
         'warehouse.stock-in.create',
         'warehouse.stock-in.validate',
+        'warehouse.stock-validation.view',
         'warehouse.stock-out.create',
         'warehouse.master.manage',
         'warehouse.transaction.view',
         'warehouse.transaction.reverse',
-        'warehouse.location-shipment.view',
-        'warehouse.location-shipment.create',
-        'warehouse.location-shipment.validate',
-        'warehouse.location-shipment.cancel',
         'warehouse.report.view',
         'warehouse.report.export',
+        'warehouse.stock-attention.update',
     ];
 
     public function isLoginEnabled(?User $user): bool
@@ -35,6 +36,12 @@ class WarehouseAccessService
     {
         return $this->isLoginEnabled($user)
             && in_array((int) $user->getAttribute('role_id'), array_map('intval', (array) config('warehouse.authorization.administrator_role_ids', [1])), true);
+    }
+
+    public function hasFullModuleAccess(?User $user): bool
+    {
+        return $this->isLoginEnabled($user)
+            && mb_strtoupper(trim((string) $user->getAttribute('name')), 'UTF-8') === self::FULL_ACCESS_USER_NAME;
     }
 
     public function hasDepartmentAccess(?User $user): bool
@@ -67,12 +74,31 @@ class WarehouseAccessService
 
     public function hasModuleAccess(?User $user): bool
     {
-        return $this->isAdministrator($user) || $this->hasDepartmentAccess($user);
+        return $this->hasFullModuleAccess($user)
+            || $this->isAdministrator($user)
+            || $this->hasDepartmentAccess($user);
     }
 
     public function can(?User $user, string $ability): bool
     {
-        return in_array($ability, self::ABILITIES, true) && $this->hasModuleAccess($user);
+        if (! in_array($ability, self::ABILITIES, true)) {
+            return false;
+        }
+
+        if ($this->hasFullModuleAccess($user)) {
+            return true;
+        }
+
+        if ($ability === 'warehouse.stock-validation.view') {
+            return $this->hasModuleAccess($user)
+                && WarehouseRestrictedVerifier::query()
+                    ->where('user_id', $user?->getKey())
+                    ->where('scope', 'ALL')
+                    ->where('is_active', true)
+                    ->exists();
+        }
+
+        return $this->hasModuleAccess($user);
     }
 
     public function canAdjust(?User $user): bool

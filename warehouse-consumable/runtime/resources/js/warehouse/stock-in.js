@@ -44,7 +44,7 @@
         }
     });
 
-    const display = (value) => Number(value || 0).toLocaleString('id-ID', { maximumFractionDigits: 0 });
+    const display = (value) => Number(value || 0).toLocaleString('id-ID', { maximumFractionDigits: 3 });
     const sync = () => {
         const actual = Number(quantity?.value || 0);
         const delta = actual - expected;

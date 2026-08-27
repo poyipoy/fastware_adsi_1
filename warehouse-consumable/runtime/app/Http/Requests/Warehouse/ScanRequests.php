@@ -14,9 +14,7 @@ class ScanWarehouseItemRequest extends FormRequest
 
         return $access->can($this->user(), 'warehouse.stock-out.create')
             || $access->can($this->user(), 'warehouse.stock-in.create')
-            || $access->can($this->user(), 'warehouse.stock-in.validate')
-            || $access->can($this->user(), 'warehouse.location-shipment.create')
-            || $access->can($this->user(), 'warehouse.location-shipment.validate');
+            || $access->can($this->user(), 'warehouse.stock-in.validate');
     }
 
     public function rules(): array

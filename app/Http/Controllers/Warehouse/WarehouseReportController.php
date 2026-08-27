@@ -11,10 +11,12 @@ class WarehouseReportController extends Controller
     public function index(WarehouseReportRequest $request, WarehouseReportService $reports)
     {
         $year = (int) ($request->validated('year') ?: now()->year);
+        $condition = (string) $request->validated('condition');
 
         return view('warehouse.reports.index', [
-            'report' => $reports->build($year),
+            'report' => $reports->build($year, $condition),
             'year' => $year,
+            'condition' => $condition,
         ]);
     }
 }

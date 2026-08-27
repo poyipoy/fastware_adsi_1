@@ -10,6 +10,54 @@ use Illuminate\Support\Str;
 
 class WarehouseDashboardTest extends WarehouseTestCase
 {
+    public function test_stock_attention_note_is_explicitly_saved_and_survives_healthy_status(): void
+    {
+        $user = $this->createUser();
+        $item = WarehouseConsumable::factory()->create([
+            'item_name' => 'Attention Note Item',
+            'item_code' => 'ATTENTION-NOTE',
+            'current_stock' => '1.000',
+            'minimum_stock' => '2.000',
+            'stock_attention_note' => null,
+        ]);
+
+        $this->actingAs($user)->patch(route('warehouse.dashboard.stock-attention.update', $item), [
+            'stock_attention_note' => '  Follow up dengan Purchasing  ',
+        ])->assertRedirect(route('warehouse.dashboard'));
+
+        $item->refresh();
+        self::assertSame('Follow up dengan Purchasing', $item->stock_attention_note);
+        self::assertSame((int) $user->getKey(), (int) $item->updated_by);
+        $this->actingAs($user)->get(route('warehouse.dashboard'))
+            ->assertOk()
+            ->assertSee('Attention Note Item')
+            ->assertSee('Follow up dengan Purchasing')
+            ->assertSee('Simpan');
+
+        $item->update(['current_stock' => '10.000']);
+        $this->actingAs($user)->get(route('warehouse.dashboard'))
+            ->assertOk()
+            ->assertDontSee('Attention Note Item');
+        self::assertSame('Follow up dengan Purchasing', (string) $item->fresh()->stock_attention_note);
+
+        $item->update(['current_stock' => '1.000']);
+        $this->actingAs($user)->patch(route('warehouse.dashboard.stock-attention.update', $item), [
+            'stock_attention_note' => '',
+        ])->assertRedirect(route('warehouse.dashboard'));
+
+        self::assertNull($item->fresh()->stock_attention_note);
+    }
+
+    public function test_stock_attention_note_requires_warehouse_access(): void
+    {
+        $user = $this->createUser([], false);
+        $item = WarehouseConsumable::factory()->create(['current_stock' => '1.000', 'minimum_stock' => '2.000']);
+
+        $this->actingAs($user)->patch(route('warehouse.dashboard.stock-attention.update', $item), [
+            'stock_attention_note' => 'Tidak boleh',
+        ])->assertForbidden();
+    }
+
     public function test_dashboard_kpis_use_current_stock_and_month_boundaries(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta'));
@@ -30,11 +78,16 @@ class WarehouseDashboardTest extends WarehouseTestCase
             $response = $this->actingAs($employee)->get(route('warehouse.dashboard'));
 
             $response->assertOk()
-                ->assertSee('Barang aktif')
-                ->assertSee('Stok aman')
-                ->assertSee('Stock In Bulan Ini')
-                ->assertSee('Stock Out Bulan Ini')
-                ->assertSee('Agustus 2026')
+                ->assertSee('Stok Habis')
+                ->assertSee('Stok Menipis')
+                ->assertSee('Stock In')
+                ->assertSee('Stock Out')
+                ->assertSee('Hari ini')
+                ->assertSee('Bulan ini')
+                ->assertDontSee('Barang aktif')
+                ->assertDontSee('Stok aman')
+                ->assertDontSee('Stock In Bulan Ini')
+                ->assertDontSee('Stock Out Bulan Ini')
                 ->assertSee('Tren Stock In/Out')
                 ->assertSee('bi bi-funnel', false)
                 ->assertDontSee('Filter Dashboard')

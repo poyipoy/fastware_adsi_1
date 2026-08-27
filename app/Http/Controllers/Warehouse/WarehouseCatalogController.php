@@ -19,9 +19,7 @@ class WarehouseCatalogController extends Controller
         abort_unless(
             $access->can($request->user(), 'warehouse.stock-in.create')
             || $access->can($request->user(), 'warehouse.stock-in.validate')
-            || $access->can($request->user(), 'warehouse.stock-out.create')
-            || $access->can($request->user(), 'warehouse.location-shipment.create')
-            || $access->can($request->user(), 'warehouse.location-shipment.validate'),
+            || $access->can($request->user(), 'warehouse.stock-out.create'),
             403,
         );
 

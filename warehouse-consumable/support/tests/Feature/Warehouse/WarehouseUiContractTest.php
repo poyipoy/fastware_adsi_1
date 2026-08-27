@@ -2,308 +2,171 @@
 
 namespace Tests\Feature\Warehouse;
 
+use App\Enums\Warehouse\WarehouseItemCondition;
+use App\Enums\Warehouse\WarehouseLocationShipmentStatus;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Models\Warehouse\WarehouseConsumable;
+use App\Models\Warehouse\WarehouseLocationShipment;
 use App\Models\Warehouse\WarehouseStockIn;
 use App\Models\Warehouse\WarehouseStockTransaction;
+use Illuminate\Support\Str;
 
 class WarehouseUiContractTest extends WarehouseTestCase
 {
-    public function test_stock_in_pending_validation_is_integrated_into_new_transaction_workspace(): void
+    public function test_dashboard_moves_all_permitted_shortcuts_to_header_and_hides_quick_access_block(): void
     {
-        $user = $this->createUser([], false);
-        $this->createPicPosition($user);
-        $workspace = $this->actingAs($user)->get(route('warehouse.transactions.create'));
-        $workspace
+        $operator = $this->createUser([], false);
+        $this->createPicPosition($operator);
+
+        $operatorDashboard = $this->actingAs($operator)->get(route('warehouse.dashboard'));
+        $operatorDashboard
             ->assertOk()
-            ->assertSee('Stock In/Out Baru')
-            ->assertSee('warehouse-stock-in-workspace', false)
-            ->assertDontSee('Buat Baru')
-            ->assertSee('Menunggu Validasi')
-            ->assertSee('Tervalidasi')
-            ->assertSee('name="source_location"', false)
-            ->assertSee('name="notes"', false)
-            ->assertDontSee('/warehouse/stock-in/create');
-
-        $validationView = file_get_contents(base_path('resources/views/warehouse/stock-in/validate.blade.php'));
-        self::assertStringNotContainsString('name="validator_code"', $validationView);
-        self::assertStringNotContainsString('name="received_condition"', $validationView);
-        self::assertStringNotContainsString('Scan NPK Validator', $validationView);
-        self::assertStringContainsString('step="1"', $validationView);
-
-        $item = WarehouseConsumable::factory()->create(['item_name' => 'Integer Validation Item']);
-        $stockIn = WarehouseStockIn::factory()->create([
-            'consumable_id' => $item->id,
-            'quantity_expected' => '15.000',
-            'created_by' => $user->id,
-        ]);
-
-        $layout = $workspace->getContent();
-        self::assertStringContainsString('Stock In/Out Baru', $layout);
-        self::assertStringNotContainsString('>Stock In</a>', $layout);
-        self::assertStringNotContainsString('Menunggu Validasi</a>', $layout);
-        self::assertStringNotContainsString('Pengiriman Antar Lokasi</a>', $layout);
-
-        $this->actingAs($user)->get(route('warehouse.stock-in.index'))
-            ->assertRedirect(route('warehouse.transactions.create'));
-        $this->actingAs($user)->get(route('warehouse.stock-in.create'))
-            ->assertRedirect(route('warehouse.transactions.create'));
+            ->assertSee('Stock In Baru')
+            ->assertSee('Stock Out Baru')
+            ->assertSee('Stock In/Out Bekas')
+            ->assertSee('Master Consumable')
+            ->assertSee('Riwayat')
+            ->assertSee('Reporting')
+            ->assertSee('Penyesuaian')
+            ->assertSee('Export')
+            ->assertDontSee('Validasi Stok')
+            ->assertDontSee('Akses Cepat')
+            ->assertDontSee('warehouse-quick-actions', false)
+            ->assertDontSee('warehouse-quick-action', false);
 
         $validator = $this->createUser();
-        $validatorWorkspace = $this->actingAs($validator)->get(route('warehouse.transactions.create'));
-        $validatorWorkspace
+        $this->actingAs($validator)->get(route('warehouse.dashboard'))
             ->assertOk()
-            ->assertSee('Menunggu Validasi')
-            ->assertSee('Validasi')
-            ->assertSee('data-warehouse-transaction-form', false)
-            ->assertSee('data-warehouse-type="IN"', false)
-            ->assertSee('data-warehouse-type="OUT"', false)
-            ->assertDontSee('warehouse-stock-in-validator-notice', false);
-        $validatorUsedWorkspace = $this->actingAs($validator)->get(route('warehouse.transactions-used.create'));
-        $validatorUsedWorkspace
-            ->assertOk()
-            ->assertSee('data-warehouse-transaction-form', false)
-            ->assertSee('data-warehouse-type="IN"', false)
-            ->assertSee('data-warehouse-type="OUT"', false)
-            ->assertDontSee('warehouse-stock-in-validator-notice', false);
-        $this->actingAs($validator)->get(route('warehouse.stock-in.show', $stockIn))
-            ->assertOk()
-            ->assertSee('Batalkan Stock In');
-        $this->actingAs($validator)->get(route('warehouse.stock-in.validate-form', $stockIn))
-            ->assertOk()
-            ->assertSee('value="15"', false)
-            ->assertDontSee('value="15.000"', false)
-            ->assertSee('step="1"', false);
-        $this->actingAs($validator)->get(route('warehouse.stock-in.index'))
-            ->assertRedirect(route('warehouse.transactions.create'));
-        self::assertFileDoesNotExist(base_path('resources/views/warehouse/stock-in/index.blade.php'));
-        self::assertFileDoesNotExist(base_path('resources/views/warehouse/stock-in/create.blade.php'));
-
-        $script = file_get_contents(base_path('resources/js/warehouse/transaction-form.js'));
-        self::assertStringContainsString("const inbound = type === 'IN';", $script);
-        $stockInScript = file_get_contents(base_path('resources/js/warehouse/stock-in.js'));
-        self::assertStringNotContainsString("STOCK_IN_VALIDATE", $stockInScript);
-        self::assertStringContainsString('received_item_barcode', $stockInScript);
-        $stockInCss = file_get_contents(base_path('resources/css/warehouse/stock-in.css'));
-        self::assertStringContainsString('prefers-reduced-motion', $stockInCss);
+            ->assertSee('Validasi Stok');
     }
 
-    public function test_new_and_used_transaction_forms_expose_catalog_and_three_step_accessible_flow(): void
+    public function test_new_and_used_catalogs_expose_internal_source_and_persistent_selection_contract(): void
     {
         $user = $this->createUser([], false);
         $this->createPicPosition($user);
-        $new = $this->actingAs($user)->get(route('warehouse.transactions.create'));
-        $used = $this->actingAs($user)->get(route('warehouse.transactions-used.create'));
 
-        $new->assertOk()
-            ->assertSee('data-warehouse-step="1"', false)
-            ->assertSee('data-warehouse-step="2"', false)
-            ->assertSee('data-warehouse-step="3"', false)
-            ->assertDontSee('data-warehouse-step="4"', false)
-            ->assertSee('data-warehouse-catalog="primary"', false)
-            ->assertSee('data-warehouse-catalog="return"', false)
-            ->assertSee('data-warehouse-return-used', false)
-            ->assertSee('name="location"', false)
-            ->assertSee('name="source_location"', false)
-            ->assertSee('name="notes"', false)
-            ->assertDontSee('name="storage_location"', false)
-            ->assertSee('name="item_condition" value="NEW"', false)
-            ->assertSee('aria-live="polite"', false)
-            ->assertSee('aria-atomic="true"', false)
-            ->assertSee('Maksimal 16 item')
-            ->assertSee('Barang baru keluar disertai pengembalian barang bekas');
-
-        $used->assertOk()
-            ->assertSee('Stock In/Out Bekas')
-            ->assertSee('name="item_condition" value="USED"', false)
-            ->assertDontSee('data-warehouse-return-used', false);
+        foreach ([
+            $this->actingAs($user)->get(route('warehouse.transactions.create')),
+            $this->actingAs($user)->get(route('warehouse.transactions-used.create')),
+        ] as $response) {
+            $response
+                ->assertOk()
+                ->assertSee('data-warehouse-transaction-form', false)
+                ->assertSee('data-warehouse-catalog="primary"', false)
+                ->assertSee('name="source_location"', false)
+                ->assertSee('Sumber internal');
+        }
 
         $script = file_get_contents(base_path('resources/js/warehouse/transaction-form.js'));
-        self::assertIsString($script);
-        self::assertStringContainsString('new AbortController()', $script);
-        self::assertStringContainsString('setTimeout(() => load(false), 300)', $script);
-        self::assertStringContainsString("event.key === 'Enter'", $script);
-        self::assertStringContainsString('loading="lazy"', $script);
-        self::assertStringContainsString('const syncVerifierAvailability', $script);
-        self::assertStringContainsString('const inbound = type === \'IN\';', $script);
-        self::assertStringContainsString('Status: Menunggu Validasi', $script);
-        self::assertStringContainsString('const appendPreview', $script);
-        self::assertStringContainsString('const invalidateApproval', $script);
-        self::assertStringContainsString('Verifikasi ulang setelah NPK diubah.', $script);
-        self::assertStringContainsString('updateStep(3)', $script);
-        self::assertStringNotContainsString('updateStep(4)', $script);
-        self::assertStringNotContainsString('window.confirm', $script);
+        self::assertStringContainsString('data-warehouse-catalog-item-key', $script);
+        self::assertStringContainsString('syncCatalogSelection', $script);
+        self::assertStringContainsString("syncCatalogSelection('primary')", $script);
+        self::assertStringContainsString("syncCatalogSelection('return')", $script);
+        self::assertStringContainsString("card.setAttribute('aria-pressed'", $script);
 
-        $stylesheet = file_get_contents(base_path('resources/css/warehouse/transaction-form.css'));
-        self::assertStringContainsString('.warehouse-catalog-grid', $stylesheet);
-        self::assertStringContainsString('grid-template-columns: repeat(2, minmax(0, 1fr))', $stylesheet);
-        self::assertStringContainsString('aspect-ratio: 16 / 11', $stylesheet);
-        self::assertStringContainsString('min-height: 44px', $stylesheet);
+        $css = file_get_contents(base_path('resources/css/warehouse/transaction-form.css'));
+        self::assertStringContainsString('.warehouse-catalog-card.is-selected', $css);
     }
 
-    public function test_scanner_prefill_only_resolves_in_browser_and_unknown_type_is_rejected(): void
+    public function test_validation_workspace_reads_stock_ins_only_and_labels_internal_sources_as_transfers(): void
     {
-        $user = $this->createUser([], false);
-        $this->createPicPosition($user);
-        $item = WarehouseConsumable::factory()->create(['item_name' => 'Starter Query Item', 'barcode' => '000-STARTER-01']);
-
-        $this->actingAs($user)->get(route('warehouse.transactions.create', ['type' => 'DELETE', 'barcode' => $item->barcode]))
-            ->assertOk()
-            ->assertSee('data-warehouse-initial-type="IN"', false)
-            ->assertSee('data-warehouse-initial-barcode="000-STARTER-01"', false)
-            ->assertDontSee('Starter Query Item');
-    }
-
-    public function test_dashboard_uses_separate_item_and_machine_stock_out_charts_and_removes_recent_panel(): void
-    {
-        $user = $this->createUser();
-
-        $response = $this->actingAs($user)->get(route('warehouse.dashboard'))
-            ->assertOk()
-            ->assertSee('Analitik Pergerakan')
-            ->assertSee('Top Item Stock Out')
-            ->assertSee('Top Tipe Mesin Stock Out')
-            ->assertSee('data-warehouse-bar-chart', false)
-            ->assertSee('warehouse-top-item-data', false)
-            ->assertSee('warehouse-top-machine-data', false)
-            ->assertDontSee('warehouse-top-stock-out-data', false)
-            ->assertSee('Lihat data tabel')
-            ->assertSee('Nama Item')
-            ->assertSee('Tipe Mesin')
-            ->assertSee('Jumlah')
-            ->assertSee('name="trend_date_from"', false)
-            ->assertSee('name="trend_date_to"', false)
-            ->assertDontSee('Transaksi Terbaru')
-            ->assertDontSee('Pergerakan bulan berjalan.');
-
-        $view = file_get_contents(base_path('resources/views/warehouse/dashboard/index.blade.php'));
-        self::assertStringContainsString('warehouse-top-item-data', $view);
-        self::assertStringContainsString('warehouse-top-machine-data', $view);
-        self::assertStringNotContainsString('warehouse-top-stock-out-data', $view);
-        self::assertStringNotContainsString('recentTransactions', $view);
-        $script = file_get_contents(base_path('resources/js/warehouse/dashboard.js'));
-        self::assertStringContainsString("indexAxis: 'y'", $script);
-        self::assertStringContainsString('prefers-reduced-motion: reduce', $script);
-        self::assertStringContainsString('Collapse.getOrCreateInstance', $script);
-
-        self::assertSame(2, substr_count($response->getContent(), 'data-warehouse-bar-chart'));
-    }
-
-    public function test_master_shipment_reporting_and_history_pages_expose_revision_two_fields(): void
-    {
-        $user = $this->createUser();
-        $item = WarehouseConsumable::factory()->create(['item_name' => 'UI Contract Item']);
-        WarehouseConsumable::factory()->create(['item_name' => 'UI Contract Item Two']);
-        WarehouseStockTransaction::factory()->create([
-            'consumable_id' => $item->id,
-            'verified_user_id' => $user->id,
-            'created_by' => $user->id,
-            'transaction_at' => '2026-01-15 08:00:00',
+        $creator = $this->createUser([], false);
+        $this->createPicPosition($creator);
+        $validator = $this->createUser();
+        $item = WarehouseConsumable::factory()->create([
+            'item_code' => 'VALIDATION-TRANSFER-ITEM',
+            'current_stock' => '5.000',
+            'stock_ds8' => '5.000',
         ]);
+        $stockIn = WarehouseStockIn::factory()->create([
+            'stock_in_number' => 'WH-IN-VALIDATION-TRANSFER',
+            'consumable_id' => $item->id,
+            'item_condition' => WarehouseItemCondition::USED,
+            'quantity_expected' => '1.000',
+            'source_location' => 'DS8',
+            'destination_location' => 'Deltamas',
+            'created_by' => $creator->id,
+        ]);
+        $legacy = $this->legacyShipment($creator, $item, 'WH-SHIP-ARCHIVE-ONLY');
 
-        $this->actingAs($user)->get(route('warehouse.consumables.create'))
+        $response = $this->actingAs($validator)->get(route('warehouse.validations.index'));
+        $response
             ->assertOk()
-            ->assertSee('enctype="multipart/form-data"', false)
-            ->assertSee('name="machine_type"', false)
-            ->assertSee('name="photo"', false)
-            ->assertSee('Maksimal 5 MB');
-        $this->actingAs($user)->get(route('warehouse.location-shipments.create'))
-            ->assertOk()
-            ->assertSee('name="item_condition"', false)
-            ->assertSee('name="from_location"', false)
-            ->assertSee('name="to_location"', false)
-            ->assertSee('Pengiriman Antar Lokasi')
-            ->assertSee('di-reserve');
-        $this->actingAs($user)->get(route('warehouse.reports.index', ['year' => 2026]))
-            ->assertOk()
-            ->assertSee('Reporting Stok Tahunan')
-            ->assertSee('warehouse-report-matrix', false)
-            ->assertSee('Nama Barang')
-            ->assertSee('Jan')
-            ->assertSee('Stok Awal')
-            ->assertSee('Mutasi (+)')
-            ->assertSee('Mutasi (-)')
-            ->assertSee('Stok Akhir')
-            ->assertSee('Total')
-            ->assertSee('Average')
-            ->assertSee('colspan="4"', false)
-            ->assertSee('rowspan="2"', false)
-            ->assertSee('warehouse-report-mobile-cards', false)
-            ->assertSee('Minimum')
-            ->assertSee('Maksimum')
-            ->assertSee('UI Contract Item')
-            ->assertSee('UI Contract Item Two');
-        $this->actingAs($user)->get(route('warehouse.reports.index', ['year' => 2025]))
-            ->assertOk()
-            ->assertSee('Belum ada transaksi Warehouse pada tahun 2025')
-            ->assertSee('warehouse-report-matrix', false)
-            ->assertSee('UI Contract Item')
-            ->assertSee('UI Contract Item Two')
-            ->assertSee('Total')
-            ->assertSee('Average')
-            ->assertDontSee('colspan="4"', false)
-            ->assertDontSee('Stok Awal');
-
-        $reportingCss = file_get_contents(base_path('resources/css/warehouse/reporting.css'));
-        self::assertStringContainsString('overflow-x: auto', $reportingCss);
-        self::assertStringContainsString('position: sticky', $reportingCss);
-        self::assertStringContainsString('warehouse-report-mobile-card', $reportingCss);
-        $this->actingAs($user)->get(route('warehouse.transactions.index'))
-            ->assertOk()
-            ->assertSee('Foreman 1')
-            ->assertSee('Foreman 2')
-            ->assertSee('Operation key')
-            ->assertSee('Kondisi')
-            ->assertSee('warehouse-history-totals-footer', false)
-            ->assertSee('warehouse-history-totals-mobile', false);
-
-        self::assertFileExists(base_path('resources/css/warehouse/location-shipments.css'));
+            ->assertSee($stockIn->stock_in_number)
+            ->assertSee('Transfer Antar Lokasi')
+            ->assertSee('DS8 → Deltamas')
+            ->assertDontSee($legacy->shipment_number);
+        self::assertTrue($response->viewData('pending')->contains(
+            fn (array $record): bool => $record['reference'] === $stockIn->stock_in_number && $record['kind'] === 'Transfer Antar Lokasi',
+        ));
     }
 
-    public function test_major_pages_share_shell_and_transaction_detail_shows_location_condition_and_operation(): void
+    public function test_reporting_tabs_default_to_new_and_preserve_active_year(): void
+    {
+        $user = $this->createUser();
+        WarehouseConsumable::factory()->create(['item_name' => 'Reporting Tabs Item']);
+
+        $default = $this->actingAs($user)->get(route('warehouse.reports.index', ['year' => 2026]));
+        $default
+            ->assertOk()
+            ->assertSee('>ALL<', false)
+            ->assertSee('>BARU<', false)
+            ->assertSee('>BEKAS<', false)
+            ->assertSee('condition=NEW', false)
+            ->assertSee('year=2026', false);
+
+        $this->actingAs($user)->get(route('warehouse.reports.index', ['year' => 2026, 'condition' => 'USED']))
+            ->assertOk()
+            ->assertSee('kondisi BEKAS')
+            ->assertSee('condition=ALL', false)
+            ->assertSee('year=2026', false);
+
+        $css = file_get_contents(base_path('resources/css/warehouse/reporting.css'));
+        self::assertStringContainsString('warehouse-report-tabs', $css);
+        self::assertStringContainsString('warehouse-report-tab.is-active', $css);
+    }
+
+    public function test_historic_shipment_reference_is_read_only_without_an_operational_route(): void
     {
         $user = $this->createUser();
         $item = WarehouseConsumable::factory()->create();
+        $shipment = $this->legacyShipment($user, $item, 'WH-SHIP-HISTORIC');
         $transaction = WarehouseStockTransaction::factory()->create([
             'consumable_id' => $item->id,
             'verified_user_id' => $user->id,
             'created_by' => $user->id,
-            'transaction_type' => WarehouseTransactionType::IN,
+            'transaction_type' => WarehouseTransactionType::TRANSFER,
+            'location_shipment_id' => $shipment->id,
+            'from_location' => 'DS8',
+            'to_location' => 'Deltamas',
+            'stock_before' => '5.000',
+            'stock_after' => '5.000',
         ]);
 
-        foreach ([
-            $this->actingAs($user)->get(route('warehouse.dashboard')),
-            $this->actingAs($user)->get(route('warehouse.consumables.index')),
-            $this->actingAs($user)->get(route('warehouse.adjustments.create')),
-            $this->actingAs($user)->get(route('warehouse.transactions.show', $transaction)),
-            $this->actingAs($user)->get(route('warehouse.location-shipments.index')),
-            $this->actingAs($user)->get(route('warehouse.reports.index')),
-        ] as $response) {
-            $response->assertOk()->assertSee('warehouse-shell', false)->assertSee('warehouse-page', false);
-        }
-
         $this->actingAs($user)->get(route('warehouse.transactions.show', $transaction))
-            ->assertSee('Operation key')
-            ->assertSee('Kondisi')
-            ->assertSee('Lokasi asal')
-            ->assertSee('Lokasi tujuan');
+            ->assertOk()
+            ->assertSee('Arsip Transfer Antar Lokasi')
+            ->assertSee($shipment->shipment_number)
+            ->assertDontSee('warehouse.location-shipments.show', false);
+        $this->actingAs($user)->get('/warehouse/stock-in/shipments/'.$shipment->id)->assertNotFound();
     }
 
-    public function test_warehouse_pagination_and_status_badges_keep_bootstrap_contract(): void
+    private function legacyShipment($sender, WarehouseConsumable $item, string $number): WarehouseLocationShipment
     {
-        foreach ([
-            'resources/views/warehouse/dashboard/index.blade.php',
-            'resources/views/warehouse/categories.blade.php',
-            'resources/views/warehouse/consumables/index.blade.php',
-            'resources/views/warehouse/transactions/index.blade.php',
-        ] as $viewPath) {
-            $source = file_get_contents(base_path($viewPath));
-            self::assertIsString($source);
-            self::assertStringContainsString("links('pagination::warehouse-bootstrap-5')", $source, $viewPath);
-        }
-
-        $badge = file_get_contents(base_path('resources/views/components/warehouse/status-badge.blade.php'));
-        self::assertStringContainsString("'TRANSFER' => 'Pengiriman Antar Lokasi'", $badge);
-        self::assertStringContainsString("'OUT' => 'Habis'", $badge);
+        return WarehouseLocationShipment::query()->create([
+            'shipment_number' => $number,
+            'consumable_id' => $item->id,
+            'item_condition' => WarehouseItemCondition::NEW,
+            'quantity_sent' => '1.000',
+            'from_location' => 'DS8',
+            'to_location' => 'Deltamas',
+            'status' => WarehouseLocationShipmentStatus::WAITING_VALIDATION,
+            'sent_by_user_id' => $sender->id,
+            'sender_npk_snapshot' => (string) $sender->npk,
+            'sender_name_snapshot' => $sender->name,
+            'sender_notes' => 'Arsip transaksi lama.',
+            'sent_at' => now(),
+            'creation_idempotency_key' => (string) Str::uuid(),
+        ]);
     }
 }

@@ -1078,6 +1078,9 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Warehouse\WarehouseDashboardController::class, 'index'])
             ->middleware('warehouse.permission:warehouse.dashboard.view')
             ->name('dashboard');
+        Route::patch('/dashboard/stock-attention/{consumable}', [\App\Http\Controllers\Warehouse\WarehouseDashboardController::class, 'updateStockAttentionNote'])
+            ->middleware(['warehouse.permission:warehouse.stock-attention.update', 'throttle:warehouse-mutation'])
+            ->name('dashboard.stock-attention.update');
 
         Route::get('/transactions/create', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'create'])
             ->middleware('warehouse.permission:warehouse.stock-out.create')
@@ -1101,6 +1104,9 @@ Route::middleware(['web', 'auth'])->group(function () {
             ->name('transactions.index');
         Route::get('/dashboard/data', [\App\Http\Controllers\Warehouse\WarehouseDashboardController::class, 'data'])
             ->name('dashboard.data');
+        Route::get('/validations', [\App\Http\Controllers\Warehouse\WarehouseStockValidationController::class, 'index'])
+            ->middleware('warehouse.permission:warehouse.stock-validation.view')
+            ->name('validations.index');
         Route::post('/transactions/{transaction}/reverse', [\App\Http\Controllers\Warehouse\WarehouseTransactionController::class, 'reverse'])
             ->middleware(['warehouse.permission:warehouse.transaction.reverse', 'throttle:warehouse-mutation'])
             ->name('transactions.reverse');
@@ -1136,11 +1142,11 @@ Route::middleware(['web', 'auth'])->group(function () {
                 ->name('store');
             Route::get('/{stockIn}/validate', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'validateForm'])
                 ->whereNumber('stockIn')
-                ->middleware('warehouse.permission:warehouse.stock-in.validate')
+                ->middleware('warehouse.permission:warehouse.stock-validation.view')
                 ->name('validate-form');
             Route::post('/{stockIn}/validate', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'validateStockIn'])
                 ->whereNumber('stockIn')
-                ->middleware(['warehouse.permission:warehouse.stock-in.validate', 'throttle:warehouse-mutation'])
+                ->middleware(['warehouse.permission:warehouse.stock-validation.view', 'throttle:warehouse-mutation'])
                 ->name('validate');
             Route::post('/{stockIn}/cancel', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'cancel'])
                 ->whereNumber('stockIn')
@@ -1149,30 +1155,6 @@ Route::middleware(['web', 'auth'])->group(function () {
             Route::get('/{stockIn}', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'show'])
                 ->whereNumber('stockIn')
                 ->middleware('warehouse.permission:warehouse.stock-in.create')
-                ->name('show');
-        });
-
-        Route::prefix('stock-in/shipments')->name('location-shipments.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'index'])
-                ->middleware('warehouse.permission:warehouse.location-shipment.view')
-                ->name('index');
-            Route::get('/create', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'create'])
-                ->middleware('warehouse.permission:warehouse.location-shipment.create')
-                ->name('create');
-            Route::post('/', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'store'])
-                ->middleware(['warehouse.permission:warehouse.location-shipment.create', 'throttle:warehouse-mutation'])
-                ->name('store');
-            Route::get('/{shipment}/validate', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'validateForm'])
-                ->middleware('warehouse.permission:warehouse.location-shipment.validate')
-                ->name('validate-form');
-            Route::post('/{shipment}/validate', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'validateShipment'])
-                ->middleware(['warehouse.permission:warehouse.location-shipment.validate', 'throttle:warehouse-mutation'])
-                ->name('validate');
-            Route::post('/{shipment}/cancel', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'cancel'])
-                ->middleware(['warehouse.permission:warehouse.location-shipment.cancel', 'throttle:warehouse-mutation'])
-                ->name('cancel');
-            Route::get('/{shipment}', [\App\Http\Controllers\Warehouse\WarehouseLocationShipmentController::class, 'show'])
-                ->middleware('warehouse.permission:warehouse.location-shipment.view')
                 ->name('show');
         });
 
