@@ -12,7 +12,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class OutstandingMaterialTemplateExport implements FromArray, WithHeadings, WithStyles, WithColumnWidths
+class OutstandingMaterialTemplateExport implements FromArray, WithColumnWidths, WithHeadings, WithStyles
 {
     public function array(): array
     {
@@ -39,6 +39,9 @@ class OutstandingMaterialTemplateExport implements FromArray, WithHeadings, With
             'Keterangan',
             'Estimasi Delay ETA Port',
             'Estimasi Delay ETA Warehouse',
+            'Port',
+            'Nomor PO',
+            'Remarks',
         ];
     }
 
@@ -46,7 +49,7 @@ class OutstandingMaterialTemplateExport implements FromArray, WithHeadings, With
     {
         $lastColumn = Coordinate::stringFromColumnIndex(count($this->headings()));
 
-        $sheet->getStyle('A1:' . $lastColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$lastColumn.'1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'],
@@ -92,6 +95,9 @@ class OutstandingMaterialTemplateExport implements FromArray, WithHeadings, With
             'O' => 18,
             'P' => 24,
             'Q' => 28,
+            'R' => 18,
+            'S' => 18,
+            'T' => 30,
         ];
     }
 }

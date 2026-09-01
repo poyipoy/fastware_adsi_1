@@ -64,6 +64,7 @@ class OutstandingMaterialController extends Controller
         return view('outstanding_materials.index', [
             'statusOptions' => OutstandingMaterial::statusOptions(),
             'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
+            'portOptions' => OutstandingMaterial::portOptions(),
             'filterOptions' => $this->filterOptions(),
             'canManageOutstandingMaterials' => $this->access->canManage(Auth::user()),
             'canExportOutstandingMaterials' => $this->access->canExport(Auth::user()),
@@ -182,7 +183,7 @@ class OutstandingMaterialController extends Controller
 
         return Excel::download(
             new OutstandingMaterialExport($materials),
-            'outstanding_material_invoice_' . preg_replace('/[^A-Za-z0-9_-]+/', '_', $invoice) . '_' . now()->format('Ymd_His') . '.xlsx',
+            'outstanding_material_invoice_'.preg_replace('/[^A-Za-z0-9_-]+/', '_', $invoice).'_'.now()->format('Ymd_His').'.xlsx',
             ExcelFormat::XLSX,
         );
     }
@@ -207,6 +208,7 @@ class OutstandingMaterialController extends Controller
             'isEdit' => false,
             'statusOptions' => OutstandingMaterial::statusOptions(),
             'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
+            'portOptions' => OutstandingMaterial::portOptions(),
             'invoiceContextAnchor' => $invoiceContextAnchor,
             'invoiceContext' => $invoiceContextAnchor?->number_invoice,
             'detailReturnAnchor' => $invoiceContextAnchor,
@@ -237,7 +239,7 @@ class OutstandingMaterialController extends Controller
             'estimasi_delay_eta_port' => 'nullable|date',
             'estimasi_delay_eta_warehouse' => 'nullable|date',
             'invoice_context_id' => 'nullable|integer|exists:outstanding_materials,id',
-            'materials' => 'required|array|min:1|max:' . OutstandingMaterialBatchService::MAX_ROWS,
+            'materials' => 'required|array|min:1|max:'.OutstandingMaterialBatchService::MAX_ROWS,
             'materials.*.type' => 'required|string|max:255',
             'materials.*.thickness' => 'nullable|numeric',
             'materials.*.width' => 'nullable|numeric',
@@ -245,10 +247,13 @@ class OutstandingMaterialController extends Controller
             'materials.*.length' => 'nullable|string|max:255',
             'materials.*.qty_pcs' => 'nullable|numeric',
             'materials.*.est_qty_kg' => 'nullable|numeric',
+            'materials.*.port' => ['nullable', 'string', Rule::in(OutstandingMaterial::portOptions())],
+            'materials.*.number_po' => 'nullable|string|max:255',
+            'materials.*.remarks' => 'nullable|string|max:2000',
         ], [], $this->validationAttributes());
 
         $contextAnchor = null;
-        if (!empty($data['invoice_context_id'])) {
+        if (! empty($data['invoice_context_id'])) {
             $contextAnchor = OutstandingMaterial::query()->findOrFail((int) $data['invoice_context_id']);
             if ($this->identity->invoiceKey($contextAnchor->supplier, $contextAnchor->number_invoice) === null) {
                 throw ValidationException::withMessages([
@@ -271,7 +276,7 @@ class OutstandingMaterialController extends Controller
 
         return redirect()
             ->route('outstanding-materials.show', $anchor)
-            ->with('success', $created->count() . ' material berhasil ditambahkan ke invoice.');
+            ->with('success', $created->count().' material berhasil ditambahkan ke invoice.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -304,6 +309,9 @@ class OutstandingMaterialController extends Controller
             'length' => $data['length'] ?? null,
             'qty_pcs' => $data['qty_pcs'] ?? null,
             'est_qty_kg' => $data['est_qty_kg'] ?? null,
+            'port' => $data['port'] ?? null,
+            'number_po' => $data['number_po'] ?? null,
+            'remarks' => $data['remarks'] ?? null,
         ];
 
         $created = $this->batches->create($header, [$row], $contextAnchor, (int) Auth::id());
@@ -328,6 +336,7 @@ class OutstandingMaterialController extends Controller
             'filterOptions' => $this->filterOptionsForQuery($invoiceScope),
             'statusOptions' => OutstandingMaterial::statusOptions(),
             'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
+            'portOptions' => OutstandingMaterial::portOptions(),
             'canManageOutstandingMaterials' => $this->access->canManage(Auth::user()),
             'canView' => true,
             'canExportInvoice' => $this->access->canExport(Auth::user()),
@@ -344,6 +353,7 @@ class OutstandingMaterialController extends Controller
             'isEdit' => true,
             'statusOptions' => OutstandingMaterial::statusOptions(),
             'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
+            'portOptions' => OutstandingMaterial::portOptions(),
             'invoiceContextAnchor' => null,
             'invoiceContext' => null,
             'detailReturnAnchor' => $outstandingMaterial,
@@ -389,7 +399,7 @@ class OutstandingMaterialController extends Controller
                 $data['attachment_path'] = null;
             }
 
-            if ($invoiceChanged || !$lockedMaterial->invoice_id) {
+            if ($invoiceChanged || ! $lockedMaterial->invoice_id) {
                 $invoiceHeader = $this->invoices->ensureForIdentityKey(
                     $data['invoice_identity_key'],
                     $data['supplier'],
@@ -408,7 +418,7 @@ class OutstandingMaterialController extends Controller
                     ->whereKey($oldInvoiceId)
                     ->lockForUpdate()
                     ->first();
-                if ($oldHeader && !OutstandingMaterial::query()->where('invoice_id', $oldInvoiceId)->exists()) {
+                if ($oldHeader && ! OutstandingMaterial::query()->where('invoice_id', $oldInvoiceId)->exists()) {
                     $oldInvoiceHeaderPaths = [$oldHeader->packing_list_path, $oldHeader->mtc_path];
                     $oldHeader->delete();
                 }
@@ -455,7 +465,7 @@ class OutstandingMaterialController extends Controller
                     ->whereKey($invoiceId)
                     ->lockForUpdate()
                     ->first();
-                if ($header && !OutstandingMaterial::query()->where('invoice_id', $invoiceId)->exists()) {
+                if ($header && ! OutstandingMaterial::query()->where('invoice_id', $invoiceId)->exists()) {
                     $deletedInvoiceHeaderPaths = [$header->packing_list_path, $header->mtc_path];
                     $header->delete();
                 }
@@ -539,7 +549,7 @@ class OutstandingMaterialController extends Controller
             ->route('outstanding-materials.invoice.index')
             ->with(
                 'success',
-                'Invoice ' . $invoice . ' dan ' . $deletedMaterialCount . ' material terkait berhasil dihapus permanen.',
+                'Invoice '.$invoice.' dan '.$deletedMaterialCount.' material terkait berhasil dihapus permanen.',
             );
     }
 
@@ -561,7 +571,7 @@ class OutstandingMaterialController extends Controller
 
         return Excel::download(
             new OutstandingMaterialExport($materials),
-            'outstanding_materials_' . now()->format('Ymd_His') . '.xlsx',
+            'outstanding_materials_'.now()->format('Ymd_His').'.xlsx',
             ExcelFormat::XLSX
         );
     }
@@ -570,31 +580,41 @@ class OutstandingMaterialController extends Controller
     {
         $this->authorizeManage();
 
+        $mode = $request->input('mode') ?: $request->input('import_mode', 'add');
+        if (! in_array($mode, ['add', 'replace'], true)) {
+            $mode = 'add';
+        }
+        $request->merge(['mode' => $mode, 'import_mode' => $mode]);
+
         $request->validate([
             'import_file' => [
                 'required',
                 'file',
                 'max:10240',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (!$value instanceof \Illuminate\Http\UploadedFile) {
+                    if (! $value instanceof \Illuminate\Http\UploadedFile) {
                         $fail('File import tidak valid.');
+
                         return;
                     }
 
                     $allowedExtensions = ['xlsx', 'xls', 'csv'];
                     $extension = strtolower((string) $value->getClientOriginalExtension());
 
-                    if (!in_array($extension, $allowedExtensions, true)) {
+                    if (! in_array($extension, $allowedExtensions, true)) {
                         $fail('File import harus berekstensi xlsx, xls, atau csv.');
                     }
                 },
             ],
+            'mode' => ['nullable', 'string', Rule::in(['add', 'replace'])],
+            'import_mode' => ['nullable', 'string', Rule::in(['add', 'replace'])],
         ]);
 
         try {
             $preview = $this->importPreviews->preview(
                 $request->file('import_file'),
                 (int) Auth::id(),
+                $mode,
             );
         } catch (\Throwable $exception) {
             report($exception);
@@ -602,7 +622,7 @@ class OutstandingMaterialController extends Controller
             return redirect()
                 ->back()
                 ->withErrors([
-                    'import_file' => 'File tidak dapat diproses: ' . $exception->getMessage(),
+                    'import_file' => 'File tidak dapat diproses: '.$exception->getMessage(),
                 ]);
         }
 
@@ -631,12 +651,17 @@ class OutstandingMaterialController extends Controller
 
             return redirect()
                 ->route('outstanding-materials.index')
-                ->withErrors(['import_file' => 'Import tidak dijalankan: ' . $exception->getMessage()]);
+                ->withErrors(['import_file' => 'Import tidak dijalankan: '.$exception->getMessage()]);
         }
+
+        $mode = $counts['mode'] ?? 'add';
+        $message = $mode === 'replace'
+            ? sprintf('Import selesai: %d material berhasil diperbarui.', $counts['replaced'] ?? 0)
+            : sprintf('Import selesai: %d material berhasil ditambahkan.', $counts['inserted']);
 
         return redirect()
             ->route('outstanding-materials.index')
-            ->with('success', sprintf('Import selesai: %d material berhasil ditambahkan.', $counts['inserted']));
+            ->with('success', $message);
     }
 
     public function template()
@@ -674,7 +699,7 @@ class OutstandingMaterialController extends Controller
         $search = trim((string) ($request->input('search.value') ?: $request->input('q', '')));
 
         if ($search !== '') {
-            $like = '%' . $search . '%';
+            $like = '%'.$search.'%';
             $filteredQuery->havingRaw(
                 <<<'SQL'
                     (
@@ -777,11 +802,11 @@ class OutstandingMaterialController extends Controller
         $materialIds = array_values(array_unique(array_map('intval', $data['material_ids'])));
         $updates = ['updated_by' => Auth::id()];
 
-        if (!empty($data['keterangan'])) {
+        if (! empty($data['keterangan'])) {
             $updates['keterangan'] = $data['keterangan'];
         }
 
-        if (!empty($data['status'])) {
+        if (! empty($data['status'])) {
             $updates['status'] = $data['status'];
         }
 
@@ -820,7 +845,7 @@ class OutstandingMaterialController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => count($materialIds) . ' material(s) updated successfully.',
+            'message' => count($materialIds).' material(s) updated successfully.',
         ]);
     }
 
@@ -851,7 +876,7 @@ class OutstandingMaterialController extends Controller
             'mtc' => 'nullable|file|mimes:pdf,xls,xlsx,doc,docx,jpg,jpeg,png|max:10240',
         ]);
 
-        if (!$request->hasFile('packing_list') && !$request->hasFile('mtc')) {
+        if (! $request->hasFile('packing_list') && ! $request->hasFile('mtc')) {
             throw ValidationException::withMessages([
                 'packing_list' => 'Upload at least one document.',
             ]);
@@ -873,7 +898,7 @@ class OutstandingMaterialController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $result['updated'] . ' material(s) synchronized successfully.',
+            'message' => $result['updated'].' material(s) synchronized successfully.',
         ]);
     }
 
@@ -895,7 +920,7 @@ class OutstandingMaterialController extends Controller
         };
         $resolved = $this->documents->resolvePath($path);
 
-        if (!$resolved || !$this->documents->isStored($path)) {
+        if (! $resolved || ! $this->documents->isStored($path)) {
             abort(404, 'File attachment tidak ditemukan.');
         }
 
@@ -916,7 +941,7 @@ class OutstandingMaterialController extends Controller
         if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'], true)) {
             return response()->file($fullPath, [
                 'Content-Type' => $mimeType,
-                'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
             ]);
         }
 
@@ -944,6 +969,9 @@ class OutstandingMaterialController extends Controller
             'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
             'estimasi_delay_eta_port' => 'nullable|date',
             'estimasi_delay_eta_warehouse' => 'nullable|date',
+            'port' => ['nullable', 'string', Rule::in(OutstandingMaterial::portOptions())],
+            'number_po' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string|max:2000',
             'invoice_context_id' => 'nullable|integer|exists:outstanding_materials,id',
         ], [], $this->validationAttributes());
 
@@ -957,20 +985,26 @@ class OutstandingMaterialController extends Controller
     /** @param list<string> $excludedFields */
     private function applyFilters(Builder $query, Request $request, array $excludedFields = []): void
     {
-        foreach (['supplier', 'type', 'number_invoice', 'status', 'keterangan', 'estimasi_bulan_eta'] as $field) {
-            if (!in_array($field, $excludedFields, true) && $request->filled($field)) {
+        foreach (['supplier', 'type', 'number_invoice', 'status', 'keterangan', 'estimasi_bulan_eta', 'port'] as $field) {
+            if (! in_array($field, $excludedFields, true) && $request->filled($field)) {
                 $query->where($field, $request->input($field));
             }
         }
 
         foreach (['thickness', 'width', 'diameter', 'qty_pcs', 'est_qty_kg'] as $field) {
             if ($request->filled($field)) {
-                $query->where($field, 'like', '%' . $request->input($field) . '%');
+                $query->where($field, 'like', '%'.$request->input($field).'%');
             }
         }
-        
+
         if ($request->filled('material_length')) {
-            $query->where('length', 'like', '%' . $request->input('material_length') . '%');
+            $query->where('length', 'like', '%'.$request->input('material_length').'%');
+        }
+
+        foreach (['number_po', 'remarks'] as $field) {
+            if ($request->filled($field)) {
+                $query->where($field, 'like', '%'.$request->input($field).'%');
+            }
         }
 
         $this->applyDateRangeFilter($query, 'estimasi_eta_port', $request->input('eta_port_from'), $request->input('eta_port_to'));
@@ -996,21 +1030,30 @@ class OutstandingMaterialController extends Controller
     private function applySearch(Builder $query, string $search): void
     {
         $query->where(function (Builder $builder) use ($search): void {
-            $builder->where('supplier', 'like', '%' . $search . '%')
-                ->orWhere('type', 'like', '%' . $search . '%')
-                ->orWhere('number_invoice', 'like', '%' . $search . '%')
-                ->orWhere('status', 'like', '%' . $search . '%')
-                ->orWhere('estimasi_eta_warehouse', 'like', '%' . $search . '%')
-                ->orWhere('estimasi_bulan_eta', 'like', '%' . $search . '%')
-                ->orWhere('keterangan', 'like', '%' . $search . '%')
-                ->orWhere('attachment_path', 'like', '%' . $search . '%')
-                ->orWhere('packing_list_path', 'like', '%' . $search . '%')
-                ->orWhere('mtc_path', 'like', '%' . $search . '%');
+            $builder->where('supplier', 'like', '%'.$search.'%')
+                ->orWhere('type', 'like', '%'.$search.'%')
+                ->orWhere('number_invoice', 'like', '%'.$search.'%')
+                ->orWhere('status', 'like', '%'.$search.'%')
+                ->orWhere('estimasi_eta_warehouse', 'like', '%'.$search.'%')
+                ->orWhere('estimasi_bulan_eta', 'like', '%'.$search.'%')
+                ->orWhere('keterangan', 'like', '%'.$search.'%')
+                ->orWhere('port', 'like', '%'.$search.'%')
+                ->orWhere('number_po', 'like', '%'.$search.'%')
+                ->orWhere('remarks', 'like', '%'.$search.'%')
+                ->orWhere('attachment_path', 'like', '%'.$search.'%')
+                ->orWhere('packing_list_path', 'like', '%'.$search.'%')
+                ->orWhere('mtc_path', 'like', '%'.$search.'%');
         });
     }
 
     private function applyOrdering(Builder $query, Request $request): void
     {
+        // Column indices match the dashboard column order:
+        // 0=NO, 1=Supplier, 2=TYPE, 3=Thickness, 4=Width, 5=Diameter,
+        // 6=Length, 7=QTY PCS, 8=Est QTY KG, 9=Number Invoice, 10=Status,
+        // 11=ETA Port, 12=ETA Warehouse, 13=Estimasi Bulan ETA, 14=Keterangan,
+        // 15=Delay ETA Port, 16=Delay ETA Warehouse, 17=Port, 18=Nomor PO,
+        // 19=Remarks, 20=Packing List, 21=MTC
         $columnOrderMap = [
             1 => 'supplier',
             2 => 'type',
@@ -1028,8 +1071,11 @@ class OutstandingMaterialController extends Controller
             14 => 'keterangan',
             15 => 'estimasi_delay_eta_port',
             16 => 'estimasi_delay_eta_warehouse',
-            17 => 'packing_list_path',
-            18 => 'mtc_path',
+            17 => 'port',
+            18 => 'number_po',
+            19 => 'remarks',
+            20 => 'packing_list_path',
+            21 => 'mtc_path',
         ];
 
         $orders = (array) $request->input('order', []);
@@ -1037,17 +1083,29 @@ class OutstandingMaterialController extends Controller
 
         foreach ($orders as $order) {
             $columnIndex = isset($order['column']) ? (int) $order['column'] : null;
-            if ($columnIndex === null || !array_key_exists($columnIndex, $columnOrderMap)) {
+            if ($columnIndex === null || ! array_key_exists($columnIndex, $columnOrderMap)) {
                 continue;
             }
 
+            $columnName = $columnOrderMap[$columnIndex];
             $direction = strtolower((string) ($order['dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
-            $query->orderBy($columnOrderMap[$columnIndex], $direction);
+
+            if ($columnName === 'estimasi_eta_warehouse' && $direction === 'asc') {
+                $query->orderByRaw("CASE WHEN estimasi_eta_warehouse IS NULL OR TRIM(estimasi_eta_warehouse) = '' THEN 1 ELSE 0 END ASC")
+                    ->orderBy('estimasi_eta_warehouse', 'asc');
+            } else {
+                $query->orderBy($columnName, $direction);
+            }
             $appliedOrder = true;
         }
 
-        if (!$appliedOrder) {
-            $query->orderByDesc('id');
+        if (! $appliedOrder) {
+            // Default: ETA Warehouse DESC (NULL last), Number Invoice ASC, Supplier ASC, id ASC
+            $query->orderByRaw("CASE WHEN estimasi_eta_warehouse IS NULL OR TRIM(estimasi_eta_warehouse) = '' THEN 1 ELSE 0 END ASC")
+                ->orderBy('estimasi_eta_warehouse', 'desc')
+                ->orderBy('number_invoice', 'asc')
+                ->orderBy('supplier', 'asc')
+                ->orderBy('id', 'asc');
         }
     }
 
@@ -1056,6 +1114,11 @@ class OutstandingMaterialController extends Controller
         $allowManage = $context === 'detail' && $this->access->canManage(Auth::user());
         $allowDownload = $context === 'detail'
             && $this->access->canDownloadInvoiceDocuments(Auth::user());
+
+        $remarksRaw = $material->remarks ?: '';
+        $remarksTruncated = mb_strlen($remarksRaw) > 80
+            ? mb_substr($remarksRaw, 0, 80).'…'
+            : $remarksRaw;
 
         return [
             'id' => $material->id,
@@ -1075,6 +1138,11 @@ class OutstandingMaterialController extends Controller
             'keterangan' => e($material->keterangan ?: '-'),
             'estimasi_delay_eta_port' => $this->formatDate($material->estimasi_delay_eta_port),
             'estimasi_delay_eta_warehouse' => $this->formatDate($material->estimasi_delay_eta_warehouse),
+            'port' => e($material->port ?: '-'),
+            'number_po' => e($material->number_po ?: '-'),
+            'remarks' => $remarksRaw
+                ? '<span title="'.e($remarksRaw).'">'.e($remarksTruncated).'</span>'
+                : '-',
             'packing_list' => $this->attachmentDisplay($material, 'packing_list_path', 'packing-list', $allowDownload),
             'mtc' => $this->attachmentDisplay($material, 'mtc_path', 'mtc', $allowDownload),
             'actions' => $this->actionButtons($material, $context, $allowManage),
@@ -1236,21 +1304,20 @@ class OutstandingMaterialController extends Controller
         string $field,
         string $type,
         bool $allowDownload = false,
-    ): string
-    {
+    ): string {
         $path = $field === 'packing_list_path'
             ? ($material->packing_list_path ?: $material->attachment_path)
             : $material->{$field};
 
-        if (!$path) {
+        if (! $path) {
             return '<span class="text-muted">Not Available</span>';
         }
 
-        if (!$this->documents->isStored($path)) {
+        if (! $this->documents->isStored($path)) {
             return '<span class="text-warning">Unavailable</span>';
         }
 
-        if (!$allowDownload) {
+        if (! $allowDownload) {
             return '<span class="text-success">Available</span>';
         }
 
@@ -1272,8 +1339,7 @@ class OutstandingMaterialController extends Controller
         OutstandingMaterial $material,
         string $context = 'index',
         bool $allowManage = false,
-    ): string
-    {
+    ): string {
         $showUrl = route('outstanding-materials.show', $material);
         $detailButton = $context === 'index'
             ? <<<HTML
@@ -1317,7 +1383,7 @@ class OutstandingMaterialController extends Controller
 
     private function statusBadge(?string $status): string
     {
-        if (!$status) {
+        if (! $status) {
             return '-';
         }
 
@@ -1328,7 +1394,7 @@ class OutstandingMaterialController extends Controller
             default => 'om-badge--default',
         };
 
-        return '<span class="om-badge ' . $class . '">' . e($status) . '</span>';
+        return '<span class="om-badge '.$class.'">'.e($status).'</span>';
     }
 
     private function summaryStats(?Builder $scope = null): array
@@ -1429,17 +1495,28 @@ class OutstandingMaterialController extends Controller
 
         foreach ($orders as $order) {
             $columnIndex = isset($order['column']) ? (int) $order['column'] : null;
-            if ($columnIndex === null || !array_key_exists($columnIndex, $columnOrderMap)) {
+            if ($columnIndex === null || ! array_key_exists($columnIndex, $columnOrderMap)) {
                 continue;
             }
 
+            $columnName = $columnOrderMap[$columnIndex];
             $direction = strtolower((string) ($order['dir'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
-            $query->orderBy($columnOrderMap[$columnIndex], $direction);
+
+            if ($columnName === 'latest_eta_warehouse' && $direction === 'asc') {
+                $query->orderByRaw("CASE WHEN latest_eta_warehouse IS NULL OR TRIM(latest_eta_warehouse) = '' THEN 1 ELSE 0 END ASC")
+                    ->orderBy('latest_eta_warehouse', 'asc');
+            } else {
+                $query->orderBy($columnName, $direction);
+            }
             $appliedOrder = true;
         }
 
-        if (!$appliedOrder) {
-            $query->orderBy('number_invoice');
+        if (! $appliedOrder) {
+            // Default: Latest ETA Warehouse DESC (NULL last), Number Invoice ASC, Supplier ASC
+            $query->orderByRaw("CASE WHEN latest_eta_warehouse IS NULL OR TRIM(latest_eta_warehouse) = '' THEN 1 ELSE 0 END ASC")
+                ->orderBy('latest_eta_warehouse', 'desc')
+                ->orderBy('number_invoice', 'asc')
+                ->orderBy('supplier_sample', 'asc');
         }
     }
 
@@ -1462,11 +1539,11 @@ class OutstandingMaterialController extends Controller
 
         $statusHtml = collect(explode(',', (string) $invoice->status))
             ->filter()
-            ->map(fn (string $status): string => '<span class="om-badge ' . $this->statusBadgeClass(trim($status)) . '">' . e(trim($status)) . '</span>')
+            ->map(fn (string $status): string => '<span class="om-badge '.$this->statusBadgeClass(trim($status)).'">'.e(trim($status)).'</span>')
             ->implode(' ');
         $keteranganHtml = collect(explode(',', (string) $invoice->keterangan))
             ->filter()
-            ->map(fn (string $keterangan): string => '<span class="om-badge ' . $this->keteranganBadgeClass(trim($keterangan)) . '">' . e(trim($keterangan)) . '</span>')
+            ->map(fn (string $keterangan): string => '<span class="om-badge '.$this->keteranganBadgeClass(trim($keterangan)).'">'.e(trim($keterangan)).'</span>')
             ->implode(' ');
 
         return [
@@ -1505,14 +1582,14 @@ class OutstandingMaterialController extends Controller
         int $variantCount,
         bool $canDownload,
     ): string {
-        if (!$anchor) {
+        if (! $anchor) {
             return '<span class="text-muted">Not Available</span>';
         }
 
         $path = $type === 'packing-list'
             ? ($anchor->packing_list_path ?: $anchor->attachment_path)
             : $anchor->mtc_path;
-        if (!$path || !$this->documents->isStored($path)) {
+        if (! $path || ! $this->documents->isStored($path)) {
             return '<span class="text-warning">Unavailable</span>';
         }
 
@@ -1520,13 +1597,13 @@ class OutstandingMaterialController extends Controller
             ? '<span class="om-document-warning" title="Legacy document paths differ across this invoice"><i class="bi bi-exclamation-triangle-fill"></i></span>'
             : '';
 
-        if (!$canDownload) {
-            return '<span class="text-success">Available</span> ' . $warning;
+        if (! $canDownload) {
+            return '<span class="text-success">Available</span> '.$warning;
         }
 
         $label = $type === 'packing-list' ? 'Download Packing List' : 'Download MTC';
 
-        return $warning . sprintf(
+        return $warning.sprintf(
             '<a href="%s" download class="btn btn-sm btn-outline-primary" title="%s" aria-label="%s"><i class="bi bi-download" aria-hidden="true"></i><span class="visually-hidden">%s</span></a>',
             e(route('outstanding-materials.attachment', [
                 'outstandingMaterial' => $anchor,
@@ -1577,7 +1654,7 @@ class OutstandingMaterialController extends Controller
         if ($canManage && $representative) {
             $invoiceAttribute = e($invoice);
             $supplierAttribute = e($supplier);
-            $buttons[] = '<button type="button" class="om-action-btn om-action-btn--edit js-open-invoice-modal" data-anchor-id="' . e((string) $representative->getKey()) . '" data-invoice="' . $invoiceAttribute . '" title="Update Materials" data-bs-toggle="tooltip"><i class="bi bi-pencil-square"></i></button>';
+            $buttons[] = '<button type="button" class="om-action-btn om-action-btn--edit js-open-invoice-modal" data-anchor-id="'.e((string) $representative->getKey()).'" data-invoice="'.$invoiceAttribute.'" title="Update Materials" data-bs-toggle="tooltip"><i class="bi bi-pencil-square"></i></button>';
 
             $deleteUrl = e(route('outstanding-materials.invoice.destroy', $representative));
             $csrf = csrf_field();
@@ -1592,10 +1669,10 @@ class OutstandingMaterialController extends Controller
         }
 
         if ($canUpload && $representative) {
-            $buttons[] = '<button type="button" class="om-action-btn om-action-btn--upload js-open-invoice-upload" data-anchor-id="' . e((string) $representative->getKey()) . '" data-invoice="' . e($invoice) . '" title="Upload / Replace Documents" aria-label="Upload / Replace Documents" data-bs-toggle="tooltip"><i class="bi bi-cloud-arrow-up"></i></button>';
+            $buttons[] = '<button type="button" class="om-action-btn om-action-btn--upload js-open-invoice-upload" data-anchor-id="'.e((string) $representative->getKey()).'" data-invoice="'.e($invoice).'" title="Upload / Replace Documents" aria-label="Upload / Replace Documents" data-bs-toggle="tooltip"><i class="bi bi-cloud-arrow-up"></i></button>';
         }
 
-        return '<div class="om-actions om-invoice-actions">' . implode('', $buttons) . '</div>';
+        return '<div class="om-actions om-invoice-actions">'.implode('', $buttons).'</div>';
     }
 
     private function validationAttributes(): array
@@ -1617,7 +1694,11 @@ class OutstandingMaterialController extends Controller
             'keterangan' => 'Keterangan',
             'estimasi_delay_eta_port' => 'Estimasi Delay ETA Port',
             'estimasi_delay_eta_warehouse' => 'Estimasi Delay ETA Warehouse',
+            'port' => 'Port',
+            'number_po' => 'Nomor PO',
+            'remarks' => 'Remarks',
             'invoice_context_id' => 'Invoice Context',
+            'import_mode' => 'Import Mode',
         ];
     }
 }

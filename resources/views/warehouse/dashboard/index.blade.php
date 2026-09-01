@@ -42,24 +42,36 @@
 
         <section class="warehouse-kpi-grid" aria-label="KPI Warehouse">
             <article class="warehouse-kpi-card warehouse-kpi-card-danger">
-                <span class="warehouse-kpi-label">Stok Habis</span>
+                <div class="warehouse-kpi-header">
+                    <span class="warehouse-kpi-label">Stok Habis</span>
+                    <div class="warehouse-kpi-icon" aria-hidden="true"><i class="bi bi-exclamation-octagon-fill"></i></div>
+                </div>
                 <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($summary['out_of_stock_items']) }}</strong>
                 <small>Item memerlukan tindak lanjut.</small>
             </article>
             <article class="warehouse-kpi-card warehouse-kpi-card-warning">
-                <span class="warehouse-kpi-label">Stok Menipis</span>
+                <div class="warehouse-kpi-header">
+                    <span class="warehouse-kpi-label">Stok Menipis</span>
+                    <div class="warehouse-kpi-icon" aria-hidden="true"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                </div>
                 <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($summary['low_stock_items']) }}</strong>
                 <small>Item berada di bawah batas minimum.</small>
             </article>
             <article class="warehouse-kpi-card warehouse-kpi-card-success">
-                <span class="warehouse-kpi-label">Stock In</span>
+                <div class="warehouse-kpi-header">
+                    <span class="warehouse-kpi-label">Stock In</span>
+                    <div class="warehouse-kpi-icon" aria-hidden="true"><i class="bi bi-box-arrow-in-down"></i></div>
+                </div>
                 <div class="warehouse-kpi-metrics" aria-label="Ringkasan Stock In">
                     <div><span>Hari ini</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($summary['stock_in_today']['quantity']) }}</strong></div>
                     <div><span>Bulan ini</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($summary['stock_in_month']['quantity']) }}</strong></div>
                 </div>
             </article>
             <article class="warehouse-kpi-card warehouse-kpi-card-navy">
-                <span class="warehouse-kpi-label">Stock Out</span>
+                <div class="warehouse-kpi-header">
+                    <span class="warehouse-kpi-label">Stock Out</span>
+                    <div class="warehouse-kpi-icon" aria-hidden="true"><i class="bi bi-box-arrow-up"></i></div>
+                </div>
                 <div class="warehouse-kpi-metrics" aria-label="Ringkasan Stock Out">
                     <div><span>Hari ini</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($summary['stock_out_today']['quantity']) }}</strong></div>
                     <div><span>Bulan ini</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($summary['stock_out_month']['quantity']) }}</strong></div>
@@ -76,7 +88,7 @@
                 </x-slot:header>
                 <div class="warehouse-table-wrap">
                     <table class="table warehouse-table align-middle" aria-label="Stok rendah dan kosong">
-                        <thead><tr><th>Barang</th><th>Stok total</th><th>DS8</th><th>Deltamas</th><th>Minimum</th><th>Status</th><th>Catatan</th>@if($canStockIn)<th>Aksi</th>@endif</tr></thead>
+                        <thead><tr><th>Barang</th><th>Stok total</th><th>DS8</th><th>Deltamas</th><th>Minimum</th><th>Maximum</th><th>Average Consume</th><th>Status</th><th>Catatan</th>@if($canStockIn)<th>Aksi</th>@endif</tr></thead>
                         <tbody>
                             @forelse ($lowStock as $item)
                                 <tr>
@@ -85,6 +97,14 @@
                                     <td>{{ \App\Services\Warehouse\WarehouseQuantity::display($item->stock_ds8) }}</td>
                                     <td>{{ \App\Services\Warehouse\WarehouseQuantity::display($item->stock_deltamas) }}</td>
                                     <td>{{ \App\Services\Warehouse\WarehouseQuantity::display($item->minimum_stock) }}</td>
+                                    <td>
+                                        @if ($item->maximum_stock !== null && $item->maximum_stock !== '')
+                                            {{ \App\Services\Warehouse\WarehouseQuantity::display($item->maximum_stock) }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td>{{ $item->average_consume ?? 0 }} pcs/bulan</td>
                                     <td><x-warehouse.status-badge :status="$item->stock_status" context="stock" /></td>
                                     <td>
                                         @if ($canUpdateStockAttention)
@@ -104,7 +124,7 @@
                                     @endif
                                 </tr>
                             @empty
-                                <tr><td colspan="{{ $canStockIn ? 8 : 7 }}"><x-warehouse.empty-state title="Stok terkendali" message="Semua item aktif berada di atas minimum." /></td></tr>
+                                <tr><td colspan="{{ $canStockIn ? 10 : 9 }}"><x-warehouse.empty-state title="Stok terkendali" message="Semua item aktif berada di atas minimum." /></td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -125,10 +145,13 @@
             </x-slot:header>
             <div @class(['collapse', 'show' => $trendFilterHasErrors]) id="warehouse-trend-filter">
                 <form class="warehouse-trend-filter" method="GET" action="{{ route('warehouse.dashboard') }}" aria-label="Filter analitik Warehouse">
+                    @if (request()->filled('stockout_month'))
+                        <input type="hidden" name="stockout_month" value="{{ request('stockout_month') }}">
+                    @endif
                     <div class="warehouse-trend-filter-grid">
                         <div><label class="form-label" for="trend-date-from">Dari tanggal</label><input class="form-control @error('trend_date_from') is-invalid @enderror" id="trend-date-from" type="date" name="trend_date_from" value="{{ request('trend_date_from', $trendFilter->from->toDateString()) }}">@error('trend_date_from')<div class="invalid-feedback d-block" role="alert">{{ $message }}</div>@enderror</div>
                         <div><label class="form-label" for="trend-date-to">Sampai tanggal</label><input class="form-control @error('trend_date_to') is-invalid @enderror" id="trend-date-to" type="date" name="trend_date_to" value="{{ request('trend_date_to', $trendFilter->to->toDateString()) }}">@error('trend_date_to')<div class="invalid-feedback d-block" role="alert">{{ $message }}</div>@enderror</div>
-                        <div class="warehouse-trend-filter-actions"><button class="btn btn-primary" type="submit">Terapkan</button><a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Atur ulang</a></div>
+                        <div class="warehouse-trend-filter-actions"><button class="btn btn-primary" type="submit">Terapkan</button><a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard', request()->only(['stockout_month'])) }}">Atur ulang</a></div>
                     </div>
                 </form>
             </div>
@@ -145,7 +168,38 @@
             </div>
         </x-warehouse.panel>
 
-        <x-warehouse.panel class="warehouse-top-stock-out-panel" title="Agregasi Stock Out" subtitle="Peringkat item dan tipe mesin dipisahkan agar mudah dibandingkan.">
+        <x-warehouse.panel class="warehouse-top-stock-out-panel" title="Agregasi Stock Out" subtitle="Peringkat Stock Out barang BARU pada bulan yang dipilih.">
+            <x-slot:header>
+                <form class="warehouse-stockout-filter" method="GET" action="{{ route('warehouse.dashboard') }}" aria-label="Filter bulan Stock Out">
+                    @if (request()->filled('trend_date_from'))
+                        <input type="hidden" name="trend_date_from" value="{{ request('trend_date_from') }}">
+                    @endif
+                    @if (request()->filled('trend_date_to'))
+                        <input type="hidden" name="trend_date_to" value="{{ request('trend_date_to') }}">
+                    @endif
+                    <div class="warehouse-stockout-filter-row">
+                        <div class="warehouse-stockout-filter-field">
+                            <label class="form-label visually-hidden" for="stockout-month">Bulan Stock Out</label>
+                            <input
+                                class="form-control form-control-sm @error('stockout_month') is-invalid @enderror"
+                                id="stockout-month"
+                                type="month"
+                                name="stockout_month"
+                                value="{{ request('stockout_month', $stockOutFilter->from->format('Y-m')) }}"
+                                max="{{ \Carbon\CarbonImmutable::now(config('app.timezone', 'Asia/Jakarta'))->format('Y-m') }}"
+                                aria-label="Bulan Stock Out"
+                            >
+                        </div>
+                        <div class="warehouse-stockout-filter-actions">
+                            <button class="btn btn-sm btn-primary" type="submit">Terapkan</button>
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ route('warehouse.dashboard', request()->only(['trend_date_from', 'trend_date_to'])) }}">Atur ulang</a>
+                        </div>
+                    </div>
+                    @error('stockout_month')
+                        <div class="invalid-feedback d-block" role="alert">{{ $message }}</div>
+                    @enderror
+                </form>
+            </x-slot:header>
             <div class="warehouse-analytics-grid warehouse-analytics-grid-top-stock-out">
                 <section class="warehouse-analytics-block warehouse-analytics-block-top-stock-out" aria-labelledby="warehouse-top-item-title">
                     <h3 id="warehouse-top-item-title">Top Item Stock Out</h3>

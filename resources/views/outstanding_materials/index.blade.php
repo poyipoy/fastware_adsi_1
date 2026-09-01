@@ -1143,6 +1143,20 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                                         </div>
                                     </div>
                                 </th>
+                                <th>
+                                    <select id="filter_port" class="om-inline-filter outstanding-column-filter">
+                                        <option value="">All</option>
+                                        @foreach (\App\Models\OutstandingMaterial::portOptions() as $port)
+                                            <option value="{{ $port }}">{{ $port }}</option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th>
+                                    <input type="text" id="filter_number_po" class="om-inline-filter outstanding-column-filter" placeholder="...">
+                                </th>
+                                <th>
+                                    <input type="text" id="filter_remarks" class="om-inline-filter outstanding-column-filter" placeholder="...">
+                                </th>
                                 <th></th>
                                 <th></th>
                                 <th></th>
@@ -1165,6 +1179,9 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                                 <th>Keterangan</th>
                                 <th>Estimasi Delay<br>ETA Port</th>
                                 <th>Estimasi Delay<br>ETA Warehouse</th>
+                                <th>Port</th>
+                                <th>Nomor PO</th>
+                                <th>Remarks</th>
                                 <th>Packing List</th>
                                 <th>MTC</th>
                                 <th>Action</th>
@@ -1189,9 +1206,29 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <label for="import_file" class="form-label">File Excel / CSV</label>
-                    <input type="file" class="form-control" id="import_file" name="import_file" accept=".xlsx,.xls,.csv" required>
-                    <div class="form-text mt-2">Satu file dapat berisi banyak supplier, invoice, dan material. Setiap baris valid akan ditambahkan, termasuk material yang datanya sama persis. Preview akan muncul sebelum data disimpan.</div>
+                    <div class="mb-3">
+                        <label class="form-label d-block fw-semibold">Mode Import</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="mode" id="import_mode_add" value="add" checked>
+                            <label class="form-check-label" for="import_mode_add">
+                                <strong>Add</strong> (Tambah data baru)
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="mode" id="import_mode_replace" value="replace">
+                            <label class="form-check-label" for="import_mode_replace">
+                                <strong>Replace</strong> (Update data yang cocok)
+                            </label>
+                        </div>
+                        <div class="form-text small mt-1">
+                            <em>Add</em> akan menambahkan seluruh baris data baru. <em>Replace</em> akan mencocokkan data berdasarkan <code>Invoice</code>, <code>TYPE</code>, <code>Thickness</code>, <code>Width</code>, dan <code>Diameter</code>, lalu memperbarui datanya.
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label for="import_file" class="form-label fw-semibold">File Excel / CSV</label>
+                        <input type="file" class="form-control" id="import_file" name="import_file" accept=".xlsx,.xls,.csv" required>
+                        <div class="form-text mt-2">Satu file dapat berisi banyak supplier, invoice, dan material. Preview akan muncul sebelum data disimpan ke database.</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1285,6 +1322,9 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                 delay_eta_port_to: $('#filter_delay_eta_port_to').val(),
                 delay_eta_warehouse_from: $('#filter_delay_eta_warehouse_from').val(),
                 delay_eta_warehouse_to: $('#filter_delay_eta_warehouse_to').val(),
+                port: $('#filter_port').val(),
+                number_po: $('#filter_number_po').val(),
+                remarks: $('#filter_remarks').val(),
             };
         }
 
@@ -1349,11 +1389,14 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                 { data: 'keterangan', name: 'keterangan' },
                 { data: 'estimasi_delay_eta_port', name: 'estimasi_delay_eta_port' },
                 { data: 'estimasi_delay_eta_warehouse', name: 'estimasi_delay_eta_warehouse' },
+                { data: 'port', name: 'port' },
+                { data: 'number_po', name: 'number_po' },
+                { data: 'remarks', name: 'remarks' },
                 { data: 'packing_list', name: 'packing_list_path', orderable: true, searchable: false, className: 'text-center' },
                 { data: 'mtc', name: 'mtc_path', orderable: true, searchable: false, className: 'text-center' },
                 { data: 'actions', orderable: false, searchable: false, className: 'text-center' },
             ],
-            order: [[1, 'asc']],
+            order: [],
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             language: {
@@ -1441,7 +1484,8 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
         // Reset button
         $('#btnOutstandingReset').on('click', function () {
             $('.outstanding-column-filter').val('');
-            $('#filter_thickness, #filter_width, #filter_diameter, #filter_material_length, #filter_qty_pcs, #filter_est_qty_kg').val('');
+            $('#filter_thickness, #filter_width, #filter_diameter, #filter_material_length, #filter_qty_pcs, #filter_est_qty_kg, #filter_number_po, #filter_remarks').val('');
+            $('#filter_port').val('');
             ['filter_eta_port', 'filter_eta_warehouse', 'filter_delay_eta_port', 'filter_delay_eta_warehouse'].forEach(function (prefix) {
                 $('#' + prefix + '_from').val('');
                 $('#' + prefix + '_to').val('');

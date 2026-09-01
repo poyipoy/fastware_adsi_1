@@ -1011,18 +1011,27 @@
                                 @endif
                             </div>
                             <div class="col-md-3">
-                                <label for="estimasi_bulan_eta" class="form-label">Estimasi Bulan ETA</label>
-                                <input type="text" id="estimasi_bulan_eta" name="estimasi_bulan_eta" class="form-control" value="{{ old('estimasi_bulan_eta', $material->estimasi_bulan_eta) }}" placeholder="Contoh: May 2026">
+                                <label for="number_po" class="form-label">Nomor PO</label>
+                                <input type="text" id="number_po" name="number_po" class="form-control" value="{{ old('number_po', $material->number_po) }}">
                             </div>
                         </div>
                     </div>
 
-                    {{-- Section: Schedule ETA --}}
+                    {{-- Section: Schedule ETA & Port --}}
                     <div class="om-fieldset">
                         <div class="om-fieldset-title">
-                            <i class="bi bi-calendar-event"></i> Schedule ETA
+                            <i class="bi bi-calendar-event"></i> Schedule ETA & Port
                         </div>
                         <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="port" class="form-label">Port</label>
+                                <select id="port" name="port" class="form-select">
+                                    <option value="">Pilih Port</option>
+                                    @foreach (\App\Models\OutstandingMaterial::portOptions() as $port)
+                                        <option value="{{ $port }}" @selected(old('port', $material->port) === $port)>{{ $port }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="col-md-3">
                                 <label for="estimasi_eta_port" class="form-label">Estimasi ETA Port</label>
                                 <input type="date" id="estimasi_eta_port" name="estimasi_eta_port" class="form-control" value="{{ old('estimasi_eta_port', $material->estimasi_eta_port) }}">
@@ -1030,6 +1039,10 @@
                             <div class="col-md-3">
                                 <label for="estimasi_eta_warehouse" class="form-label">Estimasi ETA Warehouse</label>
                                 <input type="date" id="estimasi_eta_warehouse" name="estimasi_eta_warehouse" class="form-control" value="{{ old('estimasi_eta_warehouse', $material->estimasi_eta_warehouse) }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="estimasi_bulan_eta" class="form-label">Estimasi Bulan ETA</label>
+                                <input type="text" id="estimasi_bulan_eta" name="estimasi_bulan_eta" class="form-control" value="{{ old('estimasi_bulan_eta', $material->estimasi_bulan_eta) }}" placeholder="Contoh: May 2026">
                             </div>
                             <div class="col-md-3">
                                 <label for="estimasi_delay_eta_port" class="form-label">Estimasi Delay ETA Port</label>
@@ -1042,13 +1055,13 @@
                         </div>
                     </div>
 
-                    {{-- Section: Keterangan --}}
+                    {{-- Section: Keterangan & Remarks --}}
                     <div class="om-fieldset">
                         <div class="om-fieldset-title">
-                            <i class="bi bi-chat-left-text"></i> Keterangan
+                            <i class="bi bi-chat-left-text"></i> Keterangan & Remarks
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <label for="keterangan" class="form-label">Keterangan</label>
                                 <select id="keterangan" name="keterangan" class="form-select">
                                     <option value="">Pilih Keterangan</option>
@@ -1056,6 +1069,10 @@
                                         <option value="{{ $keterangan }}" @selected(old('keterangan', $material->keterangan) === $keterangan)>{{ $keterangan }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label for="remarks" class="form-label">Remarks</label>
+                                <textarea id="remarks" name="remarks" class="form-control" rows="3" placeholder="Catatan tambahan...">{{ old('remarks', $material->remarks) }}</textarea>
                             </div>
                         </div>
                     </div>

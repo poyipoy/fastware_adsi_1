@@ -22,7 +22,7 @@
                     <tbody>
                         @forelse ($pending as $record)
                             <tr>
-                                <td><span class="badge text-bg-light">{{ $record['kind'] }}</span></td>
+                                <td><span class="warehouse-status-badge warehouse-status-badge-warning"><span class="warehouse-status-dot" aria-hidden="true"></span><span>{{ $record['kind'] }}</span></span></td>
                                 <td class="font-monospace">{{ $record['reference'] }}</td>
                                 <td>{{ optional($record['created_at'])->format('Y-m-d H:i') }}</td>
                                 <td><strong>{{ $record['item'] }}</strong><small class="d-block warehouse-muted font-monospace">{{ $record['item_code'] }}</small></td>
@@ -47,7 +47,7 @@
                     <tbody>
                         @forelse ($validated as $record)
                             <tr>
-                                <td><span class="badge text-bg-success">{{ $record['kind'] }}</span></td>
+                                <td><span class="warehouse-status-badge warehouse-status-badge-success"><span class="warehouse-status-dot" aria-hidden="true"></span><span>{{ $record['kind'] }}</span></span></td>
                                 <td class="font-monospace">{{ $record['reference'] }}</td>
                                 <td>{{ optional($record['created_at'])->format('Y-m-d H:i') }}</td>
                                 <td><strong>{{ $record['item'] }}</strong><small class="d-block warehouse-muted font-monospace">{{ $record['item_code'] }}</small></td>

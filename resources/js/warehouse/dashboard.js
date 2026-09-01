@@ -34,14 +34,45 @@
 
             new window.Chart(canvas, {
                 type: 'bar',
-                data: { labels: data.labels, datasets: [{ label: 'Jumlah Stock Out', data: data.values, backgroundColor: '#2d5fb8', borderRadius: 4 }] },
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Jumlah Stock Out',
+                        data: data.values,
+                        backgroundColor: '#2563eb',
+                        hoverBackgroundColor: '#1d4ed8',
+                        borderRadius: 6,
+                        borderSkipped: false,
+                        barThickness: 20,
+                    }],
+                },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : undefined,
-                    plugins: { legend: { display: false } },
-                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#f8fafc',
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: false,
+                        },
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, color: '#64748b', font: { size: 11 } },
+                            grid: { color: '#f1f5f9' },
+                        },
+                        y: {
+                            ticks: { color: '#1e293b', font: { size: 12, weight: '500' } },
+                            grid: { display: false },
+                        },
+                    },
                 },
             });
         });

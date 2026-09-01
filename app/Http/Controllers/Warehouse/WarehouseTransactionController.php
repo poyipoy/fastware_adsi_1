@@ -105,6 +105,7 @@ class WarehouseTransactionController extends Controller
                 itemCondition: $condition,
                 sourceLocation: $type === WarehouseTransactionType::OUT ? $request->input('location') : null,
                 operationKey: $operationKey,
+                machineTypeUsed: $type === WarehouseTransactionType::OUT ? $request->input('machine_type_used') : null,
             );
 
             if ($request->boolean('return_used')) {

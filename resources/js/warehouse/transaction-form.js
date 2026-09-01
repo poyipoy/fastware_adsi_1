@@ -10,6 +10,9 @@
     const locationInput = form.querySelector('[data-warehouse-location]');
     const sourceLocationWrap = form.querySelector('[data-warehouse-source-location-wrap]');
     const sourceLocationInput = form.querySelector('[data-warehouse-source-location]');
+    const machineTypeWrap = form.querySelector('[data-warehouse-machine-type-wrap]');
+    const machineTypeContainer = form.querySelector('[data-warehouse-machine-type-container]');
+    const machineTypeInput = form.querySelector('[data-warehouse-machine-type-input]');
     const userInput = form.querySelector('[data-warehouse-user-input]');
     const verifierPanel = form.querySelector('[data-warehouse-verifier-panel]');
     const verifierCopy = form.querySelector('[data-warehouse-verifier-copy]');
@@ -37,6 +40,14 @@
 
     const isPendingStockIn = () => typeInput.value === 'IN'
         && (conditionInput.value === 'NEW' || Boolean(sourceLocationInput?.value));
+
+    const syncMachineTypeVisibility = () => {
+        if (!machineTypeWrap || !machineTypeInput) return;
+        const out = typeInput.value === 'OUT';
+        const hasMachineType = Boolean(state.item?.machine_type);
+        machineTypeWrap.hidden = !(out && hasMachineType);
+        machineTypeInput.disabled = !(out && hasMachineType);
+    };
 
     const syncWorkflowPresentation = () => {
         const pendingStockIn = isPendingStockIn();
@@ -127,7 +138,42 @@
             quantityInput.min = quantityInput.step;
             appendPreview(form.querySelector('[data-warehouse-item-result]'), item);
             form.querySelector('[data-warehouse-next-detail]').disabled = false;
+            
+            // Reset machine type selection
+            if (machineTypeInput) machineTypeInput.value = '';
+            if (machineTypeContainer) {
+                machineTypeContainer.replaceChildren();
+                if (item.machine_type) {
+                    const machines = item.machine_type.split(',').map(m => m.trim()).filter(m => m);
+                    machines.forEach(machine => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn btn-sm btn-outline-secondary';
+                        btn.textContent = machine;
+                        btn.addEventListener('click', () => {
+                            Array.from(machineTypeContainer.children).forEach(b => {
+                                b.classList.remove('btn-primary');
+                                b.classList.add('btn-outline-secondary');
+                            });
+                            btn.classList.remove('btn-outline-secondary');
+                            btn.classList.add('btn-primary');
+                            machineTypeInput.value = machine;
+                            syncVerifierAvailability(); // Check verifier again if machine type is required
+                        });
+                        machineTypeContainer.append(btn);
+                    });
+
+                    // Auto-select if only 1 machine type exists
+                    if (machines.length === 1 && machineTypeContainer.firstElementChild) {
+                        const onlyBtn = machineTypeContainer.firstElementChild;
+                        onlyBtn.classList.remove('btn-outline-secondary');
+                        onlyBtn.classList.add('btn-primary');
+                        machineTypeInput.value = machines[0];
+                    }
+                }
+            }
         }
+        syncMachineTypeVisibility();
         syncCatalogSelection(target);
         updateSummary();
         syncVerifierAvailability();
@@ -232,9 +278,30 @@
 
     const updateSummary = () => {
         if (!summaryPanel) return updateProjection();
-        summaryPanel.querySelector('[data-warehouse-summary-item]').textContent = state.item?.item_name || '—';
-        summaryPanel.querySelector('[data-warehouse-summary-item-code]').textContent = state.item?.item_code || '—';
-        summaryPanel.querySelector('[data-warehouse-summary-item-barcode]').textContent = state.item?.barcode || '—';
+
+        const itemElem = summaryPanel.querySelector('[data-warehouse-summary-item]');
+        const itemCodeElem = summaryPanel.querySelector('[data-warehouse-summary-item-code]');
+        const itemBarcodeElem = summaryPanel.querySelector('[data-warehouse-summary-item-barcode]');
+
+        if (state.item) {
+            itemElem.textContent = state.item.item_name || '—';
+            itemCodeElem.textContent = state.item.item_code || '';
+            
+            // Only show barcode if present and different from item_code
+            if (state.item.barcode && state.item.barcode !== state.item.item_code) {
+                itemBarcodeElem.textContent = `Barcode: ${state.item.barcode}`;
+                itemBarcodeElem.hidden = false;
+            } else {
+                itemBarcodeElem.textContent = '';
+                itemBarcodeElem.hidden = true;
+            }
+        } else {
+            itemElem.textContent = '—';
+            itemCodeElem.textContent = '';
+            itemBarcodeElem.textContent = '';
+            itemBarcodeElem.hidden = true;
+        }
+
         summaryPanel.querySelector('[data-warehouse-summary-current-stock]').textContent = state.item ? displayQuantity(state.item.current_stock) : '—';
         const stockStatus = summaryPanel.querySelector('[data-warehouse-summary-stock-status]');
         stockStatus.replaceChildren();
@@ -242,8 +309,19 @@
         summaryPanel.querySelector('[data-warehouse-summary-type]').textContent = transactionTypeLabels[typeInput.value] || '—';
         summaryPanel.querySelector('[data-warehouse-summary-location]').textContent = locationInput.value;
         summaryPanel.querySelector('[data-warehouse-summary-quantity]').textContent = displayQuantity(quantityInput.value);
-        summaryPanel.querySelector('[data-warehouse-summary-user]').textContent = state.verifier?.name || '—';
-        summaryPanel.querySelector('[data-warehouse-summary-user-meta]').textContent = state.verifier ? `NPK ${state.verifier.npk} · ${state.verifier.section || '—'}` : '—';
+
+        const userElem = summaryPanel.querySelector('[data-warehouse-summary-user]');
+        const userMetaElem = summaryPanel.querySelector('[data-warehouse-summary-user-meta]');
+        if (state.verifier) {
+            userElem.textContent = state.verifier.name;
+            userMetaElem.textContent = `NPK ${state.verifier.npk} · ${state.verifier.section || '—'}`;
+            userMetaElem.hidden = false;
+        } else {
+            userElem.textContent = '—';
+            userMetaElem.textContent = '';
+            userMetaElem.hidden = true;
+        }
+
         updateProjection();
     };
 
@@ -257,6 +335,7 @@
             sourceLocationInput.disabled = !inbound;
             if (!inbound) sourceLocationInput.value = '';
         }
+        syncMachineTypeVisibility();
         syncWorkflowPresentation();
         if (returnToggle) {
             returnToggle.disabled = inbound;
@@ -282,7 +361,8 @@
     const syncVerifierAvailability = () => {
         syncWorkflowPresentation();
         const returnComplete = !returnToggle?.checked || (state.returnItem && Number(returnQuantity.value) > 0 && returnLocation.value);
-        const valid = state.item && Number(quantityInput.value) > 0 && available() + (typeInput.value === 'IN' ? Number(quantityInput.value) : -Number(quantityInput.value)) >= 0 && returnComplete;
+        const machineTypeComplete = machineTypeWrap?.hidden || (machineTypeInput && machineTypeInput.value.trim() !== '');
+        const valid = state.item && Number(quantityInput.value) > 0 && available() + (typeInput.value === 'IN' ? Number(quantityInput.value) : -Number(quantityInput.value)) >= 0 && returnComplete && machineTypeComplete;
         const requiresVerifier = !isPendingStockIn();
         userInput.disabled = !valid || !requiresVerifier;
         form.querySelector('[data-warehouse-scan-user]').disabled = !valid || !requiresVerifier;
@@ -314,16 +394,36 @@
 
     const updateStep = (step) => {
         state.step = step;
+        if (step === 2) {
+            syncMachineTypeVisibility();
+        }
         form.querySelectorAll('[data-warehouse-step]').forEach((section) => { section.hidden = Number(section.dataset.warehouseStep) !== step; });
         form.querySelectorAll('[data-warehouse-step-indicator]').forEach((indicator) => {
             const number = Number(indicator.dataset.warehouseStepIndicator);
             indicator.classList.toggle('is-active', number === step);
             indicator.classList.toggle('is-complete', number < step);
+            const badge = indicator.querySelector('span');
+            if (badge) {
+                badge.textContent = number < step ? '✓' : String(number);
+            }
             if (number === step) indicator.setAttribute('aria-current', 'step'); else indicator.removeAttribute('aria-current');
         });
         form.closest('.warehouse-transaction-layout').classList.toggle('is-receipt', step === 3);
         if (summaryPanel) summaryPanel.hidden = step === 3;
-        form.querySelector(`[data-warehouse-step="${step}"]`)?.querySelector('h2')?.focus?.();
+        
+        // Smart focus
+        if (step === 2) {
+            const qtyInput = form.querySelector('input[name="quantity"]');
+            if (qtyInput) {
+                setTimeout(() => qtyInput.focus(), 80);
+            }
+        } else if (step === 1) {
+            if (barcodeInput) {
+                setTimeout(() => barcodeInput.focus(), 80);
+            }
+        } else {
+            form.querySelector(`[data-warehouse-step="${step}"]`)?.querySelector('h2')?.focus?.();
+        }
     };
 
     form.querySelectorAll('[data-warehouse-catalog="primary"]').forEach(initialiseCatalog);

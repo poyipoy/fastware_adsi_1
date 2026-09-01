@@ -13,12 +13,20 @@ class OutstandingMaterial extends Model
     use SoftDeletes;
 
     public const STATUS_ON_SHIPMENT = 'On Shipment';
+
     public const STATUS_ON_PRODUCTION = 'On Production';
+
     public const STATUS_RECEIVED = 'Received';
 
     public const KETERANGAN_ON_SCHEDULE = 'On Schedule';
+
     public const KETERANGAN_DELAY = 'Delay';
+
     public const KETERANGAN_CLOSED = 'Closed';
+
+    public const PORT_TANJUNG_PRIOK = 'Tanjung Priok';
+
+    public const PORT_TANJUNG_PERAK = 'Tanjung Perak';
 
     protected $fillable = [
         'supplier',
@@ -39,6 +47,9 @@ class OutstandingMaterial extends Model
         'keterangan',
         'estimasi_delay_eta_port',
         'estimasi_delay_eta_warehouse',
+        'port',
+        'number_po',
+        'remarks',
         'attachment_path',
         'packing_list_path',
         'mtc_path',
@@ -69,6 +80,14 @@ class OutstandingMaterial extends Model
             self::KETERANGAN_ON_SCHEDULE,
             self::KETERANGAN_DELAY,
             self::KETERANGAN_CLOSED,
+        ];
+    }
+
+    public static function portOptions(): array
+    {
+        return [
+            self::PORT_TANJUNG_PRIOK,
+            self::PORT_TANJUNG_PERAK,
         ];
     }
 

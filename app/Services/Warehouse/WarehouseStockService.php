@@ -286,6 +286,9 @@ final class WarehouseStockService
         if (Schema::hasColumn('trs_wh_stock_transactions', 'stock_in_id')) {
             $transactionAttributes['stock_in_id'] = $command->stockInId;
         }
+        if (Schema::hasColumn('trs_wh_stock_transactions', 'machine_type_used')) {
+            $transactionAttributes['machine_type_used'] = $command->machineTypeUsed;
+        }
         $transaction = WarehouseStockTransaction::query()->create($transactionAttributes);
 
         $updates = [

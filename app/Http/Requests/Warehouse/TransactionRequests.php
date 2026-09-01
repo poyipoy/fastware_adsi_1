@@ -52,6 +52,7 @@ class StoreWarehouseTransactionRequest extends FormRequest
                 Rule::prohibitedIf(! $withUsedReturn),
             ], $locationRules),
             'notes' => ['sometimes', 'nullable', 'string', 'max:65535'],
+            'machine_type_used' => ['sometimes', 'nullable', 'string', 'max:50'],
             'idempotency_key' => ['required', 'uuid'],
         ];
     }

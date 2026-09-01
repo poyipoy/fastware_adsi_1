@@ -15,13 +15,19 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  * Parses both the legacy positional template and the canonical named-header
  * template used by Import Multi-Invoice.
  */
-class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
+class OutstandingMaterialImport implements SkipsEmptyRows, ToCollection
 {
     private int $userId;
+
     private array $rows = [];
+
     private array $errors = [];
+
     private array $warnings = [];
+
     private array $headerIndexes = [];
+
+    private array $availableFields = [];
 
     public function __construct(int $userId)
     {
@@ -45,6 +51,7 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
             // Keep reading the legacy positional template. Its old column
             // layout already contains all fields needed for append-only import.
             $this->headerIndexes = $this->legacyHeaderIndexes();
+            $this->availableFields = array_keys($this->headerIndexes);
             $startRow = 1;
         }
 
@@ -74,6 +81,9 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
                 'keterangan' => $this->normalizeOption($this->value($row, 'keterangan'), OutstandingMaterial::keteranganOptions(), true),
                 'estimasi_delay_eta_port' => $this->normalizeDateText($this->value($row, 'estimasi_delay_eta_port'), $rowNumber, 'Estimasi Delay ETA Port'),
                 'estimasi_delay_eta_warehouse' => $this->normalizeDateText($this->value($row, 'estimasi_delay_eta_warehouse'), $rowNumber, 'Estimasi Delay ETA Warehouse'),
+                'port' => $this->normalizeOption($this->value($row, 'port'), OutstandingMaterial::portOptions(), true),
+                'number_po' => $this->normalizeString($this->value($row, 'number_po')),
+                'remarks' => $this->normalizeString($this->value($row, 'remarks')),
             ];
 
             $validator = Validator::make($payload, [
@@ -93,6 +103,9 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
                 'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
                 'estimasi_delay_eta_port' => 'nullable|string|max:100',
                 'estimasi_delay_eta_warehouse' => 'nullable|string|max:100',
+                'port' => ['nullable', 'string', Rule::in(OutstandingMaterial::portOptions())],
+                'number_po' => 'nullable|string|max:255',
+                'remarks' => 'nullable|string|max:2000',
             ], [], $this->validationAttributes());
 
             $normalizationFailed = count($this->errors) > $errorsBeforeNormalization;
@@ -101,9 +114,10 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
                 if ($this->containsInvalidNumber($payload)) {
                     $messages[] = 'Nilai angka tidak valid.';
                 }
-                if (!$normalizationFailed || $messages !== []) {
-                    $this->errors[] = 'Baris ' . $rowNumber . ': ' . implode(', ', array_unique($messages));
+                if (! $normalizationFailed || $messages !== []) {
+                    $this->errors[] = 'Baris '.$rowNumber.': '.implode(', ', array_unique($messages));
                 }
+
                 continue;
             }
 
@@ -128,6 +142,12 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
     public function warnings(): array
     {
         return $this->warnings;
+    }
+
+    /** @return list<string> Fields that had columns in the source file. */
+    public function availableFields(): array
+    {
+        return $this->availableFields;
     }
 
     private function toArray(mixed $row): array
@@ -161,6 +181,7 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
             'keterangan' => 14,
             'estimasi_delay_eta_port' => 15,
             'estimasi_delay_eta_warehouse' => 16,
+            // Legacy template does not have port/number_po/remarks.
         ];
     }
 
@@ -183,6 +204,9 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
             'keterangan' => ['keterangan'],
             'estimasi_delay_eta_port' => ['estimasidelayetaport'],
             'estimasi_delay_eta_warehouse' => ['estimasidelayetawarehouse'],
+            'port' => ['port', 'pelabuhan'],
+            'number_po' => ['numberpo', 'nomorpo', 'po', 'ponumber', 'nopo'],
+            'remarks' => ['remarks', 'remark', 'catatan'],
         ];
         $indexes = [];
         foreach ($row as $index => $value) {
@@ -195,13 +219,23 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
             }
         }
 
-        return array_merge(array_fill_keys(array_keys($this->legacyHeaderIndexes()), null), $indexes);
+        // Track which fields are present in the source for Replace mode.
+        $this->availableFields = array_keys($indexes);
+
+        $allFields = array_merge($this->legacyHeaderIndexes(), [
+            'port' => null,
+            'number_po' => null,
+            'remarks' => null,
+        ]);
+
+        return array_merge(array_fill_keys(array_keys($allFields), null), $indexes);
     }
 
     private function looksLikeHeader(array $row): bool
     {
         $headerValues = array_map(fn (mixed $value): string => $this->normalizeHeaderValue($value), $row);
-        $known = ['supplier', 'type', 'numberinvoice', 'status', 'thickness', 'width', 'diameter'];
+        $known = ['supplier', 'type', 'numberinvoice', 'status', 'thickness', 'width', 'diameter', 'port', 'po', 'remarks'];
+
         return count(array_intersect($headerValues, $known)) >= 3;
     }
 
@@ -298,6 +332,7 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
                 return Carbon::instance(ExcelDate::excelToDateTimeObject((float) $value))->format('Y-m-d');
             } catch (\Throwable) {
                 $this->errors[] = sprintf('Baris %d: %s bukan tanggal valid.', $rowNumber, $label);
+
                 return null;
             }
         }
@@ -313,6 +348,7 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
             return Carbon::parse($value)->format('Y-m-d');
         } catch (\Throwable) {
             $this->errors[] = sprintf('Baris %d: %s "%s" bukan tanggal valid.', $rowNumber, $label, $value);
+
             return null;
         }
     }
@@ -347,6 +383,9 @@ class OutstandingMaterialImport implements ToCollection, SkipsEmptyRows
             'keterangan' => 'Keterangan',
             'estimasi_delay_eta_port' => 'Estimasi Delay ETA Port',
             'estimasi_delay_eta_warehouse' => 'Estimasi Delay ETA Warehouse',
+            'port' => 'Port',
+            'number_po' => 'Nomor PO',
+            'remarks' => 'Remarks',
         ];
     }
 }

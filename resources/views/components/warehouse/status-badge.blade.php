@@ -51,5 +51,6 @@
         };
 @endphp
 <span {{ $attributes->merge(['class' => 'warehouse-status-badge warehouse-status-badge-'.$tone]) }}>
-    {{ $displayLabel }}
+    <span class="warehouse-status-dot" aria-hidden="true"></span>
+    <span>{{ $displayLabel }}</span>
 </span>

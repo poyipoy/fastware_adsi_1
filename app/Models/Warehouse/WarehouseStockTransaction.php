@@ -40,6 +40,7 @@ class WarehouseStockTransaction extends Model
         'reversal_of_id',
         'location_shipment_id',
         'stock_in_id',
+        'machine_type_used',
         'transaction_at',
         'created_by',
     ];

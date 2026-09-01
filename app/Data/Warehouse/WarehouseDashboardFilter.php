@@ -40,6 +40,23 @@ final readonly class WarehouseDashboardFilter
         return self::periodFromRequest($request, 'trend_date_from', 'trend_date_to');
     }
 
+    public static function fromStockOutMonthRequest(Request $request): self
+    {
+        $monthInput = $request->string('stockout_month')->trim()->value();
+        if ($monthInput === '') {
+            return self::currentMonth();
+        }
+
+        try {
+            $from = CarbonImmutable::createFromFormat('!Y-m', $monthInput, config('app.timezone', 'Asia/Jakarta'))->startOfDay();
+            $to = $from->endOfMonth()->endOfDay();
+
+            return new self($from, $to);
+        } catch (\Throwable) {
+            return self::currentMonth();
+        }
+    }
+
     public static function defaultPeriod(): self
     {
         $to = CarbonImmutable::now(config('app.timezone', 'Asia/Jakarta'))->endOfDay();

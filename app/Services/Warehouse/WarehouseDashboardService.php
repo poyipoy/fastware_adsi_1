@@ -3,6 +3,7 @@
 namespace App\Services\Warehouse;
 
 use App\Data\Warehouse\WarehouseDashboardFilter;
+use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockTransaction;
@@ -85,10 +86,19 @@ final class WarehouseDashboardService
         );
     }
 
-    public function topUsage(WarehouseDashboardFilter $filter, int $limit = 10): Collection
-    {
-        return $this->movementQuery($filter)
-            ->where('transaction_type', WarehouseTransactionType::OUT->value)
+    public function topUsage(
+        WarehouseDashboardFilter $filter,
+        int $limit = 10,
+        ?WarehouseItemCondition $condition = null,
+    ): Collection {
+        $query = $this->movementQuery($filter)
+            ->where('transaction_type', WarehouseTransactionType::OUT->value);
+
+        if ($condition !== null) {
+            $query->where('item_condition', $condition->value);
+        }
+
+        return $query
             ->join('mst_wh_consumables as usage_items', 'usage_items.id', '=', 'trs_wh_stock_transactions.consumable_id')
             ->select('usage_items.id', 'usage_items.item_name', 'usage_items.unit')
             ->selectRaw('SUM(trs_wh_stock_transactions.quantity) as quantity')
@@ -98,16 +108,24 @@ final class WarehouseDashboardService
             ->get();
     }
 
-    public function topUsageByMachineType(WarehouseDashboardFilter $filter, int $limit = 10): Collection
-    {
-        return $this->movementQuery($filter)
-            ->where('transaction_type', WarehouseTransactionType::OUT->value)
-            ->join('mst_wh_consumables as machine_items', 'machine_items.id', '=', 'trs_wh_stock_transactions.consumable_id')
-            ->whereNotNull('machine_items.machine_type')
-            ->where('machine_items.machine_type', '<>', '')
-            ->select('machine_items.machine_type')
+    public function topUsageByMachineType(
+        WarehouseDashboardFilter $filter,
+        int $limit = 10,
+        ?WarehouseItemCondition $condition = null,
+    ): Collection {
+        $query = $this->movementQuery($filter)
+            ->where('transaction_type', WarehouseTransactionType::OUT->value);
+
+        if ($condition !== null) {
+            $query->where('item_condition', $condition->value);
+        }
+
+        return $query
+            ->whereNotNull('trs_wh_stock_transactions.machine_type_used')
+            ->where('trs_wh_stock_transactions.machine_type_used', '<>', '')
+            ->select('trs_wh_stock_transactions.machine_type_used as machine_type')
             ->selectRaw('SUM(trs_wh_stock_transactions.quantity) as quantity')
-            ->groupBy('machine_items.machine_type')
+            ->groupBy('trs_wh_stock_transactions.machine_type_used')
             ->orderByDesc('quantity')
             ->limit(max(1, min($limit, 100)))
             ->get();
@@ -126,7 +144,54 @@ final class WarehouseDashboardService
             $builder->where('current_stock', 0)->orWhereColumn('current_stock', '<=', 'minimum_stock');
         })->orderByRaw('current_stock = 0 DESC')->orderBy('item_name');
 
-        return $query->paginate(10, ['*'], 'low_page')->withQueryString();
+        $paginator = $query->paginate(10, ['*'], 'low_page')->withQueryString();
+
+        $this->attachAverageConsume($paginator->getCollection());
+
+        return $paginator;
+    }
+
+    private function attachAverageConsume(Collection $items): void
+    {
+        if ($items->isEmpty()) {
+            return;
+        }
+
+        $tz = config('app.timezone', 'Asia/Jakarta');
+        $now = CarbonImmutable::now($tz);
+        $consumableIds = $items->pluck('id')->all();
+
+        $earliestCreatedAt = $items->min(
+            fn (WarehouseConsumable $item): CarbonImmutable => $item->created_at !== null
+                ? CarbonImmutable::parse($item->created_at, $tz)
+                : $now
+        );
+        $earliestCreatedAt ??= $now;
+        $globalFrom = $earliestCreatedAt->startOfMonth()->startOfDay();
+        $globalTo = $now;
+
+        $totalsByConsumable = $this->movementQuery(new WarehouseDashboardFilter($globalFrom, $globalTo))
+            ->where('transaction_type', WarehouseTransactionType::OUT->value)
+            ->where('item_condition', WarehouseItemCondition::NEW->value)
+            ->whereIn('trs_wh_stock_transactions.consumable_id', $consumableIds)
+            ->join('mst_wh_consumables as usage_items', 'usage_items.id', '=', 'trs_wh_stock_transactions.consumable_id')
+            ->whereRaw("trs_wh_stock_transactions.transaction_at >= DATE_FORMAT(COALESCE(usage_items.created_at, trs_wh_stock_transactions.transaction_at), '%Y-%m-01 00:00:00')")
+            ->where('trs_wh_stock_transactions.transaction_at', '<=', $now)
+            ->groupBy('trs_wh_stock_transactions.consumable_id')
+            ->select('trs_wh_stock_transactions.consumable_id')
+            ->selectRaw('SUM(trs_wh_stock_transactions.quantity) as total_quantity')
+            ->pluck('total_quantity', 'consumable_id');
+
+        foreach ($items as $item) {
+            $createdDate = $item->created_at !== null
+                ? CarbonImmutable::parse($item->created_at, $tz)
+                : $now;
+
+            $monthCount = max(1, (($now->year - $createdDate->year) * 12) + ($now->month - $createdDate->month) + 1);
+            $totalOutNew = (float) ($totalsByConsumable->get($item->id) ?? 0);
+
+            $item->average_consume = (int) ceil($totalOutNew / $monthCount);
+        }
     }
 
     private function movementQuery(WarehouseDashboardFilter $filter): Builder

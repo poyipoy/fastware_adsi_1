@@ -13,9 +13,10 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithColumnWidths
+class OutstandingMaterialExport implements FromCollection, WithColumnWidths, WithHeadings, WithMapping, WithStyles
 {
     private Collection $materials;
+
     private int $rowNumber = 0;
 
     public function __construct(Collection $materials)
@@ -48,6 +49,9 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
             'Keterangan',
             'Estimasi Delay ETA Port',
             'Estimasi Delay ETA Warehouse',
+            'Port',
+            'Nomor PO',
+            'Remarks',
         ];
     }
 
@@ -73,6 +77,9 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
             $material->keterangan,
             $this->dateValue($material->estimasi_delay_eta_port),
             $this->dateValue($material->estimasi_delay_eta_warehouse),
+            $material->port,
+            $material->number_po,
+            $material->remarks,
         ];
     }
 
@@ -81,7 +88,7 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
         $highestColumn = $sheet->getHighestColumn();
         $highestRow = $sheet->getHighestRow();
 
-        $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+        $sheet->getStyle('A1:'.$highestColumn.'1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'],
@@ -103,7 +110,7 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
         ]);
 
         if ($highestRow >= 2) {
-            $sheet->getStyle('A2:' . $highestColumn . $highestRow)->applyFromArray([
+            $sheet->getStyle('A2:'.$highestColumn.$highestRow)->applyFromArray([
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_CENTER,
                 ],
@@ -141,6 +148,9 @@ class OutstandingMaterialExport implements FromCollection, WithHeadings, WithMap
             'O' => 18,
             'P' => 24,
             'Q' => 28,
+            'R' => 18,
+            'S' => 18,
+            'T' => 30,
         ];
     }
 

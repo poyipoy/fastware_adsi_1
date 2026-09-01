@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Warehouse;
 
 use App\Data\Warehouse\WarehouseDashboardFilter;
+use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Warehouse\WarehouseDashboardFilterRequest;
 use App\Http\Requests\Warehouse\UpdateWarehouseStockAttentionRequest;
+use App\Http\Requests\Warehouse\WarehouseDashboardFilterRequest;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Services\Warehouse\WarehouseAccessService;
 use App\Services\Warehouse\WarehouseDashboardService;
@@ -19,6 +20,7 @@ class WarehouseDashboardController extends Controller
     ) {
         $dashboardFilter = WarehouseDashboardFilter::defaultPeriod();
         $trendFilter = WarehouseDashboardFilter::fromTrendRequest($request);
+        $stockOutFilter = WarehouseDashboardFilter::fromStockOutMonthRequest($request);
         $currentMonth = WarehouseDashboardFilter::currentMonth();
 
         return view('warehouse.dashboard.index', [
@@ -32,11 +34,18 @@ class WarehouseDashboardController extends Controller
             'canValidateStock' => $access->can($request->user(), 'warehouse.stock-validation.view'),
             'canUpdateStockAttention' => $access->can($request->user(), 'warehouse.stock-attention.update'),
             'trendFilter' => $trendFilter,
+            'stockOutFilter' => $stockOutFilter,
             'summary' => $dashboard->summary($dashboardFilter),
             'currentMonthLabel' => $currentMonth->from->copy()->locale('id')->translatedFormat('F Y'),
             'trend' => $dashboard->movementTrendForView($trendFilter),
-            'topUsage' => $dashboard->topUsage($trendFilter),
-            'topMachineUsage' => $dashboard->topUsageByMachineType($trendFilter),
+            'topUsage' => $dashboard->topUsage(
+                $stockOutFilter,
+                condition: WarehouseItemCondition::NEW,
+            ),
+            'topMachineUsage' => $dashboard->topUsageByMachineType(
+                $stockOutFilter,
+                condition: WarehouseItemCondition::NEW,
+            ),
             'lowStock' => $dashboard->lowStock($dashboardFilter),
         ]);
     }

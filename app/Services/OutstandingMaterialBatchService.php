@@ -24,8 +24,8 @@ class OutstandingMaterialBatchService
     /**
      * Persist a complete Add Material batch atomically.
      *
-     * @param array<string, mixed> $header
-     * @param list<array<string, mixed>> $rows
+     * @param  array<string, mixed>  $header
+     * @param  list<array<string, mixed>>  $rows
      * @return Collection<int, OutstandingMaterial>
      */
     public function create(
@@ -36,7 +36,7 @@ class OutstandingMaterialBatchService
     ): Collection {
         if ($rows === [] || count($rows) > self::MAX_ROWS) {
             throw ValidationException::withMessages([
-                'materials' => 'Add Material harus berisi 1 sampai ' . self::MAX_ROWS . ' baris.',
+                'materials' => 'Add Material harus berisi 1 sampai '.self::MAX_ROWS.' baris.',
             ]);
         }
 
@@ -78,6 +78,9 @@ class OutstandingMaterialBatchService
                     'keterangan' => $header['keterangan'] ?? null,
                     'estimasi_delay_eta_port' => $header['estimasi_delay_eta_port'] ?? null,
                     'estimasi_delay_eta_warehouse' => $header['estimasi_delay_eta_warehouse'] ?? null,
+                    'port' => $header['port'] ?? null,
+                    'number_po' => $header['number_po'] ?? null,
+                    'remarks' => $header['remarks'] ?? null,
                     'packing_list_path' => $inheritance['packing_list_path'],
                     'mtc_path' => $inheritance['mtc_path'],
                     'attachment_path' => null,

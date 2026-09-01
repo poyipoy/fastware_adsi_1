@@ -34,6 +34,7 @@ final readonly class WarehouseStockCommand
         public ?int $locationShipmentId = null,
         /** The pending Stock In that authorizes a validation mutation. */
         public ?int $stockInId = null,
+        public ?string $machineTypeUsed = null,
     ) {
     }
 }
