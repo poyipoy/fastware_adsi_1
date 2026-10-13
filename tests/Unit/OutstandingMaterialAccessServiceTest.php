@@ -11,8 +11,10 @@ class OutstandingMaterialAccessServiceTest extends TestCase
     public function test_legacy_viewer_keeps_view_access(): void
     {
         $user = new User(['name' => 'Jessica Paune']);
+        $service = new StubOutstandingMaterialAccessService();
 
-        $this->assertTrue((new StubOutstandingMaterialAccessService())->canView($user));
+        $this->assertTrue($service->canView($user));
+        $this->assertTrue($service->canDownloadInvoiceDocuments($user));
     }
 
     public function test_active_sales_user_can_view_and_download_but_not_manage(): void
@@ -55,7 +57,7 @@ class OutstandingMaterialAccessServiceTest extends TestCase
         $this->assertFalse($service->canUploadInvoiceDocuments($manager));
         $this->assertFalse($service->canUploadInvoiceDocuments($admin));
         $this->assertTrue($service->canUploadInvoiceDocuments($ilyas));
-        $this->assertFalse($service->canDownloadInvoiceDocuments($manager));
+        $this->assertTrue($service->canDownloadInvoiceDocuments($manager));
     }
 }
 

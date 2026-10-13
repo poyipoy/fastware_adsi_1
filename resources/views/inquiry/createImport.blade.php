@@ -433,7 +433,14 @@
                             $user = Auth::user();
                         @endphp
 
-                        @if ($user && in_array($user->name, ['YULMAI RIDO WINANDA', 'ILHAM CHOLID','ADMINSTRATOR','JESSICA PAUNE','JUN JOHAMIN PD','ANDIK TOTOK SISWOYO']))
+                        @if ($user && in_array($user->name, [
+                            // 'YULMAI RIDO WINANDA',
+                            'ILHAM CHOLID',
+                            'ADMINSTRATOR',
+                            'JESSICA PAUNE',
+                            'JUN JOHAMIN PD',
+                            'ANDIK TOTOK SISWOYO',
+                        ]))
                         <button class="btn btn-add btn-sm me-2" data-bs-toggle="modal" data-bs-target="#inquiryImportModal">
                             <i class="bx bx-plus-medical fw-bold"> Add Import</i>
                         </button>
@@ -448,7 +455,8 @@
                             @if ($user && in_array($user->name, [
                                 'ADMINSTRATOR',
                                 'JESSICA PAUNE',
-                                'YULMAI RIDO WINANDA', 
+                                // 'YULMAI RIDO WINANDA',
+                                'ANDIK TOTOK SISWOYO',
                                 'JUN JOHAMIN PD',
                                 'WULYO EKO PRASETYO',
                                 'YAN WELEM MANGINSELA',
@@ -485,7 +493,8 @@
                             @if ($user && in_array($user->name, [
                                 'ADMINSTRATOR',
                                 'JESSICA PAUNE',
-                                'YULMAI RIDO WINANDA', 
+                                // 'YULMAI RIDO WINANDA',
+                                'ANDIK TOTOK SISWOYO',
                                 'ILHAM CHOLID',
                                 'SONY STIAWAN',
                                 'RIFQI RAHMAT DZATNIKA',
@@ -650,7 +659,13 @@
                                                         if (in_array($user->name, ['JUN JOHAMIN PD' ,'ADMINSTRATOR','JESSICA PAUNE','ILYAS NOOR FIRDAUS'])) {
                                                             $allowedRegions[] = 1; // Region 1
                                                         }
-                                                        if (in_array($user->name, ['YULMAI RIDO WINANDA', 'ILHAM CHOLID','ADMINSTRATOR','JESSICA PAUNE'])) {
+                                                        if (in_array($user->name, [
+                                                            // 'YULMAI RIDO WINANDA',
+                                                            'ANDIK TOTOK SISWOYO',
+                                                            'ILHAM CHOLID',
+                                                            'ADMINSTRATOR',
+                                                            'JESSICA PAUNE',
+                                                        ])) {
                                                             $allowedRegions[] = 2; // Region 2
                                                         }
                                                         if (in_array($user->name, ['ANDIK TOTOK SISWOYO','ADMINSTRATOR','JESSICA PAUNE'])) {

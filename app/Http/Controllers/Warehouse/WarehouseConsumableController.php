@@ -10,8 +10,8 @@ use App\Http\Requests\Warehouse\UpdateWarehouseConsumableRequest;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Services\Warehouse\WarehouseIdentityResolver;
 use App\Services\Warehouse\WarehouseStockService;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,8 +26,7 @@ class WarehouseConsumableController extends Controller
         if ($search = trim((string) $request->query('search'))) {
             $query->where(function ($builder) use ($search): void {
                 $builder->where('item_code', 'like', '%'.$search.'%')
-                    ->orWhere('item_name', 'like', '%'.$search.'%')
-                    ->orWhere('machine_type', 'like', '%'.$search.'%');
+                    ->orWhere('item_name', 'like', '%'.$search.'%');
             });
         }
 
@@ -57,7 +56,6 @@ class WarehouseConsumableController extends Controller
         $data = $request->safe()->only([
             'item_code',
             'item_name',
-            'machine_type',
             'minimum_stock',
             'maximum_stock',
         ]);
@@ -113,7 +111,6 @@ class WarehouseConsumableController extends Controller
         $data = $request->safe()->only([
             'item_code',
             'item_name',
-            'machine_type',
             'minimum_stock',
             'maximum_stock',
         ]);

@@ -66,7 +66,7 @@ class AuthController extends Controller
             'ANDIK TOTOK SISWOYO',
             'ILHAM CHOLID',
             'JUN JOHAMIN PD',
-            'YULMAI RIDO WINANDA',
+            // 'YULMAI RIDO WINANDA',
             'NANI SUTARMAN',
             'HARDI SAPUTRA',
         ]);

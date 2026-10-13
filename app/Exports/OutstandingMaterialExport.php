@@ -51,6 +51,7 @@ class OutstandingMaterialExport implements FromCollection, WithColumnWidths, Wit
             'Estimasi Delay ETA Warehouse',
             'Port',
             'Nomor PO',
+            'Month Order',
             'Remarks',
         ];
     }
@@ -79,6 +80,7 @@ class OutstandingMaterialExport implements FromCollection, WithColumnWidths, Wit
             $this->dateValue($material->estimasi_delay_eta_warehouse),
             $material->port,
             $material->number_po,
+            $material->month_order,
             $material->remarks,
         ];
     }
@@ -150,7 +152,8 @@ class OutstandingMaterialExport implements FromCollection, WithColumnWidths, Wit
             'Q' => 28,
             'R' => 18,
             'S' => 18,
-            'T' => 30,
+            'T' => 18,
+            'U' => 30,
         ];
     }
 

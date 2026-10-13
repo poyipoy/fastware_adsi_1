@@ -111,7 +111,7 @@ enum SumbangSaranMenuAccessGroup: string
                 'WULYO EKO PRASETYO',
                 'YAN WELEM MANGINSELA',
                 'YUDHI PRASETYO RAHMAWANTO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'YUNASIS PALGUNADI',
                 'ZAENAL ARIFIN',
                 'ABDUR RAHMAN AL FAAIZ',
@@ -141,7 +141,7 @@ enum SumbangSaranMenuAccessGroup: string
                 'ADMINSTRATOR',
                 'JESSICA PAUNE',
                 'MARTINUS CAHYO RAHASTO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ANDIK TOTOK SISWOYO',
                 'ARY RODJO PRASETYO',
             ],
@@ -167,4 +167,3 @@ enum SumbangSaranMenuAccessGroup: string
         return in_array($userName, $allowedUsers, true);
     }
 }
-

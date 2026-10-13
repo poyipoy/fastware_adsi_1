@@ -9,7 +9,7 @@
 
 @section('warehouse-content')
     <div class="warehouse-transaction-page" aria-labelledby="warehouse-transaction-title">
-        <x-warehouse.page-header :title="$itemCondition->value === 'USED' ? 'Stock In/Out Bekas' : 'Stock In/Out Baru'" :subtitle="$itemCondition->value === 'USED' ? 'Catat Stock In atau Stock Out barang bekas; transfer internal menunggu validasi.' : 'Pilih Stock In untuk penerimaan pending atau Stock Out untuk pemakaian barang baru.'">
+        <x-warehouse.page-header :title="$itemCondition->value === 'USED' ? 'Stock In/Out Bekas' : 'Stock In/Out Baru'" :subtitle="$itemCondition->value === 'USED' ? 'Catat penerimaan atau pemakaian barang bekas; transfer internal menunggu validasi.' : 'Pilih Stock In untuk penerimaan barang atau Stock Out untuk pemakaian barang baru.'">
             @if($itemCondition->value === 'USED')<a class="btn btn-outline-primary" href="{{ route('warehouse.transactions.create') }}">Buka Barang Baru</a>@else<a class="btn btn-outline-warning" href="{{ route('warehouse.transactions-used.create') }}">Buka Barang Bekas</a>@endif
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Dashboard</a>
         </x-warehouse.page-header>
@@ -28,11 +28,11 @@
                     <ol class="warehouse-stepper" aria-label="Progress transaksi" data-warehouse-stepper>
                         <li class="is-active" data-warehouse-step-indicator="1" aria-current="step"><span>1</span><strong>Pilih barang</strong></li>
                         <li data-warehouse-step-indicator="2"><span>2</span><strong>Rincian transaksi</strong></li>
-                        <li data-warehouse-step-indicator="3"><span>3</span><strong>Receipt</strong></li>
+                        <li data-warehouse-step-indicator="3"><span>3</span><strong>Bukti Transaksi</strong></li>
                     </ol>
 
                     <section class="warehouse-flow-step is-active" data-warehouse-step="1" aria-labelledby="warehouse-step-one-title">
-                        <div class="warehouse-form-section-heading"><h2 id="warehouse-step-one-title" tabindex="-1">Pilih Barang {{ $itemCondition->label() }}</h2><p>Cari melalui katalog sebagai cara utama memilih barang. Maksimal 16 item ditampilkan per halaman.</p></div>
+                        <div class="warehouse-form-section-heading"><h2 id="warehouse-step-one-title" tabindex="-1">Pilih Barang {{ $itemCondition->label() }}</h2><p>Pilih barang melalui katalog di bawah atau gunakan kotak pencarian.</p></div>
                         <div class="warehouse-catalog" data-warehouse-catalog="primary">
                             <label class="form-label" for="warehouse-catalog-search">Cari katalog barang</label>
                             <input class="form-control" id="warehouse-catalog-search" type="search" placeholder="Nama, Item Code, barcode, atau tipe mesin" data-warehouse-catalog-search autocomplete="off">
@@ -42,7 +42,7 @@
                         </div>
                         <div class="warehouse-item-result warehouse-selected-item" data-warehouse-item-result aria-live="polite" aria-atomic="true"><span class="warehouse-muted">Belum ada barang dipilih.</span></div>
                         <div class="warehouse-scan-alternative">
-                            <div class="warehouse-scan-alternative-heading"><span>Atau gunakan Item Code / scanner</span><small>Scanner tetap dapat digunakan dengan fokus pada bidang ini lalu tekan Enter.</small></div>
+                            <div class="warehouse-scan-alternative-heading"><span>Atau gunakan Item Code / barcode scanner</span><small>Arahkan scanner ke kode barang, atau ketik langsung lalu tekan Enter.</small></div>
                             <div class="warehouse-form-field">
                                 <label class="form-label warehouse-required" for="warehouse-item-barcode">Item Code atau barcode</label>
                                 <div class="input-group warehouse-scan-group"><input class="form-control warehouse-scan-input" id="warehouse-item-barcode" name="item_barcode" value="{{ old('item_barcode', $initialBarcode) }}" autocomplete="off" required data-warehouse-item-input><button class="btn btn-outline-primary" type="button" data-warehouse-scan-item>Cari</button></div>
@@ -53,11 +53,11 @@
                     </section>
 
                     <section class="warehouse-flow-step" data-warehouse-step="2" aria-labelledby="warehouse-step-two-title" hidden>
-                        <div class="warehouse-form-section-heading"><h2 id="warehouse-step-two-title" tabindex="-1">Rincian transaksi</h2><p>Saldo yang dapat digunakan mengikuti kondisi barang dan lokasi yang dipilih.</p></div>
+                        <div class="warehouse-form-section-heading"><h2 id="warehouse-step-two-title" tabindex="-1">Rincian transaksi</h2><p>Jumlah stok yang tersedia menyesuaikan dengan lokasi dan kondisi barang yang dipilih.</p></div>
                         <div class="warehouse-type-row"><div class="warehouse-type-switch" role="group" aria-label="Tipe transaksi">@if($canStockIn)<button type="button" class="warehouse-type-button" data-warehouse-type="IN" aria-pressed="{{ $initialType === 'IN' ? 'true' : 'false' }}"><span class="warehouse-type-icon" aria-hidden="true">↓</span><span><strong>Stock In</strong><small>Tambah stok</small></span></button>@endif @if($canStockOut)<button type="button" class="warehouse-type-button" data-warehouse-type="OUT" aria-pressed="{{ $initialType === 'OUT' ? 'true' : 'false' }}"><span class="warehouse-type-icon" aria-hidden="true">↑</span><span><strong>Stock Out</strong><small>Kurangi stok</small></span></button>@endif</div><span class="warehouse-type-caption" data-warehouse-type-caption></span></div>
 
                         <div class="warehouse-detail-grid warehouse-transaction-fields">
-                            <div class="warehouse-form-field">
+                            <div class="warehouse-form-field" data-warehouse-single-quantity-wrap>
                                 <label class="form-label warehouse-required" for="warehouse-quantity">Jumlah</label>
                                 <div class="warehouse-quantity-control">
                                     <button class="btn btn-outline-secondary" type="button" data-warehouse-quantity-down aria-label="Kurangi jumlah">−</button>
@@ -82,13 +82,31 @@
                                         <option value="{{ $location }}" @selected(old('source_location') === $location)>{{ $location }}</option>
                                     @endforeach
                                 </select>
-                                <div class="warehouse-help">Jika diisi, stok sumber di-reserve sampai Stock In divalidasi. Tidak ada Stock Out pasangan manual.</div>
+                                <div class="warehouse-help">Jika mengambil dari lokasi gudang lain, stok asal akan ditahan sementara hingga barang dikonfirmasi tiba di lokasi tujuan.</div>
                             </div>
-                            <div class="warehouse-form-field warehouse-detail-full" data-warehouse-machine-type-wrap hidden>
-                                <label class="form-label warehouse-required" for="warehouse-machine-type-used">Tipe Mesin</label>
-                                <div class="warehouse-machine-buttons" data-warehouse-machine-type-container></div>
-                                <input type="hidden" name="machine_type_used" id="warehouse-machine-type-used" data-warehouse-machine-type-input>
-                                <div class="warehouse-help">Pilih mesin yang akan menggunakan barang ini.</div>
+                            <div class="warehouse-form-field warehouse-detail-full" data-warehouse-machine-allocation-wrap hidden>
+                                <label class="form-label warehouse-required">Alokasi Mesin Pemakai</label>
+                                <div class="warehouse-help mb-2">Centang mesin yang menggunakan barang ini dan masukkan jumlah (pcs):</div>
+                                <div class="warehouse-machine-allocation-grid">
+                                    @foreach($machineCodes ?? ['M1','M2','M3','M4','M5','M6','M13'] as $code)
+                                        <div class="warehouse-machine-allocation-item" data-warehouse-machine-item="{{ $code }}">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="mach-check-{{ $code }}" data-warehouse-machine-check="{{ $code }}">
+                                                <label class="form-check-label fw-bold" for="mach-check-{{ $code }}">{{ $code }}</label>
+                                            </div>
+                                            <div class="warehouse-machine-qty-box" data-warehouse-machine-qty-wrap="{{ $code }}" hidden>
+                                                <div class="input-group input-group-sm mt-1">
+                                                    <input type="number" class="form-control" name="machine_allocations[{{ $code }}]" id="mach-qty-{{ $code }}" min="1" step="1" placeholder="Qty" data-warehouse-machine-qty-input="{{ $code }}" disabled>
+                                                    <span class="input-group-text">pcs</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="warehouse-allocation-summary mt-2">
+                                    <span class="text-muted">Total Alokasi Mesin:</span>
+                                    <span class="fw-bold fs-6 text-primary"><span data-warehouse-allocation-total>0</span> pcs</span>
+                                </div>
                             </div>
                         </div>
 
@@ -119,9 +137,9 @@
                                 <textarea class="form-control" id="warehouse-notes" name="notes" rows="3" maxlength="65535" data-warehouse-stock-in-notes>{{ old('notes') }}</textarea>
                             </div>
                             <div class="warehouse-used-return" data-warehouse-used-return-wrap>
-                                <label class="warehouse-confirm-check"><input type="checkbox" name="return_used" value="1" data-warehouse-return-used><span>Barang baru keluar disertai pengembalian barang bekas</span></label>
+                                <label class="warehouse-confirm-check"><input type="checkbox" name="return_used" value="1" data-warehouse-return-used><span>Pengambilan barang baru disertai pengembalian barang bekas (tukar bekas)</span></label>
                                 <div class="warehouse-used-return-panel" data-warehouse-used-return-panel hidden>
-                                    <div class="warehouse-form-section-heading"><h3>Barang bekas yang kembali</h3><p>Boleh item yang sama atau item berbeda. Pencatatan dilakukan atomik bersama Stock Out.</p></div>
+                                    <div class="warehouse-form-section-heading"><h3>Barang bekas yang kembali</h3><p>Boleh barang yang sama atau berbeda. Penerimaan barang bekas akan otomatis dicatat bersamaan.</p></div>
 
                                     <div class="warehouse-catalog warehouse-return-catalog" data-warehouse-catalog="return">
                                         <label class="form-label fw-bold" for="warehouse-return-catalog-search">Cari barang bekas dari katalog</label>
@@ -149,22 +167,26 @@
                             </div>
                         @endif
 
-                        <section class="warehouse-verifier-section" data-warehouse-verifier-panel aria-labelledby="warehouse-verifier-title"><div class="warehouse-verifier-heading"><h3 id="warehouse-verifier-title">Karyawan Pengambil</h3><p class="warehouse-muted mb-0" data-warehouse-verifier-copy>Pindai barcode NPK karyawan yang mengambil barang.</p></div><div class="warehouse-verifier-lock-message" data-warehouse-verifier-lock-message>Lengkapi rincian transaksi sebelum memilih karyawan.</div><div class="warehouse-form-field"><label class="form-label warehouse-required" for="warehouse-user-code">Pindai barcode NPK karyawan pengambil</label><div class="input-group warehouse-scan-group"><input class="form-control font-monospace" id="warehouse-user-code" name="verified_code" inputmode="numeric" autocomplete="off" data-warehouse-user-input><button class="btn btn-outline-primary" type="button" data-warehouse-scan-user>Pilih karyawan</button></div></div><div class="warehouse-user-result" data-warehouse-user-result aria-live="polite" aria-atomic="true"><span class="warehouse-muted">Belum ada karyawan dipilih.</span></div></section>
+                        <section class="warehouse-verifier-section" data-warehouse-verifier-panel aria-labelledby="warehouse-verifier-title"><div class="warehouse-verifier-heading"><h3 id="warehouse-verifier-title">Karyawan Pengambil</h3><p class="warehouse-muted mb-0" data-warehouse-verifier-copy>Pindai barcode NPK karyawan yang mengambil barang.</p></div><div class="warehouse-verifier-lock-message" data-warehouse-verifier-lock-message>Silakan tentukan jumlah dan lokasi terlebih dahulu sebelum memilih karyawan.</div><div class="warehouse-form-field"><label class="form-label warehouse-required" for="warehouse-user-code">Pindai barcode NPK karyawan pengambil</label><div class="input-group warehouse-scan-group"><input class="form-control font-monospace" id="warehouse-user-code" name="verified_code" inputmode="numeric" autocomplete="off" data-warehouse-user-input><button class="btn btn-outline-primary" type="button" data-warehouse-scan-user>Pilih karyawan</button></div></div><div class="warehouse-user-result" data-warehouse-user-result aria-live="polite" aria-atomic="true"><span class="warehouse-muted">Belum ada karyawan dipilih.</span></div></section>
 
                         <label class="warehouse-confirm-check"><input type="checkbox" data-warehouse-confirm-check><span data-warehouse-confirm-copy>Saya telah memeriksa barang, kondisi, lokasi, jumlah, dan karyawan pengambil.</span></label>
                         <div class="warehouse-step-actions"><button class="btn btn-outline-secondary" type="button" data-warehouse-back-item>Kembali</button><button class="btn btn-primary" type="submit" data-warehouse-submit disabled>Simpan transaksi</button></div>
                     </section>
 
-                    <section class="warehouse-flow-step warehouse-receipt-step" data-warehouse-step="3" aria-labelledby="warehouse-step-three-title" hidden><div class="warehouse-receipt-icon" aria-hidden="true">✓</div><h2 id="warehouse-step-three-title" tabindex="-1">Transaksi berhasil dicatat</h2><p class="warehouse-muted">Receipt utama dan transaksi terkait tersimpan sebagai audit yang tidak dapat diedit.</p><dl class="warehouse-receipt-details" data-warehouse-receipt-details></dl><div class="warehouse-step-actions"><a class="btn btn-primary" href="{{ $itemCondition->value === 'USED' ? route('warehouse.transactions-used.create') : route('warehouse.transactions.create') }}">Transaksi baru</a><a class="btn btn-outline-secondary" href="{{ route('warehouse.transactions.index') }}">Lihat riwayat</a></div></section>
+                    <section class="warehouse-flow-step warehouse-receipt-step" data-warehouse-step="3" aria-labelledby="warehouse-step-three-title" hidden><div class="warehouse-receipt-icon" aria-hidden="true">✓</div><h2 id="warehouse-step-three-title" tabindex="-1">Transaksi berhasil dicatat</h2><p class="warehouse-muted">Bukti transaksi telah dicatat dan tersimpan secara permanen dalam riwayat sistem.</p><dl class="warehouse-receipt-details" data-warehouse-receipt-details></dl><div class="warehouse-step-actions"><a class="btn btn-primary" href="{{ $itemCondition->value === 'USED' ? route('warehouse.transactions-used.create') : route('warehouse.transactions.create') }}">Transaksi baru</a><a class="btn btn-outline-secondary" href="{{ route('warehouse.transactions.index') }}">Lihat riwayat</a></div></section>
                 </div>
             </form>
 
             <aside class="warehouse-panel warehouse-transaction-summary" data-warehouse-summary aria-labelledby="warehouse-summary-title">
-                <div class="warehouse-panel-header">
+                <div class="warehouse-panel-header d-flex align-items-center justify-content-between">
                     <div>
-                        <h2 id="warehouse-summary-title">Ringkasan</h2>
-                        <p>Diperbarui otomatis</p>
+                        <h2 id="warehouse-summary-title" class="h6 mb-0 fw-bold">Ringkasan Transaksi</h2>
+                        <small class="text-muted">Diperbarui otomatis</small>
                     </div>
+                    <span class="warehouse-status-badge warehouse-status-badge-primary">
+                        <span class="warehouse-status-dot"></span>
+                        Live
+                    </span>
                 </div>
                 <div class="warehouse-panel-body">
                     <div class="warehouse-summary-row">
@@ -181,8 +203,11 @@
                         <strong>{{ $itemCondition->label() }}</strong>
                     </div>
                     <div class="warehouse-summary-row">
-                        <span>Stok total</span>
-                        <strong data-warehouse-summary-current-stock>—</strong>
+                        <span>Stok {{ $itemCondition->label() }}</span>
+                        <div class="warehouse-summary-value">
+                            <strong data-warehouse-summary-condition-stock data-warehouse-summary-current-stock>—</strong>
+                            <small class="warehouse-summary-subvalue text-muted" data-warehouse-summary-stock-detail hidden></small>
+                        </div>
                     </div>
                     <div class="warehouse-summary-row">
                         <span>Status stok</span>
@@ -200,6 +225,15 @@
                         <span>Jumlah</span>
                         <strong data-warehouse-summary-quantity>—</strong>
                     </div>
+                    @if($itemCondition->value === 'NEW')
+                        <div class="warehouse-summary-row" data-warehouse-summary-return-wrap hidden>
+                            <span>Tukar Bekas</span>
+                            <div class="warehouse-summary-value">
+                                <strong data-warehouse-summary-return-item>—</strong>
+                                <small class="warehouse-summary-subvalue text-muted" data-warehouse-summary-return-meta></small>
+                            </div>
+                        </div>
+                    @endif
                     <div class="warehouse-summary-row">
                         <span>Karyawan</span>
                         <div class="warehouse-summary-value">

@@ -34,7 +34,7 @@ class WarehouseAdjustmentTest extends WarehouseTestCase
             'consumable_id' => $item->id, 'direction' => 'OUT', 'item_condition' => 'NEW', 'storage_location' => 'DS8', 'quantity' => '1', 'reason_category' => 'damaged', 'reason' => 'Damaged during handling', 'verified_code' => (string) $verified->npk, 'idempotency_key' => (string) Str::uuid(),
         ]);
 
-        $response->assertRedirect(route('warehouse.dashboard'));
+        $response->assertRedirect(route('warehouse.adjustments.create'));
         $transaction = WarehouseStockTransaction::query()->latest('id')->firstOrFail();
         $response->assertSessionHas('status', 'Penyesuaian stok berhasil dicatat. Nomor transaksi: '.$transaction->transaction_number.'.');
         $this->assertDatabaseHas('trs_wh_stock_transactions', ['transaction_type' => 'ADJUSTMENT', 'consumable_id' => $item->id, 'stock_before' => '3.000', 'stock_after' => '2.000']);

@@ -30,7 +30,6 @@
                         <span class="warehouse-eyebrow">Barang</span>
                         <h3>{{ $stockIn->consumable?->item_name ?? '—' }}</h3>
                         <p class="warehouse-stock-in-item-code">{{ $stockIn->consumable?->item_code ?? '—' }}</p>
-                        @if($stockIn->consumable?->machine_type)<p class="warehouse-muted mb-0">{{ $stockIn->consumable->machine_type }}</p>@endif
                     </div>
                 </div>
             </div>
@@ -56,19 +55,13 @@
                     <div><dt>Ledger</dt><dd>{{ $stockIn->stock_transaction_id ? 'Transaksi #'.$stockIn->stock_transaction_id : 'Belum ada mutasi' }}</dd></div>
                     <div class="warehouse-stock-in-form-field-full"><dt>Catatan awal</dt><dd>{{ $stockIn->notes ?: 'Tidak ada catatan.' }}</dd></div>
                     <div class="warehouse-stock-in-form-field-full"><dt>Catatan validasi</dt><dd>{{ $stockIn->validation_notes ?: 'Belum ada catatan validasi.' }}</dd></div>
+                    @if($stockIn->status?->value === 'CANCELLED')
+                        <div><dt>Dibatalkan oleh</dt><dd>{{ $stockIn->cancelledBy?->name ?? ($stockIn->cancelled_by_user_id ? 'User #'.$stockIn->cancelled_by_user_id : '—') }}</dd></div>
+                        <div><dt>Waktu pembatalan</dt><dd>{{ optional($stockIn->cancelled_at)->format('Y-m-d H:i') }}</dd></div>
+                        <div class="warehouse-stock-in-form-field-full"><dt>Alasan pembatalan</dt><dd class="text-danger fw-semibold">{{ $stockIn->cancellation_reason ?: 'Tidak ada alasan.' }}</dd></div>
+                    @endif
                 </dl>
             </x-warehouse.panel>
         </div>
-
-        @if($stockIn->canCancel())
-            @can('warehouse.stock-in.create')
-                <section class="warehouse-panel warehouse-stock-in-cancel-panel">
-                    <div class="warehouse-panel-header"><div><h2>Batalkan Stock In</h2><p>Pembatalan hanya tersedia sebelum Stock In tervalidasi.</p></div></div>
-                    <div class="warehouse-panel-body">
-                        <details><summary class="btn btn-outline-danger">Batalkan Stock In</summary><form method="POST" action="{{ route('warehouse.stock-in.cancel', $stockIn) }}" class="mt-3"><input type="hidden" name="_token" value="{{ csrf_token() }}"><input type="hidden" name="idempotency_key" value="{{ (string) str()->uuid() }}"><label class="form-label warehouse-required" for="stock-in-cancel-reason">Alasan pembatalan</label><textarea class="form-control" id="stock-in-cancel-reason" name="reason" rows="3" required></textarea><button class="btn btn-danger mt-2" type="submit">Konfirmasi Pembatalan</button></form></details>
-                    </div>
-                </section>
-            @endcan
-        @endif
     </div>
 @endsection

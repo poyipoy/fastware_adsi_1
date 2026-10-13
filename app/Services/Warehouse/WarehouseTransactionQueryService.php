@@ -20,7 +20,7 @@ final class WarehouseTransactionQueryService
             : CarbonImmutable::now($timezone)->endOfDay();
 
         $query = WarehouseStockTransaction::query()
-            ->with(['consumable:id,item_name,item_code,unit,category_id,machine_type', 'creator:id,name'])
+            ->with(['consumable:id,item_name,item_code,unit,category_id', 'creator:id,name'])
             ->whereBetween('transaction_at', [$from, $to]);
 
         foreach (['transaction_type', 'item_condition', 'consumable_id', 'verified_user_section'] as $column) {

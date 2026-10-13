@@ -5,11 +5,13 @@ namespace App\Services\Warehouse;
 use App\Data\Warehouse\WarehouseStockCommand;
 use App\Data\Warehouse\WarehouseStockResult;
 use App\Enums\Warehouse\WarehouseItemCondition;
+use App\Enums\Warehouse\WarehouseMachineCode;
 use App\Enums\Warehouse\WarehouseTransactionType;
 use App\Exceptions\WarehouseDomainException;
 use App\Models\User;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockTransaction;
+use App\Models\Warehouse\WarehouseStockTransactionMachineUsage;
 use App\Models\Warehouse\WarehouseVerificationLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -49,14 +51,6 @@ final class WarehouseStockService
         $returnKey = $this->idempotencyKey($usedReturn->idempotencyKey);
 
         return DB::transaction(function () use ($primary, $usedReturn, $primaryKey, $returnKey): WarehouseStockResult {
-            $userIds = collect([
-                $primary->createdBy ?? $primary->verifiedUserId,
-                $primary->verifiedUserId,
-                $usedReturn->createdBy ?? $usedReturn->verifiedUserId,
-                $usedReturn->verifiedUserId,
-            ])->filter()->unique()->sort()->values();
-            User::query()->whereIn('id', $userIds)->orderBy('id')->lockForUpdate()->get();
-
             WarehouseConsumable::query()
                 ->whereIn('id', [$primary->consumableId, $usedReturn->consumableId])
                 ->orderBy('id')
@@ -188,7 +182,7 @@ final class WarehouseStockService
     private function executeLocked(WarehouseStockCommand $command, string $idempotencyKey): WarehouseStockResult
     {
         $actorId = $command->createdBy ?? $command->verifiedUserId;
-        $actor = User::query()->lockForUpdate()->find($actorId);
+        $actor = User::query()->find($actorId);
 
         if (! $this->access->isLoginEnabled($actor)) {
             throw new WarehouseDomainException('Actor transaksi tidak aktif atau tidak ditemukan.', 403);
@@ -210,7 +204,7 @@ final class WarehouseStockService
             return new WarehouseStockResult($existing->loadMissing('consumable'), true);
         }
 
-        $verifiedUser = User::query()->lockForUpdate()->find($command->verifiedUserId);
+        $verifiedUser = User::query()->find($command->verifiedUserId);
         if (! $this->access->isLoginEnabled($verifiedUser)) {
             throw new WarehouseDomainException('User terverifikasi tidak aktif atau tidak ditemukan.', 422);
         }
@@ -234,6 +228,57 @@ final class WarehouseStockService
             ? WarehouseQuantity::normalize((string) $original->quantity, (bool) $item->allow_fraction)
             : WarehouseQuantity::normalize($command->quantity, (bool) $item->allow_fraction);
         [$fromLocation, $toLocation] = $this->locations($command, $item, $original);
+
+        $machineAllocationsToInsert = [];
+        $computedMachineTypeUsed = $command->machineTypeUsed;
+
+        if ($command->type === WarehouseTransactionType::OUT) {
+            if (! empty($command->machineAllocations)) {
+                $seenMachines = [];
+                $totalAllocatedMilli = 0;
+                $validMachines = WarehouseMachineCode::values();
+                $machineCodes = [];
+
+                foreach ($command->machineAllocations as $alloc) {
+                    $code = trim((string) ($alloc['machine_code'] ?? ''));
+                    if (! in_array($code, $validMachines, true)) {
+                        throw new WarehouseDomainException("Mesin '{$code}' tidak valid. Pilihan mesin yang diperbolehkan: ".implode(', ', $validMachines), 422);
+                    }
+                    if (isset($seenMachines[$code])) {
+                        throw new WarehouseDomainException("Duplikasi alokasi mesin untuk mesin '{$code}'.", 422);
+                    }
+                    $seenMachines[$code] = true;
+                    $machineCodes[] = $code;
+
+                    $qtyRaw = (string) ($alloc['quantity'] ?? '0');
+                    if (! ctype_digit($qtyRaw) || (int) $qtyRaw < 1) {
+                        throw new WarehouseDomainException("Quantity untuk mesin '{$code}' harus berupa bilangan bulat positif (minimal 1 pcs).", 422);
+                    }
+                    $qtyInt = (int) $qtyRaw;
+                    $totalAllocatedMilli += $qtyInt * 1000;
+                    $machineAllocationsToInsert[] = [
+                        'machine_code' => $code,
+                        'quantity' => $qtyInt,
+                    ];
+                }
+
+                if ($totalAllocatedMilli !== WarehouseQuantity::toMilli($quantity)) {
+                    throw new WarehouseDomainException('Total quantity alokasi mesin harus sama persis dengan total quantity Stock Out.', 422);
+                }
+
+                if ($computedMachineTypeUsed === null) {
+                    $computedMachineTypeUsed = implode(', ', $machineCodes);
+                }
+            } elseif ($command->machineTypeUsed !== null && trim($command->machineTypeUsed) !== '') {
+                $code = trim($command->machineTypeUsed);
+                if (! str_contains($code, ',')) {
+                    $machineAllocationsToInsert[] = [
+                        'machine_code' => $code,
+                        'quantity' => (float) $quantity,
+                    ];
+                }
+            }
+        }
 
         $stockBefore = WarehouseQuantity::fromMilli(WarehouseQuantity::toMilli((string) $item->current_stock));
         $globalDelta = $this->deltaMilli($command, $quantity, $original);
@@ -287,9 +332,21 @@ final class WarehouseStockService
             $transactionAttributes['stock_in_id'] = $command->stockInId;
         }
         if (Schema::hasColumn('trs_wh_stock_transactions', 'machine_type_used')) {
-            $transactionAttributes['machine_type_used'] = $command->machineTypeUsed;
+            $transactionAttributes['machine_type_used'] = $computedMachineTypeUsed;
         }
         $transaction = WarehouseStockTransaction::query()->create($transactionAttributes);
+
+        if (! empty($machineAllocationsToInsert)) {
+            $now = now();
+            $rows = array_map(fn (array $allocRow): array => [
+                'transaction_id' => $transaction->getKey(),
+                'machine_code' => $allocRow['machine_code'],
+                'quantity' => $allocRow['quantity'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $machineAllocationsToInsert);
+            WarehouseStockTransactionMachineUsage::query()->insert($rows);
+        }
 
         $updates = [
             'current_stock' => $stockAfter,
@@ -311,7 +368,7 @@ final class WarehouseStockService
             ]);
         }
 
-        return new WarehouseStockResult($transaction->load('consumable'));
+        return new WarehouseStockResult($transaction->load(['consumable', 'machineUsages']));
     }
 
     private function lockOriginal(WarehouseStockCommand $command): ?WarehouseStockTransaction
@@ -595,7 +652,7 @@ final class WarehouseTransactionNumberGenerator
             }
 
             $number = (int) $sequence->last_number + 1;
-            if ($number > 9999) {
+            if ($number > 999999) {
                 throw new WarehouseDomainException('Sequence nomor transaksi Warehouse untuk tahun ini sudah penuh.', 409);
             }
 
@@ -606,7 +663,9 @@ final class WarehouseTransactionNumberGenerator
                     'updated_at' => now(),
                 ]);
 
-            return sprintf('WH-%04d%04d', $year, $number);
+            $padded = $number > 9999 ? (string) $number : sprintf('%04d', $number);
+
+            return sprintf('WH-%04d%s', $year, $padded);
         }, 3);
     }
 }

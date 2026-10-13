@@ -10,7 +10,7 @@
         $activeConditionLabel = $reportConditions[$condition] ?? 'BARU';
     @endphp
     <div class="warehouse-report-page" aria-labelledby="warehouse-report-title">
-        <x-warehouse.page-header title="Reporting Stok Tahunan" subtitle="Saldo akhir bulanan kondisi {{ $activeConditionLabel }} sampai bulan terakhir yang memiliki transaksi.">
+        <x-warehouse.page-header title="Reporting Stok Tahunan" subtitle="Laporan posisi stok bulanan kondisi {{ $activeConditionLabel }} hingga periode transaksi terakhir.">
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Dashboard</a>
         </x-warehouse.page-header>
 
@@ -25,7 +25,7 @@
         </form>
 
         @if ($report['cutoff'])
-            <p class="warehouse-report-context" role="status">Kondisi: {{ $activeConditionLabel }}. Periode laporan: Januari-{{ $report['cutoff']->locale('id')->translatedFormat('F Y') }}. Total dan rata-rata dihitung dari saldo akhir bulanan.</p>
+            <p class="warehouse-report-context" role="status">Kondisi: {{ $activeConditionLabel }}. Periode laporan: Januari-{{ $report['cutoff']->locale('id')->translatedFormat('F Y') }}. Total dan rata-rata dihitung berdasarkan stok akhir di setiap bulan.</p>
         @else
             <div class="alert alert-info" role="status">Belum ada transaksi Warehouse kondisi {{ $activeConditionLabel }} pada tahun {{ $year }}. Semua item tetap ditampilkan dengan Total dan Average nol.</div>
         @endif
@@ -34,7 +34,7 @@
             <header class="warehouse-report-matrix-header">
                 <div>
                     <span class="warehouse-eyebrow">Warehouse</span>
-                    <h2 id="warehouse-report-matrix-title">Saldo bulanan per barang</h2>
+                    <h2 id="warehouse-report-matrix-title">Posisi stok bulanan per barang</h2>
                 </div>
             </header>
 

@@ -41,6 +41,7 @@ class OutstandingMaterialTemplateExport implements FromArray, WithColumnWidths, 
             'Estimasi Delay ETA Warehouse',
             'Port',
             'Nomor PO',
+            'Month Order',
             'Remarks',
         ];
     }
@@ -97,7 +98,8 @@ class OutstandingMaterialTemplateExport implements FromArray, WithColumnWidths, 
             'Q' => 28,
             'R' => 18,
             'S' => 18,
-            'T' => 30,
+            'T' => 18,
+            'U' => 30,
         ];
     }
 }

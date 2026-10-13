@@ -325,7 +325,7 @@ class OutstandingMaterialImportPreviewService
             'length', 'qty_pcs', 'est_qty_kg', 'status',
             'estimasi_eta_port', 'estimasi_eta_warehouse', 'estimasi_bulan_eta',
             'keterangan', 'estimasi_delay_eta_port', 'estimasi_delay_eta_warehouse',
-            'port', 'number_po', 'remarks',
+            'port', 'number_po', 'month_order', 'remarks',
         ];
 
         // Only update fields that were actually present in the uploaded file.
@@ -400,13 +400,13 @@ class OutstandingMaterialImportPreviewService
                 'type', 'thickness', 'width', 'diameter', 'length', 'qty_pcs', 'est_qty_kg',
                 'status', 'estimasi_eta_port', 'estimasi_eta_warehouse', 'estimasi_bulan_eta',
                 'keterangan', 'estimasi_delay_eta_port', 'estimasi_delay_eta_warehouse',
-                'port', 'number_po', 'remarks',
+                'port', 'number_po', 'month_order', 'remarks',
             ])
             ->all();
     }
 
     private function cacheKey(int $userId, string $token): string
     {
-        return 'outstanding-material-import-preview:v3:'.$userId.':'.$token;
+        return 'outstanding-material-import-preview:v4:'.$userId.':'.$token;
     }
 }

@@ -9,6 +9,7 @@ use App\Services\Warehouse\WarehouseQuantity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class WarehouseStockTransaction extends Model
@@ -89,6 +90,11 @@ class WarehouseStockTransaction extends Model
         return $this->belongsTo(WarehouseStockIn::class, 'stock_in_id');
     }
 
+    public function machineUsages(): HasMany
+    {
+        return $this->hasMany(WarehouseStockTransactionMachineUsage::class, 'transaction_id');
+    }
+
     public function getDisplayLocationAttribute(): ?string
     {
         $usage = trim((string) $this->usage_location);
@@ -112,7 +118,12 @@ class WarehouseStockTransaction extends Model
         };
     }
 
-    private function movementDelta(): int
+    public function getAdjustmentDirectionAttribute(): string
+    {
+        return $this->movementDelta() >= 0 ? 'IN' : 'OUT';
+    }
+
+    public function movementDelta(): int
     {
         return WarehouseQuantity::toMilli((string) $this->stock_after)
             - WarehouseQuantity::toMilli((string) $this->stock_before);

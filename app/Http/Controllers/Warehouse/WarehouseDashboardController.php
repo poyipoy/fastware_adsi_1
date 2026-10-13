@@ -16,12 +16,56 @@ class WarehouseDashboardController extends Controller
     public function index(
         WarehouseDashboardFilterRequest $request,
         WarehouseAccessService $access,
-        WarehouseDashboardService $dashboard,
+        WarehouseDashboardService $dashboard
     ) {
         $dashboardFilter = WarehouseDashboardFilter::defaultPeriod();
-        $trendFilter = WarehouseDashboardFilter::fromTrendRequest($request);
+        $movementFilter = WarehouseDashboardFilter::fromMovementRequest($request);
         $stockOutFilter = WarehouseDashboardFilter::fromStockOutMonthRequest($request);
+        $stockoutMachine = $request->string('stockout_machine')->trim()->value() ?: null;
         $currentMonth = WarehouseDashboardFilter::currentMonth();
+
+        $conditionParam = strtoupper(trim((string) $request->input('condition', 'NEW')));
+        $activeCondition = $conditionParam === 'USED'
+            ? WarehouseItemCondition::USED
+            : WarehouseItemCondition::NEW;
+
+        $newStockOutMetrics = $dashboard->synchronizedStockOutMetrics(
+            $stockOutFilter,
+            condition: WarehouseItemCondition::NEW,
+            machineCode: $stockoutMachine,
+        );
+        $usedStockOutMetrics = $dashboard->synchronizedStockOutMetrics(
+            $stockOutFilter,
+            condition: WarehouseItemCondition::USED,
+            machineCode: $stockoutMachine,
+        );
+        $newTopUsage = $dashboard->topUsage(
+            $stockOutFilter,
+            condition: WarehouseItemCondition::NEW,
+            machineTypeUsed: $stockoutMachine,
+        );
+        $usedTopUsage = $dashboard->topUsage(
+            $stockOutFilter,
+            condition: WarehouseItemCondition::USED,
+            machineTypeUsed: $stockoutMachine,
+        );
+
+        $summary = $dashboard->summary($dashboardFilter, condition: $activeCondition);
+        $trend = $dashboard->movementTrendForView($movementFilter, condition: $activeCondition);
+        $movementChart = $dashboard->movementStockChart($movementFilter, condition: $activeCondition);
+        $lowStock = $dashboard->lowStock($dashboardFilter);
+        $usedStock = $dashboard->usedStock($dashboardFilter);
+
+        $activeStockOutMetrics = $activeCondition === WarehouseItemCondition::USED
+            ? $usedStockOutMetrics
+            : $newStockOutMetrics;
+        $activeTopUsage = $activeCondition === WarehouseItemCondition::USED
+            ? $usedTopUsage
+            : $newTopUsage;
+        $topMachineUsage = $dashboard->topUsageByMachineType(
+            $stockOutFilter,
+            condition: $activeCondition,
+        );
 
         return view('warehouse.dashboard.index', [
             'canManageMaster' => $access->can($request->user(), 'warehouse.master.manage'),
@@ -33,20 +77,28 @@ class WarehouseDashboardController extends Controller
             'canViewReport' => $access->can($request->user(), 'warehouse.report.view'),
             'canValidateStock' => $access->can($request->user(), 'warehouse.stock-validation.view'),
             'canUpdateStockAttention' => $access->can($request->user(), 'warehouse.stock-attention.update'),
-            'trendFilter' => $trendFilter,
+            'activeCondition' => $activeCondition->value,
+            'condition' => $activeCondition->value,
+            'trendFilter' => $movementFilter,
+            'movementFilter' => $movementFilter,
             'stockOutFilter' => $stockOutFilter,
-            'summary' => $dashboard->summary($dashboardFilter),
+            'stockoutMachine' => $stockoutMachine,
+            'summary' => $summary,
             'currentMonthLabel' => $currentMonth->from->copy()->locale('id')->translatedFormat('F Y'),
-            'trend' => $dashboard->movementTrendForView($trendFilter),
-            'topUsage' => $dashboard->topUsage(
-                $stockOutFilter,
-                condition: WarehouseItemCondition::NEW,
-            ),
-            'topMachineUsage' => $dashboard->topUsageByMachineType(
-                $stockOutFilter,
-                condition: WarehouseItemCondition::NEW,
-            ),
-            'lowStock' => $dashboard->lowStock($dashboardFilter),
+            'trend' => $trend,
+            'movementChart' => $movementChart,
+            'movementMachineOptions' => $dashboard->movementMachineOptions(),
+            'movementInsertOptions' => $dashboard->movementInsertOptions($movementFilter->machineType),
+            'stockOutMachineOptions' => $dashboard->stockOutMachineOptions(),
+            'stockOutMetrics' => $activeStockOutMetrics,
+            'newStockOutMetrics' => $newStockOutMetrics,
+            'usedStockOutMetrics' => $usedStockOutMetrics,
+            'newTopUsage' => $newTopUsage,
+            'usedTopUsage' => $usedTopUsage,
+            'topUsage' => $activeTopUsage,
+            'topMachineUsage' => $topMachineUsage,
+            'lowStock' => $lowStock,
+            'usedStock' => $usedStock,
         ]);
     }
 
@@ -69,12 +121,16 @@ class WarehouseDashboardController extends Controller
         WarehouseDashboardService $dashboard,
     ) {
         $filter = WarehouseDashboardFilter::fromRequest($request);
+        $conditionParam = $request->filled('condition') ? strtoupper(trim((string) $request->input('condition'))) : null;
+        $conditionEnum = $conditionParam === 'USED'
+            ? WarehouseItemCondition::USED
+            : ($conditionParam === 'NEW' ? WarehouseItemCondition::NEW : null);
 
         return response()->json([
-            'summary' => $dashboard->summary($filter),
-            'trend' => $dashboard->movementTrend($filter),
-            'top_usage' => $dashboard->topUsage($filter),
-            'top_usage_by_machine_type' => $dashboard->topUsageByMachineType($filter),
+            'summary' => $dashboard->summary($filter, $conditionEnum ?? WarehouseItemCondition::NEW),
+            'trend' => $dashboard->movementTrend($filter, $conditionEnum),
+            'top_usage' => $dashboard->topUsage($filter, limit: 10, condition: $conditionEnum),
+            'top_usage_by_machine_type' => $dashboard->topUsageByMachineType($filter, limit: 10, condition: $conditionEnum),
         ]);
     }
 }

@@ -19,7 +19,7 @@ enum CrpMenuAccessGroup: string
                 'JESSICA PAUNE',
                 'HARDI SAPUTRA',
                 'MARTINUS CAHYO RAHASTO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ANDIK TOTOK SISWOYO',
                 'ARY RODJO PRASETYO',
                 'ADHI PRASETIYO',
@@ -47,4 +47,3 @@ enum CrpMenuAccessGroup: string
         return in_array($userName, $allowedUsers, true);
     }
 }
-

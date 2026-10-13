@@ -49,6 +49,7 @@ class OutstandingMaterial extends Model
         'estimasi_delay_eta_warehouse',
         'port',
         'number_po',
+        'month_order',
         'remarks',
         'attachment_path',
         'packing_list_path',

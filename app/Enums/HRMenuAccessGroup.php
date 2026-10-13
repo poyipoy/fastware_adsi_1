@@ -33,7 +33,7 @@ enum HRMenuAccessGroup: string
                 'JESSICA PAUNE',
                 'HARDI SAPUTRA',
                 'MARTINUS CAHYO RAHASTO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ANDIK TOTOK SISWOYO',
                 'ARY RODJO PRASETYO',
                 'MUGI PRAMONO',
@@ -48,7 +48,7 @@ enum HRMenuAccessGroup: string
             self::KNOWLEDGE_MANAGEMENT, self::KNOWLEDGE_APPROVAL => [
                 'ADMINSTRATOR',
                 'MUGI PRAMONO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'MARTINUS CAHYO RAHASTO',
                 'SITI MARIA ULFA',
                 'JESSICA PAUNE',
@@ -63,7 +63,7 @@ enum HRMenuAccessGroup: string
             ],
             self::TECHNICAL_COMPETENCY => [
                 'ADMINSTRATOR',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ANDIK TOTOK SISWOYO',
                 'ARY RODJO PRASETYO',
                 'HARDI SAPUTRA',
@@ -78,7 +78,7 @@ enum HRMenuAccessGroup: string
             self::COMPETENCY_KASIE, self::COMPETENCY_KADEPT, self::COMPETENCY_HR, self::SUMMARY_COMPETENCY => [
                 'ADMINSTRATOR',
                 'MUGI PRAMONO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ADHI PRASETIYO',
                 'ANDIK TOTOK SISWOYO',
                 'ARY RODJO PRASETYO',
@@ -94,7 +94,7 @@ enum HRMenuAccessGroup: string
             ],
             self::TRAINING_DEVELOPMENT => [
                 'ADMINSTRATOR',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ANDIK TOTOK SISWOYO',
                 'ARY RODJO PRASETYO',
                 'HARDI SAPUTRA',
@@ -112,7 +112,7 @@ enum HRMenuAccessGroup: string
             self::TRAINING_HISTORY => [
                 'ADMINSTRATOR',
                 'MUGI PRAMONO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ADHI PRASETIYO',
                 'ANDIK TOTOK SISWOYO',
                 'ARY RODJO PRASETYO',

@@ -16,6 +16,7 @@ final readonly class WarehouseDashboardFilter
         public ?string $section = null,
         public ?int $verifiedUserId = null,
         public ?string $stockStatus = null,
+        public ?string $machineType = null,
     ) {
     }
 
@@ -35,9 +36,21 @@ final readonly class WarehouseDashboardFilter
         );
     }
 
+    public static function fromMovementRequest(Request $request): self
+    {
+        $period = self::periodFromRequest($request, 'trend_date_from', 'trend_date_to');
+
+        return new self(
+            from: $period->from,
+            to: $period->to,
+            consumableId: $request->integer('movement_consumable_id') ?: null,
+            machineType: $request->string('movement_machine')->trim()->value() ?: null,
+        );
+    }
+
     public static function fromTrendRequest(Request $request): self
     {
-        return self::periodFromRequest($request, 'trend_date_from', 'trend_date_to');
+        return self::fromMovementRequest($request);
     }
 
     public static function fromStockOutMonthRequest(Request $request): self
@@ -89,6 +102,7 @@ final readonly class WarehouseDashboardFilter
             'section' => $this->section,
             'verified_user_id' => $this->verifiedUserId,
             'stock_status' => $this->stockStatus,
+            'machine_type' => $this->machineType,
         ], static fn ($value): bool => $value !== null && $value !== '');
     }
 

@@ -90,7 +90,7 @@ enum SalesMenuAccessGroup: string
                 'WULYO EKO PRASETYO',
                 'YAN WELEM MANGINSELA',
                 'YUDHI PRASETYO RAHMAWANTO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'YUNASIS PALGUNADI',
                 'SONY STIAWAN',
             ],
@@ -118,7 +118,7 @@ enum SalesMenuAccessGroup: string
                 'WULYO EKO PRASETYO',
                 'YAN WELEM MANGINSELA',
                 'YUDHI PRASETYO RAHMAWANTO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'YUNASIS PALGUNADI',
                 'Sony Stiawan',
             ],
@@ -146,7 +146,7 @@ enum SalesMenuAccessGroup: string
                 'WULYO EKO PRASETYO',
                 'YAN WELEM MANGINSELA',
                 'YUDHI PRASETYO RAHMAWANTO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'YUNASIS PALGUNADI',
                 'Sony Stiawan',
             ],
@@ -172,7 +172,7 @@ enum SalesMenuAccessGroup: string
                 'SONY STIAWAN',
                 'WULYO EKO PRASETYO',
                 'YAN WELEM MANGINSELA',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'YUNASIS PALGUNADI',
                 'RAGIL ISHA RAHMANTO',
                 'AIS DUTA PRAMANDA',
@@ -182,7 +182,7 @@ enum SalesMenuAccessGroup: string
             self::CUSTOM_REQUEST_APPROVE_MARKETING => [
                 'ADMINSTRATOR',
                 'ANDIK TOTOK SISWOYO',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
             ],
             self::CUSTOM_REQUEST_APPROVE_FINANCE => [
                 'ADMINSTRATOR',
@@ -204,4 +204,3 @@ enum SalesMenuAccessGroup: string
         return in_array($userName, $allowedUsers, true);
     }
 }
-

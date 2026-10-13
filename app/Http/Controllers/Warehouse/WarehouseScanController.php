@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Warehouse;
 
-use App\Exceptions\WarehouseDomainException;
 use App\Enums\Warehouse\WarehouseItemCondition;
+use App\Exceptions\WarehouseDomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\ScanWarehouseItemRequest;
 use App\Http\Requests\Warehouse\ScanWarehouseUserRequest;
@@ -53,9 +53,11 @@ class WarehouseScanController extends Controller
         return response()->json(['data' => [
             'id' => $item->getKey(), 'item_code' => $item->item_code, 'barcode' => $item->barcode,
             'item_name' => $item->item_name, 'category' => $item->category?->name, 'unit' => $item->unit,
-            'machine_type' => $item->machine_type, 'photo_url' => $photoUrl,
+            'photo_url' => $photoUrl,
             'allow_fraction' => (bool) $item->allow_fraction, 'current_stock' => (string) $item->current_stock,
             'physical_stock' => (string) $item->current_stock,
+            'stock_new' => WarehouseQuantity::add($newDs8['available_stock'], $newDeltamas['available_stock']),
+            'stock_used' => WarehouseQuantity::add((string) $item->stock_used_ds8, (string) $item->stock_used_deltamas),
             'reserved_stock' => WarehouseQuantity::add(
                 WarehouseQuantity::add($newDs8['reserved_stock'], $newDeltamas['reserved_stock']),
                 WarehouseQuantity::add($usedDs8['reserved_stock'], $usedDeltamas['reserved_stock']),
@@ -66,7 +68,7 @@ class WarehouseScanController extends Controller
             'stock_new_ds8' => $newDs8['available_stock'],
             'stock_new_deltamas' => $newDeltamas['available_stock'],
             'stock_used_ds8' => (string) $item->stock_used_ds8, 'stock_used_deltamas' => (string) $item->stock_used_deltamas,
-                'stock' => [
+            'stock' => [
                 'DS8' => [
                     'new' => $newDs8['available_stock'],
                     'used' => (string) $item->stock_used_ds8,

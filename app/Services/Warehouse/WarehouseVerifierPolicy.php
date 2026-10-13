@@ -43,12 +43,12 @@ final class WarehouseVerifierPolicy
         if ($restricted
             && ! $this->access->hasFullModuleAccess($user)
             && ! WarehouseRestrictedVerifier::query()
-            ->where('user_id', $user->getKey())
-            ->where('scope', 'ALL')
-            ->where('is_active', true)
-            ->exists()) {
+                ->where('user_id', $user->getKey())
+                ->where('scope', 'ALL')
+                ->where('is_active', true)
+                ->exists()) {
             throw new WarehouseDomainException(
-                'Akun karyawan tidak terdaftar sebagai verifikator Warehouse restricted.',
+                'Akun karyawan ini belum terdaftar sebagai verifikator yang berwenang untuk gudang.',
                 422,
             );
         }

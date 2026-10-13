@@ -31,7 +31,6 @@ class WarehouseConsumable extends Model
         'minimum_stock',
         'maximum_stock',
         'stock_attention_note',
-        'machine_type',
         'description',
         'photo_path',
         'is_active',
@@ -52,6 +51,18 @@ class WarehouseConsumable extends Model
     ];
 
     protected $appends = ['stock_status'];
+
+    private ?string $transientMachineType = null;
+
+    public function setMachineTypeAttribute($value): void
+    {
+        $this->transientMachineType = $value !== null && trim((string) $value) !== '' ? trim((string) $value) : null;
+    }
+
+    public function getMachineTypeAttribute(): ?string
+    {
+        return $this->transientMachineType;
+    }
 
     public function category(): BelongsTo
     {
@@ -115,6 +126,14 @@ class WarehouseConsumable extends Model
             - WarehouseQuantity::toMilli((string) $this->stock_used_deltamas);
 
         return WarehouseQuantity::fromMilli($newMilli);
+    }
+
+    public function usedStock(): string
+    {
+        $usedMilli = WarehouseQuantity::toMilli((string) $this->stock_used_ds8)
+            + WarehouseQuantity::toMilli((string) $this->stock_used_deltamas);
+
+        return WarehouseQuantity::fromMilli($usedMilli);
     }
 
     public function totalStockColumn(string $location): string

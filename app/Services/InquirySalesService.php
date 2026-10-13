@@ -340,7 +340,7 @@ class InquirySalesService
         $namesWithFullAccess = [
             'ADMINSTRATOR',
             'JESSICA PAUNE',
-            'YULMAI RIDO WINANDA',
+            // 'YULMAI RIDO WINANDA',
             'ILHAM CHOLID',
             'SONY STIAWAN',
             'SARAH EGA BUDI ASTUTI',
@@ -370,4 +370,3 @@ class InquirySalesService
         return [$user->name];
     }
 }
-

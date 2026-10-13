@@ -10,15 +10,18 @@
     const locationInput = form.querySelector('[data-warehouse-location]');
     const sourceLocationWrap = form.querySelector('[data-warehouse-source-location-wrap]');
     const sourceLocationInput = form.querySelector('[data-warehouse-source-location]');
-    const machineTypeWrap = form.querySelector('[data-warehouse-machine-type-wrap]');
-    const machineTypeContainer = form.querySelector('[data-warehouse-machine-type-container]');
-    const machineTypeInput = form.querySelector('[data-warehouse-machine-type-input]');
+    const singleQuantityWrap = form.querySelector('[data-warehouse-single-quantity-wrap]');
+    const machineAllocationWrap = form.querySelector('[data-warehouse-machine-allocation-wrap]');
+    const allocationTotalDisplay = form.querySelector('[data-warehouse-allocation-total]');
+    const machineChecks = form.querySelectorAll('[data-warehouse-machine-check]');
+    const machineQtyInputs = form.querySelectorAll('[data-warehouse-machine-qty-input]');
     const userInput = form.querySelector('[data-warehouse-user-input]');
     const verifierPanel = form.querySelector('[data-warehouse-verifier-panel]');
     const verifierCopy = form.querySelector('[data-warehouse-verifier-copy]');
     const confirmInput = form.querySelector('[data-warehouse-confirm-check]');
     const confirmCopy = form.querySelector('[data-warehouse-confirm-copy]');
     const submitButton = form.querySelector('[data-warehouse-submit]');
+    const lockMessage = form.querySelector('[data-warehouse-verifier-lock-message]');
     const returnToggle = form.querySelector('[data-warehouse-return-used]');
     const returnPanel = form.querySelector('[data-warehouse-used-return-panel]');
     const returnItemInput = form.querySelector('[data-warehouse-return-item-input]');
@@ -32,21 +35,62 @@
         const selected = target === 'return' ? state.returnItem : state.item;
         const selectedKey = catalogItemKey(selected);
         form.querySelectorAll(`[data-warehouse-catalog="${target}"] [data-warehouse-catalog-item-key]`).forEach((card) => {
-            const selectedCard = selectedKey !== '' && card.dataset.warehouseCatalogItemKey === selectedKey;
+            const key = card.dataset.warehouseCatalogItemKey;
+            const selectedCard = Boolean(
+                selected && selectedKey !== '' && (
+                    key === selectedKey ||
+                    (selected.id && card.dataset.itemId === String(selected.id)) ||
+                    (selected.item_code && card.dataset.itemCode === String(selected.item_code)) ||
+                    (selected.barcode && card.dataset.barcode === String(selected.barcode))
+                )
+            );
             card.classList.toggle('is-selected', selectedCard);
             card.setAttribute('aria-pressed', String(selectedCard));
         });
     };
 
-    const isPendingStockIn = () => typeInput.value === 'IN'
-        && (conditionInput.value === 'NEW' || Boolean(sourceLocationInput?.value));
+    const isPendingStockIn = () => typeInput.value === 'IN';
 
-    const syncMachineTypeVisibility = () => {
-        if (!machineTypeWrap || !machineTypeInput) return;
-        const out = typeInput.value === 'OUT';
-        const hasMachineType = Boolean(state.item?.machine_type);
-        machineTypeWrap.hidden = !(out && hasMachineType);
-        machineTypeInput.disabled = !(out && hasMachineType);
+    const getMachineAllocationsTotal = () => {
+        let total = 0;
+        machineChecks.forEach((check) => {
+            if (check.checked) {
+                const code = check.dataset.warehouseMachineCheck;
+                const input = form.querySelector(`[data-warehouse-machine-qty-input="${code}"]`);
+                const val = parseInt(input?.value || '0', 10);
+                if (val > 0) total += val;
+            }
+        });
+        return total;
+    };
+
+    const syncMachineAllocationVisibility = () => {
+        const isOut = typeInput.value === 'OUT';
+        if (singleQuantityWrap) singleQuantityWrap.hidden = isOut;
+        if (machineAllocationWrap) machineAllocationWrap.hidden = !isOut;
+
+        if (isOut) {
+            quantityInput.readOnly = true;
+            syncMachineAllocations();
+        } else {
+            quantityInput.readOnly = false;
+            machineQtyInputs.forEach((input) => { input.disabled = true; });
+            updateProjection();
+            updateSummary();
+            syncVerifierAvailability();
+        }
+    };
+
+    const syncMachineAllocations = () => {
+        if (typeInput.value !== 'OUT') return;
+        const total = getMachineAllocationsTotal();
+        if (allocationTotalDisplay) {
+            allocationTotalDisplay.textContent = String(total);
+        }
+        quantityInput.value = String(total);
+        updateProjection();
+        updateSummary();
+        syncVerifierAvailability();
     };
 
     const syncWorkflowPresentation = () => {
@@ -54,14 +98,10 @@
         if (verifierPanel) verifierPanel.hidden = pendingStockIn;
         if (verifierCopy) verifierCopy.textContent = pendingStockIn
             ? 'Stock In dibuat Menunggu Validasi dan diperiksa melalui menu Validasi Stok.'
-            : (typeInput.value === 'IN'
-                ? 'Pindai barcode NPK karyawan yang menerima barang bekas dari sumber eksternal.'
-                : 'Pindai barcode NPK karyawan yang mengambil barang.');
+            : 'Pindai barcode NPK karyawan yang mengambil barang.';
         if (confirmCopy) confirmCopy.textContent = pendingStockIn
             ? 'Saya telah memeriksa item, jumlah, lokasi, dan catatan Stock In.'
-            : (typeInput.value === 'IN'
-                ? 'Saya telah memeriksa barang bekas, lokasi, jumlah, dan karyawan penerima.'
-                : 'Saya telah memeriksa barang, kondisi, lokasi, jumlah, dan karyawan pengambil.');
+            : 'Saya telah memeriksa barang, kondisi, lokasi, alokasi mesin, dan karyawan pengambil.';
     };
 
     const clearVerifier = () => {
@@ -102,12 +142,49 @@
     const stockStatusLabels = { HEALTHY: 'Aman', LOW: 'Menipis', OUT: 'Habis' };
     const stockStatusTones = { HEALTHY: 'success', LOW: 'warning', OUT: 'danger' };
     const stockStatusPresentation = (status) => ({ label: stockStatusLabels[status] || status || '—', tone: stockStatusTones[status] || 'neutral' });
-    const renderStockStatusBadge = (status) => {
-        const presentation = stockStatusPresentation(status);
+    const renderStockStatusBadge = (statusOrPresentation) => {
+        const presentation = typeof statusOrPresentation === 'object' && statusOrPresentation !== null
+            ? statusOrPresentation
+            : stockStatusPresentation(statusOrPresentation);
         const badge = document.createElement('span');
         badge.className = `warehouse-status-badge warehouse-status-badge-${presentation.tone}`;
         badge.textContent = presentation.label;
         return badge;
+    };
+
+    const getItemConditionStock = (item, condition) => {
+        if (!item) return { current: 0, ds8: 0, deltamas: 0, totalCombined: 0 };
+        const cond = String(condition || 'new').toLowerCase();
+        const ds8 = Number(item.locations?.DS8?.[cond] ?? item[`stock_${cond}_ds8`] ?? (item.stock?.DS8?.[cond]) ?? 0);
+        const deltamas = Number(item.locations?.Deltamas?.[cond] ?? item[`stock_${cond}_deltamas`] ?? (item.stock?.Deltamas?.[cond]) ?? 0);
+        const current = (item[`stock_${cond}`] !== undefined)
+            ? Number(item[`stock_${cond}`])
+            : (cond === 'new' && item.available_stock !== undefined
+                ? Number(item.available_stock)
+                : ds8 + deltamas);
+        const totalCombined = Number(item.current_stock ?? (item.physical_stock ?? (Number(item.locations?.DS8?.total ?? 0) + Number(item.locations?.Deltamas?.total ?? 0))));
+        return { current, ds8, deltamas, totalCombined };
+    };
+
+    const getConditionStockStatus = (item, condition) => {
+        if (!item) return { label: '—', tone: 'neutral' };
+        const cond = String(condition || 'new').toLowerCase();
+        const { current } = getItemConditionStock(item, cond);
+        if (cond === 'new') {
+            const min = Number(item.minimum_stock ?? 0);
+            if (current <= 0) {
+                return { label: 'Habis', tone: 'danger' };
+            }
+            if (current <= min) {
+                return { label: 'Menipis', tone: 'warning' };
+            }
+            return { label: 'Aman', tone: 'success' };
+        } else {
+            if (current <= 0) {
+                return { label: 'Kosong', tone: 'danger' };
+            }
+            return { label: 'Tersedia', tone: 'success' };
+        }
     };
 
     const appendPreview = (target, item) => {
@@ -118,7 +195,7 @@
         const ds8Stock = item.locations?.DS8?.[stockCondition] ?? 0;
         const deltamasStock = item.locations?.Deltamas?.[stockCondition] ?? 0;
         wrapper.innerHTML = `<span class="warehouse-selected-item-image">${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="" width="128" height="88">` : '<span aria-hidden="true">WH</span>'}</span><div class="warehouse-selected-item-copy"><strong class="warehouse-preview-title">${escapeHtml(item.item_name)}</strong><span class="warehouse-selected-item-code">${escapeHtml(item.item_code)}</span>${item.machine_type ? `<span class="warehouse-selected-item-machine">${escapeHtml(item.machine_type)}</span>` : ''}<dl class="warehouse-preview-facts"><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">DS8</dt><dd class="warehouse-preview-fact-value">${displayQuantity(ds8Stock)} ${escapeHtml(item.unit)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Deltamas</dt><dd class="warehouse-preview-fact-value">${displayQuantity(deltamasStock)} ${escapeHtml(item.unit)}</dd></div><div class="warehouse-preview-fact"><dt class="warehouse-preview-fact-label">Status stok</dt><dd class="warehouse-preview-fact-value" data-status></dd></div></dl></div>`;
-        wrapper.querySelector('[data-status]').append(renderStockStatusBadge(item.stock_status));
+        wrapper.querySelector('[data-status]').append(renderStockStatusBadge(getConditionStockStatus(item, stockCondition)));
         target.append(wrapper);
         target.classList.add('is-valid');
     };
@@ -131,6 +208,7 @@
             returnQuantity.step = item.allow_fraction ? '0.001' : '1';
             returnQuantity.min = returnQuantity.step;
             appendPreview(form.querySelector('[data-warehouse-return-item-result]'), item);
+            updateSummary();
         } else {
             state.item = item;
             itemInput.value = item.barcode || item.item_code;
@@ -138,42 +216,7 @@
             quantityInput.min = quantityInput.step;
             appendPreview(form.querySelector('[data-warehouse-item-result]'), item);
             form.querySelector('[data-warehouse-next-detail]').disabled = false;
-            
-            // Reset machine type selection
-            if (machineTypeInput) machineTypeInput.value = '';
-            if (machineTypeContainer) {
-                machineTypeContainer.replaceChildren();
-                if (item.machine_type) {
-                    const machines = item.machine_type.split(',').map(m => m.trim()).filter(m => m);
-                    machines.forEach(machine => {
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'btn btn-sm btn-outline-secondary';
-                        btn.textContent = machine;
-                        btn.addEventListener('click', () => {
-                            Array.from(machineTypeContainer.children).forEach(b => {
-                                b.classList.remove('btn-primary');
-                                b.classList.add('btn-outline-secondary');
-                            });
-                            btn.classList.remove('btn-outline-secondary');
-                            btn.classList.add('btn-primary');
-                            machineTypeInput.value = machine;
-                            syncVerifierAvailability(); // Check verifier again if machine type is required
-                        });
-                        machineTypeContainer.append(btn);
-                    });
-
-                    // Auto-select if only 1 machine type exists
-                    if (machines.length === 1 && machineTypeContainer.firstElementChild) {
-                        const onlyBtn = machineTypeContainer.firstElementChild;
-                        onlyBtn.classList.remove('btn-outline-secondary');
-                        onlyBtn.classList.add('btn-primary');
-                        machineTypeInput.value = machines[0];
-                    }
-                }
-            }
         }
-        syncMachineTypeVisibility();
         syncCatalogSelection(target);
         updateSummary();
         syncVerifierAvailability();
@@ -231,6 +274,9 @@
                     card.type = 'button';
                     card.className = 'warehouse-catalog-card';
                     card.dataset.warehouseCatalogItemKey = catalogItemKey(item);
+                    card.dataset.itemId = String(item.id ?? '');
+                    card.dataset.itemCode = String(item.item_code ?? '');
+                    card.dataset.barcode = String(item.barcode ?? '');
                     card.setAttribute('aria-pressed', 'false');
                     card.innerHTML = `<span class="warehouse-catalog-image">${item.photo_url ? `<img src="${escapeHtml(item.photo_url)}" alt="" loading="lazy" width="320" height="220">` : '<span aria-hidden="true">WH</span>'}</span><span class="warehouse-catalog-copy"><strong>${escapeHtml(item.item_name)}</strong><small class="warehouse-catalog-code">${escapeHtml(item.item_code)}</small>${item.machine_type ? `<span class="warehouse-catalog-machine">${escapeHtml(item.machine_type)}</span>` : ''}<span class="warehouse-catalog-stock"><span><small>DS8</small><strong>${displayQuantity(item.locations.DS8[catalogCondition])} ${escapeHtml(item.unit)}</strong></span><span><small>Deltamas</small><strong>${displayQuantity(item.locations.Deltamas[catalogCondition])} ${escapeHtml(item.unit)}</strong></span></span></span>`;
                     card.setAttribute('aria-label', `Pilih ${item.item_name}`);
@@ -302,13 +348,58 @@
             itemBarcodeElem.hidden = true;
         }
 
-        summaryPanel.querySelector('[data-warehouse-summary-current-stock]').textContent = state.item ? displayQuantity(state.item.current_stock) : '—';
+        const condition = conditionInput.value;
+        const conditionStocks = getItemConditionStock(state.item, condition);
+        const conditionStockElem = summaryPanel.querySelector('[data-warehouse-summary-condition-stock]')
+            || summaryPanel.querySelector('[data-warehouse-summary-current-stock]');
+        const stockDetailElem = summaryPanel.querySelector('[data-warehouse-summary-stock-detail]');
+
+        if (state.item && conditionStockElem) {
+            conditionStockElem.textContent = `${displayQuantity(conditionStocks.current)} ${state.item.unit || ''}`.trim();
+            if (stockDetailElem) {
+                stockDetailElem.textContent = `DS8: ${displayQuantity(conditionStocks.ds8)} · Deltamas: ${displayQuantity(conditionStocks.deltamas)} (Total Semua: ${displayQuantity(conditionStocks.totalCombined)})`;
+                stockDetailElem.hidden = false;
+            }
+        } else if (conditionStockElem) {
+            conditionStockElem.textContent = '—';
+            if (stockDetailElem) {
+                stockDetailElem.textContent = '';
+                stockDetailElem.hidden = true;
+            }
+        }
+
         const stockStatus = summaryPanel.querySelector('[data-warehouse-summary-stock-status]');
-        stockStatus.replaceChildren();
-        if (state.item) stockStatus.append(renderStockStatusBadge(state.item.stock_status)); else stockStatus.textContent = '—';
+        if (stockStatus) {
+            stockStatus.replaceChildren();
+            if (state.item) stockStatus.append(renderStockStatusBadge(getConditionStockStatus(state.item, condition))); else stockStatus.textContent = '—';
+        }
         summaryPanel.querySelector('[data-warehouse-summary-type]').textContent = transactionTypeLabels[typeInput.value] || '—';
         summaryPanel.querySelector('[data-warehouse-summary-location]').textContent = locationInput.value;
         summaryPanel.querySelector('[data-warehouse-summary-quantity]').textContent = displayQuantity(quantityInput.value);
+
+        const returnWrap = summaryPanel.querySelector('[data-warehouse-summary-return-wrap]');
+        if (returnWrap) {
+            const isReturnActive = returnToggle && returnToggle.checked && typeInput.value === 'OUT';
+            if (isReturnActive) {
+                returnWrap.hidden = false;
+                const returnItemElem = returnWrap.querySelector('[data-warehouse-summary-return-item]');
+                const returnMetaElem = returnWrap.querySelector('[data-warehouse-summary-return-meta]');
+                if (state.returnItem) {
+                    returnItemElem.textContent = state.returnItem.item_name;
+                    const retQty = displayQuantity(returnQuantity?.value || 0);
+                    const retUnit = state.returnItem.unit || '';
+                    const retLoc = returnLocation?.value || '—';
+                    returnMetaElem.textContent = `${retQty} ${retUnit} ke ${retLoc}`.trim();
+                    returnMetaElem.hidden = false;
+                } else {
+                    returnItemElem.textContent = 'Belum dipilih';
+                    returnMetaElem.textContent = '';
+                    returnMetaElem.hidden = true;
+                }
+            } else {
+                returnWrap.hidden = true;
+            }
+        }
 
         const userElem = summaryPanel.querySelector('[data-warehouse-summary-user]');
         const userMetaElem = summaryPanel.querySelector('[data-warehouse-summary-user-meta]');
@@ -335,7 +426,7 @@
             sourceLocationInput.disabled = !inbound;
             if (!inbound) sourceLocationInput.value = '';
         }
-        syncMachineTypeVisibility();
+        syncMachineAllocationVisibility();
         syncWorkflowPresentation();
         if (returnToggle) {
             returnToggle.disabled = inbound;
@@ -355,20 +446,67 @@
             initialiseCatalog(returnPanel.querySelector('[data-warehouse-catalog="return"]'));
             returnPanel.dataset.loaded = 'true';
         }
+        updateSummary();
         syncVerifierAvailability();
     };
 
     const syncVerifierAvailability = () => {
         syncWorkflowPresentation();
+        const isOut = typeInput.value === 'OUT';
         const returnComplete = !returnToggle?.checked || (state.returnItem && Number(returnQuantity.value) > 0 && returnLocation.value);
-        const machineTypeComplete = machineTypeWrap?.hidden || (machineTypeInput && machineTypeInput.value.trim() !== '');
-        const valid = state.item && Number(quantityInput.value) > 0 && available() + (typeInput.value === 'IN' ? Number(quantityInput.value) : -Number(quantityInput.value)) >= 0 && returnComplete && machineTypeComplete;
+        let qtyValid = false;
+        let isNegativeStock = false;
+        let noMachineChecked = false;
+        let invalidMachineQty = false;
+
+        if (isOut) {
+            const allocTotal = getMachineAllocationsTotal();
+            const hasChecked = Array.from(machineChecks).some((c) => c.checked);
+            const avail = available();
+            isNegativeStock = allocTotal > 0 && (avail - allocTotal < 0);
+            noMachineChecked = !hasChecked || allocTotal <= 0;
+            qtyValid = hasChecked && allocTotal > 0 && !isNegativeStock;
+            for (const check of machineChecks) {
+                if (check.checked) {
+                    const code = check.dataset.warehouseMachineCheck;
+                    const input = form.querySelector(`[data-warehouse-machine-qty-input="${code}"]`);
+                    const val = parseInt(input?.value || '0', 10);
+                    if (!val || val < 1) {
+                        invalidMachineQty = true;
+                        qtyValid = false;
+                        break;
+                    }
+                }
+            }
+        } else {
+            const qty = Number(quantityInput.value || 0);
+            qtyValid = qty > 0;
+        }
+
+        const valid = state.item && qtyValid && returnComplete;
         const requiresVerifier = !isPendingStockIn();
         userInput.disabled = !valid || !requiresVerifier;
         form.querySelector('[data-warehouse-scan-user]').disabled = !valid || !requiresVerifier;
         userInput.required = requiresVerifier;
         verifierPanel.classList.toggle('is-locked', !valid || !requiresVerifier);
         submitButton.disabled = !(valid && confirmInput.checked && (!requiresVerifier || state.verifier));
+
+        if (lockMessage) {
+            if (isNegativeStock) {
+                const loc = locationInput.value || 'lokasi yang dipilih';
+                const avail = available();
+                const allocTotal = getMachineAllocationsTotal();
+                lockMessage.textContent = `Stok di lokasi ${loc} tidak mencukupi (saat ini: ${displayQuantity(avail)} pcs, pengeluaran: ${displayQuantity(allocTotal)} pcs). Pengeluaran tidak boleh menyebabkan stok negatif.`;
+            } else if (!returnComplete) {
+                lockMessage.textContent = 'Silakan lengkapi data barang bekas yang dikembalikan terlebih dahulu.';
+            } else if (invalidMachineQty) {
+                lockMessage.textContent = 'Pastikan jumlah pengeluaran pada setiap mesin yang dicentang minimal 1 pcs.';
+            } else if (noMachineChecked && isOut) {
+                lockMessage.textContent = 'Silakan pilih mesin dan tentukan jumlah alokasi terlebih dahulu sebelum memilih karyawan.';
+            } else {
+                lockMessage.textContent = 'Silakan tentukan jumlah dan lokasi terlebih dahulu sebelum memilih karyawan.';
+            }
+        }
     };
 
     const scanUser = async () => {
@@ -395,7 +533,7 @@
     const updateStep = (step) => {
         state.step = step;
         if (step === 2) {
-            syncMachineTypeVisibility();
+            syncMachineAllocationVisibility();
         }
         form.querySelectorAll('[data-warehouse-step]').forEach((section) => { section.hidden = Number(section.dataset.warehouseStep) !== step; });
         form.querySelectorAll('[data-warehouse-step-indicator]').forEach((indicator) => {
@@ -418,8 +556,8 @@
                 setTimeout(() => qtyInput.focus(), 80);
             }
         } else if (step === 1) {
-            if (barcodeInput) {
-                setTimeout(() => barcodeInput.focus(), 80);
+            if (itemInput) {
+                setTimeout(() => itemInput.focus(), 80);
             }
         } else {
             form.querySelector(`[data-warehouse-step="${step}"]`)?.querySelector('h2')?.focus?.();
@@ -460,8 +598,10 @@
     form.querySelector('[data-warehouse-quantity-down]').addEventListener('click', () => { quantityInput.stepDown(); quantityInput.dispatchEvent(new Event('input')); });
     form.querySelector('[data-warehouse-quantity-up]').addEventListener('click', () => { quantityInput.stepUp(); quantityInput.dispatchEvent(new Event('input')); });
     [quantityInput, locationInput, sourceLocationInput, form.querySelector('[data-warehouse-stock-in-notes]'), returnQuantity, returnLocation].filter(Boolean).forEach((field) => field.addEventListener('input', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); }));
+    locationInput?.addEventListener('change', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); });
     sourceLocationInput?.addEventListener('change', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); });
-    returnToggle?.addEventListener('change', () => { invalidateApproval(true); toggleReturn(); });
+    returnLocation?.addEventListener('change', () => { invalidateApproval(true); updateSummary(); syncVerifierAvailability(); });
+    returnToggle?.addEventListener('change', () => { invalidateApproval(true); toggleReturn(); updateSummary(); });
     userInput.addEventListener('input', () => {
         if (!state.verifier) return;
         state.verifier = null;
@@ -476,6 +616,45 @@
     form.querySelector('[data-warehouse-scan-user]').addEventListener('click', scanUser);
     confirmInput.addEventListener('change', syncVerifierAvailability);
 
+    machineChecks.forEach((check) => {
+        check.addEventListener('change', () => {
+            const code = check.dataset.warehouseMachineCheck;
+            const wrap = form.querySelector(`[data-warehouse-machine-qty-wrap="${code}"]`);
+            const input = form.querySelector(`[data-warehouse-machine-qty-input="${code}"]`);
+            const itemElem = form.querySelector(`[data-warehouse-machine-item="${code}"]`);
+            if (check.checked) {
+                if (wrap) wrap.hidden = false;
+                if (input) {
+                    input.disabled = false;
+                    if (!input.value || parseInt(input.value, 10) < 1) {
+                        input.value = '1';
+                    }
+                    setTimeout(() => input.focus(), 50);
+                }
+                itemElem?.classList.add('is-selected');
+            } else {
+                if (wrap) wrap.hidden = true;
+                if (input) {
+                    input.disabled = true;
+                    input.value = '';
+                }
+                itemElem?.classList.remove('is-selected');
+            }
+            invalidateApproval(true);
+            syncMachineAllocations();
+        });
+    });
+
+    machineQtyInputs.forEach((input) => {
+        input.addEventListener('input', () => {
+            if (input.value && parseInt(input.value, 10) < 1) {
+                input.value = '1';
+            }
+            invalidateApproval(true);
+            syncMachineAllocations();
+        });
+    });
+
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (state.step !== 2 || submitButton.disabled || !form.reportValidity()) return;
@@ -483,7 +662,25 @@
         submitButton.textContent = 'Menyimpan…';
         try {
             form.querySelector('[data-warehouse-submit-error]')?.remove();
-            const payload = Object.fromEntries(new FormData(form).entries());
+            const formData = new FormData(form);
+            const payload = {};
+            const machineAllocations = [];
+            for (const [key, val] of formData.entries()) {
+                if (key.startsWith('machine_allocations[')) {
+                    const match = key.match(/^machine_allocations\[([^\]]+)\]$/);
+                    if (match && val !== '') {
+                        machineAllocations.push({
+                            machine_code: match[1],
+                            quantity: parseInt(val, 10),
+                        });
+                    }
+                } else {
+                    payload[key] = val;
+                }
+            }
+            if (typeInput.value === 'OUT' && machineAllocations.length > 0) {
+                payload.machine_allocations = machineAllocations;
+            }
             if (!returnToggle?.checked) delete payload.return_used;
             const response = await requestJson(form.action, payload);
             const receipt = form.querySelector('[data-warehouse-receipt-details]');

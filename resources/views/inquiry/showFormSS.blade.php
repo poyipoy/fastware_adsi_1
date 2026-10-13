@@ -393,7 +393,11 @@
                     @if ($inquiry->status == 4)
                         {{-- Action User Dephead --}}
                         <div class="d-flex justify-content-end">
-                            @if (in_array(Auth::user()->name, ['ADMINSTRATOR', 'YULMAI RIDO WINANDA', 'ANDIK TOTOK SISWOYO']))
+                            @if (in_array(Auth::user()->name, [
+                                'ADMINSTRATOR',
+                                // 'YULMAI RIDO WINANDA',
+                                'ANDIK TOTOK SISWOYO',
+                            ]))
                                 <a href="#" class="btn btn-primary btn-sm m-1"
                                     onclick="approveKaDept({{ $inquiry->id }}); return false;">
                                     <i class="bi bi-check-square-fill fs-6"> Approve</i>

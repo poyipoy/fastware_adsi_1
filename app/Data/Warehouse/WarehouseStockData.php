@@ -35,6 +35,8 @@ final readonly class WarehouseStockCommand
         /** The pending Stock In that authorizes a validation mutation. */
         public ?int $stockInId = null,
         public ?string $machineTypeUsed = null,
+        /** @var array<int, array{machine_code: string, quantity: int|float|string}>|null */
+        public ?array $machineAllocations = null,
     ) {
     }
 }

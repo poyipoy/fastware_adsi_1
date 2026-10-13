@@ -13,7 +13,7 @@ class OutstandingMaterialAccessService
 
     public function canView(?User $user): bool
     {
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -32,7 +32,7 @@ class OutstandingMaterialAccessService
 
     public function canManage(?User $user): bool
     {
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -56,14 +56,17 @@ class OutstandingMaterialAccessService
         return $user !== null && $this->normalizedName($user) === 'ILYAS NOOR FIRDAUS';
     }
 
+    /**
+     * Download follows module view access — no longer limited to Sales.
+     */
     public function canDownloadInvoiceDocuments(?User $user): bool
     {
-        return $this->isSales($user);
+        return $this->canView($user);
     }
 
     public function isSales(?User $user): bool
     {
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 

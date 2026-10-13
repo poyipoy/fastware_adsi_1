@@ -220,6 +220,10 @@ class OutstandingMaterialController extends Controller
                 'keterangan' => $invoiceContextAnchor->keterangan,
                 'estimasi_delay_eta_port' => $invoiceContextAnchor->estimasi_delay_eta_port,
                 'estimasi_delay_eta_warehouse' => $invoiceContextAnchor->estimasi_delay_eta_warehouse,
+                'port' => $invoiceContextAnchor->port,
+                'number_po' => $invoiceContextAnchor->number_po,
+                'month_order' => $invoiceContextAnchor->month_order,
+                'remarks' => $invoiceContextAnchor->remarks,
             ] : [],
         ]);
     }
@@ -238,6 +242,10 @@ class OutstandingMaterialController extends Controller
             'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
             'estimasi_delay_eta_port' => 'nullable|date',
             'estimasi_delay_eta_warehouse' => 'nullable|date',
+            'port' => ['nullable', 'string', Rule::in(OutstandingMaterial::portOptions())],
+            'number_po' => 'nullable|string|max:255',
+            'month_order' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string|max:2000',
             'invoice_context_id' => 'nullable|integer|exists:outstanding_materials,id',
             'materials' => 'required|array|min:1|max:'.OutstandingMaterialBatchService::MAX_ROWS,
             'materials.*.type' => 'required|string|max:255',
@@ -249,6 +257,7 @@ class OutstandingMaterialController extends Controller
             'materials.*.est_qty_kg' => 'nullable|numeric',
             'materials.*.port' => ['nullable', 'string', Rule::in(OutstandingMaterial::portOptions())],
             'materials.*.number_po' => 'nullable|string|max:255',
+            'materials.*.month_order' => 'nullable|string|max:255',
             'materials.*.remarks' => 'nullable|string|max:2000',
         ], [], $this->validationAttributes());
 
@@ -311,6 +320,7 @@ class OutstandingMaterialController extends Controller
             'est_qty_kg' => $data['est_qty_kg'] ?? null,
             'port' => $data['port'] ?? null,
             'number_po' => $data['number_po'] ?? null,
+            'month_order' => $data['month_order'] ?? null,
             'remarks' => $data['remarks'] ?? null,
         ];
 
@@ -971,6 +981,7 @@ class OutstandingMaterialController extends Controller
             'estimasi_delay_eta_warehouse' => 'nullable|date',
             'port' => ['nullable', 'string', Rule::in(OutstandingMaterial::portOptions())],
             'number_po' => 'nullable|string|max:255',
+            'month_order' => 'nullable|string|max:255',
             'remarks' => 'nullable|string|max:2000',
             'invoice_context_id' => 'nullable|integer|exists:outstanding_materials,id',
         ], [], $this->validationAttributes());
@@ -985,7 +996,7 @@ class OutstandingMaterialController extends Controller
     /** @param list<string> $excludedFields */
     private function applyFilters(Builder $query, Request $request, array $excludedFields = []): void
     {
-        foreach (['supplier', 'type', 'number_invoice', 'status', 'keterangan', 'estimasi_bulan_eta', 'port'] as $field) {
+        foreach (['supplier', 'type', 'number_invoice', 'status', 'keterangan', 'estimasi_bulan_eta', 'port', 'month_order'] as $field) {
             if (! in_array($field, $excludedFields, true) && $request->filled($field)) {
                 $query->where($field, $request->input($field));
             }
@@ -1039,6 +1050,7 @@ class OutstandingMaterialController extends Controller
                 ->orWhere('keterangan', 'like', '%'.$search.'%')
                 ->orWhere('port', 'like', '%'.$search.'%')
                 ->orWhere('number_po', 'like', '%'.$search.'%')
+                ->orWhere('month_order', 'like', '%'.$search.'%')
                 ->orWhere('remarks', 'like', '%'.$search.'%')
                 ->orWhere('attachment_path', 'like', '%'.$search.'%')
                 ->orWhere('packing_list_path', 'like', '%'.$search.'%')
@@ -1053,7 +1065,7 @@ class OutstandingMaterialController extends Controller
         // 6=Length, 7=QTY PCS, 8=Est QTY KG, 9=Number Invoice, 10=Status,
         // 11=ETA Port, 12=ETA Warehouse, 13=Estimasi Bulan ETA, 14=Keterangan,
         // 15=Delay ETA Port, 16=Delay ETA Warehouse, 17=Port, 18=Nomor PO,
-        // 19=Remarks, 20=Packing List, 21=MTC
+        // 19=Month Order, 20=Remarks, 21=Packing List, 22=MTC
         $columnOrderMap = [
             1 => 'supplier',
             2 => 'type',
@@ -1073,9 +1085,10 @@ class OutstandingMaterialController extends Controller
             16 => 'estimasi_delay_eta_warehouse',
             17 => 'port',
             18 => 'number_po',
-            19 => 'remarks',
-            20 => 'packing_list_path',
-            21 => 'mtc_path',
+            19 => 'month_order',
+            20 => 'remarks',
+            21 => 'packing_list_path',
+            22 => 'mtc_path',
         ];
 
         $orders = (array) $request->input('order', []);
@@ -1100,9 +1113,27 @@ class OutstandingMaterialController extends Controller
         }
 
         if (! $appliedOrder) {
-            // Default: ETA Warehouse DESC (NULL last), Number Invoice ASC, Supplier ASC, id ASC
-            $query->orderByRaw("CASE WHEN estimasi_eta_warehouse IS NULL OR TRIM(estimasi_eta_warehouse) = '' THEN 1 ELSE 0 END ASC")
-                ->orderBy('estimasi_eta_warehouse', 'desc')
+            // Default: ETA Warehouse kedatangan terdekat dari hari ini (Today/Future ASC, Past DESC, NULL last)
+            $today = now()->toDateString();
+            $query->orderByRaw("
+                CASE 
+                    WHEN estimasi_eta_warehouse IS NULL OR TRIM(estimasi_eta_warehouse) = '' THEN 2
+                    WHEN estimasi_eta_warehouse >= ? THEN 0
+                    ELSE 1
+                END ASC
+            ", [$today])
+                ->orderByRaw('
+                CASE 
+                    WHEN estimasi_eta_warehouse >= ? THEN estimasi_eta_warehouse
+                    ELSE NULL
+                END ASC
+            ', [$today])
+                ->orderByRaw('
+                CASE 
+                    WHEN estimasi_eta_warehouse < ? THEN estimasi_eta_warehouse
+                    ELSE NULL
+                END DESC
+            ', [$today])
                 ->orderBy('number_invoice', 'asc')
                 ->orderBy('supplier', 'asc')
                 ->orderBy('id', 'asc');
@@ -1140,6 +1171,7 @@ class OutstandingMaterialController extends Controller
             'estimasi_delay_eta_warehouse' => $this->formatDate($material->estimasi_delay_eta_warehouse),
             'port' => e($material->port ?: '-'),
             'number_po' => e($material->number_po ?: '-'),
+            'month_order' => e($material->month_order ?: '-'),
             'remarks' => $remarksRaw
                 ? '<span title="'.e($remarksRaw).'">'.e($remarksTruncated).'</span>'
                 : '-',
@@ -1166,6 +1198,7 @@ class OutstandingMaterialController extends Controller
             'types' => $this->distinctValuesForQuery($query, 'type'),
             'invoices' => $this->distinctValuesForQuery($query, 'number_invoice'),
             'months' => $this->distinctValuesForQuery($query, 'estimasi_bulan_eta'),
+            'month_orders' => $this->distinctValuesForQuery($query, 'month_order'),
         ];
     }
 
@@ -1512,9 +1545,27 @@ class OutstandingMaterialController extends Controller
         }
 
         if (! $appliedOrder) {
-            // Default: Latest ETA Warehouse DESC (NULL last), Number Invoice ASC, Supplier ASC
-            $query->orderByRaw("CASE WHEN latest_eta_warehouse IS NULL OR TRIM(latest_eta_warehouse) = '' THEN 1 ELSE 0 END ASC")
-                ->orderBy('latest_eta_warehouse', 'desc')
+            // Default: Latest ETA Warehouse kedatangan terdekat dari hari ini (Today/Future ASC, Past DESC, NULL last)
+            $today = now()->toDateString();
+            $query->orderByRaw("
+                CASE 
+                    WHEN latest_eta_warehouse IS NULL OR TRIM(latest_eta_warehouse) = '' THEN 2
+                    WHEN latest_eta_warehouse >= ? THEN 0
+                    ELSE 1
+                END ASC
+            ", [$today])
+                ->orderByRaw('
+                CASE 
+                    WHEN latest_eta_warehouse >= ? THEN latest_eta_warehouse
+                    ELSE NULL
+                END ASC
+            ', [$today])
+                ->orderByRaw('
+                CASE 
+                    WHEN latest_eta_warehouse < ? THEN latest_eta_warehouse
+                    ELSE NULL
+                END DESC
+            ', [$today])
                 ->orderBy('number_invoice', 'asc')
                 ->orderBy('supplier_sample', 'asc');
         }
@@ -1696,6 +1747,7 @@ class OutstandingMaterialController extends Controller
             'estimasi_delay_eta_warehouse' => 'Estimasi Delay ETA Warehouse',
             'port' => 'Port',
             'number_po' => 'Nomor PO',
+            'month_order' => 'Month Order',
             'remarks' => 'Remarks',
             'invoice_context_id' => 'Invoice Context',
             'import_mode' => 'Import Mode',

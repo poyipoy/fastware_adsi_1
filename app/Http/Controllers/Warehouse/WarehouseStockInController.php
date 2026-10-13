@@ -119,7 +119,11 @@ class WarehouseStockInController extends Controller
                 return response()->json(['data' => $this->payload($result), 'idempotent_replay' => $replay], $replay ? 200 : 201);
             }
 
-            return redirect()->route('warehouse.stock-in.show', $result)->with(
+            $target = $request->input('redirect_to') === 'validations'
+                ? route('warehouse.validations.index')
+                : route('warehouse.stock-in.show', $result);
+
+            return redirect($target)->with(
                 'status',
                 $replay ? 'Validasi Stock In sebelumnya sudah tersimpan.' : 'Stock In tervalidasi dan saldo berhasil diperbarui.',
             );
@@ -145,7 +149,11 @@ class WarehouseStockInController extends Controller
                 return response()->json(['data' => $this->payload($result)], 200);
             }
 
-            return redirect()->route('warehouse.stock-in.show', $result)->with('status', 'Stock In dibatalkan.');
+            $target = $request->input('redirect_to') === 'validations'
+                ? route('warehouse.validations.index')
+                : route('warehouse.stock-in.show', $result);
+
+            return redirect($target)->with('status', 'Stock In berhasil ditolak/dibatalkan.');
         } catch (WarehouseDomainException|\InvalidArgumentException $exception) {
             return $this->error($request, $exception, 'cancellation');
         }

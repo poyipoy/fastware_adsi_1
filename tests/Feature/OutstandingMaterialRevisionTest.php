@@ -39,6 +39,7 @@ class OutstandingMaterialRevisionTest extends TestCase
         $headings = $template->headings();
         $this->assertContains('Port', $headings);
         $this->assertContains('Nomor PO', $headings);
+        $this->assertContains('Month Order', $headings);
         $this->assertContains('Remarks', $headings);
 
         $material = new OutstandingMaterial([
@@ -54,6 +55,7 @@ class OutstandingMaterialRevisionTest extends TestCase
             'status' => 'Received',
             'port' => 'Tanjung Priok',
             'number_po' => 'PO-12345',
+            'month_order' => 'May 2026',
             'remarks' => 'Test remarks for export',
         ]);
 
@@ -61,11 +63,13 @@ class OutstandingMaterialRevisionTest extends TestCase
         $exportHeadings = $export->headings();
         $this->assertContains('Port', $exportHeadings);
         $this->assertContains('Nomor PO', $exportHeadings);
+        $this->assertContains('Month Order', $exportHeadings);
         $this->assertContains('Remarks', $exportHeadings);
 
         $mapped = $export->map($material);
         $this->assertContains('Tanjung Priok', $mapped);
         $this->assertContains('PO-12345', $mapped);
+        $this->assertContains('May 2026', $mapped);
         $this->assertContains('Test remarks for export', $mapped);
     }
 
@@ -73,8 +77,8 @@ class OutstandingMaterialRevisionTest extends TestCase
     {
         $import = new OutstandingMaterialImport(1);
         $import->collection(new Collection([
-            ['NO', 'Supplier', 'Number Invoice', 'TYPE', 'Thickness', 'Width', 'Diameter', 'Length', 'QTY (PCS)', 'Est QTY (KG)', 'Status', 'Port', 'Nomor PO', 'Remarks'],
-            [1, 'PT Test', 'INV-IMPORT-1', 'Plate', 5, 50, null, '2000', 10, 100, 'Received', 'Tanjung Priok', 'PO-999', 'Import Remarks'],
+            ['NO', 'Supplier', 'Number Invoice', 'TYPE', 'Thickness', 'Width', 'Diameter', 'Length', 'QTY (PCS)', 'Est QTY (KG)', 'Status', 'Port', 'Nomor PO', 'Month Order', 'Remarks'],
+            [1, 'PT Test', 'INV-IMPORT-1', 'Plate', 5, 50, null, '2000', 10, 100, 'Received', 'Tanjung Priok', 'PO-999', 'June 2026', 'Import Remarks'],
         ]));
 
         $rows = $import->rows();
@@ -82,6 +86,7 @@ class OutstandingMaterialRevisionTest extends TestCase
         $this->assertSame([], $import->errors());
         $this->assertSame('Tanjung Priok', $rows[0]['port']);
         $this->assertSame('PO-999', $rows[0]['number_po']);
+        $this->assertSame('June 2026', $rows[0]['month_order']);
         $this->assertSame('Import Remarks', $rows[0]['remarks']);
     }
 
@@ -188,20 +193,26 @@ class OutstandingMaterialRevisionTest extends TestCase
         $documents = new OutstandingMaterialDocumentService();
         $batch = new OutstandingMaterialBatchService($identity, $documents, new OutstandingMaterialInvoiceService($identity));
 
-        // Create records with multi-key sorting variations
-        // Order expected:
-        // 1: ETA 2026-08-28 / INV-ORDER-A / Supplier A
-        // 2: ETA 2026-08-28 / INV-ORDER-A / Supplier B
-        // 3: ETA 2026-08-28 / INV-ORDER-C / Supplier C
-        // 4: ETA 2026-08-30 / INV-ORDER-B / Supplier B
-        // 5: ETA NULL / INV-ORDER-NULL / Supplier A
+        $today = now()->toDateString();
+        $tomorrow = now()->addDays(1)->toDateString();
+        $nextWeek = now()->addDays(7)->toDateString();
+        $yesterday = now()->subDays(1)->toDateString();
+        $lastWeek = now()->subDays(7)->toDateString();
+
+        // 1: ETA $today / INV-ORDER-A / Supplier A (Tier 0: today)
+        // 2: ETA $today / INV-ORDER-A / Supplier B (Tier 0: tie-break supplier)
+        // 3: ETA $tomorrow / INV-ORDER-B / Supplier A (Tier 0: tomorrow)
+        // 4: ETA $nextWeek / INV-ORDER-C / Supplier A (Tier 0: next week)
+        // 5: ETA $yesterday / INV-ORDER-D / Supplier A (Tier 1: yesterday, most recent past)
+        // 6: ETA $lastWeek / INV-ORDER-E / Supplier A (Tier 1: last week, older past)
+        // 7: ETA NULL / INV-ORDER-NULL / Supplier A (Tier 2: nulls last)
         $m1 = OutstandingMaterial::create([
             'supplier' => 'Supplier A',
             'number_invoice' => 'INV-ORDER-A',
             'invoice_identity_key' => $identity->invoiceKey('Supplier A', 'INV-ORDER-A'),
             'type' => 'Plate',
             'status' => 'Received',
-            'estimasi_eta_warehouse' => '2026-08-28',
+            'estimasi_eta_warehouse' => $today,
         ]);
         $m2 = OutstandingMaterial::create([
             'supplier' => 'Supplier B',
@@ -209,25 +220,41 @@ class OutstandingMaterialRevisionTest extends TestCase
             'invoice_identity_key' => $identity->invoiceKey('Supplier B', 'INV-ORDER-A'),
             'type' => 'Plate',
             'status' => 'Received',
-            'estimasi_eta_warehouse' => '2026-08-28',
+            'estimasi_eta_warehouse' => $today,
         ]);
         $m3 = OutstandingMaterial::create([
-            'supplier' => 'Supplier C',
-            'number_invoice' => 'INV-ORDER-C',
-            'invoice_identity_key' => $identity->invoiceKey('Supplier C', 'INV-ORDER-C'),
+            'supplier' => 'Supplier A',
+            'number_invoice' => 'INV-ORDER-B',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier A', 'INV-ORDER-B'),
             'type' => 'Plate',
             'status' => 'Received',
-            'estimasi_eta_warehouse' => '2026-08-28',
+            'estimasi_eta_warehouse' => $tomorrow,
         ]);
         $m4 = OutstandingMaterial::create([
-            'supplier' => 'Supplier B',
-            'number_invoice' => 'INV-ORDER-B',
-            'invoice_identity_key' => $identity->invoiceKey('Supplier B', 'INV-ORDER-B'),
+            'supplier' => 'Supplier A',
+            'number_invoice' => 'INV-ORDER-C',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier A', 'INV-ORDER-C'),
             'type' => 'Plate',
             'status' => 'Received',
-            'estimasi_eta_warehouse' => '2026-08-30',
+            'estimasi_eta_warehouse' => $nextWeek,
         ]);
         $m5 = OutstandingMaterial::create([
+            'supplier' => 'Supplier A',
+            'number_invoice' => 'INV-ORDER-D',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier A', 'INV-ORDER-D'),
+            'type' => 'Plate',
+            'status' => 'Received',
+            'estimasi_eta_warehouse' => $yesterday,
+        ]);
+        $m6 = OutstandingMaterial::create([
+            'supplier' => 'Supplier A',
+            'number_invoice' => 'INV-ORDER-E',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier A', 'INV-ORDER-E'),
+            'type' => 'Plate',
+            'status' => 'Received',
+            'estimasi_eta_warehouse' => $lastWeek,
+        ]);
+        $m7 = OutstandingMaterial::create([
             'supplier' => 'Supplier A',
             'number_invoice' => 'INV-ORDER-NULL',
             'invoice_identity_key' => $identity->invoiceKey('Supplier A', 'INV-ORDER-NULL'),
@@ -273,21 +300,29 @@ class OutstandingMaterialRevisionTest extends TestCase
         $pos3 = array_search($m3->id, $ids);
         $pos4 = array_search($m4->id, $ids);
         $pos5 = array_search($m5->id, $ids);
+        $pos6 = array_search($m6->id, $ids);
+        $pos7 = array_search($m7->id, $ids);
 
         $this->assertNotFalse($pos1);
         $this->assertNotFalse($pos2);
         $this->assertNotFalse($pos3);
         $this->assertNotFalse($pos4);
         $this->assertNotFalse($pos5);
+        $this->assertNotFalse($pos6);
+        $this->assertNotFalse($pos7);
 
-        // ETA 2026-08-30 (furthest/newest) must come first
-        $this->assertLessThan($pos1, $pos4);
-        // ETA 2026-08-28 INV-ORDER-A Supplier A < Supplier B
+        // Tie breaker for same date $today: Supplier A < Supplier B
         $this->assertLessThan($pos2, $pos1);
-        // ETA 2026-08-28 INV-ORDER-A < INV-ORDER-C
+        // Future ASC: Today < Tomorrow
         $this->assertLessThan($pos3, $pos2);
-        // ETA 2026-08-28 < NULL ETA (nulls last)
-        $this->assertLessThan($pos5, $pos3);
+        // Future ASC: Tomorrow < Next Week
+        $this->assertLessThan($pos4, $pos3);
+        // Future before Past: Next Week < Yesterday
+        $this->assertLessThan($pos5, $pos4);
+        // Past DESC (most recent past first): Yesterday < Last Week
+        $this->assertLessThan($pos6, $pos5);
+        // Past before NULL: Last Week < NULL
+        $this->assertLessThan($pos7, $pos6);
     }
 
     public function test_interactive_sorting_eta_warehouse_asc_places_nulls_last(): void
@@ -358,29 +393,52 @@ class OutstandingMaterialRevisionTest extends TestCase
         $documents = new OutstandingMaterialDocumentService();
         $batch = new OutstandingMaterialBatchService($identity, $documents, new OutstandingMaterialInvoiceService($identity));
 
-        // Invoice 1: earlier ETA 2026-07-01
+        $tomorrow = now()->addDays(1)->toDateString();
+        $nextMonth = now()->addDays(30)->toDateString();
+        $yesterday = now()->subDays(1)->toDateString();
+        $lastMonth = now()->subDays(30)->toDateString();
+
+        // Invoice 1: upcoming tomorrow (closest future)
         OutstandingMaterial::create([
             'supplier' => 'Supplier G1',
-            'number_invoice' => 'INV-GRP-EARLY',
-            'invoice_identity_key' => $identity->invoiceKey('Supplier G1', 'INV-GRP-EARLY'),
+            'number_invoice' => 'INV-GRP-TOMORROW',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier G1', 'INV-GRP-TOMORROW'),
             'type' => 'Plate',
             'status' => 'Received',
-            'estimasi_eta_warehouse' => '2026-07-01',
+            'estimasi_eta_warehouse' => $tomorrow,
         ]);
-        // Invoice 2: later ETA 2026-12-01 (furthest/latest)
+        // Invoice 2: next month (further future)
         OutstandingMaterial::create([
             'supplier' => 'Supplier G2',
-            'number_invoice' => 'INV-GRP-LATE',
-            'invoice_identity_key' => $identity->invoiceKey('Supplier G2', 'INV-GRP-LATE'),
+            'number_invoice' => 'INV-GRP-NEXTMONTH',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier G2', 'INV-GRP-NEXTMONTH'),
             'type' => 'Plate',
             'status' => 'Received',
-            'estimasi_eta_warehouse' => '2026-12-01',
+            'estimasi_eta_warehouse' => $nextMonth,
         ]);
-        // Invoice 3: null ETA
+        // Invoice 3: yesterday (closest past)
         OutstandingMaterial::create([
             'supplier' => 'Supplier G3',
+            'number_invoice' => 'INV-GRP-YESTERDAY',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier G3', 'INV-GRP-YESTERDAY'),
+            'type' => 'Plate',
+            'status' => 'Received',
+            'estimasi_eta_warehouse' => $yesterday,
+        ]);
+        // Invoice 4: last month (further past)
+        OutstandingMaterial::create([
+            'supplier' => 'Supplier G4',
+            'number_invoice' => 'INV-GRP-LASTMONTH',
+            'invoice_identity_key' => $identity->invoiceKey('Supplier G4', 'INV-GRP-LASTMONTH'),
+            'type' => 'Plate',
+            'status' => 'Received',
+            'estimasi_eta_warehouse' => $lastMonth,
+        ]);
+        // Invoice 5: null ETA
+        OutstandingMaterial::create([
+            'supplier' => 'Supplier G5',
             'number_invoice' => 'INV-GRP-NULL',
-            'invoice_identity_key' => $identity->invoiceKey('Supplier G3', 'INV-GRP-NULL'),
+            'invoice_identity_key' => $identity->invoiceKey('Supplier G5', 'INV-GRP-NULL'),
             'type' => 'Plate',
             'status' => 'Received',
             'estimasi_eta_warehouse' => null,
@@ -389,6 +447,16 @@ class OutstandingMaterialRevisionTest extends TestCase
         $access = new class extends OutstandingMaterialAccessService
         {
             public function canView(?User $user): bool
+            {
+                return true;
+            }
+
+            public function canManage(?User $user): bool
+            {
+                return true;
+            }
+
+            public function canExport(?User $user): bool
             {
                 return true;
             }
@@ -405,18 +473,26 @@ class OutstandingMaterialRevisionTest extends TestCase
         $payload = $response->getData(true);
         $invoices = array_map(fn ($r) => html_entity_decode(strip_tags((string) $r['number_invoice'])), $payload['data']);
 
-        $posEarly = array_search('INV-GRP-EARLY', $invoices);
-        $posLate = array_search('INV-GRP-LATE', $invoices);
+        $posTomorrow = array_search('INV-GRP-TOMORROW', $invoices);
+        $posNextMonth = array_search('INV-GRP-NEXTMONTH', $invoices);
+        $posYesterday = array_search('INV-GRP-YESTERDAY', $invoices);
+        $posLastMonth = array_search('INV-GRP-LASTMONTH', $invoices);
         $posNull = array_search('INV-GRP-NULL', $invoices);
 
-        $this->assertNotFalse($posEarly);
-        $this->assertNotFalse($posLate);
+        $this->assertNotFalse($posTomorrow);
+        $this->assertNotFalse($posNextMonth);
+        $this->assertNotFalse($posYesterday);
+        $this->assertNotFalse($posLastMonth);
         $this->assertNotFalse($posNull);
 
-        // Later ETA (2026-12-01) must come before earlier ETA (2026-07-01)
-        $this->assertLessThan($posEarly, $posLate);
-        // Earlier ETA must come before NULL ETA (nulls last)
-        $this->assertLessThan($posNull, $posEarly);
+        // Future ASC: Tomorrow before Next Month
+        $this->assertLessThan($posNextMonth, $posTomorrow);
+        // Future before Past: Next Month before Yesterday
+        $this->assertLessThan($posYesterday, $posNextMonth);
+        // Past DESC (most recent past first): Yesterday before Last Month
+        $this->assertLessThan($posLastMonth, $posYesterday);
+        // Past before NULL: Last Month before NULL
+        $this->assertLessThan($posNull, $posLastMonth);
     }
 
     public function test_batch_add_persists_port_number_po_and_remarks(): void
@@ -436,6 +512,7 @@ class OutstandingMaterialRevisionTest extends TestCase
                 'status' => 'Received',
                 'port' => 'Tanjung Priok',
                 'number_po' => 'PO-BATCH-123',
+                'month_order' => 'July 2026',
                 'remarks' => 'Batch remarks test',
             ],
             [
@@ -449,9 +526,11 @@ class OutstandingMaterialRevisionTest extends TestCase
         $this->assertCount(2, $created);
         $this->assertSame('Tanjung Priok', $created[0]->port);
         $this->assertSame('PO-BATCH-123', $created[0]->number_po);
+        $this->assertSame('July 2026', $created[0]->month_order);
         $this->assertSame('Batch remarks test', $created[0]->remarks);
         $this->assertSame('Tanjung Priok', $created[1]->port);
         $this->assertSame('PO-BATCH-123', $created[1]->number_po);
+        $this->assertSame('July 2026', $created[1]->month_order);
         $this->assertSame('Batch remarks test', $created[1]->remarks);
     }
 
@@ -480,6 +559,7 @@ class OutstandingMaterialRevisionTest extends TestCase
             'status' => OutstandingMaterial::STATUS_RECEIVED,
             'port' => 'Tanjung Perak',
             'number_po' => 'PO-777',
+            'month_order' => 'August 2026',
             'remarks' => $longRemarks,
         ]);
         $material->id = 100;
@@ -491,6 +571,7 @@ class OutstandingMaterialRevisionTest extends TestCase
 
         $this->assertSame('Tanjung Perak', $row['port']);
         $this->assertSame('PO-777', $row['number_po']);
+        $this->assertSame('August 2026', $row['month_order']);
         $this->assertStringContainsString('title="', $row['remarks']);
         $this->assertStringContainsString('…', $row['remarks']);
     }
@@ -553,6 +634,7 @@ class OutstandingMaterialRevisionTest extends TestCase
             'Estimasi Delay ETA Warehouse',
             'Port',
             'Nomor PO',
+            'Month Order',
             'Remarks',
         ];
 
@@ -579,6 +661,7 @@ class OutstandingMaterialRevisionTest extends TestCase
             'estimasi_delay_eta_warehouse' => null,
             'port' => 'Tanjung Priok',
             'number_po' => 'PO-BAJA-99',
+            'month_order' => 'May 2026',
             'remarks' => 'High quality steel batch',
         ]);
 
@@ -605,7 +688,8 @@ class OutstandingMaterialRevisionTest extends TestCase
         $this->assertNull($mapped[16]); // Estimasi Delay ETA Warehouse
         $this->assertSame('Tanjung Priok', $mapped[17]); // Port
         $this->assertSame('PO-BAJA-99', $mapped[18]); // Nomor PO
-        $this->assertSame('High quality steel batch', $mapped[19]); // Remarks
+        $this->assertSame('May 2026', $mapped[19]); // Month Order
+        $this->assertSame('High quality steel batch', $mapped[20]); // Remarks
     }
 
     public function test_template_export_headings_and_widths_match_data_export(): void
@@ -615,5 +699,56 @@ class OutstandingMaterialRevisionTest extends TestCase
 
         $this->assertSame($export->headings(), $template->headings());
         $this->assertSame(array_keys($export->columnWidths()), array_keys($template->columnWidths()));
+    }
+
+    public function test_controller_batch_store_persists_header_port_number_po_month_order_and_remarks(): void
+    {
+        if (! Schema::hasTable('outstanding_materials') || ! Schema::hasTable('outstanding_material_invoices')) {
+            $this->markTestSkipped('Database schema not available.');
+        }
+
+        $access = new class extends OutstandingMaterialAccessService
+        {
+            public function canManage(?User $user): bool
+            {
+                return true;
+            }
+        };
+        $identity = new OutstandingMaterialIdentityService();
+        $documents = new OutstandingMaterialDocumentService();
+        $batch = new OutstandingMaterialBatchService($identity, $documents, new OutstandingMaterialInvoiceService($identity));
+        $controller = new OutstandingMaterialController($access, $documents, $identity, $batch);
+
+        $user = new User(['name' => 'ADMINISTRATOR']);
+        $user->id = 1;
+        Auth::setUser($user);
+
+        $request = Request::create(route('outstanding-materials.bulk-store'), 'POST', [
+            'supplier' => 'PT Batch Controller',
+            'number_invoice' => 'INV-CTRL-01',
+            'status' => 'Received',
+            'port' => 'Tanjung Priok',
+            'number_po' => 'PO-CTRL-123',
+            'month_order' => 'July 2026',
+            'remarks' => 'Batch remarks test from controller',
+            'materials' => [
+                ['type' => 'Plate', 'qty_pcs' => 10],
+                ['type' => 'Pipe', 'qty_pcs' => 5],
+            ],
+        ]);
+
+        $response = $controller->storeBatch($request);
+        $this->assertEquals(302, $response->getStatusCode());
+
+        $materials = OutstandingMaterial::where('number_invoice', 'INV-CTRL-01')->get();
+        $this->assertCount(2, $materials);
+        $this->assertSame('Tanjung Priok', $materials[0]->port);
+        $this->assertSame('PO-CTRL-123', $materials[0]->number_po);
+        $this->assertSame('July 2026', $materials[0]->month_order);
+        $this->assertSame('Batch remarks test from controller', $materials[0]->remarks);
+        $this->assertSame('Tanjung Priok', $materials[1]->port);
+        $this->assertSame('PO-CTRL-123', $materials[1]->number_po);
+        $this->assertSame('July 2026', $materials[1]->month_order);
+        $this->assertSame('Batch remarks test from controller', $materials[1]->remarks);
     }
 }

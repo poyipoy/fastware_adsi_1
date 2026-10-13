@@ -101,3 +101,21 @@ enum WarehouseStockInValidationResult: string
         return $this === self::MATCH ? 'Sesuai' : 'Input Manual';
     }
 }
+
+enum WarehouseMachineCode: string
+{
+    case M1 = 'M1';
+    case M2 = 'M2';
+    case M3 = 'M3';
+    case M4 = 'M4';
+    case M5 = 'M5';
+    case M6 = 'M6';
+    case M13 = 'M13';
+
+    /** @return array<int, string> */
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
+    }
+}
+

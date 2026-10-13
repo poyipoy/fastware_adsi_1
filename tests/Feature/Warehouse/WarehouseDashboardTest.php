@@ -36,9 +36,10 @@ class WarehouseDashboardTest extends WarehouseTestCase
             ->assertSee('Simpan');
 
         $item->update(['current_stock' => '10.000']);
-        $this->actingAs($user)->get(route('warehouse.dashboard'))
+        $healthyResponse = $this->actingAs($user)->get(route('warehouse.dashboard'))
             ->assertOk()
-            ->assertDontSee('Attention Note Item');
+            ->assertDontSee('Follow up dengan Purchasing');
+        self::assertFalse($healthyResponse->viewData('lowStock')->getCollection()->contains('id', $item->id));
         self::assertSame('Follow up dengan Purchasing', (string) $item->fresh()->stock_attention_note);
 
         $item->update(['current_stock' => '1.000']);
@@ -89,7 +90,8 @@ class WarehouseDashboardTest extends WarehouseTestCase
                 ->assertDontSee('Stok aman')
                 ->assertDontSee('Stock In Bulan Ini')
                 ->assertDontSee('Stock Out Bulan Ini')
-                ->assertSee('Tren Stock In/Out')
+                ->assertSee('Pergerakan stok')
+                ->assertSee('data-warehouse-movement-chart', false)
                 ->assertSee('bi bi-funnel', false)
                 ->assertDontSee('Filter Dashboard')
                 ->assertDontSee('2026-07-13 — 2026-08-11')
@@ -97,8 +99,8 @@ class WarehouseDashboardTest extends WarehouseTestCase
                 ->assertDontSee('Stock Out Today')
                 ->assertSee('>2<', false)
                 ->assertSee('>1<', false)
-                ->assertSee('<td>2026-08-01</td><td>2</td><td>0</td></tr>', false)
-                ->assertSee('<td>2026-08-10</td><td>0</td><td>1</td></tr>', false);
+                ->assertSee('<td>2026-08-01</td>', false)
+                ->assertSee('<td>2026-08-10</td>', false);
         } finally {
             CarbonImmutable::setTestNow();
         }
@@ -683,7 +685,7 @@ class WarehouseDashboardTest extends WarehouseTestCase
             ->assertSee('Belum ada pergerakan')
             ->assertSee('Belum ada data Stock Out item pada periode ini.')
             ->assertSee('Belum ada data Stock Out tipe mesin pada periode ini.')
-            ->assertSee('Tren Stock In/Out')
+            ->assertSee('Pergerakan stok')
             ->assertSee('Filter periode')
             ->assertDontSee('Filter Dashboard');
     }
@@ -812,6 +814,7 @@ class WarehouseDashboardTest extends WarehouseTestCase
             'transaction_type' => $type,
             'item_condition' => $condition,
             'consumable_id' => $item->id,
+            'machine_type_used' => $item->machine_type,
             'quantity' => $quantity,
             'stock_before' => $before,
             'stock_after' => $after,

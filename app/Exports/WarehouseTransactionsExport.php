@@ -28,24 +28,37 @@ class WarehouseTransactionsExport implements FromCollection, WithColumnWidths, W
     {
         return [
             optional($transaction->transaction_at)->format('Y-m-d H:i:s'),
-            $transaction->transaction_number,
+            $this->sanitize($transaction->transaction_number),
             $transaction->transaction_type?->value,
             $transaction->item_condition?->value,
-            $transaction->consumable?->item_code,
-            $transaction->consumable?->item_name,
-            $transaction->consumable?->machine_type,
-            $transaction->consumable?->unit,
+            $this->sanitize($transaction->consumable?->item_code),
+            $this->sanitize($transaction->consumable?->item_name),
+            $this->sanitize($transaction->consumable?->machine_type),
+            $this->sanitize($transaction->consumable?->unit),
             (string) $transaction->quantity,
-            $transaction->display_location,
+            $this->sanitize($transaction->display_location),
             (string) $transaction->stock_before,
             (string) $transaction->stock_after,
-            $transaction->verified_user_name,
-            $transaction->verified_user_section,
-            $transaction->reference_number,
-            $transaction->purpose,
-            $transaction->creator?->name,
-            $transaction->notes,
+            $this->sanitize($transaction->verified_user_name),
+            $this->sanitize($transaction->verified_user_section),
+            $this->sanitize($transaction->reference_number),
+            $this->sanitize($transaction->purpose),
+            $this->sanitize($transaction->creator?->name),
+            $this->sanitize($transaction->notes),
         ];
+    }
+
+    private function sanitize(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        if (in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 
     public function columnWidths(): array

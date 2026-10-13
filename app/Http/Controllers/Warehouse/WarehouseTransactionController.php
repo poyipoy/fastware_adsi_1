@@ -9,8 +9,8 @@ use App\Exceptions\WarehouseDomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warehouse\ReverseWarehouseTransactionRequest;
 use App\Http\Requests\Warehouse\StoreWarehouseTransactionRequest;
-use App\Models\Warehouse\WarehouseStockTransaction;
 use App\Models\Warehouse\WarehouseStockIn;
+use App\Models\Warehouse\WarehouseStockTransaction;
 use App\Services\Warehouse\WarehouseAccessService;
 use App\Services\Warehouse\WarehouseIdentityResolver;
 use App\Services\Warehouse\WarehouseStockInService;
@@ -48,11 +48,8 @@ class WarehouseTransactionController extends Controller
 
             $hasInternalSource = trim((string) $request->input('source_location')) !== '';
 
-            // Every NEW receipt requires validation. USED receipts keep their
-            // direct-ledger behavior unless they are an internal transfer,
-            // which must reserve source stock and wait for validation too.
-            if ($type === WarehouseTransactionType::IN
-                && ($condition === WarehouseItemCondition::NEW || $hasInternalSource)) {
+            // Every Stock In (NEW & USED) requires validation.
+            if ($type === WarehouseTransactionType::IN) {
                 $stockIn = $stockInService->create(
                     actorId: (int) $request->user()->getKey(),
                     consumableId: (int) $item->getKey(),
@@ -106,6 +103,7 @@ class WarehouseTransactionController extends Controller
                 sourceLocation: $type === WarehouseTransactionType::OUT ? $request->input('location') : null,
                 operationKey: $operationKey,
                 machineTypeUsed: $type === WarehouseTransactionType::OUT ? $request->input('machine_type_used') : null,
+                machineAllocations: $type === WarehouseTransactionType::OUT ? $request->input('machine_allocations') : null,
             );
 
             if ($request->boolean('return_used')) {
@@ -160,7 +158,7 @@ class WarehouseTransactionController extends Controller
         $alreadyReversed = WarehouseStockTransaction::query()->where('reversal_of_id', $transaction->getKey())->exists();
 
         return view('warehouse.transactions.show', [
-            'transaction' => $transaction->load(['consumable', 'verifiedUser', 'creator', 'reversalOf', 'reversal', 'locationShipment']),
+            'transaction' => $transaction->load(['consumable', 'verifiedUser', 'creator', 'reversalOf', 'reversal', 'locationShipment', 'machineUsages']),
             'canReverse' => $transaction->transaction_type !== WarehouseTransactionType::TRANSFER
                 && $access->can($request->user(), 'warehouse.transaction.reverse')
                 && ! $alreadyReversed,
@@ -232,6 +230,7 @@ class WarehouseTransactionController extends Controller
         $requestedType = strtoupper(trim((string) $request->query('type', '')));
         $initialType = in_array($requestedType, $availableTypes, true) ? $requestedType : ($availableTypes[0] ?? 'OUT');
         $initialBarcode = substr(trim(preg_replace('/[\x00-\x1F\x7F]/', '', (string) $request->query('barcode', ''))), 0, 120);
+
         return view('warehouse.transactions.create', [
             'canStockIn' => $canStockIn,
             'canStockOut' => $canStockOut,
@@ -239,6 +238,7 @@ class WarehouseTransactionController extends Controller
             'initialType' => $initialType,
             'initialBarcode' => $initialBarcode,
             'itemCondition' => $condition,
+            'machineCodes' => \App\Enums\Warehouse\WarehouseMachineCode::values(),
             'transactionRequirements' => [
                 'storageLocationForIn' => true,
                 'sourceLocationForOut' => true,
@@ -253,6 +253,7 @@ class WarehouseTransactionController extends Controller
 
         return [
             'id' => $stockIn->getKey(),
+            'stock_in_id' => $stockIn->getKey(),
             'stock_in_number' => $stockIn->stock_in_number,
             'status' => $stockIn->status?->value,
             'validation_result' => $stockIn->validation_result?->value,

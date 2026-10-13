@@ -47,4 +47,65 @@ class WarehouseTransactionHistoryTest extends WarehouseTestCase
 
         $this->actingAs($outsider)->get(route('warehouse.transactions.show', $transaction))->assertForbidden();
     }
+
+    public function test_transaction_history_calculates_and_displays_used_return_debt_card(): void
+    {
+        $admin = $this->createUser(['role_id' => 1]);
+        $verified = $this->createUser();
+        $item = WarehouseConsumable::factory()->create();
+
+        WarehouseStockTransaction::factory()->create([
+            'transaction_type' => WarehouseTransactionType::OUT,
+            'item_condition' => \App\Enums\Warehouse\WarehouseItemCondition::NEW,
+            'consumable_id' => $item->id,
+            'verified_user_id' => $verified->id,
+            'quantity' => '10.000',
+            'transaction_at' => now(),
+        ]);
+
+        WarehouseStockTransaction::factory()->create([
+            'transaction_type' => WarehouseTransactionType::IN,
+            'item_condition' => \App\Enums\Warehouse\WarehouseItemCondition::USED,
+            'consumable_id' => $item->id,
+            'verified_user_id' => $verified->id,
+            'quantity' => '4.000',
+            'transaction_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('warehouse.transactions.index'));
+        $response->assertOk();
+        $response->assertSee('Hutang Barang Bekas');
+        $response->assertSee('6');
+    }
+
+    public function test_transaction_history_excludes_reversals_from_debt_calculation(): void
+    {
+        $admin = $this->createUser(['role_id' => 1]);
+        $verified = $this->createUser();
+        $item = WarehouseConsumable::factory()->create();
+
+        $originalOut = WarehouseStockTransaction::factory()->create([
+            'transaction_type' => WarehouseTransactionType::OUT,
+            'item_condition' => \App\Enums\Warehouse\WarehouseItemCondition::NEW,
+            'consumable_id' => $item->id,
+            'verified_user_id' => $verified->id,
+            'quantity' => '10.000',
+            'transaction_at' => now(),
+        ]);
+
+        WarehouseStockTransaction::factory()->create([
+            'transaction_type' => WarehouseTransactionType::REVERSAL,
+            'item_condition' => \App\Enums\Warehouse\WarehouseItemCondition::NEW,
+            'consumable_id' => $item->id,
+            'verified_user_id' => $verified->id,
+            'quantity' => '10.000',
+            'reversal_of_id' => $originalOut->id,
+            'transaction_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('warehouse.transactions.index'));
+        $response->assertOk();
+        $response->assertSee('Hutang Barang Bekas');
+        $response->assertSee('0');
+    }
 }

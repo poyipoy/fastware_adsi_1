@@ -44,10 +44,6 @@
                             <input class="form-control" id="item_name" name="item_name" value="{{ old('item_name', $consumable->item_name) }}" required @error('item_name') aria-invalid="true" @enderror>
                         </div>
                         <div class="warehouse-form-field">
-                            <label class="form-label" for="machine_type">Tipe mesin</label>
-                            <input class="form-control" id="machine_type" name="machine_type" value="{{ old('machine_type', $consumable->machine_type) }}" maxlength="120" placeholder="Contoh: Cutting, Press, Welding">
-                        </div>
-                        <div class="warehouse-form-field">
                             <label class="form-label" for="photo">Foto barang</label>
                             <input class="form-control" id="photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" aria-describedby="photo-help">
                             <div class="warehouse-help" id="photo-help">JPG, JPEG, PNG, atau WebP. Maksimal 5 MB. Kosongkan untuk mempertahankan foto saat ini.</div>
@@ -59,7 +55,7 @@
                 <section class="warehouse-form-section" aria-labelledby="warehouse-stock-rule-heading">
                     <div class="warehouse-form-section-heading">
                         <h2 id="warehouse-stock-rule-heading">Aturan stok</h2>
-                        <p>Jumlah menggunakan satuan pcs tanpa desimal. Lokasi dipilih saat transaksi, bukan pada master. Stok saat ini tidak dapat diedit dari master.</p>
+                        <p>Satuan barang menggunakan pcs (bilangan bulat). Pengaturan lokasi dan penambahan stok dilakukan melalui menu transaksi atau penyesuaian.</p>
                     </div>
                     <div class="warehouse-detail-grid">
                         <div class="warehouse-form-field">

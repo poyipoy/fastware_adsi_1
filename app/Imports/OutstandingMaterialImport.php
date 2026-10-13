@@ -83,6 +83,7 @@ class OutstandingMaterialImport implements SkipsEmptyRows, ToCollection
                 'estimasi_delay_eta_warehouse' => $this->normalizeDateText($this->value($row, 'estimasi_delay_eta_warehouse'), $rowNumber, 'Estimasi Delay ETA Warehouse'),
                 'port' => $this->normalizeOption($this->value($row, 'port'), OutstandingMaterial::portOptions(), true),
                 'number_po' => $this->normalizeString($this->value($row, 'number_po')),
+                'month_order' => $this->normalizeString($this->value($row, 'month_order')),
                 'remarks' => $this->normalizeString($this->value($row, 'remarks')),
             ];
 
@@ -105,6 +106,7 @@ class OutstandingMaterialImport implements SkipsEmptyRows, ToCollection
                 'estimasi_delay_eta_warehouse' => 'nullable|string|max:100',
                 'port' => ['nullable', 'string', Rule::in(OutstandingMaterial::portOptions())],
                 'number_po' => 'nullable|string|max:255',
+                'month_order' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:2000',
             ], [], $this->validationAttributes());
 
@@ -206,6 +208,7 @@ class OutstandingMaterialImport implements SkipsEmptyRows, ToCollection
             'estimasi_delay_eta_warehouse' => ['estimasidelayetawarehouse'],
             'port' => ['port', 'pelabuhan'],
             'number_po' => ['numberpo', 'nomorpo', 'po', 'ponumber', 'nopo'],
+            'month_order' => ['monthorder', 'bulanorder', 'bulanpo', 'orderbulan'],
             'remarks' => ['remarks', 'remark', 'catatan'],
         ];
         $indexes = [];
@@ -225,6 +228,7 @@ class OutstandingMaterialImport implements SkipsEmptyRows, ToCollection
         $allFields = array_merge($this->legacyHeaderIndexes(), [
             'port' => null,
             'number_po' => null,
+            'month_order' => null,
             'remarks' => null,
         ]);
 
@@ -385,6 +389,7 @@ class OutstandingMaterialImport implements SkipsEmptyRows, ToCollection
             'estimasi_delay_eta_warehouse' => 'Estimasi Delay ETA Warehouse',
             'port' => 'Port',
             'number_po' => 'Nomor PO',
+            'month_order' => 'Month Order',
             'remarks' => 'Remarks',
         ];
     }

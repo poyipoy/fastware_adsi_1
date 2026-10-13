@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Warehouse;
 
-use App\Http\Controllers\Controller;
 use App\Enums\Warehouse\WarehouseItemCondition;
+use App\Http\Controllers\Controller;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Services\Warehouse\WarehouseAccessService;
 use App\Services\Warehouse\WarehouseQuantity;
@@ -29,8 +29,7 @@ class WarehouseCatalogController extends Controller
             $query->where(function ($builder) use ($search): void {
                 $builder->where('item_name', 'like', '%'.$search.'%')
                     ->orWhere('item_code', 'like', '%'.$search.'%')
-                    ->orWhere('barcode', 'like', '%'.$search.'%')
-                    ->orWhere('machine_type', 'like', '%'.$search.'%');
+                    ->orWhere('barcode', 'like', '%'.$search.'%');
             });
         }
 
@@ -60,12 +59,14 @@ class WarehouseCatalogController extends Controller
                     'barcode' => $item->barcode,
                     'item_name' => $item->item_name,
                     'category' => $item->category?->name,
-                    'machine_type' => $item->machine_type,
                     'unit' => $item->unit,
                     'allow_fraction' => (bool) $item->allow_fraction,
                     'photo_url' => $item->photo_path ? $disk->url($item->photo_path) : null,
                     'stock_status' => $item->stock_status,
                     'current_stock' => (string) $item->current_stock,
+                    'minimum_stock' => (string) $item->minimum_stock,
+                    'stock_new' => WarehouseQuantity::add($newDs8['available_stock'], $newDeltamas['available_stock']),
+                    'stock_used' => WarehouseQuantity::add((string) $item->stock_used_ds8, (string) $item->stock_used_deltamas),
                     'physical_stock' => (string) $item->current_stock,
                     'reserved_stock' => WarehouseQuantity::add(
                         WarehouseQuantity::add($newDs8['reserved_stock'], $newDeltamas['reserved_stock']),

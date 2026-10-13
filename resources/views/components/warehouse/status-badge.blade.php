@@ -41,14 +41,17 @@
     }
     $tone = $context === 'stock' && $value === 'OUT'
         ? 'danger'
-        : match ($value) {
-            'IN', 'HEALTHY', 'ACTIVE', 'SUCCESS', 'VALIDATED' => 'success',
-            'OUT', 'LOW', 'WARNING', 'PENDING', 'WAITING_VALIDATION' => 'warning',
-            'DISCREPANCY' => 'danger',
-            'DANGER', 'ERROR', 'INACTIVE', 'REVERSED' => 'danger',
-            'TRANSFER' => 'neutral',
-            default => 'neutral',
-        };
+        : ($context === 'transaction' && $value === 'OUT'
+            ? 'primary'
+            : ($context === 'transaction' && $value === 'ADJUSTMENT'
+                ? 'indigo'
+                : match ($value) {
+                    'IN', 'HEALTHY', 'ACTIVE', 'SUCCESS', 'VALIDATED' => 'success',
+                    'LOW', 'WARNING', 'PENDING', 'WAITING_VALIDATION' => 'warning',
+                    'DISCREPANCY', 'DANGER', 'ERROR', 'INACTIVE', 'REVERSED', 'REVERSAL' => 'danger',
+                    'TRANSFER' => 'neutral',
+                    default => 'neutral',
+                }));
 @endphp
 <span {{ $attributes->merge(['class' => 'warehouse-status-badge warehouse-status-badge-'.$tone]) }}>
     <span class="warehouse-status-dot" aria-hidden="true"></span>

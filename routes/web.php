@@ -1150,7 +1150,7 @@ Route::middleware(['web', 'auth'])->group(function () {
                 ->name('validate');
             Route::post('/{stockIn}/cancel', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'cancel'])
                 ->whereNumber('stockIn')
-                ->middleware(['warehouse.permission:warehouse.stock-in.create', 'throttle:warehouse-mutation'])
+                ->middleware(['warehouse.permission:warehouse.stock-validation.view', 'throttle:warehouse-mutation'])
                 ->name('cancel');
             Route::get('/{stockIn}', [\App\Http\Controllers\Warehouse\WarehouseStockInController::class, 'show'])
                 ->whereNumber('stockIn')

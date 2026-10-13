@@ -19,6 +19,8 @@
     --warehouse-warning-soft: #fffbeb;
     --warehouse-danger: #dc2626;
     --warehouse-danger-soft: #fef2f2;
+    --warehouse-indigo: #4f46e5;
+    --warehouse-indigo-soft: #eef2ff;
     --warehouse-focus: rgba(37, 99, 235, .22);
     --warehouse-radius-sm: 6px;
     --warehouse-radius: 10px;
@@ -27,6 +29,7 @@
     --warehouse-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
     --warehouse-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.06);
     --warehouse-shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+    --warehouse-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(0, 0, 0, 0.03);
     --warehouse-space-1: 4px;
     --warehouse-space-2: 8px;
     --warehouse-space-3: 12px;
@@ -420,6 +423,24 @@ body.warehouse-page #footer {
 }
 .warehouse-status-badge-neutral .warehouse-status-dot {
     background: #64748b;
+}
+.warehouse-status-badge-primary {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+.warehouse-status-badge-primary .warehouse-status-dot {
+    background: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.warehouse-status-badge-indigo {
+    color: #4338ca;
+    background: #eef2ff;
+    border-color: #c7d2fe;
+}
+.warehouse-status-badge-indigo .warehouse-status-dot {
+    background: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .warehouse-empty-state { display: flex; min-height: 100px; align-items: center; justify-content: center; flex-direction: column; gap: 4px; padding: 22px 12px; color: var(--warehouse-muted); text-align: center; }

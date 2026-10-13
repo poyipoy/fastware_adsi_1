@@ -1192,17 +1192,17 @@ class SalesVisitController extends Controller
                 'WULYO EKO PRASETYO',
                 'SENDY PRABOWO',
             ],
-            'YULMAI RIDO WINANDA' => [
-                'YULMAI RIDO WINANDA',
-                'YAN WELEM MANGINSELA',
-                'WULYO EKO PRASETYO',
-                'SENDY PRABOWO',
-                'HERY HERMAWAN',
-                'RIFQI RAHMAT DZATNIKA',
-                'SARAH EGA BUDI ASTUTI',
-                'Dimas Aditya Priandana',
-                'SONY STIAWAN',
-            ],
+            // 'YULMAI RIDO WINANDA' => [
+            //     'YULMAI RIDO WINANDA',
+            //     'YAN WELEM MANGINSELA',
+            //     'WULYO EKO PRASETYO',
+            //     'SENDY PRABOWO',
+            //     'HERY HERMAWAN',
+            //     'RIFQI RAHMAT DZATNIKA',
+            //     'SARAH EGA BUDI ASTUTI',
+            //     'Dimas Aditya Priandana',
+            //     'SONY STIAWAN',
+            // ],
         ];
     }
 
@@ -1249,7 +1249,7 @@ class SalesVisitController extends Controller
             'ANDIK TOTOK SISWOYO',
             'ILHAM CHOLID',
             'JUN JOHAMIN PD',
-            'YULMAI RIDO WINANDA',
+            // 'YULMAI RIDO WINANDA',
             'SARAH EGA BUDI ASTUTI',
         ];
     }

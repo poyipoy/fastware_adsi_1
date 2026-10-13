@@ -26,7 +26,6 @@ class StoreWarehouseConsumableRequest extends FormRequest
                 Rule::unique('mst_wh_consumables', 'barcode'),
             ],
             'item_name' => ['required', 'string', 'max:180'],
-            'machine_type' => ['nullable', 'string', 'max:120'],
             'photo' => [
                 'nullable',
                 'file',
@@ -44,7 +43,6 @@ class StoreWarehouseConsumableRequest extends FormRequest
         $this->merge([
             'item_code' => is_string($this->item_code) ? trim($this->item_code) : $this->item_code,
             'item_name' => is_string($this->item_name) ? trim($this->item_name) : $this->item_name,
-            'machine_type' => is_string($this->machine_type) ? trim($this->machine_type) : $this->machine_type,
             'maximum_stock' => $this->input('maximum_stock') === '' ? null : $this->input('maximum_stock'),
         ]);
     }

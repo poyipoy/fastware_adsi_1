@@ -36,6 +36,17 @@ class WarehouseStockTransactionFactory extends Factory
                 $transaction->from_location ??= 'DS8';
                 $transaction->to_location = null;
             }
+        })->afterCreating(function (WarehouseStockTransaction $transaction): void {
+            if ($transaction->transaction_type === WarehouseTransactionType::OUT && $transaction->machineUsages()->doesntExist()) {
+                $code = $transaction->machine_type_used ?: ($transaction->consumable?->machine_type ?: 'M1');
+                if (empty($transaction->machine_type_used) && $code !== 'M1') {
+                    $transaction->forceFill(['machine_type_used' => $code])->saveQuietly();
+                }
+                $transaction->machineUsages()->create([
+                    'machine_code' => $code,
+                    'quantity' => $transaction->quantity,
+                ]);
+            }
         });
     }
 }

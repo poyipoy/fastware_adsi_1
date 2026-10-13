@@ -1,6 +1,7 @@
 @extends('layout')
 
 @push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet">
 <style>
 /* ==========================================================================
    Outstanding Material Module — Minimalist Enterprise Theme
@@ -414,6 +415,52 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
     border-color: var(--om-primary);
     box-shadow: 0 0 0 2px rgba(37, 99, 235, .12);
     background: #fff;
+}
+
+/* Select2 filter dropdown styling */
+.om-filter-row .select2-container {
+    width: 100% !important;
+}
+.om-filter-row .select2-container .select2-selection--single {
+    height: 30px;
+    font-size: .8rem;
+    border: 1px solid var(--om-gray-300);
+    border-radius: var(--om-radius-sm);
+    background-color: var(--om-gray-50);
+}
+.om-filter-row .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 28px;
+    padding-left: 8px;
+    padding-right: 20px;
+    color: var(--om-gray-700);
+    font-size: .78rem;
+}
+.om-filter-row .select2-selection__arrow {
+    height: 28px !important;
+    right: 4px;
+}
+.om-filter-row .select2-container--default .select2-selection--single .select2-selection__clear {
+    margin-right: 18px;
+    line-height: 28px;
+}
+.om-filter-row .select2-container--default.select2-container--focus .select2-selection--single,
+.om-filter-row .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: var(--om-primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, .12);
+    background: #fff;
+}
+.select2-dropdown {
+    font-size: .78rem;
+    border: 1px solid var(--om-gray-300);
+    border-radius: var(--om-radius-sm);
+    box-shadow: var(--om-shadow-md);
+    z-index: 9999;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    font-size: .78rem;
+    padding: 4px 6px;
+    border: 1px solid var(--om-gray-300);
+    border-radius: 4px;
 }
 
 .om-inline-date-btn {
@@ -1155,6 +1202,14 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                                     <input type="text" id="filter_number_po" class="om-inline-filter outstanding-column-filter" placeholder="...">
                                 </th>
                                 <th>
+                                    <select id="filter_month_order" class="om-inline-filter outstanding-column-filter">
+                                        <option value="">All</option>
+                                        @foreach ($filterOptions['month_orders'] as $monthOrder)
+                                            <option value="{{ $monthOrder }}">{{ $monthOrder }}</option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th>
                                     <input type="text" id="filter_remarks" class="om-inline-filter outstanding-column-filter" placeholder="...">
                                 </th>
                                 <th></th>
@@ -1181,6 +1236,7 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                                 <th>Estimasi Delay<br>ETA Warehouse</th>
                                 <th>Port</th>
                                 <th>Nomor PO</th>
+                                <th>Month Order</th>
                                 <th>Remarks</th>
                                 <th>Packing List</th>
                                 <th>MTC</th>
@@ -1247,6 +1303,7 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script src="{{ asset('assets/js/outstanding-materials/sticky-table.js') }}?v={{ filemtime(public_path('assets/js/outstanding-materials/sticky-table.js')) }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.DataTable === 'undefined') {
@@ -1324,6 +1381,7 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                 delay_eta_warehouse_to: $('#filter_delay_eta_warehouse_to').val(),
                 port: $('#filter_port').val(),
                 number_po: $('#filter_number_po').val(),
+                month_order: $('#filter_month_order').val(),
                 remarks: $('#filter_remarks').val(),
             };
         }
@@ -1391,6 +1449,7 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                 { data: 'estimasi_delay_eta_warehouse', name: 'estimasi_delay_eta_warehouse' },
                 { data: 'port', name: 'port' },
                 { data: 'number_po', name: 'number_po' },
+                { data: 'month_order', name: 'month_order' },
                 { data: 'remarks', name: 'remarks' },
                 { data: 'packing_list', name: 'packing_list_path', orderable: true, searchable: false, className: 'text-center' },
                 { data: 'mtc', name: 'mtc_path', orderable: true, searchable: false, className: 'text-center' },
@@ -1420,11 +1479,20 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
 
         if (window.OutstandingMaterialStickyTable) {
             window.OutstandingMaterialStickyTable.install('#outstandingMaterialTable');
+            window.OutstandingMaterialStickyTable.sync('#outstandingMaterialTable');
         }
         syncExportUrl();
 
+        // Initialize Select2 on dropdown filters
+        $('select.outstanding-column-filter').select2({
+            width: '100%',
+            placeholder: 'All',
+            allowClear: true,
+            minimumResultsForSearch: 0,
+        });
+
         // Prevent sort when clicking on filter controls
-        $('#outstandingMaterialTable thead').on('click keydown', 'input, select, button', function (event) {
+        $('#outstandingMaterialTable thead').on('click keydown', 'input, select, button, .select2-container, .select2-container *', function (event) {
             event.stopPropagation();
         });
 
@@ -1484,6 +1552,7 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
         // Reset button
         $('#btnOutstandingReset').on('click', function () {
             $('.outstanding-column-filter').val('');
+            $('select.outstanding-column-filter').val('').trigger('change.select2');
             $('#filter_thickness, #filter_width, #filter_diameter, #filter_material_length, #filter_qty_pcs, #filter_est_qty_kg, #filter_number_po, #filter_remarks').val('');
             $('#filter_port').val('');
             ['filter_eta_port', 'filter_eta_warehouse', 'filter_delay_eta_port', 'filter_delay_eta_warehouse'].forEach(function (prefix) {

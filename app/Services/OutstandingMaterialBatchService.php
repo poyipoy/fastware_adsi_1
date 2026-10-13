@@ -80,6 +80,7 @@ class OutstandingMaterialBatchService
                     'estimasi_delay_eta_warehouse' => $header['estimasi_delay_eta_warehouse'] ?? null,
                     'port' => $header['port'] ?? null,
                     'number_po' => $header['number_po'] ?? null,
+                    'month_order' => $header['month_order'] ?? null,
                     'remarks' => $header['remarks'] ?? null,
                     'packing_list_path' => $inheritance['packing_list_path'],
                     'mtc_path' => $inheritance['mtc_path'],

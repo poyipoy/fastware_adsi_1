@@ -11,7 +11,6 @@ use App\Exceptions\WarehouseDomainException;
 use App\Models\User;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockIn;
-use App\Models\Warehouse\WarehouseStockTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -22,12 +21,16 @@ use Illuminate\Support\Str;
  */
 final class WarehouseStockInService
 {
+    private readonly WarehouseStockInNumberGenerator $numberGenerator;
+
     public function __construct(
         private readonly WarehouseAccessService $access,
         private readonly WarehouseVerifierPolicy $verifierPolicy,
         private readonly WarehouseStockReservationService $reservations,
         private readonly WarehouseStockService $stockService,
+        ?WarehouseStockInNumberGenerator $numberGenerator = null,
     ) {
+        $this->numberGenerator = $numberGenerator ?? new WarehouseStockInNumberGenerator();
     }
 
     public function create(
@@ -81,7 +84,7 @@ final class WarehouseStockInService
                 return $existing->load(['consumable', 'creator']);
             }
 
-            $actor = User::query()->lockForUpdate()->find($actorId);
+            $actor = User::query()->find($actorId);
             if (! $this->access->isLoginEnabled($actor)) {
                 throw new WarehouseDomainException('Actor Stock In tidak aktif atau tidak ditemukan.', 403);
             }
@@ -173,7 +176,7 @@ final class WarehouseStockInService
                 throw new WarehouseDomainException('Stock In sudah tidak menunggu Validasi.', 409);
             }
 
-            $actor = User::query()->lockForUpdate()->find($actorId);
+            $actor = User::query()->find($actorId);
             if (! $this->access->isLoginEnabled($actor)) {
                 throw new WarehouseDomainException('Actor Validasi Stock In tidak aktif atau tidak ditemukan.', 403);
             }
@@ -261,7 +264,12 @@ final class WarehouseStockInService
         string $reason,
         ?string $idempotencyKey = null,
     ): WarehouseStockIn {
-        $this->assertAccess($actorId, 'warehouse.stock-in.create');
+        $actor = User::query()->find($actorId);
+        if (! $this->access->isLoginEnabled($actor)) {
+            throw new WarehouseDomainException('Actor pembatalan Stock In tidak aktif atau tidak ditemukan.', 403);
+        }
+        $this->verifierPolicy->assertUserCanVerify($actor, WarehouseVerifierPolicy::DIRECTION_IN, true);
+
         $key = $this->uuid($idempotencyKey);
         $reason = $this->text($reason);
         if ($reason === null) {
@@ -269,10 +277,6 @@ final class WarehouseStockInService
         }
 
         return DB::transaction(function () use ($actorId, $stockIn, $reason, $key): WarehouseStockIn {
-            $actor = User::query()->lockForUpdate()->find($actorId);
-            if (! $this->access->isLoginEnabled($actor)) {
-                throw new WarehouseDomainException('Actor pembatalan Stock In tidak aktif atau tidak ditemukan.', 403);
-            }
             $record = WarehouseStockIn::query()
                 ->lockForUpdate()
                 ->find($stockIn instanceof WarehouseStockIn ? $stockIn->getKey() : $stockIn);
@@ -416,7 +420,7 @@ final class WarehouseStockInService
 
     private function number(): string
     {
-        return 'WH-IN-'.now(config('app.timezone', 'Asia/Jakarta'))->format('Ymd-His').'-'.strtoupper(Str::random(8));
+        return $this->numberGenerator->generate();
     }
 
     private function text(?string $value): ?string

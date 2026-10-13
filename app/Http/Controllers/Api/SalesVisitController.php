@@ -902,7 +902,8 @@ class SalesVisitController extends Controller
                 'WULYO EKO PRASETYO',
                 'SENDY PRABOWO',
                 'HEXAPA DARMADI',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
+                'ANDIK TOTOK SISWOYO',
                 'JUN JOHAMIN PD',
             ],
             'Region 2' => [
@@ -913,7 +914,8 @@ class SalesVisitController extends Controller
                 'SONY STIAWAN',
                 'HEXAPA DARMADI',
                 'ILHAM CHOLID',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
+                'ANDIK TOTOK SISWOYO',
             ],
             'Region 3' => [
                 'DANIA ISNAWATI',
@@ -957,6 +959,7 @@ class SalesVisitController extends Controller
                 'WULYO EKO PRASETYO',
                 'SENDY PRABOWO',
             ],
+            /*
             'YULMAI RIDO WINANDA' => [          
                 'YULMAI RIDO WINANDA',
                 'YAN WELEM MANGINSELA',
@@ -968,11 +971,12 @@ class SalesVisitController extends Controller
                 'DIMAS ADITYA PRIANDANA',
                 'SONY STIAWAN',
             ],
+            */
             'NANI SUTARMAN' => [
                 'ILHAM CHOLID',
                 'ANDIK TOTOK SISWOYO',
                 'JUN JOHAMIN PD',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'DANIA ISNAWATI',
                 'DIMAS ADITYA PRIANDANA',
                 'DWI KUNTORO',
@@ -997,7 +1001,7 @@ class SalesVisitController extends Controller
             'ANDIK TOTOK SISWOYO',
             'ILHAM CHOLID',
             'JUN JOHAMIN PD',
-            'YULMAI RIDO WINANDA',
+            // 'YULMAI RIDO WINANDA',
             'NANI SUTARMAN',
         ];
     }

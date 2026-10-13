@@ -6,7 +6,7 @@
 
 @section('warehouse-content')
     <div class="warehouse-management-page" aria-labelledby="warehouse-receipt-title">
-        <x-warehouse.page-header title="Detail Transaksi" subtitle="Receipt audit yang tidak dapat diubah atau dihapus.">
+        <x-warehouse.page-header title="Detail Transaksi" subtitle="Rincian resmi data transaksi yang tersimpan permanen dalam sistem.">
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.transactions.index') }}">Riwayat</a>
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Dashboard</a>
         </x-warehouse.page-header>
@@ -26,12 +26,29 @@
                 <dl class="warehouse-definition-list">
                     <dt>Barang</dt><dd>{{ $transaction->consumable?->item_name }}</dd>
                     <dt>Item Code</dt><dd class="font-monospace">{{ $transaction->consumable?->item_code }}</dd>
-                    <dt>Tipe mesin</dt><dd>{{ $transaction->consumable?->machine_type ?: '—' }}</dd>
-                    <dt>Jumlah</dt><dd>{{ \App\Services\Warehouse\WarehouseQuantity::display($transaction->quantity) }} {{ $transaction->consumable?->unit }}</dd>
+                    <dt>Jumlah</dt><dd><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($transaction->quantity) }} {{ $transaction->consumable?->unit }}</strong></dd>
+                    @if($transaction->transaction_type?->value === 'OUT')
+                        <dt>Alokasi Mesin</dt>
+                        <dd>
+                            @if($transaction->machineUsages->isNotEmpty())
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach($transaction->machineUsages as $usage)
+                                        <span class="badge bg-light text-dark border">
+                                            <strong>{{ $usage->machine_code }}</strong>: {{ \App\Services\Warehouse\WarehouseQuantity::display($usage->quantity) }} pcs
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @elseif($transaction->machine_type_used)
+                                <span>{{ $transaction->machine_type_used }}</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </dd>
+                    @endif
                 </dl>
             </x-warehouse.panel>
 
-            <x-warehouse.panel title="Saldo">
+            <x-warehouse.panel title="Perubahan Stok">
                 <dl class="warehouse-definition-list">
                     <dt>Lokasi</dt><dd>{{ $transaction->display_location ?: '—' }}</dd>
                     <dt>Stok Awal</dt><dd><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($transaction->stock_before) }}</strong></dd>
@@ -47,7 +64,7 @@
                 </dl>
             </x-warehouse.panel>
 
-            <x-warehouse.panel title="Audit" class="warehouse-detail-full">
+            <x-warehouse.panel title="Informasi Tambahan & Riwayat" class="warehouse-detail-full">
                 <dl class="warehouse-definition-list">
                     <dt>Dibuat Oleh</dt><dd>{{ $transaction->creator?->name ?: '—' }}</dd>
                     <dt>Catatan</dt><dd>{{ $transaction->notes ?: '—' }}</dd>
@@ -58,7 +75,7 @@
             </x-warehouse.panel>
         </div>
 
-        @if($transaction->transaction_type?->value === 'TRANSFER')<div class="alert alert-info mt-3" role="note">Mutasi lokasi ini berasal dari arsip transfer antar lokasi. Data dipertahankan untuk kebutuhan audit historis; entry point operasionalnya sudah dipensiunkan.</div>@endif
+        @if($transaction->transaction_type?->value === 'TRANSFER')<div class="alert alert-info mt-3" role="note">Perpindahan lokasi ini berasal dari arsip transfer antar lokasi terdahulu. Data ini disimpan sebagai bagian dari riwayat sistem.</div>@endif
         <div class="warehouse-action-bar mt-3">
             <a class="btn btn-primary" href="{{ route('warehouse.transactions.create') }}">Transaksi Baru</a>
             @if($canReverse)<a class="btn btn-outline-danger" href="{{ route('warehouse.transactions.reverse-form', $transaction) }}">Buat Pembatalan</a>@endif

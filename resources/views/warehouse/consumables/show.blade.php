@@ -17,7 +17,6 @@
                         <span class="warehouse-eyebrow">Consumable</span>
                         <h2 id="warehouse-consumable-detail-title">{{ $consumable->item_name }}</h2>
                         <p class="warehouse-consumable-hero-code">{{ $consumable->item_code }}</p>
-                        <p class="warehouse-muted">{{ $consumable->machine_type ?: 'Tipe mesin belum diisi.' }}</p>
                         <div class="d-flex flex-wrap gap-2"><x-warehouse.status-badge :status="$consumable->stock_status" context="stock" /><x-warehouse.status-badge :status="$consumable->is_active ? 'ACTIVE' : 'INACTIVE'" context="activity" /></div>
                     </div>
                 </div>

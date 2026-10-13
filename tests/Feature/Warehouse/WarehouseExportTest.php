@@ -78,4 +78,27 @@ class WarehouseExportTest extends WarehouseTestCase
 
         $this->actingAs($employee)->get(route('warehouse.exports.transactions'))->assertForbidden();
     }
+
+    public function test_export_sanitizes_potential_formula_injection(): void
+    {
+        $user = $this->createUser();
+        $item = WarehouseConsumable::factory()->create(['item_code' => '=CMD()']);
+        $transaction = WarehouseStockTransaction::factory()->create([
+            'transaction_type' => WarehouseTransactionType::OUT,
+            'consumable_id' => $item->id,
+            'verified_user_id' => $user->id,
+            'created_by' => $user->id,
+            'notes' => '+1234567890',
+            'purpose' => '-ATTACK',
+            'reference_number' => '@SUM(A1:A10)',
+        ])->load(['consumable', 'creator']);
+
+        $export = new WarehouseTransactionsExport(collect([$transaction]));
+        $mapped = $export->map($transaction);
+
+        self::assertSame("'=CMD()", $mapped[4]); // Item Code
+        self::assertSame("'@SUM(A1:A10)", $mapped[14]); // Reference
+        self::assertSame("'-ATTACK", $mapped[15]); // Purpose
+        self::assertSame("'+1234567890", $mapped[17]); // Notes
+    }
 }

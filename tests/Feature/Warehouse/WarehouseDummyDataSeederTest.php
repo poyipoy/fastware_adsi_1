@@ -18,7 +18,9 @@ class WarehouseDummyDataSeederTest extends WarehouseTestCase
     public function test_seeder_creates_25_in_and_25_out_with_consistent_integer_stock_snapshots(): void
     {
         $this->ensureAdministratorRole();
-        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta'));
+        $now = CarbonImmutable::parse('2026-08-11 10:00:00', 'Asia/Jakarta');
+        CarbonImmutable::setTestNow($now);
+        \Carbon\Carbon::setTestNow($now);
 
         try {
             $this->seed(WarehouseDummyDataSeeder::class);
@@ -56,6 +58,7 @@ class WarehouseDummyDataSeederTest extends WarehouseTestCase
             self::assertSame(5, WarehouseConsumable::query()->where('description', 'like', '%[WAREHOUSE DUMMY]%')->count());
         } finally {
             CarbonImmutable::setTestNow();
+            \Carbon\Carbon::setTestNow();
         }
     }
 

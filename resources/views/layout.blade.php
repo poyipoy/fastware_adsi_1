@@ -207,7 +207,7 @@
                                             'SITI MARIA ULFA',
                                             'WULYO EKO PRASETYO',
                                             'YAN WELEM MANGINSELA',
-                                            'YULMAI RIDO WINANDA',
+                                            // 'YULMAI RIDO WINANDA',
                                             'YUNASIS PALGUNADI',
                                             'ABDUR RAHMAN AL FAAIZ',
                                             'SONY STIAWAN',
@@ -314,7 +314,7 @@
                                             'WULYO EKO PRASETYO',
                                             'YAN WELEM MANGINSELA',
                                             'YUDHI PRASETYO RAHMAWANTO',
-                                            'YULMAI RIDO WINANDA',
+                                            // 'YULMAI RIDO WINANDA',
                                             'YUNASIS PALGUNADI',
                                             'ZAENAL ARIFIN',
                                             'ABDUR RAHMAN AL FAAIZ',
@@ -409,40 +409,40 @@
                                 $warehouseCanMonitor = Gate::allows('warehouse.transaction.view') || Gate::allows('warehouse.report.view');
                             @endphp
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle font-si {{ request()->routeIs('warehouse.*') ? 'active' : '' }}"
+                                <a class="nav-link dropdown-toggle font-si"
                                     href="#" id="warehouseNavbarDropdown" role="button" data-bs-toggle="dropdown"
                                     aria-expanded="false">
                                     Warehouse
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="warehouseNavbarDropdown">
                                     @if ($warehouseCanViewOverview)
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.dashboard') ? 'active' : '' }}"
+                                        <li><a class="dropdown-item"
                                                 href="{{ route('warehouse.dashboard') }}">Dashboard</a></li>
                                     @endif
                                     @if ($warehouseCanTransact)
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.create', 'warehouse.stock-in.*') ? 'active' : '' }}"
+                                        <li><a class="dropdown-item"
                                                 href="{{ route('warehouse.transactions.create') }}">Stock In/Out Baru</a></li>
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions-used.create') ? 'active' : '' }}"
+                                        <li><a class="dropdown-item"
                                                 href="{{ route('warehouse.transactions-used.create') }}">Stock In/Out Bekas</a></li>
                                     @endif
                                     @can('warehouse.stock-validation.view')
-                                        <li><a class="dropdown-item {{ request()->routeIs('warehouse.validations.*') ? 'active' : '' }}"
+                                        <li><a class="dropdown-item"
                                                 href="{{ route('warehouse.validations.index') }}">Validasi Stok</a></li>
                                     @endcan
                                     @if ($warehouseCanManageInventory)
                                         @can('warehouse.master.manage')
-                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.consumables.*') ? 'active' : '' }}" href="{{ route('warehouse.consumables.index') }}">Master Consumable</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('warehouse.consumables.index') }}">Master Consumable</a></li>
                                         @endcan
                                         @can('warehouse.stock-in.create')
-                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.adjustments.*') ? 'active' : '' }}" href="{{ route('warehouse.adjustments.create') }}">Penyesuaian Stock</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('warehouse.adjustments.create') }}">Penyesuaian Stock</a></li>
                                         @endcan
                                     @endif
                                     @if ($warehouseCanMonitor)
                                         @can('warehouse.transaction.view')
-                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.transactions.index') || request()->routeIs('warehouse.transactions.show') ? 'active' : '' }}" href="{{ route('warehouse.transactions.index') }}">Riwayat Transaksi</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('warehouse.transactions.index') }}">Riwayat Transaksi</a></li>
                                         @endcan
                                         @can('warehouse.report.view')
-                                            <li><a class="dropdown-item {{ request()->routeIs('warehouse.reports.*') ? 'active' : '' }}" href="{{ route('warehouse.reports.index') }}">Reporting</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('warehouse.reports.index') }}">Reporting</a></li>
                                         @endcan
                                     @endif
                                 </ul>
@@ -547,7 +547,7 @@
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
                                                 'YUDHI PRASETYO RAHMAWANTO',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'SONY STIAWAN',
                                                 'DIMAS ADITYA PRIANDANA',
@@ -583,7 +583,7 @@
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
                                                 'YUDHI PRASETYO RAHMAWANTO',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'Sony Stiawan',
                                             ];
@@ -619,7 +619,7 @@
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
                                                 'YUDHI PRASETYO RAHMAWANTO',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'Sony Stiawan',
                                             ];
@@ -656,7 +656,7 @@
                                         'WULYO EKO PRASETYO',
                                         'YAN WELEM MANGINSELA',
                                         'YUDHI PRASETYO RAHMAWANTO',
-                                        'YULMAI RIDO WINANDA',
+                                        // 'YULMAI RIDO WINANDA',
                                         'YUNASIS PALGUNADI',
                                         'Sony Stiawan',
                                     ];
@@ -704,7 +704,7 @@
                                                 'SONY STIAWAN',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'RAGIL ISHA RAHMANTO',
                                                 'AIS DUTA PRAMANDA',
@@ -724,7 +724,7 @@
                                             $allowedUsers = [
                                                 'ADMINSTRATOR',
                                                 'ANDIK TOTOK SISWOYO',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                             ];
                                         @endphp
                                         @if (in_array(auth()->user()->name, $allowedUsers))
@@ -775,7 +775,7 @@
                                                 'SONY STIAWAN',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'RAGIL ISHA RAHMANTO',
                                                 'AIS DUTA PRAMANDA',
@@ -802,7 +802,7 @@
                                         'YAN WELEM MANGINSELA',
                                         'WULYO EKO PRASETYO',
                                         'SENDY PRABOWO',
-                                        'YULMAI RIDO WINANDA',
+                                        // 'YULMAI RIDO WINANDA',
                                         'YUNASIS PALGUNADI',
                                         'SONY STIAWAN',
                                         'FRISILIA CLAUDIA HUTAMA',
@@ -898,7 +898,7 @@
                                                 'JESSICA PAUNE',
                                                 'MARTINUS CAHYO RAHASTO',
                                                 'SITI MARIA ULFA',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                             ];
                                         @endphp
                                         @if (in_array(auth()->user()->name, $allowedUsers))
@@ -1023,7 +1023,7 @@
                                             'RAGIL ISHA RAHMANTO',
                                             'RICHARDUS CHRISTIAN',
                                             'SITI MARIA ULFA',
-                                            'YULMAI RIDO WINANDA',
+                                            // 'YULMAI RIDO WINANDA',
                                             'ABDUR RAHMAN AL FAAIZ',
                                         ];
 
@@ -1171,7 +1171,7 @@
                                                 'HARDI SAPUTRA',
                                                 'JESSICA PAUNE',
                                                 'MARTINUS CAHYO RAHASTO',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'ADHI PRASETIYO',
                                                 'RICHARDUS CHRISTIAN',
                                                 'ILHAM CHOLID',
@@ -1295,7 +1295,7 @@
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'SARAH EGA BUDI ASTUTI',
                                                 'DIMAS ADITYA PRIANDANA',
@@ -1322,7 +1322,12 @@
                                                     href="{{ route('showApprovalKaSie') }}">Persetujuan Ka. Sie</a>
                                             </li>
                                         @endif
-                                        @if (in_array(Auth::user()->name, ['ADMINSTRATOR', 'ANDIK TOTOK SISWOYO', 'JESSICA PAUNE', 'YULMAI RIDO WINANDA']))
+                                        @if (in_array(Auth::user()->name, [
+                                            'ADMINSTRATOR',
+                                            'ANDIK TOTOK SISWOYO',
+                                            'JESSICA PAUNE',
+                                            // 'YULMAI RIDO WINANDA',
+                                        ]))
                                             <li><a class="dropdown-item"
                                                     href="{{ route('showApprovalKaDept') }}">Persetujuan Ka. Dept</a>
                                             </li>
@@ -1367,7 +1372,7 @@
                                                 'SENDY PRABOWO',
                                                 'WULYO EKO PRASETYO',
                                                 'YAN WELEM MANGINSELA',
-                                                'YULMAI RIDO WINANDA',
+                                                // 'YULMAI RIDO WINANDA',
                                                 'YUNASIS PALGUNADI',
                                                 'SARAH EGA BUDI ASTUTI',
                                                 'DIMAS ADITYA PRIANDANA',
@@ -1633,7 +1638,7 @@
                                 'JESSICA PAUNE',
                                 'HARDI SAPUTRA',
                                 'MARTINUS CAHYO RAHASTO',
-                                'YULMAI RIDO WINANDA',
+                                // 'YULMAI RIDO WINANDA',
                                 'ANDIK TOTOK SISWOYO',
                                 'ARY RODJO PRASETYO',
                                 'ADHI PRASETIYO',
@@ -1753,7 +1758,7 @@
                                         'WULYO EKO PRASETYO',
                                         'YAN WELEM MANGINSELA',
                                         'YUDHI PRASETYO RAHMAWANTO',
-                                        'YULMAI RIDO WINANDA',
+                                        // 'YULMAI RIDO WINANDA',
                                         'YUNASIS PALGUNADI',
                                         'ZAENAL ARIFIN',
                                         'ABDUR RAHMAN AL FAAIZ',
@@ -1781,7 +1786,7 @@
                                         'ADMINSTRATOR',
                                         'JESSICA PAUNE',
                                         'MARTINUS CAHYO RAHASTO',
-                                        'YULMAI RIDO WINANDA',
+                                        // 'YULMAI RIDO WINANDA',
                                         'ANDIK TOTOK SISWOYO',
                                         'ARY RODJO PRASETYO',
                                         'MUGI PRAMONO',
@@ -1820,7 +1825,7 @@
                                                     'ADMINSTRATOR',
                                                     'JESSICA PAUNE',
                                                     'MARTINUS CAHYO RAHASTO',
-                                                    'YULMAI RIDO WINANDA',
+                                                    // 'YULMAI RIDO WINANDA',
                                                     'ANDIK TOTOK SISWOYO',
                                                     'ARY RODJO PRASETYO',
                                                 ];

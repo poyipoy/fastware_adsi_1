@@ -6,7 +6,6 @@ use App\Enums\Warehouse\WarehouseItemCondition;
 use App\Exceptions\WarehouseDomainException;
 use App\Models\Warehouse\WarehouseConsumable;
 use App\Models\Warehouse\WarehouseStockIn;
-use Illuminate\Support\Facades\Schema;
 
 final class WarehouseStockReservationService
 {
@@ -16,22 +15,19 @@ final class WarehouseStockReservationService
         WarehouseItemCondition $condition,
         ?int $excludeStockInId = null,
     ): string {
+        $stockInQuery = WarehouseStockIn::query()
+            ->reserving()
+            ->where('consumable_id', $consumableId)
+            ->where('source_location', $location)
+            ->where('item_condition', $condition->value);
+
+        if ($excludeStockInId !== null) {
+            $stockInQuery->where('id', '<>', $excludeStockInId);
+        }
+
         $reservedMilli = 0;
-        if (Schema::hasTable('trs_wh_stock_ins')) {
-            $stockInQuery = WarehouseStockIn::query()
-                ->reserving()
-                ->where('consumable_id', $consumableId)
-                ->where('source_location', $location)
-                ->where('item_condition', $condition->value)
-                ->select('quantity_expected');
-
-            if ($excludeStockInId !== null) {
-                $stockInQuery->where('id', '<>', $excludeStockInId);
-            }
-
-            foreach ($stockInQuery->pluck('quantity_expected') as $quantity) {
-                $reservedMilli += WarehouseQuantity::toMilli((string) $quantity);
-            }
+        foreach ($stockInQuery->pluck('quantity_expected') as $quantity) {
+            $reservedMilli += WarehouseQuantity::toMilli((string) $quantity);
         }
 
         return WarehouseQuantity::fromMilli($reservedMilli);

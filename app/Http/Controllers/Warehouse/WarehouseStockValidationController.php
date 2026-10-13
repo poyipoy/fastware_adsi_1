@@ -57,6 +57,8 @@ final class WarehouseStockValidationController extends Controller
                     'status' => $pending ? 'Menunggu Validasi' : 'Tervalidasi',
                     'detail_url' => route('warehouse.stock-in.show', $stockIn),
                     'validation_url' => $pending ? route('warehouse.stock-in.validate-form', $stockIn) : null,
+                    'approve_url' => $pending ? route('warehouse.stock-in.validate', $stockIn) : null,
+                    'reject_url' => $pending ? route('warehouse.stock-in.cancel', $stockIn) : null,
                 ];
             })
             ->sortByDesc(static fn (array $record): int => optional($record['created_at'])->getTimestamp() ?? 0)

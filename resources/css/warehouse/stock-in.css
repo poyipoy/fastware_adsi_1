@@ -29,6 +29,9 @@
 .warehouse-stock-in-result-option input { width: 20px; height: 20px; flex: 0 0 auto; }
 .warehouse-stock-in-difference { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #f8fafc; font-variant-numeric: tabular-nums; }
 .warehouse-stock-in-difference strong { color: var(--warehouse-navy); }
+.warehouse-stock-in-page [data-warehouse-validation-quantity][readonly] { background-color: #f1f5f9; color: #475569; cursor: not-allowed; border-color: #cbd5e1; user-select: none; }
+.warehouse-stock-in-page [data-warehouse-validation-quantity][readonly]:focus { background-color: #f1f5f9; border-color: #cbd5e1; box-shadow: none; outline: none; }
+.warehouse-stock-in-page [data-warehouse-validation-quantity]:not([readonly]) { background-color: #ffffff; cursor: text; }
 .warehouse-stock-in-cancel { display: inline-block; }
 .warehouse-stock-in-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .warehouse-stock-in-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }

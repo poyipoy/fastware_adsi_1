@@ -1070,6 +1070,11 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="col-md-6">
+                                <label for="month_order" class="form-label">Month Order</label>
+                                <input type="text" id="month_order" name="month_order" class="form-control"
+                                    value="{{ old('month_order', $material->month_order) }}" placeholder="Contoh: May 2026">
+                            </div>
                             <div class="col-md-12">
                                 <label for="remarks" class="form-label">Remarks</label>
                                 <textarea id="remarks" name="remarks" class="form-control" rows="3" placeholder="Catatan tambahan...">{{ old('remarks', $material->remarks) }}</textarea>

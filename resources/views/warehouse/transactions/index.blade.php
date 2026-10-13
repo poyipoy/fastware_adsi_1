@@ -6,7 +6,7 @@
 
 @section('warehouse-content')
     <div class="warehouse-management-page" aria-labelledby="warehouse-history-title">
-        <x-warehouse.page-header title="Riwayat Transaksi" subtitle="Audit pergerakan lengkap dengan nomor transaksi, kondisi, lokasi, saldo, dan karyawan.">
+        <x-warehouse.page-header title="Riwayat Transaksi" subtitle="Daftar lengkap riwayat keluar-masuk, penyesuaian stok, dan mutasi barang gudang.">
             <a class="btn btn-primary" href="{{ route('warehouse.transactions.create') }}">Transaksi Baru</a>
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.exports.transactions', request()->query()) }}">Ekspor hasil filter</a>
             <a class="btn btn-outline-secondary" href="{{ route('warehouse.dashboard') }}">Dashboard</a>
@@ -78,7 +78,7 @@
                             <tr><td colspan="11"><x-warehouse.empty-state title="Tidak ada transaksi" message="Ubah filter untuk mencoba lagi." /></td></tr>
                         @endforelse
                     </tbody>
-                    <tfoot><tr><td colspan="11"><section class="warehouse-history-totals warehouse-history-totals-footer" aria-label="Total seluruh hasil filter"><article><span>Transaksi</span><strong>{{ (int) ($totals->transaction_count ?? 0) }}</strong></article><article><span>Stock In</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_in_quantity ?? 0) }}</strong></article><article><span>Stock Out</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_out_quantity ?? 0) }}</strong></article><article><span>Adjustment</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->adjustment_quantity ?? 0) }}</strong></article></section></td></tr></tfoot>
+                    <tfoot><tr><td colspan="11"><section class="warehouse-history-totals warehouse-history-totals-footer" aria-label="Total seluruh hasil filter"><article><span>Transaksi</span><strong>{{ (int) ($totals->transaction_count ?? 0) }}</strong></article><article><span>Stock In</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_in_quantity ?? 0) }}</strong></article><article><span>Stock Out</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_out_quantity ?? 0) }}</strong></article><article><span>Adjustment</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->adjustment_quantity ?? 0) }}</strong></article><article class="warehouse-totals-debt"><span>Hutang Barang Bekas</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->debt_quantity ?? 0) }}</strong></article></section></td></tr></tfoot>
                 </table>
             </div>
             <div class="warehouse-card-list">
@@ -101,7 +101,7 @@
                 @empty
                     <x-warehouse.empty-state title="Tidak ada transaksi" />
                 @endforelse
-                <section class="warehouse-history-totals warehouse-history-totals-mobile" aria-label="Total seluruh hasil filter"><article><span>Transaksi</span><strong>{{ (int) ($totals->transaction_count ?? 0) }}</strong></article><article><span>Stock In</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_in_quantity ?? 0) }}</strong></article><article><span>Stock Out</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_out_quantity ?? 0) }}</strong></article><article><span>Adjustment</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->adjustment_quantity ?? 0) }}</strong></article></section>
+                <section class="warehouse-history-totals warehouse-history-totals-mobile" aria-label="Total seluruh hasil filter"><article><span>Transaksi</span><strong>{{ (int) ($totals->transaction_count ?? 0) }}</strong></article><article><span>Stock In</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_in_quantity ?? 0) }}</strong></article><article><span>Stock Out</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->stock_out_quantity ?? 0) }}</strong></article><article><span>Adjustment</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->adjustment_quantity ?? 0) }}</strong></article><article class="warehouse-totals-debt"><span>Hutang Barang Bekas</span><strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($totals->debt_quantity ?? 0) }}</strong></article></section>
             </div>
             {{ $transactions->links('pagination::warehouse-bootstrap-5') }}
         </x-warehouse.panel>

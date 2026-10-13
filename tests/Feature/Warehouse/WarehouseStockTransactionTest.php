@@ -178,20 +178,36 @@ class WarehouseStockTransactionTest extends WarehouseTestCase
             'stock_used_ds8' => '0.000',
         ]);
 
-        $this->actingAs($actor)->postJson(route('warehouse.transactions.store'), [
+        $response = $this->actingAs($actor)->postJson(route('warehouse.transactions.store'), [
             'type' => 'IN',
             'item_barcode' => $item->barcode,
             'quantity' => '2',
             'item_condition' => 'USED',
             'location' => 'DS8',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertCreated()->assertJsonPath('data.status', 'WAITING_VALIDATION');
+
+        $stockInId = $response->json('data.stock_in_id');
+        $this->assertDatabaseHas('trs_wh_stock_ins', [
+            'id' => $stockInId,
+            'status' => 'WAITING_VALIDATION',
+            'item_condition' => 'USED',
+        ]);
+
+        $item->refresh();
+        self::assertSame('1.000', (string) $item->current_stock);
+        self::assertSame('0.000', (string) $item->stock_used_ds8);
+
+        $this->actingAs($actor)->postJson(route('warehouse.stock-in.validate', $stockInId), [
+            'quantity_received' => '2',
+            'result' => 'MATCH',
             'verified_code' => (string) $verified->npk,
             'idempotency_key' => (string) Str::uuid(),
-        ])->assertCreated()->assertJsonPath('data.transaction_type', 'IN');
+        ])->assertSuccessful();
 
         $item->refresh();
         self::assertSame('3.000', (string) $item->current_stock);
         self::assertSame('2.000', (string) $item->stock_used_ds8);
-        $this->assertDatabaseCount('trs_wh_stock_ins', 0);
         $this->assertDatabaseHas('trs_wh_stock_transactions', [
             'consumable_id' => $item->id,
             'transaction_type' => 'IN',

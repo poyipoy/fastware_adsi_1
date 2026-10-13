@@ -15,9 +15,12 @@
     if (!validationForm) return;
 
     const expected = Number(validationForm.dataset.expectedQuantity || 0);
+    const expectedRaw = validationForm.dataset.expectedQuantity || '0';
     const quantity = validationForm.querySelector('[data-warehouse-validation-quantity]');
+    const quantityHelp = validationForm.querySelector('[data-warehouse-validation-quantity-help]');
     const difference = validationForm.querySelector('[data-warehouse-validation-difference]');
     const notes = validationForm.querySelector('[name="validation_notes"]');
+    const notesLabel = validationForm.querySelector('[data-warehouse-validation-notes-label]');
     const resultInputs = validationForm.querySelectorAll('[data-warehouse-validation-result]');
     const csrf = validationForm.querySelector('input[name="_token"]')?.value || '';
 
@@ -46,16 +49,43 @@
 
     const display = (value) => Number(value || 0).toLocaleString('id-ID', { maximumFractionDigits: 3 });
     const sync = () => {
-        const actual = Number(quantity?.value || 0);
-        const delta = actual - expected;
-        if (difference) difference.textContent = `${delta > 0 ? '+' : ''}${display(delta)}`;
         const manual = [...resultInputs].find((input) => input.checked)?.value === 'MANUAL_ADJUSTMENT';
+        if (quantity) {
+            if (!manual) {
+                quantity.readOnly = true;
+                quantity.value = expectedRaw;
+            } else {
+                quantity.readOnly = false;
+            }
+        }
+        if (quantityHelp) {
+            quantityHelp.textContent = manual
+                ? 'Masukkan jumlah fisik aktual yang diterima.'
+                : 'Terkunci sesuai data pengajuan. Pilih "Ada Selisih / Input Manual" untuk mengubah.';
+        }
+        const actual = Number(quantity?.value || 0);
+        const delta = Math.round((actual - expected) * 1000) / 1000;
+        if (difference) {
+            if (Math.abs(delta) < 0.0001) {
+                difference.textContent = '0';
+            } else {
+                difference.textContent = `${delta > 0 ? '+' : ''}${display(delta)}`;
+            }
+        }
         if (notes) {
-            notes.required = manual || delta !== 0;
-            notes.closest('[data-warehouse-validation-notes-wrap]')?.classList.toggle('warehouse-required', notes.required);
+            const isNotesRequired = manual || Math.abs(delta) >= 0.0001;
+            notes.required = isNotesRequired;
+            notesLabel?.classList.toggle('warehouse-required', isNotesRequired);
+            notes.closest('[data-warehouse-validation-notes-wrap]')?.classList.toggle('warehouse-required', isNotesRequired);
         }
     };
     quantity?.addEventListener('input', sync);
-    resultInputs.forEach((input) => input.addEventListener('change', sync));
+    resultInputs.forEach((input) => input.addEventListener('change', (e) => {
+        sync();
+        if (e.target.value === 'MANUAL_ADJUSTMENT' && quantity) {
+            quantity.focus();
+            quantity.select();
+        }
+    }));
     sync();
 })();

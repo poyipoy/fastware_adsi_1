@@ -1231,7 +1231,8 @@ class PoPengajuanController extends Controller
                 $allowedNames = [
                     'NURSALIM',
                     'ABDUR RAHMAN AL FAAIZ',
-                    'YULMAI RIDO WINANDA',
+                    // 'YULMAI RIDO WINANDA',
+                    'ANDIK TOTOK SISWOYO',
                 ];
             } elseif ($roleId == 3) {
                 $allowedNames = [
@@ -1592,7 +1593,7 @@ class PoPengajuanController extends Controller
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
                     ->select('modified_at')
-                    ->value('modified_at') ?? 'YULMAI RIDO WINANDA';
+                    ->value('modified_at') ?? 'ANDIK TOTOK SISWOYO'; // formerly 'YULMAI RIDO WINANDA'
             } elseif (in_array($poPengajuan->modified_at, ['LINA UNIARSIH'])) {
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
@@ -1714,7 +1715,7 @@ class PoPengajuanController extends Controller
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
                     ->select('modified_at')
-                    ->value('modified_at') ?? 'YULMAI RIDO WINANDA';
+                    ->value('modified_at') ?? 'ANDIK TOTOK SISWOYO'; // formerly 'YULMAI RIDO WINANDA'
             } elseif (in_array($poPengajuan->modified_at, ['LINA UNIARSIH'])) {
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
@@ -1836,7 +1837,7 @@ class PoPengajuanController extends Controller
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
                     ->select('modified_at')
-                    ->value('modified_at') ?? 'YULMAI RIDO WINANDA';
+                    ->value('modified_at') ?? 'ANDIK TOTOK SISWOYO'; // formerly 'YULMAI RIDO WINANDA'
             } elseif (in_array($poPengajuan->modified_at, ['DANIA ISNAWATI', 'FRISILIA CLAUDIA HUTAMA', 'DWI KUNTORO', 'YUNASIS PALGUNADI', 'RISFAN FAISAL'])) {
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
@@ -1953,7 +1954,7 @@ class PoPengajuanController extends Controller
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
                     ->select('modified_at')
-                    ->value('modified_at') ?? 'YULMAI RIDO WINANDA';
+                    ->value('modified_at') ?? 'ANDIK TOTOK SISWOYO'; // formerly 'YULMAI RIDO WINANDA'
             } elseif (in_array($poPengajuan->modified_at, ['DANIA ISNAWATI', 'FRISILIA CLAUDIA HUTAMA', 'DWI KUNTORO', 'YUNASIS PALGUNADI', 'RISFAN FAISAL'])) {
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
@@ -2069,7 +2070,7 @@ class PoPengajuanController extends Controller
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)
                     ->select('modified_at')
-                    ->value('modified_at') ?? 'YULMAI RIDO WINANDA';
+                    ->value('modified_at') ?? 'ANDIK TOTOK SISWOYO'; // formerly 'YULMAI RIDO WINANDA'
             } elseif (in_array($poPengajuan->modified_at, ['DANIA ISNAWATI', 'FRISILIA CLAUDIA HUTAMA', 'DWI KUNTORO', 'YUNASIS PALGUNADI', 'RISFAN FAISAL'])) {
                 $deptHead = TrsPoPengajuan::where('id_fpb', $poPengajuan->id)
                     ->where('status', 3)

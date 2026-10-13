@@ -32,3 +32,14 @@ yarn-error.log
 /storage/framework/sessions/*
 /storage/framework/views/*
 /storage/bin/
+
+# Local patches, temporary dumps, and agent configs
+/*.zip
+/scratch/
+/dms_adasi_rev1*.sql
+/update_outstanding_material_month_order.sql
+/deploy-dashboard-tcpd/
+/deploy-hak-akses-tcpd/
+/patch-detail-competency/
+/patch_outstanding_material_import/
+/.agents/

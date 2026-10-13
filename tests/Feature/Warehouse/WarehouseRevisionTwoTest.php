@@ -367,14 +367,12 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
         $this->actingAs($actor)->post(route('warehouse.consumables.store'), [
             'item_code' => 'PHOTO-ITEM',
             'item_name' => 'Photo Item',
-            'machine_type' => 'Press',
             'minimum_stock' => '1',
             'maximum_stock' => '10',
             'photo' => UploadedFile::fake()->image('item.png', 320, 220),
         ])->assertRedirect(route('warehouse.consumables.index'));
 
         $item = WarehouseConsumable::query()->where('item_code', 'PHOTO-ITEM')->firstOrFail();
-        self::assertSame('Press', $item->machine_type);
         self::assertNotNull($item->photo_path);
         Storage::disk('public')->assertExists($item->photo_path);
         $originalPath = $item->photo_path;
@@ -382,7 +380,6 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
         $this->actingAs($actor)->put(route('warehouse.consumables.update', $item), [
             'item_code' => 'PHOTO-ITEM',
             'item_name' => 'Photo Item Updated',
-            'machine_type' => 'Press 2',
             'minimum_stock' => '1',
             'maximum_stock' => '10',
         ])->assertRedirect(route('warehouse.consumables.index'));
@@ -391,6 +388,6 @@ class WarehouseRevisionTwoTest extends WarehouseTestCase
         Storage::disk('public')->assertExists($originalPath);
         $this->actingAs($actor)->getJson(route('warehouse.catalog.index'))
             ->assertOk()
-            ->assertJsonPath('data.0.machine_type', 'Press 2');
+            ->assertJsonPath('data.0.item_name', 'Photo Item Updated');
     }
 }

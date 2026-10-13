@@ -65,7 +65,7 @@ enum ProductionsMenuAccessGroup: string
                 'JESSICA PAUNE',
                 'MARTINUS CAHYO RAHASTO',
                 'SITI MARIA ULFA',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
             ],
             self::MAINTENANCE_FPP_HISTORY, self::MAINTENANCE_TABEL_PREVENTIF => [
                 'ADMINSTRATOR',
@@ -109,7 +109,7 @@ enum ProductionsMenuAccessGroup: string
                 'RAGIL ISHA RAHMANTO',
                 'RICHARDUS CHRISTIAN',
                 'SITI MARIA ULFA',
-                'YULMAI RIDO WINANDA',
+                // 'YULMAI RIDO WINANDA',
                 'ABDUR RAHMAN AL FAAIZ',
             ],
             self::KOREKTIF_RIWAYAT_FORM => [
@@ -160,4 +160,3 @@ enum ProductionsMenuAccessGroup: string
         return in_array($userName, $allowedUsers, true);
     }
 }
-
