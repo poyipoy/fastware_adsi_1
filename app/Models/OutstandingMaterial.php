@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class OutstandingMaterial extends Model
 {
@@ -54,6 +56,7 @@ class OutstandingMaterial extends Model
         'attachment_path',
         'packing_list_path',
         'mtc_path',
+        'archived_at',
         'created_by',
         'updated_by',
     ];
@@ -64,7 +67,13 @@ class OutstandingMaterial extends Model
         'diameter' => 'decimal:2',
         'qty_pcs' => 'decimal:2',
         'est_qty_kg' => 'decimal:2',
+        'archived_at' => 'datetime',
     ];
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
 
     public static function statusOptions(): array
     {
@@ -105,5 +114,49 @@ class OutstandingMaterial extends Model
     public function invoiceHeader(): BelongsTo
     {
         return $this->belongsTo(OutstandingMaterialInvoice::class, 'invoice_id');
+    }
+
+    public function scopeUnarchived(Builder $query): Builder
+    {
+        $table = $this->getTable();
+
+        return $query->whereNull("{$table}.archived_at")
+            ->where(function (Builder $builder) use ($table): void {
+                $builder->where(function (Builder $q) use ($table): void {
+                    $q->whereNull("{$table}.invoice_id")
+                        ->orWhereDoesntHave('invoiceHeader', function (Builder $headerQuery): void {
+                            $headerQuery->whereNotNull('archived_at');
+                        });
+                })->where(function (Builder $q) use ($table): void {
+                    $q->whereNull("{$table}.invoice_identity_key")
+                        ->orWhereNotExists(function ($subQuery) use ($table): void {
+                            $subQuery->select(DB::raw(1))
+                                ->from('outstanding_material_invoices')
+                                ->whereColumn('outstanding_material_invoices.invoice_identity_key', "{$table}.invoice_identity_key")
+                                ->whereNotNull('outstanding_material_invoices.archived_at');
+                        });
+                });
+            });
+    }
+
+    public function scopeArchived(Builder $query): Builder
+    {
+        $table = $this->getTable();
+
+        return $query->where(function (Builder $builder) use ($table): void {
+            $builder->whereNotNull("{$table}.archived_at")
+                ->orWhereHas('invoiceHeader', function (Builder $headerQuery): void {
+                    $headerQuery->whereNotNull('archived_at');
+                })->orWhere(function (Builder $fallbackQuery) use ($table): void {
+                    $fallbackQuery->whereNull("{$table}.invoice_id")
+                        ->whereNotNull("{$table}.invoice_identity_key")
+                        ->whereExists(function ($subQuery) use ($table): void {
+                            $subQuery->select(DB::raw(1))
+                                ->from('outstanding_material_invoices')
+                                ->whereColumn('outstanding_material_invoices.invoice_identity_key', "{$table}.invoice_identity_key")
+                                ->whereNotNull('outstanding_material_invoices.archived_at');
+                        });
+                });
+        });
     }
 }

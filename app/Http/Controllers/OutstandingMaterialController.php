@@ -76,7 +76,7 @@ class OutstandingMaterialController extends Controller
     {
         $this->authorizeView();
 
-        $baseQuery = OutstandingMaterial::query();
+        $baseQuery = OutstandingMaterial::query()->unarchived();
         $recordsTotal = (clone $baseQuery)->count();
 
         $filteredQuery = clone $baseQuery;
@@ -147,9 +147,11 @@ class OutstandingMaterialController extends Controller
             $filteredQuery->skip($start);
         }
 
+        $rowContext = $this->isAnchorArchived($outstandingMaterial) ? 'archived' : 'detail';
+
         $data = $filteredQuery
             ->get()
-            ->map(fn (OutstandingMaterial $material): array => $this->dataTableRow($material, 'detail'))
+            ->map(fn (OutstandingMaterial $material): array => $this->dataTableRow($material, $rowContext))
             ->values()
             ->all();
 
@@ -274,11 +276,17 @@ class OutstandingMaterialController extends Controller
         $rows = $data['materials'];
         unset($data['materials'], $data['invoice_context_id']);
 
+        $targetKey = $this->identity->invoiceKey(
+            (string) ($contextAnchor?->supplier ?? $data['supplier'] ?? ''),
+            (string) ($contextAnchor?->number_invoice ?? $data['number_invoice'] ?? ''),
+        );
+        $this->invoices->assertNotArchivedByIdentityKey($targetKey, 'penambahan material');
+
         $created = $this->batches->create(
             $data,
             $rows,
             $contextAnchor,
-            (int) Auth::id(),
+            Auth::id() ? (int) Auth::id() : null,
         );
 
         $anchor = $contextAnchor ?: $created->first();
@@ -299,6 +307,13 @@ class OutstandingMaterialController extends Controller
         $contextAnchor = $contextId
             ? OutstandingMaterial::query()->findOrFail((int) $contextId)
             : null;
+
+        $targetKey = $this->identity->invoiceKey(
+            (string) ($contextAnchor?->supplier ?? $data['supplier'] ?? ''),
+            (string) ($contextAnchor?->number_invoice ?? $data['number_invoice'] ?? ''),
+        );
+        $this->invoices->assertNotArchivedByIdentityKey($targetKey, 'penambahan material');
+
         $header = [
             'supplier' => $data['supplier'],
             'number_invoice' => $data['number_invoice'],
@@ -324,7 +339,7 @@ class OutstandingMaterialController extends Controller
             'remarks' => $data['remarks'] ?? null,
         ];
 
-        $created = $this->batches->create($header, [$row], $contextAnchor, (int) Auth::id());
+        $created = $this->batches->create($header, [$row], $contextAnchor, Auth::id() ? (int) Auth::id() : null);
         $material = $created->first();
 
         return redirect()
@@ -337,6 +352,7 @@ class OutstandingMaterialController extends Controller
         $this->authorizeView();
 
         $invoiceScope = $this->invoiceScope($outstandingMaterial);
+        $isArchived = $this->isAnchorArchived($outstandingMaterial);
 
         return view('outstanding_materials.show', [
             'material' => $outstandingMaterial->load(['creator', 'updater']),
@@ -347,7 +363,7 @@ class OutstandingMaterialController extends Controller
             'statusOptions' => OutstandingMaterial::statusOptions(),
             'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
             'portOptions' => OutstandingMaterial::portOptions(),
-            'canManageOutstandingMaterials' => $this->access->canManage(Auth::user()),
+            'canManageOutstandingMaterials' => ! $isArchived && $this->access->canManage(Auth::user()),
             'canView' => true,
             'canExportInvoice' => $this->access->canExport(Auth::user()),
             'canDownloadDocuments' => $this->access->canDownloadInvoiceDocuments(Auth::user()),
@@ -392,6 +408,12 @@ class OutstandingMaterialController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $currentHeader = $lockedMaterial->invoice_id
+                ? OutstandingMaterialInvoice::query()->whereKey($lockedMaterial->invoice_id)->lockForUpdate()->first()
+                : ($lockedMaterial->invoice_identity_key ? OutstandingMaterialInvoice::query()->where('invoice_identity_key', $lockedMaterial->invoice_identity_key)->lockForUpdate()->first() : null);
+            $this->invoices->assertNotArchived($currentHeader, 'pengeditan material');
+            $this->invoices->assertMaterialNotArchived($lockedMaterial, 'pengeditan material');
+
             $oldPaths = [
                 $lockedMaterial->attachment_path,
                 $lockedMaterial->packing_list_path,
@@ -402,6 +424,12 @@ class OutstandingMaterialController extends Controller
             $invoiceChanged = (string) ($lockedMaterial->invoice_identity_key ?? '')
                 !== (string) ($data['invoice_identity_key'] ?? '');
             if ($invoiceChanged) {
+                $targetHeader = OutstandingMaterialInvoice::query()
+                    ->where('invoice_identity_key', $data['invoice_identity_key'])
+                    ->lockForUpdate()
+                    ->first();
+                $this->invoices->assertNotArchived($targetHeader, 'pemindahan material ke invoice');
+
                 $inheritance = $this->documents->inheritanceForIdentityKey($data['invoice_identity_key'] ?? null, true);
                 $this->logInheritanceWarnings($data['number_invoice'] ?? null, $inheritance['warnings']);
                 $data['packing_list_path'] = $inheritance['packing_list_path'];
@@ -454,6 +482,12 @@ class OutstandingMaterialController extends Controller
                 ->whereKey($outstandingMaterial->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $header = $lockedMaterial->invoice_id
+                ? OutstandingMaterialInvoice::query()->whereKey($lockedMaterial->invoice_id)->lockForUpdate()->first()
+                : ($lockedMaterial->invoice_identity_key ? OutstandingMaterialInvoice::query()->where('invoice_identity_key', $lockedMaterial->invoice_identity_key)->lockForUpdate()->first() : null);
+            $this->invoices->assertNotArchived($header, 'penghapusan material');
+            $this->invoices->assertMaterialNotArchived($lockedMaterial, 'penghapusan material');
 
             $oldPaths = [
                 $lockedMaterial->attachment_path,
@@ -526,6 +560,7 @@ class OutstandingMaterialController extends Controller
             $invoiceHeader = $this->invoiceHeaderDeletionScope($lockedAnchor)
                 ->lockForUpdate()
                 ->first();
+            $this->invoices->assertNotArchived($invoiceHeader, 'penghapusan invoice');
 
             $documentPaths = $materials
                 ->flatMap(fn (OutstandingMaterial $material): array => [
@@ -563,11 +598,107 @@ class OutstandingMaterialController extends Controller
             );
     }
 
+    public function archiveInvoice(OutstandingMaterial $outstandingMaterial): RedirectResponse|JsonResponse
+    {
+        $this->authorizeManage();
+
+        try {
+            $header = $this->invoices->archiveInvoiceGroup($outstandingMaterial, Auth::user());
+            $message = sprintf('Invoice "%s" berhasil diarsipkan.', $header->number_invoice ?: $outstandingMaterial->number_invoice);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                ]);
+            }
+
+            return redirect()
+                ->route('outstanding-materials.invoice.index')
+                ->with('success', $message);
+        } catch (ValidationException $exception) {
+            $errors = $exception->validator->errors()->all();
+            $message = implode(' ', $errors) ?: $exception->getMessage();
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()
+                ->route('outstanding-materials.invoice.index')
+                ->withErrors(['invoice' => $message]);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengarsipkan invoice: '.$exception->getMessage(),
+                ], 500);
+            }
+
+            return redirect()
+                ->route('outstanding-materials.invoice.index')
+                ->withErrors(['invoice' => 'Gagal mengarsipkan invoice: '.$exception->getMessage()]);
+        }
+    }
+
+    public function restoreInvoice(OutstandingMaterial $outstandingMaterial): RedirectResponse|JsonResponse
+    {
+        $this->authorizeManage();
+
+        try {
+            $header = $this->invoices->restoreInvoiceGroup($outstandingMaterial, Auth::user());
+            $message = sprintf('Invoice "%s" berhasil dikembalikan ke daftar aktif.', $header->number_invoice ?: $outstandingMaterial->number_invoice);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                ]);
+            }
+
+            return redirect()
+                ->route('outstanding-materials.invoice.archived.index')
+                ->with('success', $message);
+        } catch (ValidationException $exception) {
+            $errors = $exception->validator->errors()->all();
+            $message = implode(' ', $errors) ?: $exception->getMessage();
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()
+                ->route('outstanding-materials.invoice.archived.index')
+                ->withErrors(['invoice' => $message]);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengembalikan invoice: '.$exception->getMessage(),
+                ], 500);
+            }
+
+            return redirect()
+                ->route('outstanding-materials.invoice.archived.index')
+                ->withErrors(['invoice' => 'Gagal mengembalikan invoice: '.$exception->getMessage()]);
+        }
+    }
+
     public function export(Request $request)
     {
         $this->authorizeExport();
 
-        $query = OutstandingMaterial::query();
+        $query = OutstandingMaterial::query()->unarchived();
         $this->applyFilters($query, $request);
 
         $search = trim((string) $request->query('q', ''));
@@ -756,6 +887,130 @@ class OutstandingMaterialController extends Controller
         ]);
     }
 
+    public function archivedInvoiceIndex(): View
+    {
+        $this->authorizeView();
+
+        return view('outstanding_materials.archived_invoices', [
+            'canManageOutstandingMaterials' => $this->access->canManage(Auth::user()),
+            'canDownloadDocuments' => $this->access->canDownloadInvoiceDocuments(Auth::user()),
+        ]);
+    }
+
+    public function archivedInvoiceData(Request $request): JsonResponse
+    {
+        $this->authorizeView();
+
+        $baseQuery = $this->archivedInvoiceBaseQuery();
+        $recordsTotal = $this->countGroupedQuery($baseQuery);
+
+        $filteredQuery = clone $baseQuery;
+        $search = trim((string) ($request->input('search.value') ?: $request->input('q', '')));
+
+        if ($search !== '') {
+            $like = '%'.$search.'%';
+            $filteredQuery->havingRaw(
+                <<<'SQL'
+                    (
+                        MAX(CASE WHEN outstanding_materials.number_invoice LIKE ?
+                            OR outstanding_materials.supplier LIKE ?
+                            OR outstanding_materials.status LIKE ?
+                            OR outstanding_materials.keterangan LIKE ?
+                        THEN 1 ELSE 0 END) = 1
+                        OR MAX(outstanding_materials.estimasi_eta_warehouse) LIKE ?
+                    )
+                SQL,
+                [$like, $like, $like, $like, $like],
+            );
+        }
+
+        $recordsFiltered = $this->countGroupedQuery($filteredQuery);
+        $this->applyArchivedInvoiceOrdering($filteredQuery, $request);
+
+        $start = max((int) $request->input('start', 0), 0);
+        $length = (int) $request->input('length', 10);
+
+        if ($length !== -1) {
+            $filteredQuery->skip($start)->take(max($length, 1));
+        } elseif ($start > 0) {
+            $filteredQuery->skip($start);
+        }
+
+        $data = $filteredQuery
+            ->get()
+            ->map(fn (object $invoice): array => $this->archivedInvoiceDataTableRow(
+                $invoice,
+                $this->access->canManage(Auth::user()),
+                $this->access->canDownloadInvoiceDocuments(Auth::user()),
+            ))
+            ->values()
+            ->all();
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 0),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function archivedMaterialIndex(): View
+    {
+        $this->authorizeView();
+
+        $archivedScope = $this->archivedMaterialsBaseQuery();
+
+        return view('outstanding_materials.archived_materials', [
+            'filterOptions' => $this->filterOptionsForQuery($archivedScope),
+            'statusOptions' => OutstandingMaterial::statusOptions(),
+            'keteranganOptions' => OutstandingMaterial::keteranganOptions(),
+            'portOptions' => OutstandingMaterial::portOptions(),
+            'canExportOutstandingMaterials' => $this->access->canExport(Auth::user()),
+            'canDownloadDocuments' => $this->access->canDownloadInvoiceDocuments(Auth::user()),
+            'summary' => $this->summaryStats($archivedScope),
+        ]);
+    }
+
+    public function archivedMaterialData(Request $request): JsonResponse
+    {
+        $this->authorizeView();
+
+        $baseQuery = $this->archivedMaterialsBaseQuery();
+        $recordsTotal = (clone $baseQuery)->count();
+
+        $filteredQuery = clone $baseQuery;
+        $this->applyFilters($filteredQuery, $request);
+
+        $search = trim((string) ($request->input('search.value') ?: $request->input('q', '')));
+        if ($search !== '') {
+            $this->applySearch($filteredQuery, $search);
+        }
+
+        $recordsFiltered = (clone $filteredQuery)->count();
+        $this->applyOrdering($filteredQuery, $request);
+
+        $start = max((int) $request->input('start', 0), 0);
+        $length = (int) $request->input('length', 10);
+        if ($length !== -1) {
+            $filteredQuery->skip($start)->take(max($length, 1));
+        } elseif ($start > 0) {
+            $filteredQuery->skip($start);
+        }
+
+        $data = $filteredQuery
+            ->get()
+            ->map(fn (OutstandingMaterial $material): array => $this->dataTableRow($material, 'archived'))
+            ->values()
+            ->all();
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 0),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
     public function invoiceMaterials(Request $request): JsonResponse
     {
         $this->authorizeManage();
@@ -772,10 +1027,65 @@ class OutstandingMaterialController extends Controller
 
         return response()->json(
             $this->invoiceScope($outstandingMaterial)
-                ->select('id', 'supplier', 'type', 'thickness', 'width', 'diameter', 'length', 'qty_pcs', 'est_qty_kg', 'status', 'keterangan')
+                ->unarchived()
+                ->select([
+                    'id', 'supplier', 'type', 'thickness', 'width', 'diameter', 'length',
+                    'qty_pcs', 'est_qty_kg', 'status', 'keterangan',
+                    'estimasi_eta_port', 'estimasi_eta_warehouse', 'estimasi_bulan_eta',
+                    'estimasi_delay_eta_port', 'estimasi_delay_eta_warehouse',
+                ])
                 ->orderBy('id')
                 ->get(),
         );
+    }
+
+    public function archivedInvoiceMaterialsForAnchor(OutstandingMaterial $outstandingMaterial): JsonResponse
+    {
+        $this->authorizeManage();
+
+        return response()->json(
+            $this->invoiceScope($outstandingMaterial)
+                ->archived()
+                ->select('id', 'supplier', 'type', 'thickness', 'width', 'diameter', 'length', 'qty_pcs', 'est_qty_kg', 'status', 'keterangan', 'archived_at')
+                ->orderBy('id')
+                ->get(),
+        );
+    }
+
+    public function archiveMaterials(Request $request): JsonResponse
+    {
+        $this->authorizeManage();
+
+        $data = $request->validate([
+            'material_ids' => 'required|array|min:1',
+            'material_ids.*' => 'integer|exists:outstanding_materials,id',
+        ]);
+
+        $result = $this->invoices->archiveMaterials($data['material_ids'], Auth::id());
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['archived_count'].' material berhasil diarsipkan.',
+            'archived_ids' => $result['archived_ids'],
+        ]);
+    }
+
+    public function restoreMaterials(Request $request): JsonResponse
+    {
+        $this->authorizeManage();
+
+        $data = $request->validate([
+            'material_ids' => 'required|array|min:1',
+            'material_ids.*' => 'integer|exists:outstanding_materials,id',
+        ]);
+
+        $result = $this->invoices->restoreMaterials($data['material_ids'], Auth::id());
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['restored_count'].' material berhasil dipulihkan.',
+            'restored_ids' => $result['restored_ids'],
+        ]);
     }
 
     public function updateInvoiceFields(Request $request): JsonResponse
@@ -788,10 +1098,24 @@ class OutstandingMaterialController extends Controller
             'material_ids.*' => 'integer|exists:outstanding_materials,id',
             'status' => ['nullable', 'string', Rule::in(OutstandingMaterial::statusOptions())],
             'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
+            'estimasi_eta_port' => ['nullable', 'date_format:Y-m-d'],
+            'estimasi_eta_warehouse' => ['nullable', 'date_format:Y-m-d'],
+            'estimasi_bulan_eta' => ['nullable', 'string', 'max:255'],
+            'estimasi_delay_eta_port' => ['nullable', 'date_format:Y-m-d'],
+            'estimasi_delay_eta_warehouse' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
         $anchor = OutstandingMaterial::query()->findOrFail((int) $data['anchor_id']);
-        $request->merge(['material_ids' => $data['material_ids'], 'status' => $data['status'] ?? null, 'keterangan' => $data['keterangan'] ?? null]);
+        $request->merge([
+            'material_ids' => $data['material_ids'],
+            'status' => $data['status'] ?? null,
+            'keterangan' => $data['keterangan'] ?? null,
+            'estimasi_eta_port' => $data['estimasi_eta_port'] ?? null,
+            'estimasi_eta_warehouse' => $data['estimasi_eta_warehouse'] ?? null,
+            'estimasi_bulan_eta' => $data['estimasi_bulan_eta'] ?? null,
+            'estimasi_delay_eta_port' => $data['estimasi_delay_eta_port'] ?? null,
+            'estimasi_delay_eta_warehouse' => $data['estimasi_delay_eta_warehouse'] ?? null,
+        ]);
 
         return $this->updateInvoiceFieldsForAnchor($request, $anchor);
     }
@@ -807,22 +1131,29 @@ class OutstandingMaterialController extends Controller
             'material_ids.*' => 'integer|exists:outstanding_materials,id',
             'status' => ['nullable', 'string', Rule::in(OutstandingMaterial::statusOptions())],
             'keterangan' => ['nullable', 'string', Rule::in(OutstandingMaterial::keteranganOptions())],
+            'estimasi_eta_port' => ['nullable', 'date_format:Y-m-d'],
+            'estimasi_eta_warehouse' => ['nullable', 'date_format:Y-m-d'],
+            'estimasi_bulan_eta' => ['nullable', 'string', 'max:255'],
+            'estimasi_delay_eta_port' => ['nullable', 'date_format:Y-m-d'],
+            'estimasi_delay_eta_warehouse' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
         $materialIds = array_values(array_unique(array_map('intval', $data['material_ids'])));
         $updates = ['updated_by' => Auth::id()];
 
-        if (! empty($data['keterangan'])) {
-            $updates['keterangan'] = $data['keterangan'];
-        }
-
-        if (! empty($data['status'])) {
-            $updates['status'] = $data['status'];
+        foreach ([
+            'status', 'keterangan',
+            'estimasi_eta_port', 'estimasi_eta_warehouse', 'estimasi_bulan_eta',
+            'estimasi_delay_eta_port', 'estimasi_delay_eta_warehouse',
+        ] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== null && trim((string) $data[$field]) !== '') {
+                $updates[$field] = $data[$field];
+            }
         }
 
         if (count($updates) === 1) {
             throw ValidationException::withMessages([
-                'status' => 'Choose a Status or Keterangan before updating materials.',
+                'update_fields' => 'Pilih atau isi setidaknya satu kolom untuk diperbarui.',
             ]);
         }
 
@@ -831,6 +1162,12 @@ class OutstandingMaterialController extends Controller
                 ->whereKey($outstandingMaterial->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $invoiceHeader = $this->invoiceHeaderDeletionScope($lockedAnchor)
+                ->lockForUpdate()
+                ->first();
+            $this->invoices->assertNotArchived($invoiceHeader, 'pembaruan material invoice');
+
             $scope = $this->invoiceScope($lockedAnchor);
             $ownedIds = (clone $scope)
                 ->whereIn('id', $materialIds)
@@ -898,6 +1235,8 @@ class OutstandingMaterialController extends Controller
                 'anchor_id' => 'Material anchor belum memiliki invoice yang valid.',
             ]);
         }
+
+        $this->invoices->assertNotArchivedByIdentityKey($identityKey, 'upload dokumen');
 
         $result = $this->documents->uploadForIdentityKey(
             $identityKey,
@@ -1058,6 +1397,11 @@ class OutstandingMaterialController extends Controller
         });
     }
 
+    private function sqlValidDate(string $column): string
+    {
+        return "(CASE WHEN {$column} REGEXP '^[12][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$' AND CAST(SUBSTRING({$column}, 9, 2) AS UNSIGNED) <= DAY(LAST_DAY(CONCAT(SUBSTRING({$column}, 1, 7), '-01'))) AND STR_TO_DATE({$column}, '%Y-%m-%d') IS NOT NULL THEN STR_TO_DATE({$column}, '%Y-%m-%d') ELSE NULL END)";
+    }
+
     private function applyOrdering(Builder $query, Request $request): void
     {
         // Column indices match the dashboard column order:
@@ -1113,37 +1457,67 @@ class OutstandingMaterialController extends Controller
         }
 
         if (! $appliedOrder) {
-            // Default: ETA Warehouse kedatangan terdekat dari hari ini (Today/Future ASC, Past DESC, NULL last)
-            $today = now()->toDateString();
+            $vEta = $this->sqlValidDate('estimasi_eta_warehouse');
+            $vDelay = $this->sqlValidDate('estimasi_delay_eta_warehouse');
+            $today = now('Asia/Jakarta')->toDateString();
+
             $query->orderByRaw("
+                /* 1. Primary Priority Tier (1 to 5) */
+                CASE
+                    WHEN status = 'Received' THEN 5
+                    WHEN status != 'Received' AND {$vEta} < ? AND ({$vDelay} IS NULL OR {$vDelay} < ?) THEN 1
+                    WHEN status != 'Received' AND {$vEta} < ? AND {$vDelay} >= ? THEN 2
+                    WHEN status != 'Received' AND ({$vEta} >= ? OR ({$vEta} IS NULL AND {$vDelay} >= ?)) THEN 3
+                    ELSE 4
+                END ASC,
+
+                /* 2. Chronological sub-sort for Tier 1 (Oldest overdue first) */
                 CASE 
-                    WHEN estimasi_eta_warehouse IS NULL OR TRIM(estimasi_eta_warehouse) = '' THEN 2
-                    WHEN estimasi_eta_warehouse >= ? THEN 0
-                    ELSE 1
-                END ASC
-            ", [$today])
-                ->orderByRaw('
-                CASE 
-                    WHEN estimasi_eta_warehouse >= ? THEN estimasi_eta_warehouse
+                    WHEN status != 'Received' AND {$vEta} < ? AND ({$vDelay} IS NULL OR {$vDelay} < ?)
+                    THEN COALESCE({$vDelay}, {$vEta})
                     ELSE NULL
-                END ASC
-            ', [$today])
-                ->orderByRaw('
+                END ASC,
+
+                /* 3. Chronological sub-sort for Tier 2 (Nearest future delay arrival) */
                 CASE 
-                    WHEN estimasi_eta_warehouse < ? THEN estimasi_eta_warehouse
+                    WHEN status != 'Received' AND {$vEta} < ? AND {$vDelay} >= ?
+                    THEN {$vDelay}
                     ELSE NULL
-                END DESC
-            ', [$today])
-                ->orderBy('number_invoice', 'asc')
-                ->orderBy('supplier', 'asc')
-                ->orderBy('id', 'asc');
+                END ASC,
+
+                /* 4. Chronological sub-sort for Tier 3 (Nearest future arrival) */
+                CASE 
+                    WHEN status != 'Received' AND ({$vEta} >= ? OR ({$vEta} IS NULL AND {$vDelay} >= ?))
+                    THEN COALESCE({$vEta}, {$vDelay})
+                    ELSE NULL
+                END ASC,
+
+                /* 5. Chronological sub-sort for Tier 5 (Most recently received first) */
+                CASE 
+                    WHEN status = 'Received'
+                    THEN COALESCE({$vDelay}, {$vEta})
+                    ELSE NULL
+                END DESC,
+
+                /* 6. Deterministic Tie-Breakers */
+                number_invoice ASC,
+                supplier ASC,
+                id ASC
+            ", [
+                $today, $today, // Tier 1 check (placeholders 1 & 2)
+                $today, $today, // Tier 2 check (placeholders 3 & 4)
+                $today, $today, // Tier 3 check (placeholders 5 & 6)
+                $today, $today, // Tier 1 sub-sort (placeholders 7 & 8)
+                $today, $today, // Tier 2 sub-sort (placeholders 9 & 10)
+                $today, $today, // Tier 3 sub-sort (placeholders 11 & 12)
+            ]);
         }
     }
 
     private function dataTableRow(OutstandingMaterial $material, string $context = 'index'): array
     {
         $allowManage = $context === 'detail' && $this->access->canManage(Auth::user());
-        $allowDownload = $context === 'detail'
+        $allowDownload = in_array($context, ['detail', 'archived'], true)
             && $this->access->canDownloadInvoiceDocuments(Auth::user());
 
         $remarksRaw = $material->remarks ?: '';
@@ -1183,12 +1557,12 @@ class OutstandingMaterialController extends Controller
 
     private function filterOptions(): array
     {
-        return $this->filterOptionsForQuery(OutstandingMaterial::query());
+        return $this->filterOptionsForQuery(OutstandingMaterial::query()->unarchived());
     }
 
     private function distinctValues(string $field): array
     {
-        return $this->distinctValuesForQuery(OutstandingMaterial::query(), $field);
+        return $this->distinctValuesForQuery(OutstandingMaterial::query()->unarchived(), $field);
     }
 
     private function filterOptionsForQuery(Builder $query): array
@@ -1217,11 +1591,19 @@ class OutstandingMaterialController extends Controller
 
     private function invoiceScope(OutstandingMaterial $anchor): Builder
     {
+        $identityKey = $this->identity->invoiceKeyForMaterial($anchor);
+
+        if ($anchor->invoice_id && $identityKey !== null) {
+            return OutstandingMaterial::query()->where(function (Builder $query) use ($anchor, $identityKey): void {
+                $query->where('invoice_id', $anchor->invoice_id)
+                    ->orWhere('invoice_identity_key', $identityKey);
+            });
+        }
+
         if ($anchor->invoice_id) {
             return OutstandingMaterial::query()->where('invoice_id', $anchor->invoice_id);
         }
 
-        $identityKey = $this->identity->invoiceKeyForMaterial($anchor);
         if ($identityKey !== null) {
             return OutstandingMaterial::query()->where('invoice_identity_key', $identityKey);
         }
@@ -1285,6 +1667,36 @@ class OutstandingMaterialController extends Controller
         return OutstandingMaterialInvoice::query()
             ->where('supplier', $supplier)
             ->where('number_invoice', $invoice);
+    }
+
+    private function isAnchorArchived(OutstandingMaterial $material): bool
+    {
+        if ($material->invoiceHeader !== null) {
+            return $material->invoiceHeader->isArchived();
+        }
+
+        $header = $this->invoiceHeaderDeletionScope($material)->first();
+
+        return $header ? $header->isArchived() : false;
+    }
+
+    private function archivedMaterialsBaseQuery(): Builder
+    {
+        return OutstandingMaterial::query()
+            ->where(function (Builder $query): void {
+                $query->whereHas('invoiceHeader', function (Builder $headerQuery): void {
+                    $headerQuery->whereNotNull('archived_at');
+                })->orWhere(function (Builder $fallbackQuery): void {
+                    $fallbackQuery->whereNull('invoice_id')
+                        ->whereNotNull('invoice_identity_key')
+                        ->whereExists(function ($subQuery): void {
+                            $subQuery->select(DB::raw(1))
+                                ->from('outstanding_material_invoices')
+                                ->whereColumn('outstanding_material_invoices.invoice_identity_key', 'outstanding_materials.invoice_identity_key')
+                                ->whereNotNull('outstanding_material_invoices.archived_at');
+                        });
+                });
+            });
     }
 
     private function displayInvoiceNumber(OutstandingMaterial $material): ?string
@@ -1374,7 +1786,7 @@ class OutstandingMaterialController extends Controller
         bool $allowManage = false,
     ): string {
         $showUrl = route('outstanding-materials.show', $material);
-        $detailButton = $context === 'index'
+        $detailButton = in_array($context, ['index', 'archived'], true)
             ? <<<HTML
                 <a href="{$showUrl}" class="om-action-btn om-action-btn--detail" title="Detail" data-bs-toggle="tooltip">
                     <i class="bi bi-eye"></i>
@@ -1432,7 +1844,7 @@ class OutstandingMaterialController extends Controller
 
     private function summaryStats(?Builder $scope = null): array
     {
-        $baseQuery = $scope ? clone $scope : OutstandingMaterial::query();
+        $baseQuery = $scope ? clone $scope : OutstandingMaterial::query()->unarchived();
         $counts = (clone $baseQuery)
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
@@ -1482,7 +1894,77 @@ class OutstandingMaterialController extends Controller
 
     private function invoiceBaseQuery(): Builder
     {
+        $today = now('Asia/Jakarta')->toDateString();
+        $vEta = $this->sqlValidDate('outstanding_materials.estimasi_eta_warehouse');
+        $vDelay = $this->sqlValidDate('outstanding_materials.estimasi_delay_eta_warehouse');
+
+        // Tier calculation expression (exactly 6 bound parameters)
+        $tierExpression = "
+            MIN(
+                CASE
+                    WHEN outstanding_materials.status = 'Received' THEN 5
+                    WHEN outstanding_materials.status != 'Received' AND {$vEta} < ? AND ({$vDelay} IS NULL OR {$vDelay} < ?) THEN 1
+                    WHEN outstanding_materials.status != 'Received' AND {$vEta} < ? AND {$vDelay} >= ? THEN 2
+                    WHEN outstanding_materials.status != 'Received' AND ({$vEta} >= ? OR ({$vEta} IS NULL AND {$vDelay} >= ?)) THEN 3
+                    ELSE 4
+                END
+            )
+        ";
+
+        // Operative date for Tier 1 sub-sorting: oldest overdue arrival date (exactly 2 bound parameters)
+        $overdueDateExpression = "
+            MIN(
+                CASE
+                    WHEN outstanding_materials.status != 'Received' AND {$vEta} < ? AND ({$vDelay} IS NULL OR {$vDelay} < ?)
+                    THEN COALESCE({$vDelay}, {$vEta})
+                    ELSE NULL
+                END
+            )
+        ";
+
+        // Operative date for Tier 2 sub-sorting: nearest valid Delay ETA Warehouse date (exactly 2 bound parameters)
+        $tier2DelayDateExpression = "
+            MIN(
+                CASE
+                    WHEN outstanding_materials.status != 'Received' AND {$vEta} < ? AND {$vDelay} >= ?
+                    THEN {$vDelay}
+                    ELSE NULL
+                END
+            )
+        ";
+
+        // Operative date for Tier 3 sub-sorting: nearest valid ETA Warehouse date (exactly 2 bound parameters)
+        $tier3EtaDateExpression = "
+            MIN(
+                CASE
+                    WHEN outstanding_materials.status != 'Received' AND ({$vEta} >= ? OR ({$vEta} IS NULL AND {$vDelay} >= ?))
+                    THEN COALESCE({$vEta}, {$vDelay})
+                    ELSE NULL
+                END
+            )
+        ";
+
+        // Overdue items count for UI urgency badge (exactly 2 bound parameters)
+        $overdueCountExpression = "
+            SUM(
+                CASE
+                    WHEN outstanding_materials.status != 'Received' AND {$vEta} < ? AND ({$vDelay} IS NULL OR {$vDelay} < ?)
+                    THEN 1 ELSE 0
+                END
+            )
+        ";
+
+        // Archive eligibility flag (0 bound parameters)
+        $archivableExpression = "
+            CASE
+                WHEN COUNT(outstanding_materials.id) > 0
+                     AND SUM(CASE WHEN outstanding_materials.status = 'Received' AND outstanding_materials.keterangan = 'Closed' THEN 1 ELSE 0 END) = COUNT(outstanding_materials.id)
+                THEN 1 ELSE 0
+            END
+        ";
+
         return OutstandingMaterial::query()
+            ->unarchived()
             ->leftJoin('outstanding_material_invoices as invoice_headers', 'invoice_headers.id', '=', 'outstanding_materials.invoice_id')
             ->select([
                 DB::raw("COALESCE(invoice_headers.invoice_identity_key, outstanding_materials.invoice_identity_key, CONCAT('legacy:', outstanding_materials.supplier, ':', COALESCE(outstanding_materials.number_invoice, ''))) as invoice_group_key"),
@@ -1497,9 +1979,28 @@ class OutstandingMaterialController extends Controller
                 DB::raw("MIN(CASE WHEN COALESCE(NULLIF(invoice_headers.mtc_path, ''), NULLIF(outstanding_materials.mtc_path, '')) IS NOT NULL THEN outstanding_materials.id END) as mtc_material_id"),
                 DB::raw("COUNT(DISTINCT NULLIF(COALESCE(NULLIF(invoice_headers.packing_list_path, ''), NULLIF(outstanding_materials.packing_list_path, ''), NULLIF(outstanding_materials.attachment_path, '')), '')) as packing_list_variant_count"),
                 DB::raw("COUNT(DISTINCT NULLIF(COALESCE(NULLIF(invoice_headers.mtc_path, ''), NULLIF(outstanding_materials.mtc_path, '')), '')) as mtc_variant_count"),
+                DB::raw("{$archivableExpression} as is_archivable"),
+            ])
+            ->selectRaw("{$tierExpression} as invoice_priority_tier", [
+                $today, $today,
+                $today, $today,
+                $today, $today,
+            ])
+            ->selectRaw("{$overdueDateExpression} as tier1_overdue_date", [
+                $today, $today,
+            ])
+            ->selectRaw("{$tier2DelayDateExpression} as tier2_delay_date", [
+                $today, $today,
+            ])
+            ->selectRaw("{$tier3EtaDateExpression} as tier3_eta_date", [
+                $today, $today,
+            ])
+            ->selectRaw("{$overdueCountExpression} as overdue_material_count", [
+                $today, $today,
             ])
             ->whereNotNull('outstanding_materials.number_invoice')
             ->where('outstanding_materials.number_invoice', '!=', '')
+            ->whereNull('invoice_headers.archived_at')
             ->groupBy('invoice_group_key');
     }
 
@@ -1545,27 +2046,15 @@ class OutstandingMaterialController extends Controller
         }
 
         if (! $appliedOrder) {
-            // Default: Latest ETA Warehouse kedatangan terdekat dari hari ini (Today/Future ASC, Past DESC, NULL last)
-            $today = now()->toDateString();
-            $query->orderByRaw("
-                CASE 
-                    WHEN latest_eta_warehouse IS NULL OR TRIM(latest_eta_warehouse) = '' THEN 2
-                    WHEN latest_eta_warehouse >= ? THEN 0
-                    ELSE 1
-                END ASC
-            ", [$today])
-                ->orderByRaw('
-                CASE 
-                    WHEN latest_eta_warehouse >= ? THEN latest_eta_warehouse
-                    ELSE NULL
-                END ASC
-            ', [$today])
-                ->orderByRaw('
-                CASE 
-                    WHEN latest_eta_warehouse < ? THEN latest_eta_warehouse
-                    ELSE NULL
-                END DESC
-            ', [$today])
+            $query->orderBy('invoice_priority_tier', 'asc')
+                ->orderByRaw('CASE WHEN tier1_overdue_date IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('tier1_overdue_date', 'asc')
+                ->orderByRaw('CASE WHEN tier2_delay_date IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('tier2_delay_date', 'asc')
+                ->orderByRaw('CASE WHEN tier3_eta_date IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('tier3_eta_date', 'asc')
+                ->orderByRaw("CASE WHEN latest_eta_warehouse IS NULL OR TRIM(latest_eta_warehouse) = '' THEN 1 ELSE 0 END ASC")
+                ->orderBy('latest_eta_warehouse', 'desc')
                 ->orderBy('number_invoice', 'asc')
                 ->orderBy('supplier_sample', 'asc');
         }
@@ -1597,6 +2086,12 @@ class OutstandingMaterialController extends Controller
             ->map(fn (string $keterangan): string => '<span class="om-badge '.$this->keteranganBadgeClass(trim($keterangan)).'">'.e(trim($keterangan)).'</span>')
             ->implode(' ');
 
+        $overdueBadge = ((int) ($invoice->overdue_material_count ?? 0) > 0)
+            ? ' <span class="om-badge om-badge--delay" title="'.(int) $invoice->overdue_material_count.' material overdue"><i class="bi bi-exclamation-circle me-1"></i>Overdue</span>'
+            : '';
+
+        $isEligibleForArchive = ((int) ($invoice->is_archivable ?? 0) === 1);
+
         return [
             'number_invoice' => e($invoiceValue ?: '-'),
             'supplier' => e($invoice->supplier_sample ?: '-'),
@@ -1623,6 +2118,7 @@ class OutstandingMaterialController extends Controller
                 (string) $invoice->supplier_sample,
                 $canManage,
                 $canUpload,
+                $isEligibleForArchive,
             ),
         ];
     }
@@ -1693,6 +2189,7 @@ class OutstandingMaterialController extends Controller
         string $supplier,
         bool $canManage,
         bool $canUpload,
+        bool $isEligibleForArchive = false,
     ): string {
         $buttons = [];
         if ($representative) {
@@ -1705,6 +2202,20 @@ class OutstandingMaterialController extends Controller
         if ($canManage && $representative) {
             $invoiceAttribute = e($invoice);
             $supplierAttribute = e($supplier);
+
+            if ($isEligibleForArchive) {
+                $archiveUrl = e(route('outstanding-materials.invoice.archive', $representative));
+                $csrf = csrf_field();
+                $buttons[] = <<<HTML
+                    <form action="{$archiveUrl}" method="POST" class="d-inline js-outstanding-invoice-archive-form" data-invoice="{$invoiceAttribute}">
+                        {$csrf}
+                        <button type="submit" class="om-action-btn om-action-btn--archive text-warning" title="Arsipkan Invoice" aria-label="Arsipkan Invoice" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>
+                    </form>
+                HTML;
+            } else {
+                $buttons[] = '<button type="button" class="om-action-btn om-action-btn--archive text-muted" disabled title="Invoice hanya dapat diarsipkan jika semua material Received dan Closed" aria-label="Arsipkan Invoice (Belum Memenuhi Syarat)" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>';
+            }
+
             $buttons[] = '<button type="button" class="om-action-btn om-action-btn--edit js-open-invoice-modal" data-anchor-id="'.e((string) $representative->getKey()).'" data-invoice="'.$invoiceAttribute.'" title="Update Materials" data-bs-toggle="tooltip"><i class="bi bi-pencil-square"></i></button>';
 
             $deleteUrl = e(route('outstanding-materials.invoice.destroy', $representative));
@@ -1721,6 +2232,153 @@ class OutstandingMaterialController extends Controller
 
         if ($canUpload && $representative) {
             $buttons[] = '<button type="button" class="om-action-btn om-action-btn--upload js-open-invoice-upload" data-anchor-id="'.e((string) $representative->getKey()).'" data-invoice="'.e($invoice).'" title="Upload / Replace Documents" aria-label="Upload / Replace Documents" data-bs-toggle="tooltip"><i class="bi bi-cloud-arrow-up"></i></button>';
+        }
+
+        return '<div class="om-actions om-invoice-actions">'.implode('', $buttons).'</div>';
+    }
+
+    private function archivedInvoiceBaseQuery(): Builder
+    {
+        return OutstandingMaterial::query()
+            ->archived()
+            ->leftJoin('outstanding_material_invoices as invoice_headers', 'invoice_headers.id', '=', 'outstanding_materials.invoice_id')
+            ->select([
+                DB::raw("COALESCE(invoice_headers.invoice_identity_key, outstanding_materials.invoice_identity_key, CONCAT('legacy:', outstanding_materials.supplier, ':', COALESCE(outstanding_materials.number_invoice, ''))) as invoice_group_key"),
+                DB::raw('MIN(COALESCE(invoice_headers.number_invoice, outstanding_materials.number_invoice)) as number_invoice'),
+                DB::raw('MIN(outstanding_materials.id) as representative_id'),
+                DB::raw('COUNT(outstanding_materials.id) as material_count'),
+                DB::raw('MIN(COALESCE(invoice_headers.supplier, outstanding_materials.supplier)) as supplier_sample'),
+                DB::raw("GROUP_CONCAT(DISTINCT outstanding_materials.status ORDER BY outstanding_materials.status SEPARATOR ',') as status"),
+                DB::raw("GROUP_CONCAT(DISTINCT outstanding_materials.keterangan ORDER BY outstanding_materials.keterangan SEPARATOR ',') as keterangan"),
+                DB::raw('MAX(outstanding_materials.estimasi_eta_warehouse) as latest_eta_warehouse'),
+                DB::raw('MAX(COALESCE(outstanding_materials.archived_at, invoice_headers.archived_at)) as archived_at'),
+                DB::raw("MIN(CASE WHEN COALESCE(NULLIF(invoice_headers.packing_list_path, ''), NULLIF(outstanding_materials.packing_list_path, ''), NULLIF(outstanding_materials.attachment_path, '')) IS NOT NULL THEN outstanding_materials.id END) as packing_list_material_id"),
+                DB::raw("MIN(CASE WHEN COALESCE(NULLIF(invoice_headers.mtc_path, ''), NULLIF(outstanding_materials.mtc_path, '')) IS NOT NULL THEN outstanding_materials.id END) as mtc_material_id"),
+                DB::raw("COUNT(DISTINCT NULLIF(COALESCE(NULLIF(invoice_headers.packing_list_path, ''), NULLIF(outstanding_materials.packing_list_path, ''), NULLIF(outstanding_materials.attachment_path, '')), '')) as packing_list_variant_count"),
+                DB::raw("COUNT(DISTINCT NULLIF(COALESCE(NULLIF(invoice_headers.mtc_path, ''), NULLIF(outstanding_materials.mtc_path, '')), '')) as mtc_variant_count"),
+            ])
+            ->whereNotNull('outstanding_materials.number_invoice')
+            ->where('outstanding_materials.number_invoice', '!=', '')
+            ->where(function (Builder $q): void {
+                $q->whereNotNull('outstanding_materials.archived_at')
+                    ->orWhereNotNull('invoice_headers.archived_at');
+            })
+            ->groupBy('invoice_group_key');
+    }
+
+    private function applyArchivedInvoiceOrdering(Builder $query, Request $request): void
+    {
+        $columnOrderMap = [
+            0 => 'number_invoice',
+            1 => 'supplier_sample',
+            2 => 'material_count',
+            3 => 'status',
+            4 => 'keterangan',
+            5 => 'latest_eta_warehouse',
+            6 => 'archived_at',
+        ];
+
+        $orders = (array) $request->input('order', []);
+        $appliedOrder = false;
+
+        foreach ($orders as $order) {
+            $columnIndex = isset($order['column']) ? (int) $order['column'] : null;
+            if ($columnIndex === null || ! array_key_exists($columnIndex, $columnOrderMap)) {
+                continue;
+            }
+
+            $columnName = $columnOrderMap[$columnIndex];
+            $direction = strtolower((string) ($order['dir'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+
+            $query->orderBy($columnName, $direction);
+            $appliedOrder = true;
+        }
+
+        if (! $appliedOrder) {
+            $query->orderBy('archived_at', 'desc')
+                ->orderBy('latest_eta_warehouse', 'desc')
+                ->orderBy('number_invoice', 'asc');
+        }
+    }
+
+    private function archivedInvoiceDataTableRow(
+        object $invoice,
+        bool $canManage,
+        bool $canDownload,
+    ): array {
+        $invoiceValue = (string) $invoice->number_invoice;
+        $representative = $invoice->representative_id
+            ? OutstandingMaterial::query()->find((int) $invoice->representative_id)
+            : null;
+        $packingAnchor = $invoice->packing_list_material_id
+            ? OutstandingMaterial::query()->find((int) $invoice->packing_list_material_id)
+            : null;
+        $mtcAnchor = $invoice->mtc_material_id
+            ? OutstandingMaterial::query()->find((int) $invoice->mtc_material_id)
+            : null;
+
+        $statusHtml = collect(explode(',', (string) $invoice->status))
+            ->filter()
+            ->map(fn (string $status): string => '<span class="om-badge '.$this->statusBadgeClass(trim($status)).'">'.e(trim($status)).'</span>')
+            ->implode(' ');
+        $keteranganHtml = collect(explode(',', (string) $invoice->keterangan))
+            ->filter()
+            ->map(fn (string $keterangan): string => '<span class="om-badge '.$this->keteranganBadgeClass(trim($keterangan)).'">'.e(trim($keterangan)).'</span>')
+            ->implode(' ');
+
+        return [
+            'number_invoice' => e($invoiceValue ?: '-'),
+            'supplier' => e($invoice->supplier_sample ?: '-'),
+            'material_count' => number_format((int) $invoice->material_count),
+            'status' => $statusHtml ?: '<span class="om-badge">-</span>',
+            'keterangan' => $keteranganHtml ?: '<span class="om-badge">-</span>',
+            'latest_eta_warehouse' => $this->formatDate($invoice->latest_eta_warehouse),
+            'archived_at' => $invoice->archived_at ? Carbon::parse($invoice->archived_at)->format('d-m-Y H:i') : '-',
+            'packing_list' => $this->invoiceDocumentDisplay(
+                $packingAnchor,
+                'packing-list',
+                (int) $invoice->packing_list_variant_count,
+                $canDownload,
+            ),
+            'mtc' => $this->invoiceDocumentDisplay(
+                $mtcAnchor,
+                'mtc',
+                (int) $invoice->mtc_variant_count,
+                $canDownload,
+            ),
+            'actions' => $this->archivedInvoiceActionCell(
+                $representative,
+                $invoiceValue,
+                $canManage,
+            ),
+        ];
+    }
+
+    private function archivedInvoiceActionCell(
+        ?OutstandingMaterial $representative,
+        string $invoice,
+        bool $canManage,
+    ): string {
+        $buttons = [];
+        if ($representative) {
+            $buttons[] = sprintf(
+                '<a href="%s" class="om-action-btn om-action-btn--detail" title="Detail" data-bs-toggle="tooltip"><i class="bi bi-eye"></i></a>',
+                e(route('outstanding-materials.show', $representative)),
+            );
+        }
+
+        if ($canManage && $representative) {
+            $invoiceAttribute = e($invoice);
+            $buttons[] = '<button type="button" class="om-action-btn om-action-btn--edit js-open-archived-material-modal" data-anchor-id="'.e((string) $representative->getKey()).'" data-invoice="'.$invoiceAttribute.'" title="Lihat &amp; Kelola Material Arsip" aria-label="Lihat &amp; Kelola Material Arsip" data-bs-toggle="tooltip"><i class="bi bi-list-check"></i></button>';
+
+            $restoreUrl = e(route('outstanding-materials.invoice.restore', $representative));
+            $csrf = csrf_field();
+            $buttons[] = <<<HTML
+                <form action="{$restoreUrl}" method="POST" class="d-inline js-outstanding-invoice-restore-form" data-invoice="{$invoiceAttribute}">
+                    {$csrf}
+                    <button type="submit" class="om-action-btn om-action-btn--restore text-success" title="Restore Semua Material Invoice ke Aktif" aria-label="Restore Semua Material Invoice ke Aktif" data-bs-toggle="tooltip"><i class="bi bi-arrow-counterclockwise"></i></button>
+                </form>
+            HTML;
         }
 
         return '<div class="om-actions om-invoice-actions">'.implode('', $buttons).'</div>';

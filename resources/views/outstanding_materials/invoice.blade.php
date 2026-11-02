@@ -10,7 +10,7 @@
     .om-table tbody td { white-space:nowrap; vertical-align:middle; font-size:.83rem; padding:10px; border-bottom:1px solid #f3f4f6; } .om-table tbody tr:nth-child(even) { background:#f9fafb; } .om-table tbody tr:hover { background:#eff6ff; }
     #invoiceUpdateModal #modalMaterialsBody tr { cursor:pointer; } #invoiceUpdateModal #modalMaterialsBody tr.is-selected { background:#eff6ff; } #invoiceUpdateModal #modalMaterialsBody tr:focus-visible { outline:2px solid #2563eb; outline-offset:-2px; } .om-select-all-label { cursor:pointer; }
     .om-badge { display:inline-block; padding:.25em .55em; border-radius:999px; font-size:.72rem; background:#f3f4f6; color:#374151; margin:1px; } .om-badge--production { background:#fff7ed; color:#c2410c; } .om-badge--shipment { background:#ecfeff; color:#0e7490; } .om-badge--received { background:#ecfdf5; color:#047857; } .om-badge--on-schedule { background:#ecfdf5; color:#047857; } .om-badge--delay { background:#fff7ed; color:#c2410c; }
-    .om-actions { display:inline-flex; align-items:center; justify-content:center; gap:5px; } .om-action-btn { width:31px; height:31px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#374151; text-decoration:none; } .om-action-btn:hover { background:#eff6ff; color:#1d4ed8; } .om-action-btn--delete { color:#dc2626; } .om-action-btn--delete:hover { background:#fef2f2; border-color:#fca5a5; color:#b91c1c; } .om-document-warning { color:#d97706; margin-left:3px; }
+    .om-actions { display:inline-flex; align-items:center; justify-content:center; gap:5px; } .om-action-btn { width:31px; height:31px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#374151; text-decoration:none; } .om-action-btn:hover { background:#eff6ff; color:#1d4ed8; } .om-action-btn--delete { color:#dc2626; } .om-action-btn--delete:hover { background:#fef2f2; border-color:#fca5a5; color:#b91c1c; } .om-action-btn--archive { color:#d97706; } .om-action-btn--archive:hover { background:#fffbeb; border-color:#fde68a; color:#b45309; } .om-document-warning { color:#d97706; margin-left:3px; }
     @media (max-width:768px) { .om-card .card-body { padding:12px; } }
 </style>
 @endpush
@@ -23,14 +23,101 @@
         @if (session('warning')) <div class="alert alert-warning alert-dismissible fade show" role="alert">{{ session('warning') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div> @endif
         @if (!empty($errors) && $errors->any()) <div class="alert alert-danger alert-dismissible fade show" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div> @endif
         <div class="card om-card"><div class="card-body">
-            <div class="om-card-header"><h5 class="om-card-title">Invoice Groups</h5><div class="d-flex gap-2 align-items-center"><div class="input-group input-group-sm" style="max-width:300px"><span class="input-group-text"><i class="bi bi-search"></i></span><input type="search" id="invoiceSearch" class="form-control" placeholder="Search invoice, supplier, latest ETA..."></div><a href="{{ route('outstanding-materials.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Material Index</a></div></div>
+            <div class="om-card-header"><h5 class="om-card-title">Invoice Groups</h5><div class="d-flex gap-2 align-items-center"><div class="input-group input-group-sm" style="max-width:300px"><span class="input-group-text"><i class="bi bi-search"></i></span><input type="search" id="invoiceSearch" class="form-control" placeholder="Search invoice, supplier, latest ETA..."></div><a href="{{ route('outstanding-materials.materials.archived.index') }}" class="btn btn-sm btn-outline-warning"><i class="bi bi-box-seam me-1"></i>Archived Materials</a><a href="{{ route('outstanding-materials.invoice.archived.index') }}" class="btn btn-sm btn-outline-warning"><i class="bi bi-archive me-1"></i>Archived Invoices</a><a href="{{ route('outstanding-materials.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Material Index</a></div></div>
             <div class="om-table-wrap"><table id="outstandingInvoiceTable" class="om-table"><thead><tr class="om-column-header"><th>Number Invoice</th><th>Supplier</th><th>Total Row</th><th>Status</th><th>Keterangan</th><th>Latest ETA Warehouse</th><th>Packing List</th><th>MTC</th><th>Action</th></tr></thead><tbody></tbody></table></div>
         </div></div>
     </section>
 </main>
 
 @if ($canManageOutstandingMaterials)
-<div class="modal fade" id="invoiceUpdateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl"><form id="invoiceUpdateForm" class="modal-content"><input type="hidden" id="modalInvoiceAnchorId" name="anchor_id"><div class="modal-header"><h5 class="modal-title">Update Materials · <span id="modalInvoiceTitle" class="text-primary"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="modalLoading" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span> Loading...</div><div id="modalMaterialsContainer" class="d-none"><div class="table-responsive" style="max-height:420px"><table class="table table-sm table-bordered"><thead class="table-light"><tr><th></th><th>Supplier</th><th>Type</th><th>Dimensions</th><th>QTY</th><th>Status</th><th>Keterangan</th></tr></thead><tbody id="modalMaterialsBody"></tbody></table></div><div class="row g-2 mt-2"><div class="col-md-6"><label class="form-label small fw-bold">Update Status</label><select class="form-select form-select-sm" id="modalStatus" name="status"><option value="">Keep current</option>@foreach ($statusOptions as $option)<option value="{{ $option }}">{{ $option }}</option>@endforeach</select></div><div class="col-md-6"><label class="form-label small fw-bold">Update Keterangan</label><select class="form-select form-select-sm" id="modalKeterangan" name="keterangan"><option value="">Keep current</option>@foreach ($keteranganOptions as $option)<option value="{{ $option }}">{{ $option }}</option>@endforeach</select></div></div></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary" id="btnSaveInvoiceUpdate" disabled>Update Selected</button></div></form></div></div>
+<div class="modal fade" id="invoiceUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <form id="invoiceUpdateForm" class="modal-content">
+            <input type="hidden" id="modalInvoiceAnchorId" name="anchor_id">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Materials · <span id="modalInvoiceTitle" class="text-primary"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalLoading" class="text-center py-4">
+                    <span class="spinner-border spinner-border-sm"></span> Loading...
+                </div>
+                <div id="modalMaterialsContainer" class="d-none">
+                    <div class="table-responsive" style="max-height:420px; overflow-x:auto;">
+                        <table class="table table-sm table-bordered text-nowrap align-middle">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 36px;" class="text-center"></th>
+                                    <th>Supplier</th>
+                                    <th>Type</th>
+                                    <th>Dimensions</th>
+                                    <th>QTY</th>
+                                    <th>Status</th>
+                                    <th>Keterangan</th>
+                                    <th>ETA Port</th>
+                                    <th>ETA Warehouse</th>
+                                    <th>Bulan ETA</th>
+                                    <th>Delay ETA Port</th>
+                                    <th>Delay ETA Warehouse</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalMaterialsBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="card bg-light border-0 p-3 mt-3">
+                        <div class="fw-semibold text-muted small mb-2">
+                            <i class="bi bi-pencil-square me-1"></i> Nilai Pembaruan Massal (Kosongkan jika tidak ingin mengubah nilai / Keep current)
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Update Status</label>
+                                <select class="form-select form-select-sm" id="modalStatus" name="status">
+                                    <option value="">Keep current (Tidak diubah)</option>
+                                    @foreach ($statusOptions as $option)
+                                        <option value="{{ $option }}">{{ $option }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Update Keterangan</label>
+                                <select class="form-select form-select-sm" id="modalKeterangan" name="keterangan">
+                                    <option value="">Keep current (Tidak diubah)</option>
+                                    @foreach ($keteranganOptions as $option)
+                                        <option value="{{ $option }}">{{ $option }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Update ETA Port</label>
+                                <input type="date" class="form-control form-control-sm" id="modalEtaPort" name="estimasi_eta_port">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Update ETA Warehouse</label>
+                                <input type="date" class="form-control form-control-sm" id="modalEtaWarehouse" name="estimasi_eta_warehouse">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Update Bulan ETA</label>
+                                <input type="text" class="form-control form-control-sm" id="modalBulanEta" name="estimasi_bulan_eta" placeholder="Contoh: June 2026">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Update Delay ETA Port</label>
+                                <input type="date" class="form-control form-control-sm" id="modalDelayEtaPort" name="estimasi_delay_eta_port">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Update Delay ETA Warehouse</label>
+                                <input type="date" class="form-control form-control-sm" id="modalDelayEtaWarehouse" name="estimasi_delay_eta_warehouse">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="btnSaveInvoiceUpdate" disabled>Update Selected</button>
+            </div>
+        </form>
+    </div>
+</div>
 @endif
 
 @if ($canUploadInvoiceDocuments)
@@ -47,16 +134,163 @@ document.addEventListener('DOMContentLoaded', function () {
     const csrf = '{{ csrf_token() }}';
     const scopedBase = '{{ url('outstanding-materials/show-based-on-invoice') }}';
     const scopedUrl = (anchor, suffix) => scopedBase + '/' + encodeURIComponent(anchor) + '/' + suffix;
-    const table = $('#outstandingInvoiceTable').DataTable({ stateSave: true, stateDuration: 300, processing:true, serverSide:true, searching:true, searchDelay:400, scrollX:false, ajax:'{{ route('outstanding-materials.invoice.data') }}', columns:[{data:'number_invoice'},{data:'supplier'},{data:'material_count',className:'text-end'},{data:'status',className:'text-center'},{data:'keterangan',className:'text-center'},{data:'latest_eta_warehouse'},{data:'packing_list',className:'text-center',orderable:false,searchable:false},{data:'mtc',className:'text-center',orderable:false,searchable:false},{data:'actions',className:'text-center',orderable:false,searchable:false}], order:[], pageLength:10, lengthMenu:[[10,25,50,100],[10,25,50,100]], language:{processing:'Memuat data...',lengthMenu:'Tampilkan _MENU_ invoice per halaman',zeroRecords:'Invoice tidak ditemukan',info:'Menampilkan _START_ sampai _END_ dari _TOTAL_ invoice',infoEmpty:'Tidak ada invoice yang tersedia',paginate:{next:'›',previous:'‹'}}, drawCallback:()=> $('[data-bs-toggle="tooltip"]').tooltip() });
+    const table = $('#outstandingInvoiceTable').DataTable({
+        stateSave: true,
+        stateDuration: 300,
+        stateSaveParams: function (settings, data) {
+            data._sortVersion = 2;
+        },
+        stateLoadParams: function (settings, data) {
+            if (data._sortVersion !== 2) {
+                data.order = [];
+            }
+        },
+        processing: true,
+        serverSide: true,
+        searching: true,
+        searchDelay: 400,
+        scrollX: false,
+        ajax: '{{ route('outstanding-materials.invoice.data') }}',
+        columns: [
+            {data: 'number_invoice'},
+            {data: 'supplier'},
+            {data: 'material_count', className: 'text-end'},
+            {data: 'status', className: 'text-center'},
+            {data: 'keterangan', className: 'text-center'},
+            {data: 'latest_eta_warehouse'},
+            {data: 'packing_list', className: 'text-center', orderable: false, searchable: false},
+            {data: 'mtc', className: 'text-center', orderable: false, searchable: false},
+            {data: 'actions', className: 'text-center', orderable: false, searchable: false}
+        ],
+        order: [],
+        pageLength: 10,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        language: {
+            processing: 'Memuat data...',
+            lengthMenu: 'Tampilkan _MENU_ invoice per halaman',
+            zeroRecords: 'Invoice tidak ditemukan',
+            info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ invoice',
+            infoEmpty: 'Tidak ada invoice yang tersedia',
+            paginate: {next: '›', previous: '‹'}
+        },
+        drawCallback: () => $('[data-bs-toggle="tooltip"]').tooltip()
+    });
     window.OutstandingMaterialStickyTable && window.OutstandingMaterialStickyTable.install('#outstandingInvoiceTable');
     if (table.search()) { $('#invoiceSearch').val(table.search()); }
     $('#invoiceSearch').on('input', function(){ table.search(this.value).draw(); });
     @if ($canManageOutstandingMaterials)
     const updateModal = new bootstrap.Modal(document.getElementById('invoiceUpdateModal'));
     const escapeHtml = value => $('<div>').text(value ?? '').html();
-    $(document).on('click','.js-open-invoice-modal',function(){ const anchor=$(this).data('anchor-id'), invoice=$(this).data('invoice'); $('#modalInvoiceAnchorId').val(anchor); $('#modalInvoiceTitle').text(invoice); $('#modalStatus,#modalKeterangan').val(''); $('#modalMaterialsBody').empty(); $('#modalMaterialsContainer').addClass('d-none'); $('#modalLoading').removeClass('d-none'); $('#btnSaveInvoiceUpdate').prop('disabled',true); updateModal.show(); $.getJSON(scopedUrl(anchor, 'materials')).done(function(rows){ if(!rows.length){ $('#modalMaterialsBody').html('<tr><td colspan="7" class="text-center text-muted">No material found.</td></tr>'); } rows.forEach(function(row){ const dimensions=[row.thickness,row.width,row.diameter,row.length].filter(Boolean).map(escapeHtml).join(' × '); const quantities=[row.qty_pcs,row.est_qty_kg].filter(Boolean).map(escapeHtml).join(' / '); $('#modalMaterialsBody').append('<tr><td><input type="checkbox" class="material-check" value="'+Number(row.id)+'"></td><td>'+escapeHtml(row.supplier)+'</td><td>'+escapeHtml(row.type)+'</td><td>'+dimensions+'</td><td>'+quantities+'</td><td>'+escapeHtml(row.status)+'</td><td>'+escapeHtml(row.keterangan || '-')+'</td></tr>'); }); $('#modalLoading').addClass('d-none'); $('#modalMaterialsContainer').removeClass('d-none'); }).fail(function(){ $('#modalLoading').html('<span class="text-danger">Unable to load materials.</span>'); }); });
-    $(document).on('change','.material-check',function(){ $('#btnSaveInvoiceUpdate').prop('disabled',$('.material-check:checked').length===0); });
-    $('#invoiceUpdateForm').on('submit',function(e){ e.preventDefault(); const ids=$('.material-check:checked').map(function(){return Number(this.value);}).get(); if(!ids.length || (!$('#modalStatus').val() && !$('#modalKeterangan').val())) return; const button=$('#btnSaveInvoiceUpdate').prop('disabled',true); const anchor=$('#modalInvoiceAnchorId').val(); $.ajax({url:scopedUrl(anchor, 'update'),method:'POST',headers:{'X-CSRF-TOKEN':csrf},data:{material_ids:ids,status:$('#modalStatus').val(),keterangan:$('#modalKeterangan').val()}}).done(function(){ updateModal.hide(); table.ajax.reload(null,false); }).fail(function(xhr){ alert(xhr.responseJSON?.message || 'Update failed.'); }).always(function(){ button.prop('disabled',false); }); });
+    $(document).on('click','.js-open-invoice-modal',function(){
+        const anchor=$(this).data('anchor-id'), invoice=$(this).data('invoice');
+        $('#modalInvoiceAnchorId').val(anchor);
+        $('#modalInvoiceTitle').text(invoice);
+        $('#modalStatus,#modalKeterangan,#modalEtaPort,#modalEtaWarehouse,#modalBulanEta,#modalDelayEtaPort,#modalDelayEtaWarehouse').val('');
+        $('#btnSaveInvoiceUpdate').text('Update Selected');
+        $('#modalMaterialsBody').empty();
+        $('#modalMaterialsContainer').addClass('d-none');
+        $('#modalLoading').removeClass('d-none');
+        $('#btnSaveInvoiceUpdate').prop('disabled',true);
+        updateModal.show();
+        $.getJSON(scopedUrl(anchor, 'materials')).done(function(rows){
+            if(!rows.length){
+                $('#modalMaterialsBody').html('<tr><td colspan="12" class="text-center text-muted">No material found.</td></tr>');
+            }
+            rows.forEach(function(row){
+                const dimensions=[row.thickness,row.width,row.diameter,row.length].filter(Boolean).map(escapeHtml).join(' × ');
+                const quantities=[row.qty_pcs,row.est_qty_kg].filter(Boolean).map(escapeHtml).join(' / ');
+                $('#modalMaterialsBody').append('<tr data-status="'+escapeHtml(row.status)+'" data-keterangan="'+escapeHtml(row.keterangan || '')+'">' +
+                    '<td><input type="checkbox" class="material-check" value="'+Number(row.id)+'"></td>' +
+                    '<td>'+escapeHtml(row.supplier)+'</td>' +
+                    '<td>'+escapeHtml(row.type)+'</td>' +
+                    '<td>'+dimensions+'</td>' +
+                    '<td>'+quantities+'</td>' +
+                    '<td>'+escapeHtml(row.status)+'</td>' +
+                    '<td>'+escapeHtml(row.keterangan || '-')+'</td>' +
+                    '<td>'+escapeHtml(row.estimasi_eta_port || '-')+'</td>' +
+                    '<td>'+escapeHtml(row.estimasi_eta_warehouse || '-')+'</td>' +
+                    '<td>'+escapeHtml(row.estimasi_bulan_eta || '-')+'</td>' +
+                    '<td>'+escapeHtml(row.estimasi_delay_eta_port || '-')+'</td>' +
+                    '<td>'+escapeHtml(row.estimasi_delay_eta_warehouse || '-')+'</td>' +
+                '</tr>');
+            });
+            $('#modalLoading').addClass('d-none');
+            $('#modalMaterialsContainer').removeClass('d-none');
+        }).fail(function(){
+            $('#modalLoading').html('<span class="text-danger">Unable to load materials.</span>');
+        });
+    });
+    $(document).on('change','.material-check',function(){
+        $('#btnSaveInvoiceUpdate').prop('disabled',$('.material-check:checked').length===0);
+    });
+    $('#invoiceUpdateForm').on('submit',function(e){
+        e.preventDefault();
+        const ids=$('.material-check:checked').map(function(){return Number(this.value);}).get();
+        if(!ids.length) return;
+
+        const status = $('#modalStatus').val();
+        const keterangan = $('#modalKeterangan').val();
+        const etaPort = $('#modalEtaPort').val();
+        const etaWarehouse = $('#modalEtaWarehouse').val();
+        const bulanEta = $('#modalBulanEta').val();
+        const delayEtaPort = $('#modalDelayEtaPort').val();
+        const delayEtaWarehouse = $('#modalDelayEtaWarehouse').val();
+
+        const hasUpdate = [status, keterangan, etaPort, etaWarehouse, bulanEta, delayEtaPort, delayEtaWarehouse].some(function(v){
+            return v !== null && v !== undefined && String(v).trim() !== '';
+        });
+
+        if (!hasUpdate) {
+            const msg = 'Pilih atau isi setidaknya satu kolom pembaruan terlebih dahulu.';
+            if (typeof window.Swal !== 'undefined') {
+                window.Swal.fire({icon:'warning', title:'Perhatian', text:msg});
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+
+        const data = {
+            material_ids: ids
+        };
+        if (status) data.status = status;
+        if (keterangan) data.keterangan = keterangan;
+        if (etaPort) data.estimasi_eta_port = etaPort;
+        if (etaWarehouse) data.estimasi_eta_warehouse = etaWarehouse;
+        if (bulanEta) data.estimasi_bulan_eta = bulanEta;
+        if (delayEtaPort) data.estimasi_delay_eta_port = delayEtaPort;
+        if (delayEtaWarehouse) data.estimasi_delay_eta_warehouse = delayEtaWarehouse;
+
+        const button=$('#btnSaveInvoiceUpdate').prop('disabled',true);
+        const anchor=$('#modalInvoiceAnchorId').val();
+        $.ajax({
+            url:scopedUrl(anchor, 'update'),
+            method:'POST',
+            headers:{'X-CSRF-TOKEN':csrf},
+            data: data
+        }).done(function(response){
+            updateModal.hide();
+            table.ajax.reload(null,false);
+            if (typeof window.Swal !== 'undefined') {
+                window.Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: response?.message || (ids.length + ' material berhasil diperbarui.'),
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        }).fail(function(xhr){
+            const msg = xhr.responseJSON?.message || (xhr.responseJSON?.errors ? Object.values(xhr.responseJSON.errors).flat().join(' ') : 'Update failed.');
+            if (typeof window.Swal !== 'undefined') {
+                window.Swal.fire({icon: 'error', title: 'Gagal', text: msg});
+            } else {
+                alert(msg);
+            }
+        }).always(function(){
+            button.prop('disabled',false);
+        });
+    });
     @endif
     @if ($canUploadInvoiceDocuments)
     const uploadModal = new bootstrap.Modal(document.getElementById('invoiceUploadModal'));
@@ -69,6 +303,36 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     $('#invoiceUploadForm').on('submit',function(e){ e.preventDefault(); const form=this; if(uploadConfirmationPending) return; if(!$('#uploadPackingList').val() && !$('#uploadMtc').val()){ $('#uploadStatus').text('Choose at least one document.').addClass('text-danger'); return; } uploadConfirmationPending=true; confirmInvoiceUpload().then(function(confirmed){ if(!confirmed) return; const submit=$('#btnUploadInvoiceDocuments').prop('disabled',true); $('#uploadStatus').text('Uploading...').removeClass('text-danger'); const data=new FormData(form); const anchor=$('#uploadInvoiceAnchorId').val(); $.ajax({url:scopedUrl(anchor, 'documents'),method:'POST',headers:{'X-CSRF-TOKEN':csrf},data:data,processData:false,contentType:false}).done(function(response){ $('#uploadStatus').text(response.message || 'Documents synchronized.'); setTimeout(function(){ uploadModal.hide(); table.ajax.reload(null,false); },700); }).fail(function(xhr){ $('#uploadStatus').text(xhr.responseJSON?.message || 'Upload failed.').addClass('text-danger'); }).always(function(){ submit.prop('disabled',false); }); }).finally(function(){ uploadConfirmationPending=false; }); });
     @endif
+    // Handle archive confirmation
+    $(document).on('submit', '.js-outstanding-invoice-archive-form', function (e) {
+        e.preventDefault();
+        const form = this;
+        const invoice = $(this).data('invoice');
+        const message = 'Arsipkan invoice "' + invoice + '"? Invoice yang diarsipkan akan dipindahkan ke daftar arsip.';
+
+        if (typeof window.Swal === 'undefined') {
+            if (window.confirm(message)) {
+                form.submit();
+            }
+            return;
+        }
+
+        window.Swal.fire({
+            title: 'Arsipkan Invoice?',
+            text: message,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d97706',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Arsipkan',
+            cancelButtonText: 'Batal',
+            reverseButtons: true
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
 });
 </script>
 @endpush

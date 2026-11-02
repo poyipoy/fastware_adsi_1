@@ -888,6 +888,15 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('/show-based-on-invoice/{outstandingMaterial}/materials', [OutstandingMaterialController::class, 'invoiceMaterialsForAnchor'])->name('invoice.materials.scoped');
         Route::post('/show-based-on-invoice/{outstandingMaterial}/update', [OutstandingMaterialController::class, 'updateInvoiceFieldsForAnchor'])->name('invoice.update.scoped');
         Route::post('/show-based-on-invoice/{outstandingMaterial}/documents', [OutstandingMaterialController::class, 'uploadInvoiceDocumentsForAnchor'])->name('invoice.documents.upload.scoped');
+        Route::post('/show-based-on-invoice/{outstandingMaterial}/archive', [OutstandingMaterialController::class, 'archiveInvoice'])->name('invoice.archive');
+        Route::post('/materials/archive', [OutstandingMaterialController::class, 'archiveMaterials'])->name('materials.archive');
+        Route::post('/materials/restore', [OutstandingMaterialController::class, 'restoreMaterials'])->name('materials.restore');
+        Route::get('/archived-invoices', [OutstandingMaterialController::class, 'archivedInvoiceIndex'])->name('invoice.archived.index');
+        Route::get('/archived-invoices/data', [OutstandingMaterialController::class, 'archivedInvoiceData'])->name('invoice.archived.data');
+        Route::get('/archived-invoices/{outstandingMaterial}/materials', [OutstandingMaterialController::class, 'archivedInvoiceMaterialsForAnchor'])->name('invoice.archived.materials.scoped');
+        Route::post('/archived-invoices/{outstandingMaterial}/restore', [OutstandingMaterialController::class, 'restoreInvoice'])->name('invoice.restore');
+        Route::get('/archived-materials', [OutstandingMaterialController::class, 'archivedMaterialIndex'])->name('materials.archived.index');
+        Route::get('/archived-materials/data', [OutstandingMaterialController::class, 'archivedMaterialData'])->name('materials.archived.data');
         Route::get('/{outstandingMaterial}/invoice-data', [OutstandingMaterialController::class, 'invoiceDetailData'])->name('invoice-detail.data');
         Route::get('/{outstandingMaterial}/export', [OutstandingMaterialController::class, 'invoiceDetailExport'])->name('invoice-detail.export');
         Route::get('/{outstandingMaterial}/attachment/{type?}', [OutstandingMaterialController::class, 'attachment'])

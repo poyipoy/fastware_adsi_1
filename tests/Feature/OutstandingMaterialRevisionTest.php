@@ -138,7 +138,7 @@ class OutstandingMaterialRevisionTest extends TestCase
         $this->assertSame('matched', $preview['rows'][0]['classification']);
 
         // Execute replace
-        $result = $previewService->execute($preview['token'], 999, 1);
+        $result = $previewService->execute($preview['token'], 999, null);
         $this->assertSame(1, $result['replaced']);
 
         // Verify material was updated but documents preserved
@@ -313,13 +313,12 @@ class OutstandingMaterialRevisionTest extends TestCase
 
         // Tie breaker for same date $today: Supplier A < Supplier B
         $this->assertLessThan($pos2, $pos1);
-        // Future ASC: Today < Tomorrow
-        $this->assertLessThan($pos3, $pos2);
-        // Future ASC: Tomorrow < Next Week
-        $this->assertLessThan($pos4, $pos3);
-        // Future before Past: Next Week < Yesterday
-        $this->assertLessThan($pos5, $pos4);
-        // Past DESC (most recent past first): Yesterday < Last Week
+        // Received sub-sort: Next Week before Tomorrow before Today
+        $this->assertLessThan($pos3, $pos4);
+        $this->assertLessThan($pos1, $pos3);
+        // Today before Yesterday
+        $this->assertLessThan($pos5, $pos2);
+        // Yesterday before Last Week
         $this->assertLessThan($pos6, $pos5);
         // Past before NULL: Last Week < NULL
         $this->assertLessThan($pos7, $pos6);
@@ -485,11 +484,12 @@ class OutstandingMaterialRevisionTest extends TestCase
         $this->assertNotFalse($posLastMonth);
         $this->assertNotFalse($posNull);
 
-        // Future ASC: Tomorrow before Next Month
-        $this->assertLessThan($posNextMonth, $posTomorrow);
-        // Future before Past: Next Month before Yesterday
-        $this->assertLessThan($posYesterday, $posNextMonth);
-        // Past DESC (most recent past first): Yesterday before Last Month
+        // Under the 5-tier priority model, Received invoices (Tier 5) are sorted by latest_eta_warehouse DESC:
+        // Next Month (furthest future) before Tomorrow:
+        $this->assertLessThan($posTomorrow, $posNextMonth);
+        // Tomorrow before Yesterday:
+        $this->assertLessThan($posYesterday, $posTomorrow);
+        // Yesterday before Last Month:
         $this->assertLessThan($posLastMonth, $posYesterday);
         // Past before NULL: Last Month before NULL
         $this->assertLessThan($posNull, $posLastMonth);
@@ -675,7 +675,7 @@ class OutstandingMaterialRevisionTest extends TestCase
         $this->assertSame('Plate SS400', $mapped[3]); // TYPE
         $this->assertSame(12.5, $mapped[4]); // Thickness
         $this->assertSame(1500.0, $mapped[5]); // Width
-        $this->assertNull($mapped[6]); // Diameter
+        $this->assertSame(0.0, $mapped[6]); // Diameter (Track A1: numeric zero)
         $this->assertSame('6000', $mapped[7]); // Length
         $this->assertSame(10.0, $mapped[8]); // QTY (PCS)
         $this->assertSame(2500.0, $mapped[9]); // Est QTY (KG)
@@ -720,7 +720,6 @@ class OutstandingMaterialRevisionTest extends TestCase
         $controller = new OutstandingMaterialController($access, $documents, $identity, $batch);
 
         $user = new User(['name' => 'ADMINISTRATOR']);
-        $user->id = 1;
         Auth::setUser($user);
 
         $request = Request::create(route('outstanding-materials.bulk-store'), 'POST', [

@@ -22,6 +22,7 @@
 
         var selectAll = document.getElementById('selectAllInvoiceMaterials');
         var updateButton = document.getElementById('btnSaveInvoiceUpdate');
+        var archiveButton = document.getElementById('btnArchiveSelectedMaterials');
 
         function checks() {
             return Array.prototype.slice.call(body.querySelectorAll('.material-check'));
@@ -51,6 +52,23 @@
 
             if (updateButton) {
                 updateButton.disabled = selected.length === 0;
+            }
+
+            if (archiveButton) {
+                var allArchivable = selected.length > 0 && selected.every(function (checkbox) {
+                    var row = checkbox.closest('tr');
+                    var status = (row ? row.dataset.status : '') || '';
+                    var keterangan = (row ? row.dataset.keterangan : '') || '';
+                    return status.toLowerCase() === 'received' && keterangan.toLowerCase() === 'closed';
+                });
+                archiveButton.disabled = !allArchivable;
+                if (selected.length === 0) {
+                    archiveButton.title = 'Pilih material terlebih dahulu';
+                } else if (!allArchivable) {
+                    archiveButton.title = 'Hanya material dengan status Received dan keterangan Closed yang dapat diarsipkan';
+                } else {
+                    archiveButton.title = 'Arsipkan ' + selected.length + ' material terpilih';
+                }
             }
         }
 

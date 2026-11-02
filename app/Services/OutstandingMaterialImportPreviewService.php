@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Imports\OutstandingMaterialImport;
 use App\Models\OutstandingMaterial;
+use App\Models\OutstandingMaterialInvoice;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -97,6 +98,34 @@ class OutstandingMaterialImportPreviewService
         $summary = ['new' => 0, 'errors' => 0];
 
         foreach ($rows as $row) {
+            $isArchived = false;
+            if (! empty($row['invoice_identity_key'])) {
+                $isArchived = OutstandingMaterialInvoice::query()
+                    ->where('invoice_identity_key', $row['invoice_identity_key'])
+                    ->whereNotNull('archived_at')
+                    ->exists();
+            }
+
+            if ($isArchived) {
+                $errors[] = sprintf(
+                    'Baris %d: Invoice "%s" untuk supplier "%s" telah diarsipkan dan tidak dapat ditambahkan data baru.',
+                    $row['source_row'],
+                    $row['number_invoice'] ?? '',
+                    $row['supplier'] ?? '',
+                );
+                $classified[] = [
+                    'source_row' => $row['source_row'],
+                    'supplier' => $row['supplier'],
+                    'number_invoice' => $row['number_invoice'],
+                    'type' => $row['type'],
+                    'status' => $row['status'],
+                    'classification' => 'invalid',
+                    'payload' => $row,
+                ];
+
+                continue;
+            }
+
             $summary['new']++;
             $classified[] = [
                 'source_row' => $row['source_row'],
@@ -155,6 +184,31 @@ class OutstandingMaterialImportPreviewService
                 ->all();
 
             if (count($existing) > 0) {
+                $hasArchived = OutstandingMaterial::query()
+                    ->whereIn('id', $existing)
+                    ->archived()
+                    ->exists();
+
+                if ($hasArchived) {
+                    $summary['unmatched']++;
+                    $errors[] = sprintf(
+                        'Baris %d: Material pada invoice "%s" telah diarsipkan dan tidak dapat diperbarui.',
+                        $row['source_row'],
+                        $row['number_invoice'] ?? '',
+                    );
+                    $classified[] = [
+                        'source_row' => $row['source_row'],
+                        'supplier' => $row['supplier'],
+                        'number_invoice' => $row['number_invoice'],
+                        'type' => $row['type'],
+                        'status' => $row['status'],
+                        'classification' => 'unmatched',
+                        'payload' => $row,
+                    ];
+
+                    continue;
+                }
+
                 $summary['matched']++;
                 $classified[] = [
                     'source_row' => $row['source_row'],
@@ -294,6 +348,7 @@ class OutstandingMaterialImportPreviewService
                 $row['number_invoice'],
                 $actorId,
             );
+            $this->invoices->assertNotArchived($invoiceHeader, 'import');
             $inheritance = $this->documents->inheritanceForIdentityKey($row['invoice_identity_key'], true);
             OutstandingMaterial::create([
                 ...$this->materialFields($row),
@@ -356,6 +411,11 @@ class OutstandingMaterialImportPreviewService
                 ->get();
 
             foreach ($matched as $material) {
+                $currentHeader = $material->invoice_id
+                    ? OutstandingMaterialInvoice::query()->whereKey($material->invoice_id)->lockForUpdate()->first()
+                    : ($material->invoice_identity_key ? OutstandingMaterialInvoice::query()->where('invoice_identity_key', $material->invoice_identity_key)->lockForUpdate()->first() : null);
+                $this->invoices->assertNotArchived($currentHeader, 'import replace');
+
                 // Re-canonicalize invoice for the (possibly changed) supplier.
                 try {
                     $canonical = $this->identity->canonicalizeInvoice(
@@ -368,9 +428,13 @@ class OutstandingMaterialImportPreviewService
                         $updateData['number_invoice'] ?? $material->number_invoice,
                         $actorId,
                     );
+                    $this->invoices->assertNotArchived($invoiceHeader, 'import replace');
                     $updateData['invoice_identity_key'] = $canonical['invoice_identity_key'];
                     $updateData['invoice_id'] = $invoiceHeader->getKey();
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
+                    if ($e instanceof ValidationException) {
+                        throw $e;
+                    }
                     // If canonicalization fails, keep existing invoice.
                 }
 

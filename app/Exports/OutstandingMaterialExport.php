@@ -7,13 +7,14 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class OutstandingMaterialExport implements FromCollection, WithColumnWidths, WithHeadings, WithMapping, WithStyles
+class OutstandingMaterialExport implements FromCollection, WithColumnWidths, WithHeadings, WithMapping, WithStrictNullComparison, WithStyles
 {
     private Collection $materials;
 
@@ -170,8 +171,12 @@ class OutstandingMaterialExport implements FromCollection, WithColumnWidths, Wit
         return (string) $value;
     }
 
-    private function numberValue(mixed $value): mixed
+    private function numberValue(mixed $value): float
     {
-        return $value === null ? null : (float) $value;
+        if ($value === null || $value === '' || (is_string($value) && trim($value) === '')) {
+            return 0.0;
+        }
+
+        return (float) $value;
     }
 }

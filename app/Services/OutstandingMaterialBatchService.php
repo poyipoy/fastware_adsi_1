@@ -62,6 +62,7 @@ class OutstandingMaterialBatchService
                 $canonicalHeader['number_invoice'],
                 $userId,
             );
+            $this->invoices->assertNotArchived($invoiceHeader, 'penambahan material');
             $inheritance = $this->documents->inheritanceForIdentityKey($invoiceIdentityKey, true);
             $created = new Collection();
 

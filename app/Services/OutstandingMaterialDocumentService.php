@@ -58,6 +58,19 @@ class OutstandingMaterialDocumentService
                 $newPaths,
                 &$oldPaths,
             ): int {
+                $headers = OutstandingMaterialInvoice::query()
+                    ->where('number_invoice', $invoice)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($headers as $header) {
+                    if ($header->isArchived()) {
+                        throw ValidationException::withMessages([
+                            'invoice' => 'Invoice ini telah diarsipkan dan dokumennya tidak dapat diubah. Silakan pulihkan invoice terlebih dahulu.',
+                        ]);
+                    }
+                }
+
                 $rows = OutstandingMaterial::query()
                     ->where('number_invoice', $invoice)
                     ->lockForUpdate()
@@ -103,7 +116,7 @@ class OutstandingMaterialDocumentService
                 'new_paths' => array_values($newPaths),
             ];
         } catch (Throwable $exception) {
-            if (!$persisted) {
+            if (! $persisted) {
                 $this->deletePaths($newPaths);
             }
             throw $exception;
@@ -135,6 +148,17 @@ class OutstandingMaterialDocumentService
 
             $oldPaths = [];
             $updated = DB::transaction(function () use ($identityKey, $updatedBy, $newPaths, &$oldPaths): int {
+                $header = OutstandingMaterialInvoice::query()
+                    ->where('invoice_identity_key', $identityKey)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($header && $header->isArchived()) {
+                    throw ValidationException::withMessages([
+                        'invoice' => 'Invoice ini telah diarsipkan dan dokumennya tidak dapat diubah. Silakan pulihkan invoice terlebih dahulu.',
+                    ]);
+                }
+
                 $rows = OutstandingMaterial::query()
                     ->where('invoice_identity_key', $identityKey)
                     ->lockForUpdate()
@@ -191,7 +215,7 @@ class OutstandingMaterialDocumentService
                 'new_paths' => array_values($newPaths),
             ];
         } catch (Throwable $exception) {
-            if (!$persisted) {
+            if (! $persisted) {
                 $this->deletePaths($newPaths);
             }
             throw $exception;
@@ -270,7 +294,7 @@ class OutstandingMaterialDocumentService
             $headerQuery->lockForUpdate();
         }
         $header = $headerQuery->first(['packing_list_path', 'mtc_path', 'document_review_required']);
-        if ($header && !$header->document_review_required && ($header->packing_list_path || $header->mtc_path)) {
+        if ($header && ! $header->document_review_required && ($header->packing_list_path || $header->mtc_path)) {
             return [
                 'packing_list_path' => $this->nonEmptyPath($header->packing_list_path),
                 'mtc_path' => $this->nonEmptyPath($header->mtc_path),
@@ -298,7 +322,7 @@ class OutstandingMaterialDocumentService
     public function resolvePath(?string $path): ?array
     {
         $path = $this->nonEmptyPath($path);
-        if (!$path || str_contains($path, '..') || str_contains($path, '\\')) {
+        if (! $path || str_contains($path, '..') || str_contains($path, '\\')) {
             return null;
         }
 
@@ -335,7 +359,7 @@ class OutstandingMaterialDocumentService
                 })
                 ->exists();
 
-            if (!$referenced) {
+            if (! $referenced) {
                 $referenced = OutstandingMaterialInvoice::query()
                     ->where(function ($query) use ($path): void {
                         $query
@@ -350,11 +374,11 @@ class OutstandingMaterialDocumentService
             }
 
             $resolved = $this->resolvePath($path);
-            if (!$resolved || !Storage::disk($resolved['disk'])->exists($resolved['path'])) {
+            if (! $resolved || ! Storage::disk($resolved['disk'])->exists($resolved['path'])) {
                 continue;
             }
 
-            if (!Storage::disk($resolved['disk'])->delete($resolved['path'])) {
+            if (! Storage::disk($resolved['disk'])->delete($resolved['path'])) {
                 Log::warning('Outstanding Material document cleanup failed.', [
                     'path' => $path,
                     'disk' => $resolved['disk'],
@@ -381,11 +405,11 @@ class OutstandingMaterialDocumentService
         // temporary upload.  FilesystemAdapter::putFileAs() relies exclusively
         // on getRealPath(), so write the verified temporary file as a stream.
         $sourcePath = $file->getRealPath();
-        if (!is_string($sourcePath) || $sourcePath === '' || !is_file($sourcePath)) {
+        if (! is_string($sourcePath) || $sourcePath === '' || ! is_file($sourcePath)) {
             $sourcePath = $file->getPathname();
         }
 
-        if (!is_string($sourcePath) || $sourcePath === '' || !is_file($sourcePath)) {
+        if (! is_string($sourcePath) || $sourcePath === '' || ! is_file($sourcePath)) {
             throw ValidationException::withMessages([
                 $directory => 'Temporary file upload tidak tersedia. Silakan pilih ulang file dan coba lagi.',
             ]);
@@ -396,8 +420,8 @@ class OutstandingMaterialDocumentService
             '',
             strtolower((string) $file->getClientOriginalExtension()),
         );
-        $name = bin2hex(random_bytes(20)) . ($extension !== '' ? '.' . $extension : '');
-        $path = trim(self::PRIVATE_PREFIX . $directory . '/' . $name, '/');
+        $name = bin2hex(random_bytes(20)).($extension !== '' ? '.'.$extension : '');
+        $path = trim(self::PRIVATE_PREFIX.$directory.'/'.$name, '/');
         $stream = fopen($sourcePath, 'rb');
 
         if ($stream === false) {
@@ -412,7 +436,7 @@ class OutstandingMaterialDocumentService
             fclose($stream);
         }
 
-        if (!$stored) {
+        if (! $stored) {
             throw new RuntimeException('Unable to store the uploaded document.');
         }
 

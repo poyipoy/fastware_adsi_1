@@ -1024,6 +1024,9 @@ table.om-table.dataTable thead > tr.om-filter-row > th {
                 <div class="om-card-header">
                     <h5 class="om-card-title">List Outstanding Material</h5>
                     <div class="om-toolbar">
+                        <a href="{{ route('outstanding-materials.materials.archived.index') }}" class="btn btn-outline-warning">
+                            <i class="bi bi-archive me-1"></i>Archived Materials
+                        </a>
                         @if ($canManageOutstandingMaterials)
                             <a href="{{ route('outstanding-materials.invoice.index') }}" class="btn btn-outline-dark">
                                 <i class="bi bi-receipt me-1"></i>Invoice View
