@@ -1,0 +1,10 @@
+﻿issue_group,assessment_rows,distinct_missing_definitions,evidence_limit,required_hr_decision,required_dba_decision
+IDENTITY_UNRESOLVED,17,,4 invalid or zero NPK; 13 ambiguous source NPK,Supply private identity evidence; no numeric ID fallback,Verify unique business identity evidence
+REPEATED_COMPONENT_KEY,44,,Groups overlap other issues; no survivor established,Determine event revision and row grouping semantics,Assess target unique keys and historical retention
+MISSING_SOURCE_DEFINITION,9,5,1 TC and 4 Additional distinct definitions absent,Recover authentic definition and historical version,Validate provenance; never create guessed master
+SOURCE_STATUS_LOCK,281,,Source status 1/2/3 is not target workflow equivalence,Define status and historical lock mapping,Validate preservation and no lock reset
+SOURCE_NULL_TOTAL,281,,All source totals explicitly NULL,Confirm preserve NULL; no calculated replacement,Preserve typed NULL
+REFERENCE_WITH_NULL_SCORE,12,,NULL and zero are different; overlapping issue,Explain missing score with master reference,Validate original literal and grouping
+SCORE_WITHOUT_REFERENCE,4,,No automatic default master,Supply event and competency evidence,Reject invented or numeric fallback master
+ZERO_SCORE,5,,All five on TC; not automatically invalid,Decide historical zero semantics,Preserve literal zero
+SOURCE_TARGET_IDENTITY_UNESTABLISHED,281,,0 reviewed event matches; 281 source PK collisions,Prove exact source-target event equivalence,Validate all component unique keys

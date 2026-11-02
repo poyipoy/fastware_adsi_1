@@ -1041,6 +1041,15 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/sales-visit/dashboard/export', [\App\Http\Controllers\SalesVisitController::class, 'exportExcel'])->name('salesvisit.dashboard.export');
 
     // ===== HR Base Competency — Master Job Position =====
+    Route::prefix('hr/master-department')->name('mst-department.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\MstDepartmentController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\MstDepartmentController::class, 'store'])->name('store');
+        Route::get('/{mstDepartment}', [\App\Http\Controllers\MstDepartmentController::class, 'show'])->name('show');
+        Route::put('/{mstDepartment}', [\App\Http\Controllers\MstDepartmentController::class, 'update'])->name('update');
+        Route::patch('/{mstDepartment}/status', [\App\Http\Controllers\MstDepartmentController::class, 'status'])->name('status');
+        Route::post('/{mstDepartment}/sections/{mstSection}/move', [\App\Http\Controllers\MstDepartmentController::class, 'moveSection'])->name('move-section');
+    });
+
     Route::prefix('hr')->name('mst-job-position.')->group(function () {
         Route::get('/master-job-position', [\App\Http\Controllers\MstJobPositionController::class, 'index'])->name('index');
         Route::get('/master-job-position/create', [\App\Http\Controllers\MstJobPositionController::class, 'create'])->name('create');

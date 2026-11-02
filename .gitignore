@@ -31,10 +31,13 @@ yarn-error.log
 /storage/framework/cache/*
 /storage/framework/sessions/*
 /storage/framework/views/*
+/storage/framework/department-browser-qa/
+/storage/framework/warehouse-release-test-views/
 /storage/bin/
 
 # Local patches, temporary dumps, and agent configs
 /*.zip
+/HR2025-*.xlsx
 /scratch/
 /dms_adasi_rev1*.sql
 /update_outstanding_material_month_order.sql

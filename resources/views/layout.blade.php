@@ -1470,6 +1470,11 @@
                                             @if ($hrRoleAccess->hasFullAccess($hrUser))
                                                  <li><a class="dropdown-item" href="{{ route('mst-job-position.index') }}">
                                                          Master Job Position</a></li>
+                                            @endif
+                                            @if (app(\App\Services\HR\JobPositionAccessService::class)->canManageMapping($hrUser))
+                                                <li><a class="dropdown-item" href="{{ route('mst-department.index') }}">Master Department</a></li>
+                                            @endif
+                                            @if (app(\App\Services\HR\JobPositionAccessService::class)->canViewMapping($hrUser))
                                                  <li><a class="dropdown-item" href="{{ route('user-job-position.index') }}">
                                                          Mapping Karyawan</a></li>
                                             @endif

@@ -19,6 +19,11 @@
 
     <section class="section">
         <div class="container-fluid">
+            @unless($canManageMapping)
+                <div class="alert alert-info" role="status">
+                    Akses baca saja untuk mapping dan Working Experience bawahan dalam lingkup pelaporan Anda.
+                </div>
+            @endunless
 
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm">
@@ -152,6 +157,7 @@
             @endif
 
             {{-- Form Tambah Mapping --}}
+            @if($canManageMapping)
             <div class="card shadow-sm border-0 rounded-4 mb-4">
                 <div class="card-header bg-primary text-white rounded-top-4 py-3">
                     <h6 class="mb-0 fw-semibold"><i class="fas fa-user-tag me-2"></i>Assign Karyawan ke Posisi</h6>
@@ -200,6 +206,7 @@
             </div>
 
             {{-- Filter & Tabel --}}
+            @endif
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-header bg-white border-0 pt-4 px-4">
                     <form method="GET" class="row g-3 align-items-end">
@@ -263,6 +270,7 @@
                                             @endif
                                         </td>
                                         <td class="text-center">
+                                            @if($canManageMapping)
                                             <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 me-1 btn-edit-mapping"
                                                     data-id="{{ $map->id }}"
                                                     data-user-id="{{ $map->user_id }}"
@@ -292,11 +300,20 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            @else
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-working-exp"
+                                                    data-user-id="{{ $map->user_id }}" data-user-name="{{ $map->user?->name }}"
+                                                    data-position-name="{{ $map->jobPosition?->position_name }}">
+                                                Detail
+                                            </button>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center text-muted py-4">Belum ada mapping karyawan.</td>
+                                        <td colspan="8" class="text-center text-muted py-4">
+                                            {{ $canManageMapping ? 'Belum ada mapping karyawan.' : 'Tidak ada mapping bawahan aktif dalam lingkup Anda atau sesuai filter.' }}
+                                        </td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -308,6 +325,7 @@
                 </div>
             </div>
 
+            @if($canManageMapping)
             <!-- Modal Edit Mapping -->
             <div class="modal fade" id="modalEditMapping" tabindex="-1" aria-labelledby="modalEditMappingLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -369,6 +387,7 @@
                 </div>
             </div>
 
+            @endif
             {{-- Modal: Working Experience (Modul 3.1) --}}
             <div class="modal fade" id="modalWorkingExp" tabindex="-1" aria-labelledby="modalWorkingExpLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -381,7 +400,12 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body p-4">
+                            @unless($canManageMapping)
+                                <p>Posisi pada mapping yang dipilih: <span id="we-position-name"></span></p>
+                                <p class="text-muted">Working Experience hanya dapat dibaca.</p>
+                            @endunless
                             {{-- Add Form --}}
+                            @if($canManageMapping)
                             <div class="card border-0 bg-light rounded-3 mb-4">
                                 <div class="card-body p-3">
                                     <h6 class="fw-semibold text-muted mb-3"><i class="bi bi-plus-circle me-1"></i> Tambah Riwayat</h6>
@@ -434,6 +458,7 @@
                                 </div>
                             </div>
                             {{-- Table --}}
+                            @endif
                             <div class="table-responsive">
                                 <table class="table table-hover table-sm align-middle" id="we-table">
                                     <thead class="table-secondary">
@@ -444,7 +469,7 @@
                                             <th>Section</th>
                                             <th>Departemen</th>
                                             <th>Keterangan</th>
-                                            <th class="text-center">Aksi</th>
+                                            @if($canManageMapping)<th class="text-center">Aksi</th>@endif
                                         </tr>
                                     </thead>
                                     <tbody id="we-tbody">
@@ -460,6 +485,7 @@
                 </div>
             </div>
 
+            @if($canManageMapping)
             {{-- Modal: Edit Working Experience --}}
             <div class="modal fade" id="modalEditWE" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
@@ -511,11 +537,13 @@
                 </div>
             </div>
 
+            @endif
         </div>
     </section>
 </main>
 
 {{-- Modal: Import Bulk Working Experience --}}
+@if($canManageMapping)
 <div class="modal fade" id="modalImportWe" tabindex="-1" aria-labelledby="modalImportWeLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
@@ -552,6 +580,7 @@
         </div>
     </div>
 </div>
+@endif
 @endsection
 
 @push('scripts')
@@ -562,6 +591,7 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
+            const canManageMapping = @json($canManageMapping);
             // Inisialisasi Select2 untuk form tambah
             $('.select2-form').select2({
                 theme: 'bootstrap-5',
@@ -669,10 +699,20 @@
             // ===== Modul 3.1: Working Experience CRUD =====
             var weCurrentUserId = null;
             var weApiBase = "{{ route('user-job-position.api.working-experience.index') }}";
+            var weRequests = {};
+            var weVersions = {};
 
             function weLoadData(userId, targetTbodyId = '#we-tbody', isReadOnly = false) {
+                isReadOnly = isReadOnly || !canManageMapping;
+                const version = (weVersions[targetTbodyId] || 0) + 1;
+                weVersions[targetTbodyId] = version;
+                if (weRequests[targetTbodyId]) weRequests[targetTbodyId].abort();
+                $(targetTbodyId).empty().append($('<tr>').append($('<td>', {
+                    colspan: isReadOnly ? 6 : 7, class: 'text-center text-muted py-3', text: 'Memuat data...'
+                })));
                 var url = weApiBase + '?user_id=' + userId;
-                $.getJSON(url, function(res) {
+                weRequests[targetTbodyId] = $.getJSON(url, function(res) {
+                    if (weVersions[targetTbodyId] !== version) return;
                     var tbody = $(targetTbodyId);
                     tbody.empty();
                     var data = res.data || [];
@@ -712,17 +752,30 @@
                         }
                         tbody.append(row);
                     });
-                }).fail(function() {
+                }).fail(function(xhr, status) {
+                    if (status === 'abort' || weVersions[targetTbodyId] !== version) return;
                     var colSpan = isReadOnly ? 6 : 7;
-                    $(targetTbodyId).html('<tr><td colspan="' + colSpan + '" class="text-center text-danger py-3">Gagal memuat data.</td></tr>');
+                    const message = xhr.status === 403 ? 'Anda tidak memiliki akses ke riwayat karyawan ini.' : 'Gagal memuat data. Silakan coba lagi.';
+                    $(targetTbodyId).empty().append($('<tr>').append($('<td>', {
+                        colspan: colSpan, class: 'text-center text-danger py-3', role: 'alert', text: message
+                    })));
                 });
             }
+
+            $('#modalWorkingExp, #modalEditMapping').on('hidden.bs.modal', function() {
+                const target = this.id === 'modalWorkingExp' ? '#we-tbody' : '#edit-mapping-we-tbody';
+                weVersions[target] = (weVersions[target] || 0) + 1;
+                if (weRequests[target]) weRequests[target].abort();
+                $(target).empty();
+                if (this.id === 'modalWorkingExp') $('#we-user-name, #we-position-name').empty();
+            });
 
             // Open Working Experience modal
             $(document).on('click', '.btn-working-exp', function() {
                 weCurrentUserId = $(this).data('user-id');
                 var userName = $(this).data('user-name');
                 $('#we-user-name').text(userName);
+                $('#we-position-name').text($(this).data('position-name') || '');
                 // Reset form fields
                 $('#we-year-start,#we-year-end,#we-keterangan').val('');
                 setSelect2TagsVal('#we-job-position', '');

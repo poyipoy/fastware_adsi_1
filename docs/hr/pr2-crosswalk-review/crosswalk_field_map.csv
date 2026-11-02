@@ -1,0 +1,21 @@
+﻿csv_file,csv_column,json_section,json_field,conversion_rule
+ALL_MAPPING_FILES,source_snapshot_sha256,ROOT,source_sha256,Copy pinned source hash from pending JSON; never change to bypass drift
+ALL_MAPPING_FILES,target_snapshot_sha256,ROOT,target_sha256,Copy pinned target hash from pending JSON; re-review on snapshot change
+position_crosswalk.csv,source_label,positions[],source_label,Preserve exact source label; never approve from label similarity
+position_crosswalk.csv,proposed_target_id,positions[],target_id,Only independently reviewed historical equivalence
+category_crosswalk.csv,source_id,categories[],source_id,Source rubric-category reference
+category_crosswalk.csv,proposed_target_id,categories[],target_id,Not competency type; compare four rubric meanings
+category_crosswalk.csv,rubric_difference_reviewed,categories[],rubric_difference_reviewed,Explicit reviewed boolean only
+tc_master_crosswalk.csv,source_id;proposed_target_id,masters.tc[],source_id;target_id,Requires reviewed position category definition and standard
+soft_skill_master_crosswalk.csv,source_id;proposed_target_id,masters.sk[],source_id;target_id,Preserve competency type
+additional_master_crosswalk.csv,source_id;proposed_target_id,masters.ad[],source_id;target_id,Never default missing category or standard
+ALL_MASTER_FILES,description_difference_reviewed,masters.tc/sk/ad[],definition_difference_reviewed,Explicit reviewed boolean; naming differs intentionally
+ALL_MASTER_FILES,standard_difference_reviewed,masters.tc/sk/ad[],standard_difference_reviewed,Explicit reviewed boolean only
+status_semantics.csv,source_status;proposed_target_status;proposed_is_locked,statuses[],source_status;target_status;is_locked,Explicit status map; is_locked must be JSON boolean
+status_semantics.csv,null_total_semantics;zero_score_reviewed;modifier_reviewed,statuses[],null_total_semantics;zero_score_reviewed;modifier_reviewed,PRESERVE is required for NULL totals; review flags JSON booleans
+assessment_identity.csv,source_id;proposed_target_id,assessment_identities[],source_id;target_id,Requires proven exact event identity; PK collision is not evidence
+ALL_SUPPORTED_MAPPING_FILES,hr_review_reference;dba_review_reference;evidence_reference,matching section entry,hr_review;dba_review;evidence,Use independently verifiable signed references in approved private location
+ALL_SUPPORTED_MAPPING_FILES,hr_decision;dba_decision;review_status,matching section entry,decision,NO AUTOMATIC APPROVAL CONVERSION; current inputs remain PENDING or empty
+assessment_exceptions.csv,ALL,NOT_SUPPORTED,NOT_SUPPORTED,Private queue only; current JSON has no identity override or duplicate-survivor mode
+missing_definitions.csv,ALL,NOT_SUPPORTED,NOT_SUPPORTED,Authentic recovery evidence required; no invented definitions
+training_investigation.csv,ALL,NOT_SUPPORTED,NOT_SUPPORTED,Separate provenance review; never pass as delete or relink manifest

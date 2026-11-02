@@ -1,0 +1,5 @@
+﻿cohort,target_2025_rows,cross_year_links_to_2026,current_disposition,verification_evidence_requested,dependency_risk,hr_decision,dba_decision,evidence_reference,review_status
+T25-A,490,0,QUARANTINE,Original request or attendance record plus historical backup or job log,Missing assessment parent; reconstruct lineage before any proposal,,,,PENDING
+T25-B,433,12,QUARANTINE,Original request or attendance plus employee and assessment ownership evidence,Cross-employee links; 12 links to 7 protected assessment-2026 parents,,,,PENDING
+T25-C,10,0,QUARANTINE,Historical selected competency and source assessment evidence,Selected competency mismatch; shared master consumers protected,,,,PENDING
+T25-D,1,0,QUARANTINE,Authentic request attendance outcome or signed event evidence,Coherent relationship does not establish provenance,,,,PENDING

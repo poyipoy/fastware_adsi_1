@@ -1,0 +1,127 @@
+<?php
+
+namespace App\Http\Controllers\magang;
+
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
+// use App\Models\TcJobPosition; // DISABLED
+use App\Models\User;
+
+class StrukturOrganisasiController extends Controller
+{
+    public function index()
+    {
+        // Ambil data mapping departemen dari dashboard TCPD
+        $departmentDefinitions = $this->departmentDefinitions();
+
+        $salesNames = array_map(fn ($region) => 'Sales Region '.$region, range(1, 4));
+        $salesDepartments = \App\Models\MstDepartment::active()
+            ->whereIn('name', $salesNames)->pluck('id', 'name');
+        if ($salesDepartments->count() === 4) {
+            $updatedDefinitions = [];
+            foreach ($departmentDefinitions as $department => $positions) {
+                if ($department === 'Sales Region 1 & 2') {
+                    foreach ($salesNames as $name) {
+                        $updatedDefinitions[$name] = [];
+                    }
+                } elseif ($department !== 'Sales Region 3 & 4') {
+                    $updatedDefinitions[$department] = $positions;
+                }
+            }
+            $departmentDefinitions = $updatedDefinitions;
+        }
+
+        // Hitung jumlah karyawan per departemen
+        $employeeCounts = [];
+        foreach ($departmentDefinitions as $department => $jobPositions) {
+            if ($salesDepartments->count() === 4 && $salesDepartments->has($department)) {
+                $employeeCounts[$department] = \App\Models\UserJobPosition::query()
+                    ->activeAt()
+                    ->join('mst_job_positions', 'user_job_positions.mst_job_position_id', '=', 'mst_job_positions.id')
+                    ->where('mst_job_positions.department_id', $salesDepartments[$department])
+                    ->where('mst_job_positions.is_active', true)
+                    ->distinct()->count('user_job_positions.user_id');
+
+                continue;
+            }
+            $userIds = \Illuminate\Support\Facades\DB::table('user_job_positions')
+                ->join('mst_job_positions', 'user_job_positions.mst_job_position_id', '=', 'mst_job_positions.id')
+                ->whereIn('mst_job_positions.position_name', $jobPositions)
+                ->distinct()
+                ->pluck('user_job_positions.user_id')
+                ->toArray();
+
+            $employeeCounts[$department] = count($userIds);
+        }
+
+        return view('magang.jumlahkaryawan', compact('employeeCounts'));
+    }
+
+    protected function departmentDefinitions(): array
+    {
+        return [
+            'Finance & Accounting, HRGA' => [
+                'HR & GA Section Head',
+                'HR & Legal Staff',
+                'HRGA & CSR Staff',
+                'Finance & Accounting Sec. Head',
+                'Finance Admin',
+                'Finance & Treasury Sec. Head',
+                'Invoicing Staff',
+                'AR Staff',
+                'Accounting Staff & Kasir',
+            ],
+            'PDCA, Procurement, Inventory & IT' => [
+                'PDCA, Inventory, Procurement & IT Sec. Head',
+                'PDCA & Procurement Non Material Staff',
+                'Procurement Material Staff',
+                'Procurement Administration',
+                'Inventory Staff',
+                'IT Staff',
+            ],
+            'Sales Region 1 & 2' => [
+                'Sales Admin',
+                'SOH Region 1',
+                'Sales Engineer Reg 1',
+                'SOH Region 2',
+                'Sales Engineer Reg 2',
+            ],
+            'Sales Region 3 & 4' => [
+                'SOH Region 3',
+                'Sales Engineer Reg 3',
+                'SOH Region 4',
+                'Sales Engineer Reg 4',
+            ],
+            'Delivery Warehouse & PPC' => [
+                'Logistic Admin',
+                'Admin Cutting Sheet (ACS)',
+                'Delivery Staff',
+                'Feeder',
+                'Logistic Foreman',
+                'PPIC Staff',
+            ],
+            'Production Heat Treatment' => [
+                'Produksi HT Sec. Head',
+                'Foreman CT',
+                'Foreman QC',
+                'Leader HT',
+                'Operator CT',
+                'Admin HT & PPC',
+                'Operator MTN',
+                'Operator HT',
+                'Leader Cutting',
+            ],
+            'Production CT, MC & MC Custom' => [
+                'Machining Custom Sec. Head',
+                'Leader MC',
+                'Operator Bubut',
+                'Operator Mc. Custom',
+                'MC Custom Staff',
+                'Operator Machining',
+                'Foreman Machining Custom',
+                'Foreman MC',
+            ],
+        ];
+    }
+}

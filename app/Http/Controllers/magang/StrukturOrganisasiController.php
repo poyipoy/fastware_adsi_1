@@ -15,9 +15,36 @@ class StrukturOrganisasiController extends Controller
         // Ambil data mapping departemen dari dashboard TCPD
         $departmentDefinitions = $this->departmentDefinitions();
 
+        $salesNames = array_map(fn ($region) => 'Sales Region '.$region, range(1, 4));
+        $salesDepartments = \App\Models\MstDepartment::active()
+            ->whereIn('name', $salesNames)->pluck('id', 'name');
+        if ($salesDepartments->count() === 4) {
+            $updatedDefinitions = [];
+            foreach ($departmentDefinitions as $department => $positions) {
+                if ($department === 'Sales Region 1 & 2') {
+                    foreach ($salesNames as $name) {
+                        $updatedDefinitions[$name] = [];
+                    }
+                } elseif ($department !== 'Sales Region 3 & 4') {
+                    $updatedDefinitions[$department] = $positions;
+                }
+            }
+            $departmentDefinitions = $updatedDefinitions;
+        }
+
         // Hitung jumlah karyawan per departemen
         $employeeCounts = [];
         foreach ($departmentDefinitions as $department => $jobPositions) {
+            if ($salesDepartments->count() === 4 && $salesDepartments->has($department)) {
+                $employeeCounts[$department] = \App\Models\UserJobPosition::query()
+                    ->activeAt()
+                    ->join('mst_job_positions', 'user_job_positions.mst_job_position_id', '=', 'mst_job_positions.id')
+                    ->where('mst_job_positions.department_id', $salesDepartments[$department])
+                    ->where('mst_job_positions.is_active', true)
+                    ->distinct()->count('user_job_positions.user_id');
+
+                continue;
+            }
             $userIds = \Illuminate\Support\Facades\DB::table('user_job_positions')
                 ->join('mst_job_positions', 'user_job_positions.mst_job_position_id', '=', 'mst_job_positions.id')
                 ->whereIn('mst_job_positions.position_name', $jobPositions)

@@ -250,7 +250,7 @@
         });
     @endphp
     // Data all positions from backend
-    const allPositions = {!! json_encode($mappedPositions) !!};
+    const allPositions = @json($mappedPositions);
 
     // ---- AJAX: load departemen list di modal ----
     async function loadDeptList() {
@@ -267,7 +267,7 @@
             data.forEach(dept => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item py-1 border-0 bg-transparent text-secondary d-flex align-items-center';
-                li.innerHTML = `<span><i class="fas fa-building text-primary me-2"></i>${dept.name}</span>`;
+                li.textContent = dept.name;
                 deptList.appendChild(li);
             });
         } catch (e) {
@@ -294,7 +294,7 @@
             data.forEach(sec => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item py-1 border-0 bg-transparent text-secondary d-flex align-items-center';
-                li.innerHTML = `<span><i class="fas fa-layer-group text-primary me-2"></i>${sec.name}</span>`;
+                li.textContent = sec.name;
                 secList.appendChild(li);
             });
         } catch (e) {

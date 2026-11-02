@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\HRMenuAccessGroup;
 use App\Http\Requests\ImportWorkingExperienceRequest;
 use App\Http\Requests\StoreWorkingExperienceRequest;
 use App\Http\Requests\UpdateWorkingExperienceRequest;
@@ -11,6 +10,8 @@ use App\Models\MstJobPosition;
 use App\Models\User;
 use App\Models\UserJobPosition;
 use App\Models\WorkingExperience;
+use App\Services\HR\DepartmentStructureService;
+use App\Services\HR\JobPositionAccessService;
 use App\Services\HR\WorkingExperienceValidationService;
 use App\Services\KnowledgeManagement\KmOrganizationAssignmentService;
 use Illuminate\Http\Request;
@@ -18,14 +19,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
 class UserJobPositionController extends Controller
 {
+    public function __construct(private JobPositionAccessService $mappingAccess)
+    {
+    }
+
     private function ensureAccess(): void
     {
-        abort_unless(HRMenuAccessGroup::JOB_POSITION->hasAccessForUser(auth()->user()), 403);
+        abort_unless($this->mappingAccess->canManageMapping(auth()->user()), 403);
     }
 
     /**
@@ -33,10 +39,15 @@ class UserJobPositionController extends Controller
      */
     public function index(Request $request)
     {
-        $this->ensureAccess();
+        abort_unless($this->mappingAccess->canViewMapping($request->user()), 403);
+        $canManageMapping = $this->mappingAccess->canManageMapping($request->user());
+        $request->validate(['position_id' => 'nullable|integer|min:1', 'search' => 'nullable|string|max:255']);
 
-        $query = UserJobPosition::with(['user', 'jobPosition.department', 'jobPosition.section'])
-            ->orderBy('created_at', 'desc');
+        $readable = $this->mappingAccess->getReadableMappingScope($request->user());
+        $query = (clone $readable)
+            ->with(['user:id,npk,name', 'jobPosition.department', 'jobPosition.section'])
+            ->orderBy('created_at', 'desc')
+            ->when(! $canManageMapping, fn ($rows) => $rows->orderByDesc('id'));
 
         if ($request->filled('position_id')) {
             $query->where('mst_job_position_id', $request->position_id);
@@ -49,12 +60,15 @@ class UserJobPositionController extends Controller
         }
 
         $mappings = $query->paginate(25)->appends($request->all());
-        $positions = MstJobPosition::active()->with(['department', 'section'])->orderBy('position_name')->get();
-        $users = User::orderBy('name')->get();
-        $departments = \App\Models\MstDepartment::active()->orderBy('name')->get();
-        $sections = \App\Models\MstSection::active()->orderBy('name')->get();
+        $positions = MstJobPosition::active()
+            ->when(! $canManageMapping, fn ($positions) => $positions
+                ->whereIn('id', (clone $readable)->select('mst_job_position_id')))
+            ->with(['department', 'section'])->orderBy('position_name')->get();
+        $users = $canManageMapping ? User::orderBy('name')->get(['id', 'name', 'npk']) : collect();
+        $departments = $canManageMapping ? \App\Models\MstDepartment::active()->orderBy('name')->get() : collect();
+        $sections = $canManageMapping ? \App\Models\MstSection::active()->orderBy('name')->get() : collect();
 
-        return view('user_job_position.index', compact('mappings', 'positions', 'users', 'departments', 'sections'));
+        return view('user_job_position.index', compact('mappings', 'positions', 'users', 'departments', 'sections', 'canManageMapping'));
     }
 
     /**
@@ -80,6 +94,7 @@ class UserJobPositionController extends Controller
 
         DB::beginTransaction();
         try {
+            app(DepartmentStructureService::class)->lockAssignmentPosition((int) $positionId);
             foreach ($request->user_ids as $userId) {
                 $assignments->create($request->user(), [
                     'user_id' => $userId,
@@ -105,6 +120,9 @@ class UserJobPositionController extends Controller
             return back()
                 ->with('success', "{$created} karyawan berhasil di-assign ke posisi.")
                 ->with('reminder', $reminderMsg);
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('UserJobPositionController::store', ['err' => $e->getMessage()]);
@@ -130,14 +148,17 @@ class UserJobPositionController extends Controller
         ]);
 
         try {
-            $assignments->update($request->user(), $userJobPosition, [
-                'user_id' => $request->user_id,
-                'mst_job_position_id' => $request->mst_job_position_id,
-                'is_active' => $userJobPosition->is_active,
-                'effective_from' => $request->effective_from ?: ($userJobPosition->effective_from ?? today()),
-                'effective_until' => $request->effective_until,
-                'assignment_source' => $request->assignment_source ?: ($userJobPosition->assignment_source ?? 'manual_hr'),
-            ], $request->change_reason ?: 'Assignment diperbarui melalui modul HR.');
+            DB::transaction(function () use ($request, $userJobPosition, $assignments) {
+                app(DepartmentStructureService::class)->lockAssignmentPosition((int) $request->mst_job_position_id);
+                $assignments->update($request->user(), $userJobPosition, [
+                    'user_id' => $request->user_id,
+                    'mst_job_position_id' => $request->mst_job_position_id,
+                    'is_active' => $userJobPosition->is_active,
+                    'effective_from' => $request->effective_from ?: ($userJobPosition->effective_from ?? today()),
+                    'effective_until' => $request->effective_until,
+                    'assignment_source' => $request->assignment_source ?: ($userJobPosition->assignment_source ?? 'manual_hr'),
+                ], $request->change_reason ?: 'Assignment diperbarui melalui modul HR.');
+            }, 3);
 
             // Flash reminder SweetAlert
             $userName = User::find($request->user_id)?->name ?? 'karyawan';
@@ -147,6 +168,8 @@ class UserJobPositionController extends Controller
             return back()
                 ->with('success', 'Mapping karyawan berhasil diperbarui.')
                 ->with('reminder', $reminderMsg);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('UserJobPositionController::update', ['err' => $e->getMessage()]);
 
@@ -160,11 +183,15 @@ class UserJobPositionController extends Controller
     public function toggleActive(Request $request, UserJobPosition $userJobPosition, KmOrganizationAssignmentService $assignments)
     {
         $this->ensureAccess();
-        $assignments->toggle(
-            $request->user(),
-            $userJobPosition,
-            $request->string('change_reason')->trim()->toString() ?: 'Status assignment diubah melalui modul HR.',
-        );
+        DB::transaction(function () use ($request, $userJobPosition, $assignments) {
+            app(DepartmentStructureService::class)->lockOrganization();
+            $locked = UserJobPosition::whereKey($userJobPosition->id)->lockForUpdate()->firstOrFail();
+            if (! $locked->is_active) {
+                app(DepartmentStructureService::class)->lockAssignmentPosition((int) $locked->mst_job_position_id);
+            }
+            $assignments->toggle($request->user(), $locked,
+                $request->string('change_reason')->trim()->toString() ?: 'Status assignment diubah melalui modul HR.');
+        }, 3);
         $userJobPosition->refresh();
         $status = $userJobPosition->is_active ? 'diaktifkan' : 'dinonaktifkan';
 
@@ -197,13 +224,25 @@ class UserJobPositionController extends Controller
      */
     public function getPositionsByUser(Request $request)
     {
-        $userId = $request->user_id;
-        $positions = UserJobPosition::where('user_id', $userId)
-            ->where('is_active', true)
-            ->with('jobPosition.approvalRoutes.approverPosition')
+        abort_unless($this->mappingAccess->canViewMapping($request->user()), 403);
+        $canManageMapping = $this->mappingAccess->canManageMapping($request->user());
+        $employeeId = (int) $request->input('user_id');
+        $readable = $this->mappingAccess->getReadableMappingScope($request->user())
+            ->where('user_id', $employeeId);
+        abort_unless($employeeId > 0 && ($canManageMapping || (clone $readable)->exists()), 403);
+        $request->validate(['user_id' => 'required|integer|exists:users,id']);
+        $positions = $readable
+            ->activeAt()
+            ->with($canManageMapping ? 'jobPosition.approvalRoutes.approverPosition' : 'jobPosition')
             ->get()
             ->pluck('jobPosition')
             ->filter();
+
+        if (! $canManageMapping) {
+            $positions = $positions->unique('id')->values()->map(fn ($position) => $position->only([
+                'id', 'position_name', 'department_id', 'section_id', 'job_level',
+            ]));
+        }
 
         return response()->json($positions);
     }
@@ -218,9 +257,10 @@ class UserJobPositionController extends Controller
      */
     public function getWorkingExperiences(Request $request)
     {
-        $this->ensureAccess();
+        abort_unless($this->mappingAccess->canViewMapping($request->user()), 403);
+        abort_unless($this->mappingAccess->canViewEmployeeWorkingExperience($request->user(), (int) $request->input('user_id')), 403);
 
-        $request->validate(['user_id' => 'required|exists:users,id']);
+        $request->validate(['user_id' => 'required|integer|exists:users,id']);
 
         $data = WorkingExperience::where('user_id', $request->user_id)
             ->chronological()

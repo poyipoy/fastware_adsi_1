@@ -8,7 +8,7 @@ class ImportWorkingExperienceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return app(\App\Services\HR\JobPositionAccessService::class)->canManageMapping($this->user());
     }
 
     public function rules(): array

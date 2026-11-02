@@ -1,0 +1,14 @@
+{
+  "source_sha256": "e697a99f80994ff8987b0a325f6b54ed7dc0f9767a2226f617afaeb7a1e9c3d8",
+  "target_sha256": "996ef43a253969d992f29d917cdc021df353c6c89f8081a005b4f8787b1ea3db",
+  "revision": "PR2_REVIEW_PENDING_2026-10-22",
+  "positions": [],
+  "categories": [],
+  "masters": {
+    "tc": [],
+    "sk": [],
+    "ad": []
+  },
+  "statuses": [],
+  "assessment_identities": []
+}

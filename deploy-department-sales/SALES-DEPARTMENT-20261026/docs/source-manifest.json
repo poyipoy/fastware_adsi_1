@@ -1,0 +1,384 @@
+[
+  {
+    "path": "app/Console/Commands/SplitSalesRegionsCommand.php",
+    "origin": "live-source",
+    "source_sha256": "73fd933550e988fad8b7e6be60f9c840a9a289e7ee9efb93d0a435c1451cdf41",
+    "package_sha256": "73fd933550e988fad8b7e6be60f9c840a9a289e7ee9efb93d0a435c1451cdf41"
+  },
+  {
+    "path": "app/Http/Controllers/MstDepartmentController.php",
+    "origin": "live-source",
+    "source_sha256": "105021edc783716226f60ce2820da0635974208e708e7dd547d97d0be7445d71",
+    "package_sha256": "105021edc783716226f60ce2820da0635974208e708e7dd547d97d0be7445d71"
+  },
+  {
+    "path": "app/Http/Controllers/MstJobPositionController.php",
+    "origin": "live-source",
+    "source_sha256": "58c83df077c82d0fbc1e75fbd6a96c4d83ea1e72061a570e6416d34a957a86b5",
+    "package_sha256": "58c83df077c82d0fbc1e75fbd6a96c4d83ea1e72061a570e6416d34a957a86b5"
+  },
+  {
+    "path": "app/Http/Controllers/UserJobPositionController.php",
+    "origin": "live-source",
+    "source_sha256": "d1016797712359d187a31897982cabfe456683f6635f8ba59b635a4516a119ee",
+    "package_sha256": "d1016797712359d187a31897982cabfe456683f6635f8ba59b635a4516a119ee"
+  },
+  {
+    "path": "app/Http/Controllers/PenilaianTCController.php",
+    "origin": "live-source",
+    "source_sha256": "c91598d14cae5c31ec7a70f1f31d65b7098a6262ac9ff051e6835be06d994eee",
+    "package_sha256": "c91598d14cae5c31ec7a70f1f31d65b7098a6262ac9ff051e6835be06d994eee"
+  },
+  {
+    "path": "app/Http/Controllers/TcController.php",
+    "origin": "live-source",
+    "source_sha256": "e4f7df02435247569986bca93b4658643d2f6ca5d08c16389d6d64bd7fcefd55",
+    "package_sha256": "e4f7df02435247569986bca93b4658643d2f6ca5d08c16389d6d64bd7fcefd55"
+  },
+  {
+    "path": "app/Http/Controllers/magang/StrukturOrganisasiController.php",
+    "origin": "live-source",
+    "source_sha256": "87cd075de71b51840536056c2761a43b75ee9d0a242b5dcbf95d89b8241a3fed",
+    "package_sha256": "87cd075de71b51840536056c2761a43b75ee9d0a242b5dcbf95d89b8241a3fed"
+  },
+  {
+    "path": "app/Services/HR/DepartmentStructureService.php",
+    "origin": "live-source",
+    "source_sha256": "7ae8b0409be77df072fe7c5fb7ef1c289ce813cf11958d548a6bcd1d5d593c66",
+    "package_sha256": "7ae8b0409be77df072fe7c5fb7ef1c289ce813cf11958d548a6bcd1d5d593c66"
+  },
+  {
+    "path": "app/Services/HR/SalesRegionSplitService.php",
+    "origin": "live-source",
+    "source_sha256": "6a73f2493ce045d3bed9667a54e70cf656efb8f2afc2a8662e9c8f8e19b419d0",
+    "package_sha256": "6a73f2493ce045d3bed9667a54e70cf656efb8f2afc2a8662e9c8f8e19b419d0"
+  },
+  {
+    "path": "app/Services/HR/JobPositionAccessService.php",
+    "origin": "live-source",
+    "source_sha256": "cb5fd09e1127ad649011e995ae2b6531753926dfac31ef57038d98c7f2e76abc",
+    "package_sha256": "cb5fd09e1127ad649011e995ae2b6531753926dfac31ef57038d98c7f2e76abc"
+  },
+  {
+    "path": "app/Services/HR/HRRoleAccessService.php",
+    "origin": "live-source",
+    "source_sha256": "762767e98fc6f34e128d9b00dad0d09584ae2144038e919bfd4128e7deb638b8",
+    "package_sha256": "762767e98fc6f34e128d9b00dad0d09584ae2144038e919bfd4128e7deb638b8"
+  },
+  {
+    "path": "app/Services/HR/EmployeeIdentityFormatter.php",
+    "origin": "live-source",
+    "source_sha256": "ccb4c84d0251b1f0237489e3957ed814d8f9f42ae2f2b8c7bc6a847b409c531e",
+    "package_sha256": "ccb4c84d0251b1f0237489e3957ed814d8f9f42ae2f2b8c7bc6a847b409c531e"
+  },
+  {
+    "path": "app/Services/HR/WorkingExperienceValidationService.php",
+    "origin": "live-source",
+    "source_sha256": "bfd682900ffb30fd222726dc52afc620a1d18e2d2bbd796472d08b44759fed64",
+    "package_sha256": "bfd682900ffb30fd222726dc52afc620a1d18e2d2bbd796472d08b44759fed64"
+  },
+  {
+    "path": "app/Services/Competency/CompetencyAssessmentService.php",
+    "origin": "live-source",
+    "source_sha256": "c8309e80b4981ee6c8bafe8e15a294e9c2b21a2d6a50d92d3f3679981bd978ba",
+    "package_sha256": "c8309e80b4981ee6c8bafe8e15a294e9c2b21a2d6a50d92d3f3679981bd978ba"
+  },
+  {
+    "path": "app/Services/HR/TcpdDashboardAccessService.php",
+    "origin": "live-source",
+    "source_sha256": "c8bce6f308a8d7c61a9b002b02003df3c404fb284e080d8e2ba9e76a29d964a3",
+    "package_sha256": "c8bce6f308a8d7c61a9b002b02003df3c404fb284e080d8e2ba9e76a29d964a3"
+  },
+  {
+    "path": "app/Services/Dashboard/TcpdDashboardService.php",
+    "origin": "live-source",
+    "source_sha256": "250379f51e841d5c0dcc129575b5a45ed401b3aeaf03b3b7ea50cabe144fd00d",
+    "package_sha256": "250379f51e841d5c0dcc129575b5a45ed401b3aeaf03b3b7ea50cabe144fd00d"
+  },
+  {
+    "path": "app/Services/Dashboard/CompetencyDashboardService.php",
+    "origin": "live-source",
+    "source_sha256": "396393eb385958ee55cd9a931d0d087581711bc75272ce0978d3e3ad9aea47f0",
+    "package_sha256": "396393eb385958ee55cd9a931d0d087581711bc75272ce0978d3e3ad9aea47f0"
+  },
+  {
+    "path": "app/Services/KnowledgeManagement/KmOrganizationAssignmentService.php",
+    "origin": "live-source",
+    "source_sha256": "649e4c3abffc20017635a5ead6d6a5ed7d8c76820bb61210fa8edba7be1d3dd9",
+    "package_sha256": "649e4c3abffc20017635a5ead6d6a5ed7d8c76820bb61210fa8edba7be1d3dd9"
+  },
+  {
+    "path": "app/Services/KnowledgeManagement/KmTargetingService.php",
+    "origin": "live-source",
+    "source_sha256": "ba127f69441611cd0f27dae93791882d52be924240fa039df688425cd341f4ba",
+    "package_sha256": "ba127f69441611cd0f27dae93791882d52be924240fa039df688425cd341f4ba"
+  },
+  {
+    "path": "app/Enums/HRMenuAccessGroup.php",
+    "origin": "live-source",
+    "source_sha256": "e0a5584fcab40fcd5a585904af9c5995c8a8d0379ddccd8ba56423f5930cabb4",
+    "package_sha256": "e0a5584fcab40fcd5a585904af9c5995c8a8d0379ddccd8ba56423f5930cabb4"
+  },
+  {
+    "path": "app/Enums/TcpdDepartment.php",
+    "origin": "live-source",
+    "source_sha256": "e934e63cc046915d04071d1a3b193eef7054961e4a8774a840d1eb41320c2c39",
+    "package_sha256": "e934e63cc046915d04071d1a3b193eef7054961e4a8774a840d1eb41320c2c39"
+  },
+  {
+    "path": "app/Enums/TrainingStatus.php",
+    "origin": "live-source",
+    "source_sha256": "48abb475532f5be364a3a4a3c2d8824543a3d4608db85e74a4762f6316e22c75",
+    "package_sha256": "48abb475532f5be364a3a4a3c2d8824543a3d4608db85e74a4762f6316e22c75"
+  },
+  {
+    "path": "app/Http/Requests/ImportWorkingExperienceRequest.php",
+    "origin": "live-source",
+    "source_sha256": "ad7b80ed4960afd67137c4ff66af36547f57ece5951bdf342494f5d04ad37bf5",
+    "package_sha256": "ad7b80ed4960afd67137c4ff66af36547f57ece5951bdf342494f5d04ad37bf5"
+  },
+  {
+    "path": "app/Http/Requests/StoreWorkingExperienceRequest.php",
+    "origin": "live-source",
+    "source_sha256": "051ce341de3ece6b1b828cfe41eee8efe035b9865243cfca58e17019160a59d4",
+    "package_sha256": "051ce341de3ece6b1b828cfe41eee8efe035b9865243cfca58e17019160a59d4"
+  },
+  {
+    "path": "app/Http/Requests/UpdateWorkingExperienceRequest.php",
+    "origin": "live-source",
+    "source_sha256": "4ba62adecac9ae0f232e37c2e7bff0e42bc1861246b46d0cb8bafa1fe56acb50",
+    "package_sha256": "4ba62adecac9ae0f232e37c2e7bff0e42bc1861246b46d0cb8bafa1fe56acb50"
+  },
+  {
+    "path": "app/Imports/WorkingExperienceImport.php",
+    "origin": "live-source",
+    "source_sha256": "c3aa6a0435f3cd0dc17ee29546b10ed340282d0fb0572c7fde734b98086d7341",
+    "package_sha256": "c3aa6a0435f3cd0dc17ee29546b10ed340282d0fb0572c7fde734b98086d7341"
+  },
+  {
+    "path": "app/Exports/WorkingExperienceTemplateExport.php",
+    "origin": "live-source",
+    "source_sha256": "8d046b3eea9893877af8d831db9a9f1139d65133f369ec40e775c9cbee70f52b",
+    "package_sha256": "8d046b3eea9893877af8d831db9a9f1139d65133f369ec40e775c9cbee70f52b"
+  },
+  {
+    "path": "app/Models/MstDepartment.php",
+    "origin": "live-source",
+    "source_sha256": "028f7a798298aa06efb32041cf8d7fb283dee5b82169a7d8e9a586008b19812c",
+    "package_sha256": "028f7a798298aa06efb32041cf8d7fb283dee5b82169a7d8e9a586008b19812c"
+  },
+  {
+    "path": "app/Models/MstSection.php",
+    "origin": "live-source",
+    "source_sha256": "c310f5a003cf7e94e02cb59252797d5e2c9d5b116d48364dce71acb4ca9dfaff",
+    "package_sha256": "c310f5a003cf7e94e02cb59252797d5e2c9d5b116d48364dce71acb4ca9dfaff"
+  },
+  {
+    "path": "app/Models/MstJobPosition.php",
+    "origin": "live-source",
+    "source_sha256": "ccbe5edc3cadc8a9288dc4d2187582929af377439aa3c00f73e21eecd0b0d8d7",
+    "package_sha256": "ccbe5edc3cadc8a9288dc4d2187582929af377439aa3c00f73e21eecd0b0d8d7"
+  },
+  {
+    "path": "app/Models/MstPositionApproval.php",
+    "origin": "live-source",
+    "source_sha256": "b871660b70abefa36cfa92de6e23059471b54ce5dd9809c51bf2c619e1c13e39",
+    "package_sha256": "b871660b70abefa36cfa92de6e23059471b54ce5dd9809c51bf2c619e1c13e39"
+  },
+  {
+    "path": "app/Models/UserJobPosition.php",
+    "origin": "live-source",
+    "source_sha256": "f5187c584936a7cfbff5b2b6674138cf1deda6cbddf41b0593df0415bbdb528d",
+    "package_sha256": "f5187c584936a7cfbff5b2b6674138cf1deda6cbddf41b0593df0415bbdb528d"
+  },
+  {
+    "path": "app/Models/UserJobAccess.php",
+    "origin": "live-source",
+    "source_sha256": "ebaaa29bd8fd72faf4e880fb513bdd2442d194cbe50ecdd47037a9fca87087d4",
+    "package_sha256": "ebaaa29bd8fd72faf4e880fb513bdd2442d194cbe50ecdd47037a9fca87087d4"
+  },
+  {
+    "path": "app/Models/WorkingExperience.php",
+    "origin": "live-source",
+    "source_sha256": "c57606563247cbe1ff670626192b69d4152004f03aba71c4f32ad0313036f4f5",
+    "package_sha256": "c57606563247cbe1ff670626192b69d4152004f03aba71c4f32ad0313036f4f5"
+  },
+  {
+    "path": "app/Models/TrsPenilaianTc.php",
+    "origin": "live-source",
+    "source_sha256": "962fed51c433b8a517053a30bafa0dc47591ece921247a05ce7da4844c17b1d3",
+    "package_sha256": "962fed51c433b8a517053a30bafa0dc47591ece921247a05ce7da4844c17b1d3"
+  },
+  {
+    "path": "app/Models/TcPeopleDevelopment.php",
+    "origin": "live-source",
+    "source_sha256": "82dfc8829335e5a3901a6790df341d8b3a6e54d350a8bf0d645a7778a9589588",
+    "package_sha256": "82dfc8829335e5a3901a6790df341d8b3a6e54d350a8bf0d645a7778a9589588"
+  },
+  {
+    "path": "app/Models/DetailTcPenilaian.php",
+    "origin": "live-source",
+    "source_sha256": "48d32f8d19066c755c01995fb853cbebe789473fafe0de250e1c733e08032279",
+    "package_sha256": "48d32f8d19066c755c01995fb853cbebe789473fafe0de250e1c733e08032279"
+  },
+  {
+    "path": "app/Models/MstTc.php",
+    "origin": "live-source",
+    "source_sha256": "ab317dcdc28a4c7295dfd2267dad869fcc4a5e77ed69fb6ecb06fefe239aa901",
+    "package_sha256": "ab317dcdc28a4c7295dfd2267dad869fcc4a5e77ed69fb6ecb06fefe239aa901"
+  },
+  {
+    "path": "app/Models/MstSoftSkill.php",
+    "origin": "live-source",
+    "source_sha256": "283748524cdb25550c71f91ed0a7936933f6d318ee2c85346511936282c58478",
+    "package_sha256": "283748524cdb25550c71f91ed0a7936933f6d318ee2c85346511936282c58478"
+  },
+  {
+    "path": "app/Models/MstAdditionals.php",
+    "origin": "live-source",
+    "source_sha256": "50a5f76c1d4d3225b1d31a7d259adbf852be086a582fbb967ee51929de9f4d14",
+    "package_sha256": "50a5f76c1d4d3225b1d31a7d259adbf852be086a582fbb967ee51929de9f4d14"
+  },
+  {
+    "path": "app/Models/PoinKategori.php",
+    "origin": "live-source",
+    "source_sha256": "d8433e4eb758f1da6128e02373d4808822c2b8c1044ba8dcbe910dba27d74dbe",
+    "package_sha256": "d8433e4eb758f1da6128e02373d4808822c2b8c1044ba8dcbe910dba27d74dbe"
+  },
+  {
+    "path": "public/assets/css/hr/departments.css",
+    "origin": "live-source",
+    "source_sha256": "32796274e537eccbc78add8b130d2dae385353869493e603cbb39eae75e2a936",
+    "package_sha256": "32796274e537eccbc78add8b130d2dae385353869493e603cbb39eae75e2a936"
+  },
+  {
+    "path": "public/assets/js/hr/assessment-summary.js",
+    "origin": "live-source",
+    "source_sha256": "86772de35d61f9fc8ea24d6252dcadfcda765dd2770f177ae7b4ae841cd1d931",
+    "package_sha256": "86772de35d61f9fc8ea24d6252dcadfcda765dd2770f177ae7b4ae841cd1d931"
+  },
+  {
+    "path": "resources/views/layout.blade.php",
+    "origin": "live-source",
+    "source_sha256": "8c994c04e14fb59e9444dd17978d9be5e9e8b9fc171dc28dd615aafacd180593",
+    "package_sha256": "8c994c04e14fb59e9444dd17978d9be5e9e8b9fc171dc28dd615aafacd180593"
+  },
+  {
+    "path": "resources/views/mst_job_position/form.blade.php",
+    "origin": "live-source",
+    "source_sha256": "60ace4b8f970741a4159c4317cd5f8f94ba02b0971ebc4401cdc8ef6365738cd",
+    "package_sha256": "60ace4b8f970741a4159c4317cd5f8f94ba02b0971ebc4401cdc8ef6365738cd"
+  },
+  {
+    "path": "resources/views/mst_job_position/index.blade.php",
+    "origin": "live-source",
+    "source_sha256": "4104c06a196c205139e8ea0ffa45c254d2f426dffe3e41aec09756975d434aee",
+    "package_sha256": "4104c06a196c205139e8ea0ffa45c254d2f426dffe3e41aec09756975d434aee"
+  },
+  {
+    "path": "resources/views/user_job_position/index.blade.php",
+    "origin": "live-source",
+    "source_sha256": "4c067d4e7cca58fa319489e957ec1d533e28aea0fca715e2b8ec2c22dc8d4cd2",
+    "package_sha256": "4c067d4e7cca58fa319489e957ec1d533e28aea0fca715e2b8ec2c22dc8d4cd2"
+  },
+  {
+    "path": "resources/views/tc_penilaian/sc_penilaian.blade.php",
+    "origin": "live-source",
+    "source_sha256": "f63168577eda8328c149565e0657bda7a0d7d6c989ba212a57153d11d4503c78",
+    "package_sha256": "f63168577eda8328c149565e0657bda7a0d7d6c989ba212a57153d11d4503c78"
+  },
+  {
+    "path": "resources/views/tc_penilaian/dept_penilaian.blade.php",
+    "origin": "live-source",
+    "source_sha256": "e59c29fc8317b4223734f89e373afaa035339330ee105612efcdc1dfd02c3ee0",
+    "package_sha256": "e59c29fc8317b4223734f89e373afaa035339330ee105612efcdc1dfd02c3ee0"
+  },
+  {
+    "path": "resources/views/tc_penilaian/edit_penilaian.blade.php",
+    "origin": "live-source",
+    "source_sha256": "2d056f7ba84f89dbee116ec5c237c27e304f617b4dd8dbbdad58b304b4a20fd3",
+    "package_sha256": "2d056f7ba84f89dbee116ec5c237c27e304f617b4dd8dbbdad58b304b4a20fd3"
+  },
+  {
+    "path": "resources/views/tc_penilaian/view_penilaian.blade.php",
+    "origin": "live-source",
+    "source_sha256": "e4fadb978b421ebcfc4416fbee771e70f0ef4c7c118e4e2b051ae1aa4af53227",
+    "package_sha256": "e4fadb978b421ebcfc4416fbee771e70f0ef4c7c118e4e2b051ae1aa4af53227"
+  },
+  {
+    "path": "resources/views/tc_penilaian/privew_penilaian.blade.php",
+    "origin": "live-source",
+    "source_sha256": "f3a3d23a40e3a03c92421784222e1f4b2e329fe81c46665d149a742eed7debf8",
+    "package_sha256": "f3a3d23a40e3a03c92421784222e1f4b2e329fe81c46665d149a742eed7debf8"
+  },
+  {
+    "path": "resources/views/tc_penilaian/partials/assessment_summary.blade.php",
+    "origin": "live-source",
+    "source_sha256": "31e7d9074043ec9fdb394a60c96a9a1370547eda10a7d72536787e5de9353a1c",
+    "package_sha256": "31e7d9074043ec9fdb394a60c96a9a1370547eda10a7d72536787e5de9353a1c"
+  },
+  {
+    "path": "routes/web.php",
+    "origin": "live-source; excludes seven Outstanding Material archive routes only",
+    "source_sha256": "d2d1667a4f2e231f6cb6cad95c18a343332587f2fe28cbcf2259d82c5dba30c7",
+    "package_sha256": "d6fd7fc014385e9320986e92bfb44ac86a29bab86df96d483c56c8097e6092a4"
+  },
+  {
+    "path": "resources/views/mst_department/_alerts.blade.php",
+    "origin": "live-source",
+    "source_sha256": "966daca9ed3709bf4a6bdae3fe8d10fbd000900eaa0b03ef5f363ef7e1336e07",
+    "package_sha256": "966daca9ed3709bf4a6bdae3fe8d10fbd000900eaa0b03ef5f363ef7e1336e07"
+  },
+  {
+    "path": "resources/views/mst_department/index.blade.php",
+    "origin": "live-source",
+    "source_sha256": "20bdcdf8f26f60ead333daa8b764c542bd1aa0b5e58470aaea713ce94c5c7c4d",
+    "package_sha256": "20bdcdf8f26f60ead333daa8b764c542bd1aa0b5e58470aaea713ce94c5c7c4d"
+  },
+  {
+    "path": "resources/views/mst_department/show.blade.php",
+    "origin": "live-source",
+    "source_sha256": "ac2833d3591dd862f4c5999e6065c017909540ad2b65d09dfa27a2c0bae59c5e",
+    "package_sha256": "ac2833d3591dd862f4c5999e6065c017909540ad2b65d09dfa27a2c0bae59c5e"
+  },
+  {
+    "path": "database/sql/sales-region-split/00_preflight.sql",
+    "origin": "scripts/department-sales-release/sql/00_preflight.sql",
+    "package_sha256": "4f694d9d00d748f02d2bade7371d2acde7208706537701d323c54e3314c36eab"
+  },
+  {
+    "path": "database/sql/sales-region-split/01_prerequisites.sql",
+    "origin": "scripts/department-sales-release/sql/01_prerequisites.sql",
+    "package_sha256": "4e12b7048d2d5cb8bd730cd931173aecdb10026c6aebcfc227c8ac5d98e369fc"
+  },
+  {
+    "path": "database/sql/sales-region-split/02_split_sales_regions.sql",
+    "origin": "scripts/department-sales-release/sql/02_split_sales_regions.sql",
+    "package_sha256": "19198e5f906265a38310206e3d8d91e23d410f3722b9db9f394e0210b68072ed"
+  },
+  {
+    "path": "database/sql/sales-region-split/03_postcheck.sql",
+    "origin": "scripts/department-sales-release/sql/03_postcheck.sql",
+    "package_sha256": "f519ae9d322fbf657aea46c19135348e3c9c663b25f305abc8b683836c85d84c"
+  },
+  {
+    "path": "docs/INSTALL.md",
+    "origin": "scripts/department-sales-release/docs/INSTALL.md",
+    "package_sha256": "04c492d0031df1ab1464711991e4fa734b16b720782ac79f7e6dddafd407c685"
+  },
+  {
+    "path": "docs/VALIDATION.md",
+    "origin": "scripts/department-sales-release/docs/VALIDATION.md",
+    "package_sha256": "c2d788fdc1a38fcbb3e0c57ed71cb0dbb28d9b4f4456fa06c6d5073fe9c3bd4f"
+  },
+  {
+    "path": "database/sql/sales-region-split/split_sales_regions_only.sql",
+    "origin": "generated from 00 validation + 02 transaction + 03 postcheck; existing audit required; no 01",
+    "package_sha256": "6d334c877ce0903ed6435c683f18ea63b4bb57300fbe4bdbaf91eaee4591b8a8"
+  },
+  {
+    "path": "docs/FEATURE-GUIDE.md",
+    "origin": "docs/hr/MASTER-DEPARTMENT-OPERATING-GUIDE.md",
+    "package_sha256": "60b74fbeb8b4bcec916adae56f1e9750452a73c08b5d9a30f9901ccdf9aefa6e"
+  }
+]

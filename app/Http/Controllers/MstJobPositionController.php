@@ -2,23 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\HRMenuAccessGroup;
 use App\Models\MstDepartment;
 use App\Models\MstJobPosition;
 use App\Models\MstPositionApproval;
 use App\Models\MstSection;
 use App\Models\User;
-use App\Models\UserJobPosition;
+use App\Services\HR\DepartmentStructureService;
+use App\Services\HR\JobPositionAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class MstJobPositionController extends Controller
 {
+    public function __construct(private DepartmentStructureService $structure, private JobPositionAccessService $access)
+    {
+    }
+
     private function ensureAccess(): void
     {
-        $userName = auth()->user()->name ?? '';
-        abort_unless(HRMenuAccessGroup::JOB_POSITION->hasAccess($userName), 403);
+        abort_unless($this->access->canManageMapping(auth()->user()), 403);
     }
 
     // -------------------------------------------------------------------------
@@ -35,7 +39,7 @@ class MstJobPositionController extends Controller
         $query = MstJobPosition::with(['approvalRoutes.approverPosition', 'department', 'section']);
 
         if ($request->filled('position_name')) {
-            $query->where('position_name', 'like', '%' . $request->input('position_name') . '%');
+            $query->where('position_name', 'like', '%'.$request->input('position_name').'%');
         }
 
         if ($request->filled('department_id')) {
@@ -73,14 +77,14 @@ class MstJobPositionController extends Controller
         $this->ensureAccess();
 
         $allPositions = MstJobPosition::active()->orderBy('position_name')->get();
-        $departments  = MstDepartment::active()->orderBy('name')->get();
-        $sections     = collect(); // kosong; diisi via AJAX setelah dept dipilih
+        $departments = MstDepartment::active()->orderBy('name')->get();
+        $sections = collect(); // kosong; diisi via AJAX setelah dept dipilih
 
         return view('mst_job_position.form', [
-            'position'       => null,
-            'allPositions'   => $allPositions,
-            'departments'    => $departments,
-            'sections'       => $sections,
+            'position' => null,
+            'allPositions' => $allPositions,
+            'departments' => $departments,
+            'sections' => $sections,
             'approvalRoutes' => [],
         ]);
     }
@@ -93,26 +97,30 @@ class MstJobPositionController extends Controller
         $this->ensureAccess();
 
         $request->validate([
-            'position_name'   => 'required|string|max:255|unique:mst_job_positions,position_name',
-            'department_id'   => 'nullable|exists:mst_departments,id',
-            'section_id'      => 'nullable|exists:mst_sections,id',
+            'position_name' => 'required|string|max:255|unique:mst_job_positions,position_name',
+            'department_id' => 'nullable|exists:mst_departments,id',
+            'section_id' => 'nullable|exists:mst_sections,id',
             'approval_levels' => 'nullable|array',
-            'approval_levels.*.level'               => 'required|integer|min:0|max:3',
+            'approval_levels.*.level' => 'required|integer|min:0|max:3',
             'approval_levels.*.approver_position_id' => 'nullable|exists:mst_job_positions,id',
         ]);
 
         DB::beginTransaction();
         try {
+            $this->structure->lockOrganization();
+            $this->structure->validatePositionStructure($request->department_id ? (int) $request->department_id : null, $request->section_id ? (int) $request->section_id : null);
             $position = MstJobPosition::create([
                 'position_name' => $request->position_name,
                 'department_id' => $request->department_id ?: null,
-                'section_id'    => $request->section_id ?: null,
-                'is_active'     => true,
+                'section_id' => $request->section_id ?: null,
+                'is_active' => true,
             ]);
 
             if ($request->filled('approval_levels')) {
                 foreach ($request->approval_levels as $route) {
-                    if (!isset($route['level']) || $route['level'] === '') continue;
+                    if (! isset($route['level']) || $route['level'] === '') {
+                        continue;
+                    }
                     MstPositionApproval::updateOrCreate(
                         ['position_id' => $position->id, 'approval_level' => $route['level']],
                         ['approver_position_id' => $route['approver_position_id'] ?: null]
@@ -121,12 +129,17 @@ class MstJobPositionController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('mst-job-position.index')
                 ->with('success', "Job Position '{$position->position_name}' berhasil ditambahkan.");
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('MstJobPositionController::store error', ['err' => $e->getMessage()]);
-            return back()->withInput()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'Gagal menyimpan posisi. Muat ulang halaman dan coba kembali.');
         }
     }
 
@@ -143,15 +156,15 @@ class MstJobPositionController extends Controller
             ->orderBy('position_name')
             ->get();
         $departments = MstDepartment::active()->orderBy('name')->get();
-        $sections    = $mstJobPosition->department_id
+        $sections = $mstJobPosition->department_id
             ? MstSection::active()->where('department_id', $mstJobPosition->department_id)->orderBy('name')->get()
             : collect();
 
         return view('mst_job_position.form', [
-            'position'       => $mstJobPosition,
-            'allPositions'   => $allPositions,
-            'departments'    => $departments,
-            'sections'       => $sections,
+            'position' => $mstJobPosition,
+            'allPositions' => $allPositions,
+            'departments' => $departments,
+            'sections' => $sections,
             'approvalRoutes' => $mstJobPosition->approvalRoutes,
         ]);
     }
@@ -164,20 +177,23 @@ class MstJobPositionController extends Controller
         $this->ensureAccess();
 
         $request->validate([
-            'position_name'   => "required|string|max:255|unique:mst_job_positions,position_name,{$mstJobPosition->id}",
-            'department_id'   => 'nullable|exists:mst_departments,id',
-            'section_id'      => 'nullable|exists:mst_sections,id',
+            'position_name' => "required|string|max:255|unique:mst_job_positions,position_name,{$mstJobPosition->id}",
+            'department_id' => 'nullable|exists:mst_departments,id',
+            'section_id' => 'nullable|exists:mst_sections,id',
             'approval_levels' => 'nullable|array',
-            'approval_levels.*.level'               => 'required|integer|min:0|max:3',
+            'approval_levels.*.level' => 'required|integer|min:0|max:3',
             'approval_levels.*.approver_position_id' => 'nullable|exists:mst_job_positions,id',
         ]);
 
         DB::beginTransaction();
         try {
+            $this->structure->lockOrganization();
+            $this->structure->validatePositionStructure($request->department_id ? (int) $request->department_id : null, $request->section_id ? (int) $request->section_id : null);
+            $mstJobPosition = MstJobPosition::whereKey($mstJobPosition->id)->lockForUpdate()->firstOrFail();
             $mstJobPosition->update([
                 'position_name' => $request->position_name,
                 'department_id' => $request->department_id ?: null,
-                'section_id'    => $request->section_id ?: null,
+                'section_id' => $request->section_id ?: null,
             ]);
 
             // Hapus lama, ganti baru
@@ -185,21 +201,29 @@ class MstJobPositionController extends Controller
 
             if ($request->filled('approval_levels')) {
                 foreach ($request->approval_levels as $route) {
-                    if (!isset($route['level']) || $route['level'] === '') continue;
+                    if (! isset($route['level']) || $route['level'] === '') {
+                        continue;
+                    }
                     MstPositionApproval::create([
-                        'position_id'          => $mstJobPosition->id,
-                        'approval_level'       => $route['level'],
+                        'position_id' => $mstJobPosition->id,
+                        'approval_level' => $route['level'],
                         'approver_position_id' => $route['approver_position_id'] ?: null,
                     ]);
                 }
             }
 
             DB::commit();
+
             return redirect()->route('mst-job-position.index')
                 ->with('success', "Job Position '{$mstJobPosition->position_name}' berhasil diperbarui.");
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal update: ' . $e->getMessage());
+            report($e);
+
+            return back()->withInput()->with('error', 'Gagal memperbarui posisi. Muat ulang halaman dan coba kembali.');
         }
     }
 
@@ -209,8 +233,18 @@ class MstJobPositionController extends Controller
     public function toggleActive(MstJobPosition $mstJobPosition)
     {
         $this->ensureAccess();
-        $mstJobPosition->update(['is_active' => !$mstJobPosition->is_active]);
+        $mstJobPosition = DB::transaction(function () use ($mstJobPosition) {
+            $this->structure->lockOrganization();
+            $position = MstJobPosition::whereKey($mstJobPosition->id)->lockForUpdate()->firstOrFail();
+            if (! $position->is_active) {
+                $this->structure->validatePositionStructure($position->department_id, $position->section_id);
+            }
+            $position->update(['is_active' => ! $position->is_active]);
+
+            return $position;
+        }, 3);
         $status = $mstJobPosition->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
         return back()->with('success', "Posisi '{$mstJobPosition->position_name}' berhasil {$status}.");
     }
 
@@ -227,6 +261,7 @@ class MstJobPositionController extends Controller
 
         $name = $mstJobPosition->position_name;
         $mstJobPosition->delete();
+
         return redirect()->route('mst-job-position.index')
             ->with('success', "Posisi '{$name}' berhasil dihapus.");
     }
@@ -242,9 +277,8 @@ class MstJobPositionController extends Controller
     {
         $this->ensureAccess();
 
-        $request->validate(['name' => 'required|string|max:100|unique:mst_departments,name']);
-
-        $dept = MstDepartment::create(['name' => trim($request->name), 'is_active' => true]);
+        $request->validate(['name' => 'required|string']);
+        $dept = $this->structure->saveDepartment($request->input('name'));
 
         return response()->json(['id' => $dept->id, 'name' => $dept->name]);
     }
@@ -258,22 +292,10 @@ class MstJobPositionController extends Controller
 
         $request->validate([
             'department_id' => 'required|exists:mst_departments,id',
-            'name'          => 'required|string|max:150',
+            'name' => 'required|string|max:150',
         ]);
 
-        // Cek duplikat per departemen
-        $exists = MstSection::where('department_id', $request->department_id)
-            ->whereRaw('LOWER(name) = ?', [strtolower(trim($request->name))])
-            ->exists();
-        if ($exists) {
-            return response()->json(['error' => 'Section sudah ada di departemen ini.'], 422);
-        }
-
-        $sec = MstSection::create([
-            'department_id' => $request->department_id,
-            'name'          => trim($request->name),
-            'is_active'     => true,
-        ]);
+        $sec = $this->structure->createSection((int) $request->department_id, $request->input('name'));
 
         return response()->json(['id' => $sec->id, 'name' => $sec->name]);
     }
@@ -283,6 +305,7 @@ class MstJobPositionController extends Controller
      */
     public function getSectionsByDepartment(MstDepartment $mstDepartment)
     {
+        $this->ensureAccess();
         $sections = MstSection::active()
             ->where('department_id', $mstDepartment->id)
             ->orderBy('name')
