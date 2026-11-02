@@ -25,6 +25,8 @@ const TCPD_CACHE_TTL = 3600; // 60 minutes
 
 class TcpdDashboardService
 {
+    private ?string $organizationCacheFingerprint = null;
+
     public function __construct(private readonly TcpdDashboardAccessService $dashboardAccess)
     {
     }
@@ -32,6 +34,7 @@ class TcpdDashboardService
     public function buildDashboardData(Request $request, ?User $user): array
     {
         $accessScope = $this->dashboardAccess->scope($user, true);
+        $this->organizationCacheFingerprint = $this->organizationFingerprint();
         $allowedJobPositionIds = $accessScope['job_position_ids'];
         $yearOptions = $this->availableCompanyYears();
 
@@ -293,6 +296,7 @@ class TcpdDashboardService
         if (! in_array($jobPositionId, $accessScope['job_position_ids'], true)) {
             abort(403, 'Job position berada di luar scope Dashboard TCPD Anda.');
         }
+        $this->organizationCacheFingerprint = $this->organizationFingerprint();
 
         $jobPosition = \App\Models\MstJobPosition::query()
             ->where('is_active', true)
@@ -363,6 +367,7 @@ class TcpdDashboardService
     public function getCompanyPayload(Request $request, ?User $user): array
     {
         $accessScope = $this->dashboardAccess->scope($user, true);
+        $this->organizationCacheFingerprint = $this->organizationFingerprint();
         $yearOptions = $this->availableCompanyYears();
 
         [$startDate, $endDate] = $this->resolveYearRange(
@@ -383,6 +388,7 @@ class TcpdDashboardService
             $accessScope['section_ids'],
             $accessScope['department_ids'],
             $accessScope['job_position_ids'],
+            $this->organizationCacheFingerprint,
         ]));
         $fromKey = $startDate ? $startDate->format('Ymd') : 'all';
         $toKey = $endDate ? $endDate->format('Ymd') : 'all';
@@ -441,6 +447,7 @@ class TcpdDashboardService
 
     public function getSensitivePayload(Request $request, array $scope): array
     {
+        $this->organizationCacheFingerprint = $this->organizationFingerprint();
         [$startDate, $endDate] = $this->resolveYearRange(
             $request->input('year_from'),
             $request->input('year_to'),
@@ -458,6 +465,7 @@ class TcpdDashboardService
             $scope['access_class'],
             $scope['user_id'],
             $departmentIds,
+            $this->organizationCacheFingerprint,
             $startDate?->format('Ymd'),
             $endDate?->format('Ymd'),
         ];
@@ -504,6 +512,30 @@ class TcpdDashboardService
                 ],
             ];
         });
+    }
+
+    private function organizationFingerprint(): string
+    {
+        // Read current values rather than timestamps: bulk organization writes may
+        // share timestamps, and a cached revision can race with another request.
+        $organization = [];
+        foreach ([
+            'mst_departments' => ['id', 'name', 'is_active'],
+            'mst_sections' => ['id', 'name', 'department_id', 'is_active'],
+            'mst_job_positions' => ['id', 'position_name', 'department_id', 'section_id', 'job_level', 'is_active', 'is_key_position'],
+            'user_job_positions' => ['id', 'user_id', 'mst_job_position_id', 'is_active'],
+        ] as $table => $columns) {
+            if ($table === 'user_job_positions') {
+                foreach (['effective_from', 'effective_until'] as $column) {
+                    if (Schema::hasColumn($table, $column)) {
+                        $columns[] = $column;
+                    }
+                }
+            }
+            $organization[$table] = DB::table($table)->orderBy('id')->get($columns)->all();
+        }
+
+        return hash('sha256', json_encode($organization, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -1054,7 +1086,8 @@ class TcpdDashboardService
         $scopeKey = $allowedJobPositionIds === null
             ? 'all'
             : hash('sha256', json_encode($allowedJobPositionIds));
-        $cacheKey = 'tcpd_snapshot_'.md5($jobPositionName)."_{$scopeKey}_{$fromKey}_{$toKey}";
+        $organizationKey = $this->organizationCacheFingerprint ?? $this->organizationFingerprint();
+        $cacheKey = 'tcpd_snapshot_'.md5($jobPositionName)."_{$scopeKey}_{$fromKey}_{$toKey}_{$organizationKey}";
 
         return Cache::remember($cacheKey, TCPD_CACHE_TTL, function () use ($jobPositionName, $startDate, $endDate, $allowedJobPositionIds) {
             return $this->buildTcpdSnapshotInner(

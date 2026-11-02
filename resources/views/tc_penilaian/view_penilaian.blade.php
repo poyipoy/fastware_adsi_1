@@ -106,6 +106,7 @@
             </nav>
         </div>
         <section class="section">
+            @include('tc_penilaian.partials.assessment_summary')
             <div class="card">
                 <!-- Input hidden untuk mengirim data penting -->
                 <input type="hidden" name="id_tc" value="{{ $penilaian->id_tc }}">
@@ -161,7 +162,6 @@
                 </div>
             </div>
 
-            <!-- Modal Summary -->
             <div class="modal fade" id="jobPositionModal" tabindex="-1" aria-labelledby="jobPositionModalLabel"
                 aria-hidden="true">
                 <div class="modal-dialog modal-xl"> <!-- Ubah ukuran modal menjadi extra large -->
@@ -186,11 +186,11 @@
             <div class="accordion mb-4 mt-4" id="accordionKeteranganPenilaian">
                 <div class="accordion-item border-0 shadow-sm rounded-3 overflow-hidden">
                     <h2 class="accordion-header" id="headingKeterangan">
-                        <button class="accordion-button collapsed fw-semibold text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKeterangan" aria-expanded="false" aria-controls="collapseKeterangan">
+                        <button class="accordion-button fw-semibold text-secondary" type="button" data-assessment-guidance-toggle aria-expanded="true" aria-controls="collapseKeterangan">
                             <i class="fas fa-info-circle me-2"></i> Tampilkan Keterangan Penilaian
                         </button>
                     </h2>
-                    <div id="collapseKeterangan" class="accordion-collapse collapse" aria-labelledby="headingKeterangan" data-bs-parent="#accordionKeteranganPenilaian">
+                    <div id="collapseKeterangan" class="accordion-collapse collapse show" aria-labelledby="headingKeterangan" data-bs-parent="#accordionKeteranganPenilaian">
                         <div class="accordion-body bg-light">
                             <div class="row g-3">
                                 <!-- Deskripsi Technical Competency -->
@@ -319,7 +319,8 @@
                     url: '{{ route('getDataTrs') }}', // Adjust the route name as per your routes definition
                     type: 'GET',
                     data: {
-                        id_job_position: jobPosition
+                        id_job_position: jobPosition,
+                        year: @json($year ?? $penilaian->tahun_penilaian ?? now()->year)
                     },
                     success: function(data) {
                         // Clear the existing rows in the table body and header keterangan
@@ -342,6 +343,7 @@
                                         .keterangan_tc)) {
                                     tcHeaders.push({
                                         keterangan: row.tc.keterangan_tc,
+                                        id_tc: row.tc.id,
                                         nilai: row.tc.nilai,
                                         id_poin_kategori: row.tc.id_poin_kategori
                                     });
@@ -350,6 +352,7 @@
                                         .keterangan_sk)) {
                                     skHeaders.push({
                                         keterangan: row.sk.keterangan_sk,
+                                        id_sk: row.sk.id,
                                         nilai: row.sk.nilai,
                                         id_poin_kategori: row.sk.id_poin_kategori
                                     });
@@ -358,6 +361,7 @@
                                         .keterangan_ad)) {
                                     adHeaders.push({
                                         keterangan: row.ad.keterangan_ad,
+                                        id_ad: row.ad.id,
                                         nilai: row.ad.nilai,
                                         id_poin_kategori: row.ad.id_poin_kategori
                                     });
@@ -377,7 +381,7 @@
                                 var backgroundColor = getBackgroundColorByIdPoinKategori(header
                                     .id_poin_kategori);
                                 $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
+                                    backgroundColor + '; color: white;">' + window.HrAssessmentSummary.escapeText(header.keterangan) +
                                     ' - (' + header.nilai + ')</th>');
                                 $('#tcHeader').attr('colspan', parseInt($('#tcHeader').attr(
                                     'colspan')) + 1);
@@ -388,7 +392,7 @@
                                 var backgroundColor = getBackgroundColorByIdPoinKategori(header
                                     .id_poin_kategori);
                                 $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
+                                    backgroundColor + '; color: white;">' + window.HrAssessmentSummary.escapeText(header.keterangan) +
                                     ' - (' + header.nilai + ')</th>');
                                 $('#skHeader').attr('colspan', parseInt($('#skHeader').attr(
                                     'colspan')) + 1);
@@ -399,7 +403,7 @@
                                 var backgroundColor = getBackgroundColorByIdPoinKategori(header
                                     .id_poin_kategori);
                                 $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
+                                    backgroundColor + '; color: white;">' + window.HrAssessmentSummary.escapeText(header.keterangan) +
                                     ' - (' + header.nilai + ')</th>');
                                 $('#adHeader').attr('colspan', parseInt($('#adHeader').attr(
                                     'colspan')) + 1);
@@ -465,7 +469,7 @@
                                         '<td><input type="text" name="nilai_tc[]" readonly value="' +
                                         tcData.nilai +
                                         '" style="width: 50px;' + inputStyle +
-                                        '" data-keterangan-tc="' + tcData.keterangan +
+                                        '" data-keterangan-tc="' + window.HrAssessmentSummary.escapeText(tcData.keterangan) +
                                         '" data-name="' + safeUserName +
                                         '"></td>';
                                 });
@@ -482,7 +486,7 @@
                                         '<td><input type="text" name="nilai_sk[]" readonly value="' +
                                         skData.nilai +
                                         '" style="width: 50px;' + inputStyle +
-                                        '" data-keterangan-sk="' + skData.keterangan +
+                                        '" data-keterangan-sk="' + window.HrAssessmentSummary.escapeText(skData.keterangan) +
                                         '" data-name="' + safeUserName +
                                         '"></td>';
                                 });
@@ -499,7 +503,7 @@
                                         '<td><input type="text" name="nilai_ad[]" readonly value="' +
                                         adData.nilai +
                                         '" style="width: 50px;' + inputStyle +
-                                        '" data-keterangan-ad="' + adData.keterangan +
+                                        '" data-keterangan-ad="' + window.HrAssessmentSummary.escapeText(adData.keterangan) +
                                         '" data-name="' + safeUserName +
                                         '"></td>';
                                 });
@@ -541,182 +545,6 @@
             }
 
             // Script Modal
-            document.getElementById('openModalButton').addEventListener('click', function() {
-                const jobPosition = document.getElementById('jobPositionSelect').value;
-
-                if (!jobPosition) {
-                    alert('Pilih posisi terlebih dahulu!');
-                    return;
-                }
-
-                console.log('Selected Job Position:', jobPosition);
-
-                $.ajax({
-                    url: '{{ route('job.positions.details2', ':job_position') }}'.replace(':job_position',
-                        jobPosition), // Gunakan route() helper
-                    method: 'GET', // Gunakan metode GET
-                    success: function(response) {
-                        let detailsHtml = '';
-
-                        // Tabel Technical Competency
-                        if (response.tcs && response.tcs.length > 0) {
-                            detailsHtml += `
-                <h3>Technical Competency</h3>
-                <table class="styled-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" style="width: 15%; text-align: left; padding: 8px; vertical-align: middle;">Keterangan Competency</th>
-                            <th rowspan="2" style="width: 20%; text-align: left; padding: 8px; vertical-align: middle;">Deskripsi</th>
-                            <th colspan="4" style="text-align: center; padding: 8px;">Judul Keterangan Kategori</th>
-                            <th rowspan="2" style="width: 5%; text-align: left; padding: 8px; vertical-align: middle;">Nilai Standar</th>
-                        </tr>
-                        <tr>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 1</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 2</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 3</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 4</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-                            response.tcs.forEach(tc => {
-                                const background = tc.poin_kategori ?
-                                    tc.poin_kategori.id === 1 ?
-                                    'background-color: blue; color: white;' :
-                                    tc.poin_kategori.id === 2 ?
-                                    'background-color: green; color: white;' :
-                                    tc.poin_kategori.id === 3 ?
-                                    'background-color: orange; color: white;' :
-                                    '' :
-                                    '';
-
-                                detailsHtml += `
-                    <tr>
-                        <td>
-                            ${tc.keterangan_tc ?? '-'} <br>
-                            <span style="font-size: 0.85em; ${background}; padding: 2px 4px; border-radius: 4px;">(${tc.poin_kategori?.judul_keterangan ?? '-'})</span>
-                        </td>
-                        <td>${tc.deskripsi_tc ?? '-'}</td>
-                        <td>${tc.deskripsi_level_1 || tc.poin_kategori?.deskripsi_1 || '-'}</td>
-                        <td>${tc.deskripsi_level_2 || tc.poin_kategori?.deskripsi_2 || '-'}</td>
-                        <td>${tc.deskripsi_level_3 || tc.poin_kategori?.deskripsi_3 || '-'}</td>
-                        <td>${tc.deskripsi_level_4 || tc.poin_kategori?.deskripsi_4 || '-'}</td>
-                        <td>${tc.nilai ?? '-'}</td>
-                    </tr>`;
-                            });
-                            detailsHtml += `
-                    </tbody>
-                </table>`;
-                        }
-
-                        // Tabel Soft Skills
-                        if (response.softSkills && response.softSkills.length > 0) {
-                            detailsHtml += `
-                <h3>Soft Skills</h3>
-                <table class="styled-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" style="width: 15%; text-align: left; padding: 8px; vertical-align: middle;">Keterangan Soft Skills</th>
-                            <th rowspan="2" style="width: 20%; text-align: left; padding: 8px; vertical-align: middle;">Deskripsi</th>
-                            <th colspan="4" style="text-align: center; padding: 8px;">Judul Keterangan Kategori</th>
-                            <th rowspan="2" style="width: 5%; text-align: left; padding: 8px; vertical-align: middle;">Nilai Standar</th>
-                        </tr>
-                        <tr>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 1</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 2</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 3</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 4</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-                            response.softSkills.forEach(skill => {
-                                const background = skill.poin_kategori ?
-                                    skill.poin_kategori.id === 1 ?
-                                    'background-color: blue; color: white;' :
-                                    skill.poin_kategori.id === 2 ?
-                                    'background-color: green; color: white;' :
-                                    skill.poin_kategori.id === 3 ?
-                                    'background-color: orange; color: white;' :
-                                    '' :
-                                    '';
-
-                                detailsHtml += `
-                    <tr>
-                        <td>
-                            ${skill.keterangan_sk ?? '-'} <br>
-                            <span style="font-size: 0.85em; ${background}; padding: 2px 4px; border-radius: 4px;">(${skill.poin_kategori?.judul_keterangan ?? '-'})</span>
-                        </td>
-                        <td>${skill.deskripsi_sk ?? '-'}</td>
-                        <td>${skill.deskripsi_level_1 || skill.poin_kategori?.deskripsi_1 || '-'}</td>
-                        <td>${skill.deskripsi_level_2 || skill.poin_kategori?.deskripsi_2 || '-'}</td>
-                        <td>${skill.deskripsi_level_3 || skill.poin_kategori?.deskripsi_3 || '-'}</td>
-                        <td>${skill.deskripsi_level_4 || skill.poin_kategori?.deskripsi_4 || '-'}</td>
-                        <td>${skill.nilai ?? '-'}</td>
-                    </tr>`;
-                            });
-                            detailsHtml += `
-                    </tbody>
-                </table>`;
-                        }
-
-                        // Tabel Additionals
-                        if (response.additionals && response.additionals.length > 0) {
-                            detailsHtml += `
-                <h3>Additionals</h3>
-                <table class="styled-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" style="width: 15%; text-align: left; padding: 8px; vertical-align: middle;">Keterangan Additional</th>
-                            <th rowspan="2" style="width: 20%; text-align: left; padding: 8px; vertical-align: middle;">Deskripsi</th>
-                            <th colspan="4" style="text-align: center; padding: 8px;">Judul Keterangan Kategori</th>
-                            <th rowspan="2" style="width: 5%; text-align: left; padding: 8px; vertical-align: middle;">Nilai Standar</th>
-                        </tr>
-                        <tr>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 1</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 2</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 3</th>
-                            <th style="width: 15%; text-align: left; padding: 8px;">Nilai 4</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-                            response.additionals.forEach(additional => {
-                                const background = additional.poin_kategori ?
-                                    additional.poin_kategori.id === 1 ?
-                                    'background-color: blue; color: white;' :
-                                    additional.poin_kategori.id === 2 ?
-                                    'background-color: green; color: white;' :
-                                    additional.poin_kategori.id === 3 ?
-                                    'background-color: orange; color: white;' :
-                                    '' :
-                                    '';
-
-                                detailsHtml += `
-                    <tr>
-                        <td>
-                            ${additional.keterangan_ad ?? '-'} <br>
-                            <span style="font-size: 0.85em; ${background}; padding: 2px 4px; border-radius: 4px;">(${additional.poin_kategori?.judul_keterangan ?? '-'})</span>
-                        </td>
-                        <td>${additional.deskripsi_ad ?? '-'}</td>
-                        <td>${additional.deskripsi_level_1 || additional.poin_kategori?.deskripsi_1 || '-'}</td>
-                        <td>${additional.deskripsi_level_2 || additional.poin_kategori?.deskripsi_2 || '-'}</td>
-                        <td>${additional.deskripsi_level_3 || additional.poin_kategori?.deskripsi_3 || '-'}</td>
-                        <td>${additional.deskripsi_level_4 || additional.poin_kategori?.deskripsi_4 || '-'}</td>
-                        <td>${additional.nilai ?? '-'}</td>
-                    </tr>`;
-                            });
-                            detailsHtml += `
-                    </tbody>
-                </table>`;
-                        }
-
-                        // Masukkan data ke modal
-                        document.getElementById('details').innerHTML = detailsHtml;
-                    },
-                    error: function() {
-                        document.getElementById('details').innerHTML =
-                            '<p>Gagal mengambil data. Coba lagi.</p>';
-                    }
-                });
-            });
         </script>
     </main><!-- End #main -->
 @endsection

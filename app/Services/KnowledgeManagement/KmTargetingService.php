@@ -5,8 +5,10 @@ namespace App\Services\KnowledgeManagement;
 use App\Models\KmDocumentVersion;
 use App\Models\User;
 use App\Models\UserJobPosition;
+use App\Services\HR\DepartmentStructureService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class KmTargetingService
 {
@@ -42,8 +44,20 @@ class KmTargetingService
     /** @param list<int> $departmentIds @param list<int> $positionIds */
     public function sync(KmDocumentVersion $version, array $departmentIds, array $positionIds): void
     {
-        $version->targetDepartments()->sync(array_values(array_unique(array_map('intval', $departmentIds))));
-        $version->targetJobPositions()->sync(array_values(array_unique(array_map('intval', $positionIds))));
+        DB::transaction(function () use ($version, $departmentIds, $positionIds): void {
+            // A request may have passed validation before an organization cutover.
+            app(DepartmentStructureService::class)->lockOrganization();
+            $departmentIds = array_values(array_unique(array_map('intval', $departmentIds)));
+            $positionIds = array_values(array_unique(array_map('intval', $positionIds)));
+            if (DB::table('mst_departments')->whereIn('id', $departmentIds)->where('is_active', true)->orderBy('id')->lockForUpdate()->pluck('id')->count() !== count($departmentIds)) {
+                throw ValidationException::withMessages(['target_department_ids' => 'Target department berubah atau sudah nonaktif. Muat ulang pilihan target.']);
+            }
+            if (DB::table('mst_job_positions')->whereIn('id', $positionIds)->where('is_active', true)->orderBy('id')->lockForUpdate()->pluck('id')->count() !== count($positionIds)) {
+                throw ValidationException::withMessages(['target_job_position_ids' => 'Target job position berubah atau sudah nonaktif. Muat ulang pilihan target.']);
+            }
+            $version->targetDepartments()->sync($departmentIds);
+            $version->targetJobPositions()->sync($positionIds);
+        }, 3);
     }
 
     /** @return array{department: string|null, position: string|null} */

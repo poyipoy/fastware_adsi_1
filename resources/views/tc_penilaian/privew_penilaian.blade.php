@@ -105,6 +105,7 @@
             </nav>
         </div>
         <section class="section">
+            @include('tc_penilaian.partials.assessment_summary')
             <div class="card">
                 <form id="penilaianForm" action="{{ route('updatePenilaian', $penilaian->id_job_position) }}"
                     method="POST">
@@ -161,11 +162,11 @@
             <div class="accordion mb-4 mt-4" id="accordionKeteranganPenilaian">
                 <div class="accordion-item border-0 shadow-sm rounded-3 overflow-hidden">
                     <h2 class="accordion-header" id="headingKeterangan">
-                        <button class="accordion-button collapsed fw-semibold text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKeterangan" aria-expanded="false" aria-controls="collapseKeterangan">
+                        <button class="accordion-button fw-semibold text-secondary" type="button" data-assessment-guidance-toggle aria-expanded="true" aria-controls="collapseKeterangan">
                             <i class="fas fa-info-circle me-2"></i> Tampilkan Keterangan Penilaian
                         </button>
                     </h2>
-                    <div id="collapseKeterangan" class="accordion-collapse collapse" aria-labelledby="headingKeterangan" data-bs-parent="#accordionKeteranganPenilaian">
+                    <div id="collapseKeterangan" class="accordion-collapse collapse show" aria-labelledby="headingKeterangan" data-bs-parent="#accordionKeteranganPenilaian">
                         <div class="accordion-body bg-light">
                             <div class="row g-3">
                                 <!-- Deskripsi Technical Competency -->
@@ -258,7 +259,8 @@
                     url: '{{ route('getDataTrs') }}', // Adjust the route name as per your routes definition
                     type: 'GET',
                     data: {
-                        id_job_position: jobPosition
+                        id_job_position: jobPosition,
+                        year: @json($year ?? $penilaian->tahun_penilaian ?? now()->year)
                     },
                     success: function(data) {
                         // Clear the existing rows in the table body and header keterangan
@@ -281,6 +283,7 @@
                                         .keterangan_tc)) {
                                     tcHeaders.push({
                                         keterangan: row.tc.keterangan_tc,
+                                        id_tc: row.tc.id,
                                         nilai: row.tc.nilai,
                                         id_poin_kategori: row.tc.id_poin_kategori
                                     });
@@ -289,6 +292,7 @@
                                         .keterangan_sk)) {
                                     skHeaders.push({
                                         keterangan: row.sk.keterangan_sk,
+                                        id_sk: row.sk.id,
                                         nilai: row.sk.nilai,
                                         id_poin_kategori: row.sk.id_poin_kategori
                                     });
@@ -297,6 +301,7 @@
                                         .keterangan_ad)) {
                                     adHeaders.push({
                                         keterangan: row.ad.keterangan_ad,
+                                        id_ad: row.ad.id,
                                         nilai: row.ad.nilai,
                                         id_poin_kategori: row.ad.id_poin_kategori
                                     });
@@ -316,7 +321,7 @@
                                 var backgroundColor = getBackgroundColorByIdPoinKategori(header
                                     .id_poin_kategori);
                                 $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
+                                    backgroundColor + '; color: white;">' + window.HrAssessmentSummary.escapeText(header.keterangan) +
                                     ' - (' + header.nilai + ')</th>');
                                 $('#tcHeader').attr('colspan', parseInt($('#tcHeader').attr(
                                     'colspan')) + 1);
@@ -327,7 +332,7 @@
                                 var backgroundColor = getBackgroundColorByIdPoinKategori(header
                                     .id_poin_kategori);
                                 $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
+                                    backgroundColor + '; color: white;">' + window.HrAssessmentSummary.escapeText(header.keterangan) +
                                     ' - (' + header.nilai + ')</th>');
                                 $('#skHeader').attr('colspan', parseInt($('#skHeader').attr(
                                     'colspan')) + 1);
@@ -338,7 +343,7 @@
                                 var backgroundColor = getBackgroundColorByIdPoinKategori(header
                                     .id_poin_kategori);
                                 $('#headerKeterangan').append('<th style="background-color:' +
-                                    backgroundColor + '; color: white;">' + header.keterangan +
+                                    backgroundColor + '; color: white;">' + window.HrAssessmentSummary.escapeText(header.keterangan) +
                                     ' - (' + header.nilai + ')</th>');
                                 $('#adHeader').attr('colspan', parseInt($('#adHeader').attr(
                                     'colspan')) + 1);
@@ -399,8 +404,7 @@
                                     };
                                     row += '<td><input type="text" name="nilai_tc[]" value="' +
                                         tcData.nilai +
-                                        '" style="width: 50px;" data-keterangan-tc="' + tcData
-                                        .keterangan + '"></td>';
+                                        '" style="width: 50px;" data-keterangan-tc="' + window.HrAssessmentSummary.escapeText(tcData.keterangan) + '"></td>';
                                 });
 
                                 // Add sk fields
@@ -411,8 +415,7 @@
                                     };
                                     row += '<td><input type="text" name="nilai_sk[]" value="' +
                                         skData.nilai +
-                                        '" style="width: 50px;" data-keterangan-sk="' + skData
-                                        .keterangan + '"></td>';
+                                        '" style="width: 50px;" data-keterangan-sk="' + window.HrAssessmentSummary.escapeText(skData.keterangan) + '"></td>';
                                 });
 
                                 // Add ad fields
@@ -423,8 +426,7 @@
                                     };
                                     row += '<td><input type="text" name="nilai_ad[]" value="' +
                                         adData.nilai +
-                                        '" style="width: 50px;" data-keterangan-ad="' + adData
-                                        .keterangan + '"></td>';
+                                        '" style="width: 50px;" data-keterangan-ad="' + window.HrAssessmentSummary.escapeText(adData.keterangan) + '"></td>';
                                 });
 
                                 row += '</tr>';

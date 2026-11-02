@@ -154,27 +154,9 @@ class TcController extends Controller
 
     public function fetchDetails(Request $request)
     {
+        $request->validate(['id' => 'required|integer|min:1']);
 
-        $idJobPosition = $request->input('id');
-
-        // Fetch data from models with poinKategori
-        $tcs = MstTc::where('id_job_position', $idJobPosition)
-            ->with('poinKategori')
-            ->get();
-
-        $softSkills = MstSoftSkill::where('id_job_position', $idJobPosition)
-            ->with('poinKategori')
-            ->get();
-
-        $additionals = MstAdditionals::where('id_job_position', $idJobPosition)
-            ->with('poinKategori')
-            ->get();
-
-        return response()->json([
-            'tcs' => $tcs,
-            'softSkills' => $softSkills,
-            'additionals' => $additionals,
-        ]);
+        return $this->fetchDetails2($request->integer('id'));
     }
 
     public function fetchDetails2($job_position)
@@ -193,17 +175,22 @@ class TcController extends Controller
             ], 404);
         }
 
+        abort_unless($this->jobPositionAccess->canViewCompetencyInformation(auth()->user(), (int) $idJobPosition), 403);
+
         // Fetch data berdasarkan id_job_position
         $tcs = MstTc::where('id_job_position', $idJobPosition)
-            ->with('poinKategori')
+            ->select(['id', 'id_job_position', 'id_poin_kategori', 'keterangan_tc', 'deskripsi_tc', 'nilai'])
+            ->with('poinKategori:id,judul_keterangan,deskripsi_1,deskripsi_2,deskripsi_3,deskripsi_4')
             ->get();
 
         $softSkills = MstSoftSkill::where('id_job_position', $idJobPosition)
-            ->with('poinKategori')
+            ->select(['id', 'id_job_position', 'id_poin_kategori', 'keterangan_sk', 'deskripsi_sk', 'nilai'])
+            ->with('poinKategori:id,judul_keterangan,deskripsi_1,deskripsi_2,deskripsi_3,deskripsi_4')
             ->get();
 
         $additionals = MstAdditionals::where('id_job_position', $idJobPosition)
-            ->with('poinKategori')
+            ->select(['id', 'id_job_position', 'id_poin_kategori', 'keterangan_ad', 'deskripsi_ad', 'nilai'])
+            ->with('poinKategori:id,judul_keterangan,deskripsi_1,deskripsi_2,deskripsi_3,deskripsi_4')
             ->get();
 
         // Return response dalam format JSON

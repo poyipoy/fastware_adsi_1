@@ -88,6 +88,35 @@ class PenilaianTCController extends Controller
         return response()->json(['success' => false, 'message' => $message], 403);
     }
 
+    private function authorizeAssessmentRead(Request $request, string $positionField): int
+    {
+        $request->validate([$positionField => 'required|integer|min:1']);
+        $positionId = $request->integer($positionField);
+        abort_unless($this->jobPositionAccess->canViewAssessmentInformation($request->user(), $positionId), 403);
+
+        return $positionId;
+    }
+
+    private function assessmentReadYear(Request $request): int
+    {
+        $request->validate(['year' => 'sometimes|integer|between:1900,9999']);
+
+        return $request->integer('year', now()->year);
+    }
+
+    private function readableAssessmentEmployeeIds(int $positionId): ?array
+    {
+        if ($this->jobPositionAccess->hasFullAccess(auth()->user()) || MstJobPosition::find($positionId)?->section_id) {
+            return null;
+        }
+
+        // Shared positions still require the existing employee-section boundary.
+        $scope = $this->jobPositionAccess->getUserApprovalScope(auth()->user());
+        $sections = \App\Models\MstSection::whereIn('id', $scope['section_ids'])->pluck('name');
+
+        return User::whereIn('section', $sections)->pluck('id')->all();
+    }
+
 
 
     /**
@@ -326,18 +355,8 @@ class PenilaianTCController extends Controller
 
     public function getJobPositionData(Request $request)
     {
-        $this->abortUnlessCompetencyLevel('kasie');
-
-        $jobPosition = $request->input('id'); // Ambil parameter id dari request
-
-        if (!$this->jobPositionAccess->canAccessJobPosition(auth()->user(), $jobPosition)) {
-            return response()->json([
-                'message' => 'Anda tidak memiliki akses untuk job position ini.',
-            ], 403);
-        }
-
-        // Log nilai jobPosition yang diterima
-        Log::info('Received jobPosition:', ['jobPosition' => $jobPosition]);
+        $jobPosition = $this->authorizeAssessmentRead($request, 'id');
+        $today = today()->toDateString();
 
         // Query pertama untuk data TC
         $tcResults = DB::select('
@@ -360,10 +379,9 @@ class PenilaianTCController extends Controller
             LEFT JOIN mst_departments dept ON mjp.department_id = dept.id
             LEFT JOIN mst_sections sec ON mjp.section_id = sec.id
             LEFT JOIN mst_tcs tcs ON tcs.id_job_position = mjp.id
-            WHERE mjp.id = ?', [$jobPosition]);
-
-        // Log hasil dari query TC
-        Log::info('TC Results:', ['tcResults' => $tcResults]);
+            WHERE mjp.id = ? AND ujp.is_active = 1
+                AND ujp.effective_from IS NOT NULL AND ujp.effective_from <= ?
+                AND (ujp.effective_until IS NULL OR ujp.effective_until >= ?)', [$jobPosition, $today, $today]);
 
         // Query kedua untuk data SK
         $skResults = DB::select('
@@ -386,10 +404,9 @@ class PenilaianTCController extends Controller
             LEFT JOIN mst_departments dept ON mjp.department_id = dept.id
             LEFT JOIN mst_sections sec ON mjp.section_id = sec.id
             LEFT JOIN mst_soft_skills sk ON sk.id_job_position = mjp.id
-            WHERE mjp.id = ?', [$jobPosition]);
-
-        // Log hasil dari query SK
-        Log::info('SK Results:', ['skResults' => $skResults]);
+            WHERE mjp.id = ? AND ujp.is_active = 1
+                AND ujp.effective_from IS NOT NULL AND ujp.effective_from <= ?
+                AND (ujp.effective_until IS NULL OR ujp.effective_until >= ?)', [$jobPosition, $today, $today]);
 
         // Query ketiga untuk data AD
         $adResults = DB::select('
@@ -412,47 +429,27 @@ class PenilaianTCController extends Controller
             LEFT JOIN mst_departments dept ON mjp.department_id = dept.id
             LEFT JOIN mst_sections sec ON mjp.section_id = sec.id
             LEFT JOIN mst_additionals ad ON ad.id_job_position = mjp.id
-            WHERE mjp.id = ?', [$jobPosition]);
-
-        // Log hasil dari query AD
-        Log::info('AD Results:', ['adResults' => $adResults]);
+            WHERE mjp.id = ? AND ujp.is_active = 1
+                AND ujp.effective_from IS NOT NULL AND ujp.effective_from <= ?
+                AND (ujp.effective_until IS NULL OR ujp.effective_until >= ?)', [$jobPosition, $today, $today]);
 
         // Gabungkan hasil dari ketiga query
         $results = array_merge($tcResults, $skResults, $adResults);
 
-        $hasFullAccess = $this->jobPositionAccess->hasFullAccess(auth()->user());
-        $approvalScope = $this->jobPositionAccess->getUserApprovalScope(auth()->user());
-
-        if (!$hasFullAccess) {
-            $allowedSectionIds = $approvalScope['section_ids'];
-            $filterFn = function ($item) use ($allowedSectionIds, $jobPosition) {
-                $jobPos = \App\Models\MstJobPosition::find($jobPosition);
-                if ($jobPos && $jobPos->section_id) {
-                    return true;
-                }
-
-                $employee = \App\Models\User::find($item->id_user);
-                if ($employee && $employee->section) {
-                    $resolvedSecId = \App\Models\MstSection::where('name', $employee->section)->value('id');
-                    return $resolvedSecId && in_array($resolvedSecId, $allowedSectionIds);
-                }
-
-                return false;
-            };
-
-            $results = array_values(array_filter($results, $filterFn));
+        $employeeIds = $this->readableAssessmentEmployeeIds($jobPosition);
+        if ($employeeIds !== null) {
+            $allowed = array_fill_keys($employeeIds, true);
+            $results = array_values(array_filter($results, fn ($row) => isset($allowed[(int) $row->id_user])));
         }
 
-        // Log hasil gabungan
-        Log::info('Final Results:', ['results' => $results]);
-
-        // Kembalikan hasil sebagai JSON
         return response()->json($results);
     }
 
     public function getJobPositionDataEdit(Request $request)
     {
-        $jobPosition = $request->input('id'); // Ambil parameter id dari request
+        $jobPosition = $this->authorizeAssessmentRead($request, 'id');
+        $today = today()->toDateString();
+        $year = $this->assessmentReadYear($request);
 
         $results = DB::select('
         (
@@ -469,8 +466,10 @@ class PenilaianTCController extends Controller
             LEFT JOIN mst_departments dept ON mjp.department_id = dept.id
             LEFT JOIN mst_sections sec ON mjp.section_id = sec.id
             LEFT JOIN mst_tcs tcs ON mjp.id = tcs.id_job_position
-            LEFT JOIN trs_penilaian_tcs trs ON tcs.id = trs.id_tc AND trs.id_job_position = mjp.id AND trs.id_user = u.id
-            WHERE mjp.id = ?
+            LEFT JOIN trs_penilaian_tcs trs ON tcs.id = trs.id_tc AND trs.id_job_position = mjp.id AND trs.id_user = u.id AND trs.tahun_penilaian = ?
+            WHERE mjp.id = ? AND ujp.is_active = 1
+                AND ujp.effective_from IS NOT NULL AND ujp.effective_from <= ?
+                AND (ujp.effective_until IS NULL OR ujp.effective_until >= ?)
         )
         UNION ALL
         (
@@ -487,8 +486,10 @@ class PenilaianTCController extends Controller
             LEFT JOIN mst_departments dept ON mjp.department_id = dept.id
             LEFT JOIN mst_sections sec ON mjp.section_id = sec.id
             LEFT JOIN mst_soft_skills sk ON mjp.id = sk.id_job_position
-            LEFT JOIN trs_penilaian_tcs trs ON sk.id = trs.id_sk AND trs.id_job_position = mjp.id AND trs.id_user = u.id
-            WHERE mjp.id = ?
+            LEFT JOIN trs_penilaian_tcs trs ON sk.id = trs.id_sk AND trs.id_job_position = mjp.id AND trs.id_user = u.id AND trs.tahun_penilaian = ?
+            WHERE mjp.id = ? AND ujp.is_active = 1
+                AND ujp.effective_from IS NOT NULL AND ujp.effective_from <= ?
+                AND (ujp.effective_until IS NULL OR ujp.effective_until >= ?)
         )
         UNION ALL
         (
@@ -505,32 +506,17 @@ class PenilaianTCController extends Controller
             LEFT JOIN mst_departments dept ON mjp.department_id = dept.id
             LEFT JOIN mst_sections sec ON mjp.section_id = sec.id
             LEFT JOIN mst_additionals ad ON mjp.id = ad.id_job_position
-            LEFT JOIN trs_penilaian_tcs trs ON ad.id = trs.id_ad AND trs.id_job_position = mjp.id AND trs.id_user = u.id
-            WHERE mjp.id = ?
+            LEFT JOIN trs_penilaian_tcs trs ON ad.id = trs.id_ad AND trs.id_job_position = mjp.id AND trs.id_user = u.id AND trs.tahun_penilaian = ?
+            WHERE mjp.id = ? AND ujp.is_active = 1
+                AND ujp.effective_from IS NOT NULL AND ujp.effective_from <= ?
+                AND (ujp.effective_until IS NULL OR ujp.effective_until >= ?)
         )
-        ', [$jobPosition, $jobPosition, $jobPosition]);
+        ', [$year, $jobPosition, $today, $today, $year, $jobPosition, $today, $today, $year, $jobPosition, $today, $today]);
 
-        $hasFullAccess = $this->jobPositionAccess->hasFullAccess(auth()->user());
-        $approvalScope = $this->jobPositionAccess->getUserApprovalScope(auth()->user());
-
-        if (!$hasFullAccess) {
-            $allowedSectionIds = $approvalScope['section_ids'];
-            $filterFn = function ($item) use ($allowedSectionIds, $jobPosition) {
-                $jobPos = \App\Models\MstJobPosition::find($jobPosition);
-                if ($jobPos && $jobPos->section_id) {
-                    return true;
-                }
-
-                $employee = \App\Models\User::find($item->id_user);
-                if ($employee && $employee->section) {
-                    $resolvedSecId = \App\Models\MstSection::where('name', $employee->section)->value('id');
-                    return $resolvedSecId && in_array($resolvedSecId, $allowedSectionIds);
-                }
-
-                return false;
-            };
-
-            $results = array_values(array_filter($results, $filterFn));
+        $employeeIds = $this->readableAssessmentEmployeeIds($jobPosition);
+        if ($employeeIds !== null) {
+            $allowed = array_fill_keys($employeeIds, true);
+            $results = array_values(array_filter($results, fn ($row) => isset($allowed[(int) $row->id_user])));
         }
 
         return response()->json($results);
@@ -539,12 +525,14 @@ class PenilaianTCController extends Controller
     public function getNilaiDataEdit(Request $request)
     {
         // Ambil nilai id_job_position dari input request
-        $jobPosition = $request->input('id');
+        $jobPosition = $this->authorizeAssessmentRead($request, 'id');
 
         // Query untuk mengambil data berdasarkan id_job_position
         $query = DB::table('trs_penilaian_tcs')
             ->select('id', 'id_tc', 'id_sk', 'id_ad', 'nilai_tc', 'nilai_sk', 'nilai_ad')
             ->where('id_job_position', $jobPosition);
+
+        $query->where('tahun_penilaian', $this->assessmentReadYear($request));
 
         $hasFullAccess = $this->jobPositionAccess->hasFullAccess(auth()->user());
         if (!$hasFullAccess) {
@@ -815,7 +803,7 @@ class PenilaianTCController extends Controller
 
     public function viewTrs($id_job_position)
     {
-        $this->abortUnlessJobPositionAccessible($id_job_position);
+        abort_unless($this->jobPositionAccess->canViewAssessmentInformation(auth()->user(), (int) $id_job_position), 403);
 
         // Ambil satu data penilaian berdasarkan id_job_position
         $penilaian = TrsPenilaianTc::with(['tc', 'sk', 'ad', 'poinKategori', 'user', 'jobPosition'])
@@ -838,6 +826,7 @@ class PenilaianTCController extends Controller
 
     public function previewTrs($id_job_position)
     {
+        abort_unless($this->jobPositionAccess->canViewAssessmentInformation(auth()->user(), (int) $id_job_position), 403);
         // Ambil satu data penilaian berdasarkan id_job_position
         $penilaian = TrsPenilaianTc::with(['tc', 'sk', 'ad', 'poinKategori', 'user', 'jobPosition'])
             ->where('id_job_position', $id_job_position)
@@ -860,10 +849,17 @@ class PenilaianTCController extends Controller
 
     public function getDataTrs(Request $request)
     {
+        $positionId = $this->authorizeAssessmentRead($request, 'id_job_position');
+        $year = $this->assessmentReadYear($request);
         // Ambil semua data penilaian berdasarkan id_job_position
-        $penilaians = TrsPenilaianTc::with(['tc', 'sk', 'ad', 'poinKategori', 'user'])
-            ->where('id_job_position', $request->id_job_position)
-            ->get(); // Mengambil semua record yang cocok
+        $query = TrsPenilaianTc::with(['tc.poinKategori', 'sk.poinKategori', 'ad.poinKategori', 'poinKategori', 'user:id,npk,name,section'])
+            ->where('id_job_position', $positionId)
+            ->forYear($year);
+        $employeeIds = $this->readableAssessmentEmployeeIds($positionId);
+        if ($employeeIds !== null) {
+            $query->whereIn('id_user', $employeeIds);
+        }
+        $penilaians = $query->get();
 
         return response()->json($penilaians);
     }
@@ -2134,7 +2130,7 @@ class PenilaianTCController extends Controller
      */
     public function yearlyHistory($id_job_position, $year)
     {
-        $this->abortUnlessJobPositionAccessible($id_job_position);
+        abort_unless($this->jobPositionAccess->canViewAssessmentInformation(auth()->user(), (int) $id_job_position), 403);
 
         $penilaian = TrsPenilaianTc::with(['tc', 'sk', 'ad', 'poinKategori', 'user', 'jobPosition'])
             ->where('id_job_position', $id_job_position)
