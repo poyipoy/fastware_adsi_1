@@ -48,45 +48,8 @@
                                 <td>{{ $record['actor'] }}</td>
                                 <td class="text-nowrap">
                                     <div class="d-inline-flex gap-1 align-items-center">
-                                        <form method="POST" action="{{ $record['approve_url'] }}" class="d-inline" onsubmit="return confirm('Apakah Anda yakin menyetujui Stock In {{ $record['reference'] }} sejumlah {{ \App\Services\Warehouse\WarehouseQuantity::display($record['quantity']) }} {{ $record['unit'] }}?');">
-                                            @csrf
-                                            <input type="hidden" name="quantity_received" value="{{ $record['quantity'] }}">
-                                            <input type="hidden" name="validation_result" value="MATCH">
-                                            <input type="hidden" name="validation_notes" value="Disetujui langsung oleh validator">
-                                            <input type="hidden" name="idempotency_key" value="{{ (string) str()->uuid() }}">
-                                            <input type="hidden" name="redirect_to" value="validations">
-                                            <button type="submit" class="btn btn-sm btn-success text-nowrap">Setujui</button>
-                                        </form>
-                                        <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" data-bs-toggle="modal" data-bs-target="#rejectModal-{{ $loop->index }}">Tolak</button>
+                                        <a class="btn btn-sm btn-success text-nowrap" href="{{ $record['validation_url'] }}">Setujui</a>
                                         <a class="btn btn-sm btn-outline-secondary text-nowrap" href="{{ $record['detail_url'] }}">Detail</a>
-                                    </div>
-
-                                    <div class="modal fade" id="rejectModal-{{ $loop->index }}" tabindex="-1" aria-labelledby="rejectModalLabel-{{ $loop->index }}" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <form method="POST" action="{{ $record['reject_url'] }}">
-                                                    @csrf
-                                                    <input type="hidden" name="idempotency_key" value="{{ (string) str()->uuid() }}">
-                                                    <input type="hidden" name="redirect_to" value="validations">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="rejectModalLabel-{{ $loop->index }}">Tolak Stock In {{ $record['reference'] }}</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p class="mb-2">Barang: <strong>{{ $record['item'] }}</strong> ({{ $record['condition'] }})</p>
-                                                        <p class="mb-3">Jumlah: <strong>{{ \App\Services\Warehouse\WarehouseQuantity::display($record['quantity']) }} {{ $record['unit'] }}</strong></p>
-                                                        <div class="mb-3 text-start">
-                                                            <label for="reject-reason-{{ $loop->index }}" class="form-label warehouse-required">Alasan Penolakan</label>
-                                                            <textarea class="form-control" id="reject-reason-{{ $loop->index }}" name="reason" rows="3" required placeholder="Tuliskan alasan penolakan..."></textarea>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                                                        <button type="submit" class="btn btn-danger">Tolak Stock In</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
                                     </div>
                                 </td>
                             </tr>

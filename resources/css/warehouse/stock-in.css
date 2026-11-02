@@ -23,10 +23,17 @@
 .warehouse-stock-in-readonly dt { margin: 0 0 4px; color: var(--warehouse-muted); font-size: .74rem; font-weight: 700; }
 .warehouse-stock-in-readonly dd { margin: 0; color: var(--warehouse-ink); overflow-wrap: anywhere; }
 .warehouse-stock-in-validation-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
-.warehouse-stock-in-result-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.warehouse-stock-in-result-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .warehouse-stock-in-result-option { display: flex; min-height: 64px; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); color: var(--warehouse-ink); background: #fbfcfe; cursor: pointer; }
 .warehouse-stock-in-result-option:has(input:checked) { border-color: #6a8fe8; box-shadow: 0 0 0 .2rem var(--warehouse-focus); background: #f4f7ff; }
+.warehouse-stock-in-result-option.is-danger:has(input:checked) { border-color: #ef4444; box-shadow: 0 0 0 .2rem rgba(239, 68, 68, 0.2); background: #fef2f2; }
 .warehouse-stock-in-result-option input { width: 20px; height: 20px; flex: 0 0 auto; }
+.warehouse-stock-in-result-option.is-danger input:checked { accent-color: #ef4444; }
+.warehouse-rejection-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.warehouse-rejection-tag { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; min-height: 48px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #f8fafc; cursor: pointer; font-size: .85rem; user-select: none; }
+.warehouse-rejection-tag:hover { border-color: #cbd5e1; background: #f1f5f9; }
+.warehouse-rejection-tag:has(input:checked) { border-color: #dc2626; background: #fef2f2; color: #991b1b; font-weight: 600; box-shadow: 0 0 0 .15rem rgba(239, 68, 68, 0.15); }
+.warehouse-rejection-tag input { accent-color: #dc2626; width: 18px; height: 18px; }
 .warehouse-stock-in-difference { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--warehouse-border); border-radius: var(--warehouse-radius); background: #f8fafc; font-variant-numeric: tabular-nums; }
 .warehouse-stock-in-difference strong { color: var(--warehouse-navy); }
 .warehouse-stock-in-page [data-warehouse-validation-quantity][readonly] { background-color: #f1f5f9; color: #475569; cursor: not-allowed; border-color: #cbd5e1; user-select: none; }
@@ -51,6 +58,7 @@
 @media (max-width: 991.98px) {
     .warehouse-stock-in-validation-grid { grid-template-columns: 1fr; }
     .warehouse-stock-in-detail-layout { grid-template-columns: 1fr; }
+    .warehouse-stock-in-result-options { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 }
 
 @media (max-width: 767.98px) {

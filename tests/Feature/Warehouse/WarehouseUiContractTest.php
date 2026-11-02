@@ -95,7 +95,10 @@ class WarehouseUiContractTest extends WarehouseTestCase
             ->assertSee($stockIn->stock_in_number)
             ->assertSee('Transfer Antar Lokasi')
             ->assertSee('DS8 → Deltamas')
-            ->assertDontSee($legacy->shipment_number);
+            ->assertDontSee($legacy->shipment_number)
+            ->assertSee('href="'.route('warehouse.stock-in.validate-form', $stockIn).'"', false)
+            ->assertDontSee('data-bs-target="#rejectModal', false)
+            ->assertDontSee('Tolak</button>', false);
         self::assertTrue($response->viewData('pending')->contains(
             fn (array $record): bool => $record['reference'] === $stockIn->stock_in_number && $record['kind'] === 'Transfer Antar Lokasi',
         ));

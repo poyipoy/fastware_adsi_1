@@ -1,0 +1,124 @@
+{
+  "_pdfjs-BdaRZebo.js": {
+    "file": "assets/pdfjs-BdaRZebo.js",
+    "name": "pdfjs"
+  },
+  "_ui-feedback-BObBBXdP.js": {
+    "file": "assets/ui-feedback-BObBBXdP.js",
+    "name": "ui-feedback"
+  },
+  "node_modules/pdfjs-dist/legacy/build/pdf.worker.min.js": {
+    "file": "assets/pdf.worker.min-CNLDpoK4.js",
+    "src": "node_modules/pdfjs-dist/legacy/build/pdf.worker.min.js"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-l0sNRNKZ.js",
+    "name": "app",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/css/km/dashboard.css": {
+    "file": "assets/dashboard-G4lfAmCv.css",
+    "src": "resources/css/km/dashboard.css",
+    "isEntry": true
+  },
+  "resources/css/km/foundation.css": {
+    "file": "assets/foundation-DsupNLJs.css",
+    "src": "resources/css/km/foundation.css",
+    "isEntry": true
+  },
+  "resources/css/warehouse/dashboard.css": {
+    "file": "assets/dashboard-BesOW8eZ.css",
+    "src": "resources/css/warehouse/dashboard.css",
+    "isEntry": true
+  },
+  "resources/css/warehouse/foundation.css": {
+    "file": "assets/foundation-GLnNL16_.css",
+    "src": "resources/css/warehouse/foundation.css",
+    "isEntry": true
+  },
+  "resources/css/warehouse/management.css": {
+    "file": "assets/management-L5qeiG7U.css",
+    "src": "resources/css/warehouse/management.css",
+    "isEntry": true
+  },
+  "resources/css/warehouse/reporting.css": {
+    "file": "assets/reporting-dSontHnq.css",
+    "src": "resources/css/warehouse/reporting.css",
+    "isEntry": true
+  },
+  "resources/css/warehouse/stock-in.css": {
+    "file": "assets/stock-in-BHIj9sEr.css",
+    "src": "resources/css/warehouse/stock-in.css",
+    "isEntry": true
+  },
+  "resources/css/warehouse/transaction-form.css": {
+    "file": "assets/transaction-form-DKHV1U3c.css",
+    "src": "resources/css/warehouse/transaction-form.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-Bj43h_rG.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/km/approval.js": {
+    "file": "assets/approval-BURWioDH.js",
+    "name": "approval",
+    "src": "resources/js/km/approval.js",
+    "isEntry": true,
+    "imports": [
+      "_ui-feedback-BObBBXdP.js"
+    ]
+  },
+  "resources/js/km/authoring.js": {
+    "file": "assets/authoring-q3PUHt1c.js",
+    "name": "authoring",
+    "src": "resources/js/km/authoring.js",
+    "isEntry": true,
+    "imports": [
+      "_ui-feedback-BObBBXdP.js"
+    ],
+    "css": [
+      "assets/authoring-BGW9iQTN.css"
+    ]
+  },
+  "resources/js/km/dashboard.js": {
+    "file": "assets/dashboard-CagUQXfT.js",
+    "name": "dashboard",
+    "src": "resources/js/km/dashboard.js",
+    "isEntry": true,
+    "imports": [
+      "_ui-feedback-BObBBXdP.js",
+      "_pdfjs-BdaRZebo.js"
+    ],
+    "assets": [
+      "assets/pdf.worker.min-CNLDpoK4.js"
+    ]
+  },
+  "resources/js/km/shell.js": {
+    "file": "assets/shell-Ca5ZZWlx.js",
+    "name": "shell",
+    "src": "resources/js/km/shell.js",
+    "isEntry": true
+  },
+  "resources/js/warehouse/dashboard.js": {
+    "file": "assets/dashboard-BlvCfe1T.js",
+    "name": "dashboard",
+    "src": "resources/js/warehouse/dashboard.js",
+    "isEntry": true
+  },
+  "resources/js/warehouse/stock-in.js": {
+    "file": "assets/stock-in-DCpsY67O.js",
+    "name": "stock-in",
+    "src": "resources/js/warehouse/stock-in.js",
+    "isEntry": true
+  },
+  "resources/js/warehouse/transaction-form.js": {
+    "file": "assets/transaction-form-Cp5vMBS5.js",
+    "name": "transaction-form",
+    "src": "resources/js/warehouse/transaction-form.js",
+    "isEntry": true
+  }
+}
